@@ -1,8 +1,9 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestones 0–3 implement scalar types, the borrowed sfnt/TTC core, core tables,
-and GDEF/GSUB/GPOS layout parsing, selection and condition evaluation.**
+to Silk, intended to support a later HarfRust port. **Milestones 0–4 implement
+scalar types, borrowed sfnt/TTC parsing, core/layout/variation tables, vertical
+metrics, and TrueType glyph and variation data.**
 The full port remains in progress. See [PROGRESS.md](PROGRESS.md) and the original
 [porting plan](docs/PORTING-PLAN.md).
 
@@ -52,9 +53,10 @@ is the result for the pinned snapshots.
 scripts/compare --timeout 120 --fonts build/fonts.txt
 ```
 
-`compare` runs both binaries and prints the first differing line. Core and layout fields match on all **566 corpus files**, **426 container edge cases**,
-**500 core-table fixtures**, and **2,650 layout fixtures**. The corpus and table
-fixtures pass in both debug and release.
+`compare` runs both binaries and prints the first differing line. Core, layout and
+variation dumps match on all **566 corpus files**, plus **2,882 variation fixtures**,
+in debug and release. The expanded debug protocol also passes **426 container
+edge cases**, **500 core-table fixtures**, and **2,650 layout fixtures**.
 Repeated table views use explicit references to their preceding complete field dumps.
 Matching dumps return 0, different dumps return 1, and harness/process failures
 return 2. The optional JSON report records input/output hashes and errors.
@@ -97,8 +99,8 @@ are paths; future consumers can use this repository as a submodule.
 ## Contract and license
 
 The active [dump format](docs/DUMP-FORMAT.md) covers directories, core and layout
-tables, variations, vertical metrics and TrueType glyphs. The variation gate is
-in progress; AAT, CFF and model results follow at their gates.
+tables, variations, vertical metrics and TrueType glyphs. AAT, CFF and model
+results follow at their gates.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
 [COMPILER-BUGS.md](COMPILER-BUGS.md), and missing library APIs in
 [STDLIB-GAPS.md](STDLIB-GAPS.md).

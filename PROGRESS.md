@@ -379,3 +379,26 @@ The **12-font smoke gate** and **2,882 focused variation fixtures** pass. Rust's
 **7 reference tests**, **15 harness tests**, generator's **10 tests**, Clippy and
 **69-file generation drift** checks pass. The full debug/release corpus gates,
 remaining fixture checks and CI are still running or pending; M4 is not yet complete.
+
+## Session 17 — 2026-10-26 — milestone 4 local gate complete
+
+The expanded format 4 dumps match **566 / 566 corpus files in both debug and
+release**, with **0 differences and 0 process failures**. All **2,882 variation
+fixtures** also match in both profiles. The new protocol additionally passes the
+previous **426 container**, **500 core-table**, and **2,650 layout fixtures**.
+
+The M4 implementation and upstream test ports are complete: axis normalization,
+item/tuple variations, metric and glyph deltas including contour interpolation,
+glyf/loca views, and vertical metrics/extended selection. The suites pass **64
+font_types** and **277 read_fonts** tests (**326 upstream ports**). Seven Rust
+reference tests, fifteen Python tests, ten generator tests, formatting, Clippy,
+69-file generation drift, and both CLI builds pass.
+
+Evidence: [debug corpus](reports/milestone-4-variations.json),
+[release corpus](reports/milestone-4-release-variations.json),
+[debug variation fixtures](reports/milestone-4-variation-fixtures.json), and
+[release variation fixtures](reports/milestone-4-release-variation-fixtures.json).
+The full outputs are compared byte for byte and hashed; tuple-delta evaluation
+and glyph scope semantics are specified in `docs/DUMP-FORMAT.md`.
+
+PR #5 is ready for CI and merge. Milestones 5–9 remain pending.
