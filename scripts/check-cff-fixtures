@@ -67,7 +67,7 @@ def font(programs, extra=b'', private=b'', local=(), global_subrs=(), charset=b'
 def seeds():
     source = (ROOT / 'read_fonts/src/generated_cff_fixtures.silk').read_text()
     for name in ('exampleCff2', 'notoSerifTable', 'cantarellTable', 'iconsTable', 'iconsMatrixTable', 'notoSansCffTable', 'notoSansCff2Table'):
-        literal = re.search(r'fn ' + name + r'\(\)[^\n]*return (b"(?:\\.|[^"\\])*")', source).group(1)
+        literal = re.search(r'fn ' + name + r'\(\)[^{]*\{\s*return (b"(?:\\.|[^"\\])*")', source).group(1)
         data = ast.literal_eval(literal)
         yield name, b'CFF2' if data[0] == 2 else b'CFF ', data
     move = number(10) + number(20) + b'\x15'

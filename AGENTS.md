@@ -12,7 +12,8 @@ Setup and checks are in `README.md`.
   and missing library APIs in `docs/stdlib-gaps.md`.
 - `upstream/` and `test-data/harfrust/` are read-only pinned submodules.
 - Table accessors are generated from the upstream codegen grammar by
-  `scripts/generate`. Never edit `generated_*.silk` files by hand.
+  `scripts/generate`. Never edit `generated_*.silk` files by hand. Run
+  `scripts/generate` before committing: it also formats all Silk sources.
 - Parsing must not trap on malformed input: use checked arithmetic for offsets
   and lengths.
 - Dumps of the test corpus total several GB. Scripts must not process them line

@@ -65,7 +65,7 @@ def fixtures():
     yield 'feature-params-alias-different-tags', sfnt(b'GSUB', struct.pack('>5H', 1, 0, 0, 10, 0) + feature_list)
     # Every prefix of original lookup-variation tables used in upstream tests.
     tests = (ROOT / 'read_fonts/src/lookup_variation_tests.silk').read_text()
-    for name, literal in re.findall(r"fn (\w+Bytes)\(\) -> &'static \[u8\] \{ return b\"([^\"]*)\" \}", tests):
+    for name, literal in re.findall(r"fn (\w+Bytes)\(\) -> &'static \[u8\] \{\s*return b\"([^\"]*)\"\s*\}", tests):
         data = bytes.fromhex(literal.replace('\\x', ''))
         for length in range(len(data) + 1):
             yield f'lookup-variations-{name}-{length}', sfnt(b'GSUB', struct.pack('>5HI', 1, 1, 0, 0, 0, 14) + data[:length])

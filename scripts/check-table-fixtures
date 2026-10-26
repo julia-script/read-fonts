@@ -32,7 +32,7 @@ def fixtures():
     source = (ROOT / 'read_fonts/src/cmap_tests.silk').read_text()
     containers = {'vazirmatn', 'simple', 'font6', 'font10', 'font12', 'font14',
                   'vorg', 'symbol', 'format0', 'format6Small', 'prefer15a', 'prefer15b'}
-    for name, literal in re.findall(r"fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source):
+    for name, literal in re.findall(r"fn (\w+)\(\) -> &'static \[u8\] \{\s*return (b\"[^\"]*\")\s*\}", source):
         payload = ast.literal_eval(literal)
         if name == 'limitsFont':
             yield name, payload

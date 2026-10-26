@@ -37,8 +37,8 @@ and runs three jobs in parallel:
 # Silk tests
 silk test --manifest-path font_types/silk.toml --root src/tests.silk
 silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
-# Generated code and tools
-scripts/generate --check
+# Generated code, formatting and tools
+scripts/generate --check   # regenerates and runs silk format; fails on any change
 python3 -m unittest discover -s scripts/tests
 # Corpus and corrupted fonts: every corpus font plus 4 seeded corruptions of
 # each must dump without a trap, crash, hang or incomplete output
@@ -75,7 +75,7 @@ The output format is described in [docs/dump-format.md](docs/dump-format.md).
 ## Generated code
 
 `scripts/generate` regenerates table accessors from the upstream codegen grammar
-and the test fixtures. Do not edit `generated_*.silk` files. The plan in
+and the test fixtures, then runs `silk format` on every package. Do not edit `generated_*.silk` files. The plan in
 `tools/codegen-plan.toml` lists each generated file; its `extensions` entries
 append handwritten `tables/*_impl.silk` files to their table's module.
 

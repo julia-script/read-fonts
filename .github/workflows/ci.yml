@@ -25,7 +25,7 @@ jobs:
       - run: silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
 
   codegen:
-    name: Generated code and tools
+    name: Generated code, formatting and tools
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -35,7 +35,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Generated files are current
+      - uses: ./.github/actions/setup-silk
+      - name: Generated and formatted files are committed
         run: scripts/generate --check
       - name: Codegen tool
         run: |
