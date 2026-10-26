@@ -4,9 +4,10 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0-dev.17+1120049495d3"
+VERSION = tomllib.loads((ROOT / "silk.toml").read_text())["package"]["silk-version"]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--reference-only", action="store_true")
 parser.add_argument("--release", action="store_true")

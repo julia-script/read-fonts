@@ -1,7 +1,7 @@
 # Compiler bugs
 
 No new compiler bug was encountered in milestone 0. The CLI skeleton builds in
-debug and release with the unmodified `0.1.0-dev.17+1120049495d3` release.
+debug and release with the unmodified `0.1.0-dev.20+10a8c67813a1` release.
 
 For a new finding, add `compiler-bugs/NNN-short-name/` with a pinned `silk.toml`,
 minimal `src/main.silk`, and README containing the exact command, expected and
@@ -20,3 +20,6 @@ rediscovered or reported as new bugs.
 - [006 — applying an interface with a bounded type parameter](compiler-bugs/006-dependent-interface-bound/README.md): native compilation rejects the dependent bound; keep the target bound on consuming types and functions.
 - [007 — bounded Self in an interface result](compiler-bugs/007-bounded-self-result/README.md): `Values<Self>` is rejected when Values requires the provider's interface; keep the bound on consuming cursor methods.
 - [008 — dropping a generic unsafe operation](compiler-bugs/008-drop-generic-unsafe/README.md): directly dropping Atomic.fetchAdd with its static ordering is rejected; bind the result before dropping it.
+
+All eight still reproduce, with the same output, on `0.1.0-dev.20+10a8c67813a1`
+(checked 2026-10-26).

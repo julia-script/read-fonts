@@ -1,6 +1,6 @@
 # Generic default interface operations are unsupported by the native compiler
 
-Toolchain: `silk 0.1.0-dev.17+1120049495d3`, Linux x86_64, Clang 19.1.7.
+Toolchain: `silk 0.1.0-dev.20+10a8c67813a1`, Linux x86_64, Clang 19.1.7.
 No compiler or standard-library modifications.
 
 Run from this directory:

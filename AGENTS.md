@@ -5,7 +5,7 @@ Finish each milestone's gate before starting the next. Milestone 0 establishes
 only the harness: do not report parser parity from a reference-only run.
 
 - Learn Silk from the read-only `silk-lang/silk` reference at the pinned release.
-- Every Silk manifest pins `0.1.0-dev.17+1120049495d3`. Never build, patch, or vendor
+- Every Silk manifest pins `0.1.0-dev.20+10a8c67813a1`. Never build, patch, or vendor
   the Silk compiler or stdlib. Record minimal compiler reproducers and stdlib gaps.
 - `upstream/` and `test-data/harfrust/` are read-only pinned submodules.
 - Generate table accessors from the upstream codegen input grammar. Never edit

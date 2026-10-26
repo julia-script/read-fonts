@@ -1,6 +1,6 @@
 # 006: native compiler cannot apply an interface with a bounded type parameter
 
-Toolchain: `0.1.0-dev.17+1120049495d3` (unmodified release).
+Toolchain: `0.1.0-dev.20+10a8c67813a1` (unmodified release).
 
 Run from the repository root:
 
