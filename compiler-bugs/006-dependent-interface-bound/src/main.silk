@@ -1,0 +1,5 @@
+pub interface Read<'a> { fn read(data: &'a [u8]) -> Self }
+pub interface Extension<'a, T: Read<'a>> { fn get(self: &Self) -> T }
+pub struct Subs<'a, T: Read<'a>, E: Read<'a> + Extension<'a, T>> { bytes: &'a [u8], }
+impl<'a, T, E> Subs<'a, T, E> { pub fn new(bytes: &'a [u8]) -> Self { return Self { bytes: bytes } } }
+pub fn main() -> i32 { return 0 }
