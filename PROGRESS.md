@@ -2,11 +2,12 @@
 
 ## Current status
 
-Milestones **0–9 are implemented**, and their local gates are complete. The final
+Milestones **0–9 are implemented**. Final Phase 2 corruption validation found an
+invalid-contour bounds mismatch; its fix and 875-test suite pass. Final gates are being repeated. The earlier
 Phase 2 corpus and fixture comparisons pass in debug and release. The release
 CLI benchmark reports **4.36× Rust's wall time** (54.61 s versus 12.52 s median).
-The suites pass **862 read_fonts** and **64 font_types** tests, including **897
-upstream ports** overall. Current evidence is in Session 53 below.
+The suites pass **875 read_fonts** and **64 font_types** tests, including **909
+upstream ports** overall. Current evidence is in Session 54 below.
 
 Milestones 0–8 are merged. Final CI, the repeated complete malformed campaign,
 and merge status for milestone 9 are tracked in [PR #10](https://github.com/julia-script/read-fonts/pull/10).
@@ -1068,3 +1069,23 @@ sources, the 530-case bitmap/color/VARC campaign passes, and the repeated comple
 campaign is running. PR #10 requires final green CI, including that full campaign,
 before merge. Local milestone work is complete; CI and merge status are tracked
 on the PR rather than inferred from these local checks.
+
+
+## Session 54 — 2026-10-26 — malformed cubic outline correction
+
+The repeated complete malformed campaign exposed a BungeeTint point-flag mutation
+that forms an invalid cubic contour. Upstream refuses the drawn outline and
+contributes an empty color clip; the port had accumulated its raw loaded points.
+Drawn glyf bounds now use the contour-to-path state machine, preserving the
+separate raw-metric behavior. The original failing complete dump now matches.
+
+Twelve upstream path tests pass, covering contour start choices, implied points,
+quadratic/cubic commands and rejection. A 284-byte generated font reduces the
+color-layer failure, and a valid cubic companion ensures valid control bounds
+are retained. The old binary demonstrably fails the reduced font. Full-suite,
+focused fixture, final build, malformed and timing checks are being repeated;
+no final gate is inferred from the earlier binaries' reports.
+
+The full read_fonts suite passes **875 / 875 tests**, with **909 upstream ports**
+overall. Regeneration produces 49 Phase 2 fixtures; the focused model corpus now
+has 362 cases. The final debug and release builds are running.

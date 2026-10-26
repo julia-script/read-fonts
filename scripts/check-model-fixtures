@@ -86,6 +86,8 @@ def fixtures():
     phase_source = (ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk').read_text()
     phase = {name: ast.literal_eval(literal) for name, literal in re.findall(
         r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", phase_source)}
+    for name in ('colrInvalidCubicFont', 'colrValidCubicFont'):
+        yield name, phase[name]
     names = ('cbdtFont', 'cbdtMissingGlyph2At16', 'colrFont', 'colrV0Font',
              'variableColrFont', 'unclippedColrFont', 'gradientFont',
              'varcCjkFont', 'varcConditionalsFont', 'varcStaticFont',

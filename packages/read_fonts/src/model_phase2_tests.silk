@@ -214,3 +214,23 @@ effect fn missingBaseColor() -> () ! AssertionError<'static> | OutOfMemoryError 
   let fallback=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.new(&[GlyphSource.Glyf,GlyphSource.Colr]))
   run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&fallback,glyph)),run colorExpected(Expected.colorVariableDrawnBounds(),glyph)),"color clip answers after the chosen base fails")
 }
+
+// Independent Rust dumps of these reduced fonts preserve the valid small layer
+// when another layer fails after emitting points. Two cubic controls are valid.
+test effect fn aMalformedCubicColorLayerDiscardsItsPartialClip() -> () ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator=Allocator.systemAllocatorProvider()
+  run cubicColorClips() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+effect fn cubicColorClips() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let fonts=[Fixtures.colrInvalidCubicFont(),Fixtures.colrValidCubicFont()]
+  let top:[i64;2]=[5242880,262144000] let width:[i64;2]=[2621440,131072000] let height:[i64;2]=[3932160,260833280]
+  let mut i:usize=0
+  while i<2 {
+    let font=run must(FontRef.new(fonts[i])) let base=metrics(&font,&[])
+    let wanted=GlyphExtents<F48Dot16> { xBearing:F48Dot16.zero(),yBearing:F48Dot16.fromBits(top[i]),width:F48Dot16.fromBits(width[i]),height:F48Dot16.fromBits(height[i]) }
+    run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&base,GlyphId.new(0))),wanted),"invalid partial clip is discarded and valid cubic clip is retained")
+    let color=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.color())
+    run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&color,GlyphId.new(0))),wanted),"color-only source keeps the same drawing validation")
+    i=i+1
+  }
+}

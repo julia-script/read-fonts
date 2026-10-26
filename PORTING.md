@@ -592,3 +592,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   an unreproduced cache incident, not a confirmed additional compiler defect;
   compiler-bugs/001–008 remain the independently reproducible reports. Generation
   and compilation are serialized to avoid reading sources while they are replaced.
+
+- Drawn glyf bounds pass through the upstream contour-to-path state machine,
+  including cubic controls and implied midpoint interpolation. Malformed contours
+  reject the entire outline; a COLR clip discards any points emitted before that
+  rejection. Raw glyph metrics retain their distinct point/header bounds. The
+  private dependency supports f32, which is the precision used by these model
+  queries; twelve upstream path tests are ported with fixed command traces.

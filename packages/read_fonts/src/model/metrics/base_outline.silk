@@ -1,6 +1,8 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Control-point bounds shared by VARC components and COLR outline clips.
 import model.metrics.glyf_outline { GlyfContext,load }
+import model.metrics.glyf_path { outlineToPath,PathContourStart }
+import tables.glyf { PointFlags }
 import model.glyph { GlyphSource,GlyphSourceOrder,GlyphSources }
 import model.glyph.outline { PathSink }
 import model.optional { Maybe }
@@ -57,8 +59,9 @@ impl<'a> BaseOutlines<'a> {
       if source==GlyphSource.Glyf { if let Maybe<GlyfLoca<'a>>.Some { value:tables }=self.glyf {
         if GlyphId.toU32(glyph)>=self.glyphCount { fail Error.MissingResource }
         let context=GlyfContext { outlines:tables,gvar:self.gvar,hMetrics:self.hMetrics,vMetrics:self.vMetrics,glyphCount:self.glyphCount,coords:coords,ascender:self.ascender,descender:self.descender }
-        let outline=run load(&context,glyph) let points=List<Point<f32>>.asSlice(&outline.points) let mut i:usize=0
-        while i<points.length { ControlBounds.point(&mut sink,points[i].x,points[i].y) i=i+1 } return
+        let outline=run load(&context,glyph)
+        if !outlineToPath(List<Point<f32>>.asSlice(&outline.points),List<PointFlags>.asSlice(&outline.flags),List<u16>.asSlice(&outline.contours),PathContourStart.ScanBackward,&mut sink) { fail Error.Malformed }
+        return
       } }
       if source==GlyphSource.Cff || source==GlyphSource.Cff2 {
         if source==GlyphSource.Cff { if let Maybe<&'a CffFontRef<'a>>.Some { value }=self.standalone { run drawCff(value,glyph,coords,&mut sink) return } }
