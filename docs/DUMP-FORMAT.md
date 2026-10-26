@@ -82,7 +82,7 @@ field may be suppressed to make two implementations agree.
 
 ## Format 2: generated table fields
 
-The active header is `font-dump.version=2` and `dump.scope=core-tables`.
+The format 2 header is `font-dump.version=2` and `dump.scope=core-tables`.
 Directory fields retain format 1's order and encoding. After each face's directory,
 dump `head`, `maxp`, `MAXP`, `cmap`, `DMAP`, `hhea`, `HHEA`, `hmtx`, `HMTX`,
 `name`, `OS/2`, and `post`, in that order. A missing or unreadable table emits `font[N].TAG.error=VARIANT`.
@@ -124,7 +124,7 @@ FDArrayTest257 produces 2.49 million lines. Output buffering changes no bytes.
 
 ## Version 3: layout and shared table graphs
 
-The active header is `font-dump.version=3` and `dump.scope=layout-tables`. It adds
+The format 3 header is `font-dump.version=3` and `dump.scope=layout-tables`. It adds
 all grammar fields and resolved offset arrays for GDEF, GSUB, GPOS, shared layout
 structures, and their ItemVariationStore dependency. ValueRecord scalar/device
 fields and raw bytes are included. Write-only compiler sentinels are excluded.
@@ -141,3 +141,41 @@ Traversal stops at 64 path components or ten million node/record visits. It emit
 The harness also rejects missing references, reused node IDs, process failures,
 truncation, invalid UTF-8, and missing final newlines. All successful reports
 include hashes of the complete streamed dumps.
+
+## Version 4: variations, vertical metrics and glyph data
+
+The active header is `font-dump.version=4` and `dump.scope=variation-tables`.
+After the version 3 fields, dump fvar, avar, HVAR, VVAR, MVAR, gvar/GVAR, glyf,
+vhea/VHEA, vmtx/VMTX, and VORG in that order. Their generated traversal includes
+all grammar fields and resolved targets. fvar instance records include optional
+PostScript name IDs. Variable record accessors retain upstream's complete suffix,
+even where the declared count positions later fields.
+
+Each ItemVariationStore additionally evaluates every outer/inner index, plus the
+first undeclared inner index where representable, at four locations. Locations
+0–3 set every axis to 0, -0.5, +0.5 and +1 (2.14 bits 0, -8192, 8192, 16384).
+`.evaluated[L].outer[O].inner[I]` is the exact signed 48.16 result or `none`;
+null/malformed outer records retain their ordinary absence/error observations.
+
+`glyfLoca` and `GLYFLOCA` dump both location encodings independently: raw offsets,
+ascending order, and every glyph's simple/composite fields, instruction bytes and
+encoded payload. Empty glyphs emit `empty`; unreadable glyphs emit `none`, matching
+`Loca.get`. The traversal starts a new graph scope for every glyph payload. This
+is required because different glyphs can have identical suffix lengths. Scope
+changes invalidate prior cache entries without clearing the whole cache; node IDs
+remain monotonic within the face.
+
+`gvarGlyphs` and `GVARGlyphs` traverse every glyph's raw variation header, serialized
+bytes, tuple peaks/intermediate coordinates, decoded point positions and deltas.
+Raw tuple-header arrays use hexadecimal bytes because their elements require an
+axis-count argument. Each tuple's `.evaluated[L]` contains its scalar and every
+scaled delta's 16.16 x/y bits at the four locations above, or `none` if inactive.
+These observations evaluate explicit tuple deltas; inferred contour deltas are
+covered by the ported gvar/deltas unit tests.
+
+`HVARMetrics` and `VVARMetrics` evaluate every glyph through selected MAXP/maxp's
+count, plus one out-of-range glyph ID, at those same four locations. Advances,
+side bearings and vertical origins use signed 48.16 bits. `MVARMetrics` evaluates
+every metric tag with the upstream rounded metric API and emits 16.16 bits.
+Vertical metric tables also include advance/side-bearing lookups as in format 2.
+All earlier format bounds, reference validation and error rules still apply.

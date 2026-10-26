@@ -237,3 +237,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   caller-owned mutable slices. Contour interpolation passes checked index ranges
   over those slices because this stdlib lacks mutable slice subviews; the contour
   bounds, arithmetic order, zeroing behavior and error results match upstream.
+
+- Generated variable-record accessors expose the complete suffix, matching
+  upstream even when their declared count only positions a subsequent field.
+  The M4 corpus smoke test found this distinction in avar2; declared byte ranges
+  remain unchanged. The variation dumper resets its graph scope per glyph so
+  equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
+  old cache entries without a full per-glyph cache clear.

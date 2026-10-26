@@ -20,23 +20,23 @@ fn nodeHash(key: NodeKey) -> usize {
   return u64.toUsize(hash & 16383)
 }
 fn nodeEqual(a: NodeKey, b: NodeKey) -> bool { return a.typ == b.typ && a.remaining == b.remaining && a.args[0] == b.args[0] && a.args[1] == b.args[1] && a.args[2] == b.args[2] }
-pub struct DumpPath { segments: [Segment; 128], depth: usize, visits: usize, args: [u64; 3], nodes: [Node; 16384], nextNode: usize, }
+pub struct DumpPath { segments: [Segment; 128], depth: usize, visits: usize, args: [u64; 3], nodes: [Node; 16384], nextNode: usize, scopeStart: usize, }
 impl DumpPath {
   pub fn new(index: usize) -> Self {
-    let mut value = Self { segments: [Segment { name: "", index: 0, indexed: false }; 128], depth: 1, visits: 0, args: [0; 3], nodes: [Node { key: NodeKey { typ: 0, remaining: 0, args: [0; 3] }, id: 0 }; 16384], nextNode: 1 }
+    let mut value = Self { segments: [Segment { name: "", index: 0, indexed: false }; 128], depth: 1, visits: 0, args: [0; 3], nodes: [Node { key: NodeKey { typ: 0, remaining: 0, args: [0; 3] }, id: 0 }; 16384], nextNode: 1, scopeStart: 1 }
     value.segments[0] = Segment { name: "font", index: index, indexed: true }
     return move value
   }
   pub fn arguments(self: &Self) -> [u64; 3] { return self.args }
   pub fn setArguments(self: &mut Self, args: [u64; 3]) -> () { self.args = args }
-  pub fn beginTable(self: &mut Self) -> () { let mut i: usize = 0 while i < 16384 { self.nodes[i].id = 0 i = i + 1 } self.args = [0; 3] }
+  pub fn beginTable(self: &mut Self) -> () { self.scopeStart = self.nextNode self.args = [0; 3] }
   pub effect fn visit(self: &mut Self, typ: u32, remaining: usize, args: [u64; 3]) -> bool ! WriterError ? &mut Writer {
     if !DumpPath.enter(&mut self) { run scalar(&self, "traversal-limit") return false }
     let key = NodeKey { typ: typ, remaining: remaining, args: args }
     let first = nodeHash(key)
     let mut slot = first
     let mut probes: usize = 0
-    while probes < 16384 && self.nodes[slot].id != 0 {
+    while probes < 16384 && self.nodes[slot].id >= self.scopeStart {
       if nodeEqual(self.nodes[slot].key, key) {
         let id = self.nodes[slot].id
         DumpPath.push(&mut self, "ref") run scalar(&self, id) DumpPath.pop(&mut self)

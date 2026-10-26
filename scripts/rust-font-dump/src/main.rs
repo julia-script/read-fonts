@@ -12,6 +12,8 @@ use std::{
 
 mod dump_support;
 mod extensions_cmap;
+mod extensions_glyphs;
+mod extensions_metric_variations;
 mod extensions_metrics;
 mod extensions_name;
 mod extensions_post;
@@ -19,16 +21,26 @@ mod generated_dump_cmap;
 mod generated_dump_head;
 mod generated_dump_maxp;
 
+mod generated_dump_avar;
+mod generated_dump_fvar;
 mod generated_dump_gdef;
+mod generated_dump_glyf;
 mod generated_dump_gpos;
 mod generated_dump_gsub;
+mod generated_dump_gvar;
 mod generated_dump_hhea;
 mod generated_dump_hmtx;
+mod generated_dump_hvar;
 mod generated_dump_layout;
+mod generated_dump_mvar;
 mod generated_dump_name;
 mod generated_dump_os2;
 mod generated_dump_post;
 mod generated_dump_variations;
+mod generated_dump_vhea;
+mod generated_dump_vmtx;
+mod generated_dump_vorg;
+mod generated_dump_vvar;
 
 fn tag(value: Tag) -> String {
     value
@@ -112,6 +124,18 @@ fn dump_font(
         generated_dump_gsub::dump_tables(out, &prefix, &font)?;
         generated_dump_gpos::dump_tables(out, &prefix, &font)?;
         generated_dump_post::dump_tables(out, &prefix, &font)?;
+        generated_dump_fvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_avar::dump_tables(out, &prefix, &font)?;
+        generated_dump_hvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_vvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_mvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_gvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_glyf::dump_tables(out, &prefix, &font)?;
+        generated_dump_vhea::dump_tables(out, &prefix, &font)?;
+        generated_dump_vmtx::dump_tables(out, &prefix, &font)?;
+        generated_dump_vorg::dump_tables(out, &prefix, &font)?;
+        extensions_glyphs::dump(out, &prefix, &font)?;
+        extensions_metric_variations::dump(out, &prefix, &font)?;
     }
     Ok(())
 }
@@ -122,7 +146,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=3\ndump.scope=layout-tables"
+        "font-dump.version=4\ndump.scope=variation-tables"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -171,12 +195,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 3: core and layout tables, names, metrics, mappings and referenced table graphs."
+            "usage: rust-font-dump FONT\nDump format 4: core, layout and variation tables, glyph data and evaluated deltas."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 3; layout-tables scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 4; variation-tables scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

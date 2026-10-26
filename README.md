@@ -22,7 +22,7 @@ the value of that variable.
 No Silk compiler or standard-library sources are built, modified, or vendored here.
 If cloning without `--recurse-submodules`, run `git submodule update --init --recursive`.
 
-## Run the core and layout gate
+## Run the core, layout and variation gate
 
 ```sh
 scripts/generate --check
@@ -35,6 +35,7 @@ scripts/compare --timeout 120 --report build/parity-report.json
 scripts/check-core-fixtures
 scripts/check-table-fixtures --report build/table-fixtures-report.json
 scripts/check-layout-fixtures --report build/layout-fixtures-report.json
+scripts/check-variation-fixtures --report build/variation-fixtures-report.json
 python3 -m unittest discover -s scripts/tests -v
 cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
 cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
@@ -95,8 +96,9 @@ are paths; future consumers can use this repository as a submodule.
 
 ## Contract and license
 
-The active [dump format](docs/DUMP-FORMAT.md) covers directories, core tables and layout tables.
-Variation evaluation, AAT, CFF and model results will be added at their gates.
+The active [dump format](docs/DUMP-FORMAT.md) covers directories, core and layout
+tables, variations, vertical metrics and TrueType glyphs. The variation gate is
+in progress; AAT, CFF and model results follow at their gates.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
 [COMPILER-BUGS.md](COMPILER-BUGS.md), and missing library APIs in
 [STDLIB-GAPS.md](STDLIB-GAPS.md).

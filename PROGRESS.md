@@ -363,3 +363,19 @@ metric lookup and origin helpers. Extended fixtures retain 70,002-glyph metric
 counts and 65,537-glyph outline counts. The generator's ten tests, Clippy, library
 build and drift check pass (**49 generated files**). M4's implementation tests are
 ready; its expanded differential dumper, fixtures, corpus comparison and CI remain.
+
+## Session 16 — 2026-10-26 — variation differential traversal
+
+The full suite passes **277 read_fonts tests**, with the unchanged **64 font_types**
+tests and **326 upstream ports**. The additional regression covers avar's suffix
+accessor: its declared map count positions following fields, while the public
+variable-record array retains the full suffix. The Amstelvar avar2 differential
+smoke test exposed and verified this generator correction.
+
+Both dumpers now cover all M4 grammar tables, original/extended vertical metrics,
+loca/glyph payloads, tuple deltas, exact item-store/metric deltas, and four fixed
+coordinate locations. Glyph graph scopes prevent equal-sized payload aliases.
+The **12-font smoke gate** and **2,882 focused variation fixtures** pass. Rust's
+**7 reference tests**, **15 harness tests**, generator's **10 tests**, Clippy and
+**69-file generation drift** checks pass. The full debug/release corpus gates,
+remaining fixture checks and CI are still running or pending; M4 is not yet complete.

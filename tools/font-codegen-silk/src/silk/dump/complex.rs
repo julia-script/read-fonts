@@ -18,6 +18,9 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
                 writeln!(out, "import read_fonts.tables.{module} {{ Original{kind}LookupList, {kind}LookupList2, {aliases} }}").unwrap();
             }
             "gdef" => out.push_str("import read_fonts.tables.layout { CoverageTable, ClassDef, DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
+            "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
+            "gvar" => out.push_str("import read_fonts.tables.gvar { U16Or32 }\nimport read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }\nimport generated_dump_variations { dumpTuple }\n"),
+            "vmtx" => out.push_str("import generated_dump_hmtx { dumpLongMetric }\n"),
             "layout" => out.push_str("import read_fonts.tables.layout { FeatureParams }\n"),
             _ => (),
         }
@@ -25,6 +28,8 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
         match module {
             "gsub" | "gpos" => writeln!(out, "use read_fonts::tables::layout::{{{shared}}};").unwrap(),
             "gdef" => out.push_str("use read_fonts::tables::{layout::{CoverageTable, ClassDef, DeviceOrVariationIndex}, variations::ItemVariationStore};\n"),
+            "gvar" => out.push_str("use read_fonts::tables::variations::{Tuple, TupleVariationCount, TupleVariationHeader};\nuse crate::generated_dump_variations::dump_Tuple;\n"),
+            "vmtx" => out.push_str("use read_fonts::tables::hmtx::LongMetric;\nuse crate::generated_dump_hmtx::dump_LongMetric;\n"),
             _ => (),
         }
     }
@@ -71,7 +76,9 @@ impl DumpContext<'_> {
                         match typ.as_str() {
                             "u8" | "u16" | "u32" | "u64" => format!("{typ}.toU64({value})"),
                             "Tag" => format!("u32.toU64(Tag.toU32({value}))"),
-                            "ValueFormat" => format!("u16.toU64(ValueFormat.bits(&{value}))"),
+                            "ValueFormat" | "GvarFlags" => {
+                                format!("u16.toU64({typ}.bits(&{value}))")
+                            }
                             "TupleIndex" => format!("u16.toU64(TupleIndex.bits({value}))"),
                             _ => {
                                 return Err(syn::Error::new(
@@ -85,7 +92,9 @@ impl DumpContext<'_> {
                             "Tag" => {
                                 format!("u64::from(u32::from_be_bytes({value}.to_be_bytes()))")
                             }
-                            "ValueFormat" | "TupleIndex" => format!("u64::from({value}.bits())"),
+                            "ValueFormat" | "TupleIndex" | "GvarFlags" => {
+                                format!("u64::from({value}.bits())")
+                            }
                             _ => format!("u64::from({value})"),
                         }
                     });
@@ -248,11 +257,34 @@ impl DumpContext<'_> {
         typ: &str,
     ) -> syn::Result<()> {
         self.dump_args(out, &self.owner_name(field), field, false)?;
+        if typ == "U16Or32" {
+            if self.silk {
+                let array = self.cx.field_type(field)?;
+                writeln!(out, "  DumpPath.push(&mut path, \"length\") run scalar(&path, {array}.len(&fieldValue)) DumpPath.pop(&mut path)\n  let mut index: usize = 0\n  while index < {array}.len(&fieldValue) {{ DumpPath.setIndex(&mut path, index)\n    match move {array}.get(&fieldValue, index) {{ Result<U16Or32, ReadError>.Success {{ value: item }} => run scalar(&path, U16Or32.get(item)) Result<U16Or32, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
+            } else {
+                writeln!(out, "  writeln!(out, \"{{path}}.length={{}}\", fieldValue.len())?;\n  for (index, item) in fieldValue.iter().enumerate() {{ let path = &format!(\"{{path}}[{{index}}]\"); match item {{ Ok(item) => writeln!(out, \"{{path}}={{}}\", item.get())?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
+            }
+            return Ok(());
+        }
         if self.silk {
             let array = self.cx.field_type(field)?;
-            writeln!(out, "  DumpPath.push(&mut path, \"length\") run scalar(&path, {array}.len(&fieldValue)) DumpPath.pop(&mut path)\n  let mut index: usize = 0\n  while index < {array}.len(&fieldValue) {{ DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)\n    match move {array}.get(&fieldValue, index) {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, item, base) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
+            writeln!(out, "  DumpPath.push(&mut path, \"length\") run scalar(&path, {array}.len(&fieldValue)) DumpPath.pop(&mut path)\n  let mut index: usize = 0\n  while index < {array}.len(&fieldValue) {{ DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)\n    match move {array}.get(&fieldValue, index) {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, move item, base) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
         } else {
             writeln!(out, "  writeln!(out, \"{{path}}.length={{}}\", fieldValue.len())?;\n  for (index, item) in fieldValue.iter().enumerate() {{ crate::dump_support::set_arguments(target_args); let path = &format!(\"{{path}}[{{index}}]\"); match item {{ Ok(item) => dump_{typ}(out, path, &item, base)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
+        }
+        Ok(())
+    }
+    pub(super) fn variable_array(
+        &self,
+        out: &mut String,
+        field: &Field,
+        typ: &str,
+    ) -> syn::Result<()> {
+        if self.silk {
+            let array = self.cx.field_type(field)?;
+            writeln!(out, "  let mut counter = {array}.iter(&fieldValue)\n  let mut count: usize = 0\n  while true {{ if let Option<Result<{typ}<'a>, ReadError>>.None = move VarLenIter<'a, {typ}<'a>>.next(&mut counter) {{ break }} count = count + 1 }}\n  DumpPath.push(&mut path, \"length\") run scalar(&path, count) DumpPath.pop(&mut path)\n  let mut iter = {array}.iter(&fieldValue)\n  let mut index: usize = 0\n  while index < count {{ DumpPath.setIndex(&mut path, index)\n    if let Option<Result<{typ}<'a>, ReadError>>.Some {{ value: result }} = move VarLenIter<'a, {typ}<'a>>.next(&mut iter) {{ match move result {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, move item, base) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }} }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
+        } else {
+            writeln!(out, "  writeln!(out, \"{{path}}.length={{}}\", fieldValue.iter().count())?;\n  for (index, item) in fieldValue.iter().enumerate() {{ let path = &format!(\"{{path}}[{{index}}]\"); match item {{ Ok(item) => dump_{typ}(out, path, &item, base)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
         }
         Ok(())
     }
@@ -379,7 +411,13 @@ impl DumpContext<'_> {
             )
             .unwrap();
         }
-        if self.silk {
+        if target.starts_with("FontData") {
+            if self.silk {
+                writeln!(out, "  match move resolved {{ {ret}.Success {{ value: table }} => run bytes(&path, FontData.asBytes(&table)) {ret}.Failure {{ error }} => run readError(&path, error) }}").unwrap();
+            } else {
+                writeln!(out, "  match resolved {{ Ok(table) => {{ write!(out, \"{{path}}=\")?; for byte in table.as_bytes() {{ write!(out, \"{{byte:02x}}\")?; }} writeln!(out)?; }}, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }}").unwrap();
+            }
+        } else if self.silk {
             writeln!(out, "  match move resolved {{ {ret}.Success {{ value: table }} => run DumpTable.dump(&table, &mut path) {ret}.Failure {{ error }} => run readError(&path, error) }}").unwrap();
         } else {
             writeln!(out, "  match resolved {{ Ok(table) => table.dump(out, path)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }}").unwrap();

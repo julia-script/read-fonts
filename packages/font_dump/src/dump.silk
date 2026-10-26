@@ -6,6 +6,8 @@ import silk.result { Result }
 import silk.writer { Writer, WriterError }
 import silk.format { Format }
 
+import extensions_metric_variations
+import extensions_glyphs
 import generated_dump_head
 import generated_dump_maxp
 import generated_dump_cmap
@@ -19,6 +21,16 @@ import generated_dump_gdef
 import generated_dump_gsub
 import generated_dump_gpos
 import generated_dump_post
+import generated_dump_fvar
+import generated_dump_avar
+import generated_dump_hvar
+import generated_dump_vvar
+import generated_dump_mvar
+import generated_dump_gvar
+import generated_dump_glyf
+import generated_dump_vhea
+import generated_dump_vmtx
+import generated_dump_vorg
 import dump_support { DumpPath }
 import silk.u32
 
@@ -79,9 +91,21 @@ effect fn font<'a>(index: u32, font: FontRef<'a>) -> () ! WriterError ? &mut Wri
   run generated_dump_gsub.dumpTables(&mut path, &font)
   run generated_dump_gpos.dumpTables(&mut path, &font)
   run generated_dump_post.dumpTables(&mut path, &font)
+  run generated_dump_fvar.dumpTables(&mut path, &font)
+  run generated_dump_avar.dumpTables(&mut path, &font)
+  run generated_dump_hvar.dumpTables(&mut path, &font)
+  run generated_dump_vvar.dumpTables(&mut path, &font)
+  run generated_dump_mvar.dumpTables(&mut path, &font)
+  run generated_dump_gvar.dumpTables(&mut path, &font)
+  run generated_dump_glyf.dumpTables(&mut path, &font)
+  run generated_dump_vhea.dumpTables(&mut path, &font)
+  run generated_dump_vmtx.dumpTables(&mut path, &font)
+  run generated_dump_vorg.dumpTables(&mut path, &font)
+  run extensions_glyphs.dump(&mut path, &font)
+  run extensions_metric_variations.dump(&mut path, &font)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
-  run Format.format("font-dump.version=3\ndump.scope=layout-tables\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=4\ndump.scope=variation-tables\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value

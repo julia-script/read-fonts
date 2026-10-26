@@ -30,6 +30,26 @@ import read_fonts.tables.gpos as GposTables
 import generated_dump_gpos
 import read_fonts.tables.variations as VariationsTables
 import generated_dump_variations
+import read_fonts.tables.fvar as FvarTables
+import generated_dump_fvar
+import read_fonts.tables.avar as AvarTables
+import generated_dump_avar
+import read_fonts.tables.hvar as HvarTables
+import generated_dump_hvar
+import read_fonts.tables.vvar as VvarTables
+import generated_dump_vvar
+import read_fonts.tables.mvar as MvarTables
+import generated_dump_mvar
+import read_fonts.tables.gvar as GvarTables
+import generated_dump_gvar
+import read_fonts.tables.glyf as GlyfTables
+import generated_dump_glyf
+import read_fonts.tables.vhea as VheaTables
+import generated_dump_vhea
+import read_fonts.tables.vmtx as VmtxTables
+import generated_dump_vmtx
+import read_fonts.tables.vorg as VorgTables
+import generated_dump_vorg
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -208,3 +228,23 @@ impl<'a> DumpTable<'a> for VariationsTables.DeltaSetIndexMap<'a> { effect fn dum
 impl<'a> DumpTable<'a> for VariationsTables.VariationRegionList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_variations.dumpVariationRegionList(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for VariationsTables.ItemVariationStore<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_variations.dumpItemVariationStore(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for VariationsTables.ItemVariationData<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_variations.dumpItemVariationData(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for FvarTables.Fvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_fvar.dumpFvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for FvarTables.AxisInstanceArrays<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_fvar.dumpAxisInstanceArrays(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AvarTables.Avar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_avar.dumpAvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for HvarTables.Hvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_hvar.dumpHvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VvarTables.Vvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vvar.dumpVvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MvarTables.Mvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_mvar.dumpMvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GvarTables.Gvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gvar.dumpGvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GvarTables.GvarExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gvar.dumpGvarExtended(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GvarTables.SharedTuples<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gvar.dumpSharedTuples(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GvarTables.GlyphVariationDataHeader<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gvar.dumpGlyphVariationDataHeader(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GvarTables.GlyphVariationDataHeaderExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gvar.dumpGlyphVariationDataHeaderExtended(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GlyfTables.Glyf<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_glyf.dumpGlyf(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GlyfTables.SimpleGlyph<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_glyf.dumpSimpleGlyph(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GlyfTables.CompositeGlyph<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_glyf.dumpCompositeGlyph(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GlyfTables.Glyph<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_glyf.dumpGlyph(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VheaTables.Vhea<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vhea.dumpVhea(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VheaTables.VheaExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vhea.dumpVheaExtended(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VmtxTables.Vmtx<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vmtx.dumpVmtx(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VmtxTables.VmtxExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vmtx.dumpVmtxExtended(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VorgTables.Vorg<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vorg.dumpVorg(&mut path, self.*) } }
