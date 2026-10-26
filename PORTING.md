@@ -536,3 +536,11 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   The existing font_types cast helper is now an exported module for the generated
   random-input test's bit-preserving conversions. Platform trigonometry is
   recorded in STDLIB-GAPS.md #005.
+
+- Bitmap metric snapshots retain their borrowed sbix/CBDT/EBDT sources eagerly.
+  Strike selection runs at the query's ppem, preserving the distinction between
+  selecting one strike for metrics and searching all strikes for drawing. Only
+  bitmap validation, selection and extents needed by GlyphMetrics are added; the
+  unrequested pixel-decoding/drawing facade is not introduced.
+- BitmapSource and OutlineSource use tryFrom(GlyphSource) and toGlyphSource() in
+  place of Rust conversion traits; failure retains the original GlyphSource.

@@ -1,0 +1,60 @@
+// Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import model.metrics { GlyphMetrics,GlyphExtents,Scale,ScaleF32,Scale26Dot6,ScaledGlyphMetrics,NoExtents }
+import model.glyph { GlyphSourceOrder }
+import generated_phase2_fixtures as Fixtures
+import generated_model_fixtures as Expected
+import lib { FontRef,FontData,ReadError }
+import font_types.lib { GlyphId,F48Dot16,BoundingBox,F2Dot14 }
+import silk.result { Result }
+import silk.option { Option }
+import silk.testing { Testing,AssertionError }
+import silk.allocator { Allocator,OutOfMemoryError }
+import silk.effect { Effect }
+
+effect fn must<T>(result: Result<T,ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T,ReadError>.Success { value } => move value _ => { run Testing.expect(false,"Phase 2 font reads") return Intrinsic.trap("assertion") } } }
+effect fn some<T>(option: Option<T>) -> T ! AssertionError<'static> { return match move option { Option<T>.Some { value } => move value _ => { run Testing.expect(false,"Phase 2 metric exists") return Intrinsic.trap("assertion") } } }
+fn none<T>(option: Option<T>) -> bool { return match move option { Option<T>.None => true _ => false } }
+fn same(a: GlyphExtents<F48Dot16>,b: GlyphExtents<F48Dot16>) -> bool { return &a.xBearing == &b.xBearing && &a.yBearing == &b.yBearing && &a.width == &b.width && &a.height == &b.height }
+fn sameF32(a: GlyphExtents<f32>,b: GlyphExtents<f32>) -> bool { return a.xBearing == b.xBearing && a.yBearing == b.yBearing && a.width == b.width && a.height == b.height }
+effect fn expected(bytes: &'static [u8]) -> GlyphExtents<F48Dot16> ! AssertionError<'static> { let data = FontData.new(bytes) run Testing.expect((run must(FontData<'static>.readAt<u32>(&data,0))) == 2,"reference glyph") return GlyphExtents<F48Dot16> { xBearing: F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&data,4))), yBearing: F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&data,12))), width: F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&data,20))), height: F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&data,28))) } }
+fn metrics<'a,'c>(font: &FontRef<'a>,coords: &'c [F2Dot14]) -> GlyphMetrics<'a,'c> { return GlyphMetrics.new(font,coords) }
+test effect fn bitmapsAnswerBeforeOutlinesInTheDefaultOrder() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator = Allocator.systemAllocatorProvider() run bitmapOrder() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn bitmapOrder() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font = run must(FontRef.new(Fixtures.cbdtFont())) let base = metrics(&font,&[]) let gid = GlyphId.new(2)
+  let largest = run some(run GlyphMetrics.extentsExact(&base,gid)) run Testing.expect(same(largest,run expected(Expected.bitmapLargestDrawnBounds())),"largest strike at unspecified size")
+  let at12 = GlyphMetrics.withBitmapPpem(base,Option<f32>.some(12.0)) let small = run some(run GlyphMetrics.extentsExact(&at12,gid)) run Testing.expect(same(small,run expected(Expected.bitmap12DrawnBounds())),"smallest covering strike") run Testing.expect(!same(largest,small),"strike sizes differ")
+  let outlines = GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.outlines()) run Testing.expect(none(run GlyphMetrics.extentsExact(&outlines,gid)),"bitmap font lacks outline")
+  run Testing.expect(none(run GlyphMetrics.extentsExact(&base,GlyphId.new(GlyphMetrics.numGlyphs(&base)))),"past font")
+}
+test effect fn aBitmapTheSelectedStrikeLacksIsMeasuredByTheNextSource() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator = Allocator.systemAllocatorProvider() run missingBitmap() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn missingBitmap() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font = run must(FontRef.new(Fixtures.cbdtMissingGlyph2At16())) let base = metrics(&font,&[]) let gid = GlyphId.new(2)
+  let at12 = GlyphMetrics.withBitmapPpem(base,Option<f32>.some(12.0)) run Testing.expect(none(run GlyphMetrics.extentsExact(&at12,gid)),"selected strike miss falls through to absent outline")
+  let at64 = GlyphMetrics.withBitmapPpem(base,Option<f32>.some(64.0)) run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&at64,gid)),run expected(Expected.bitmap64DrawnBounds())),"larger selected strike still contains glyph")
+}
+struct NoSize { scale: ScaleF32, }
+impl Scale<f32> for NoSize {
+  fn add(a:f32,b:f32) -> f32 { return a+b }
+  fn sub(a:f32,b:f32) -> f32 { return a-b }
+  fn half(value:f32) -> f32 { return value*0.5 }
+  fn scaleX(self:&Self,value:F48Dot16) -> f32 { return Scale.scaleX(&self.scale,value) }
+  fn scaleY(self:&Self,value:F48Dot16) -> f32 { return Scale.scaleY(&self.scale,value) }
+  fn scaleGlyphExtents(self:&Self,value:GlyphExtents<F48Dot16>) -> GlyphExtents<f32> { return Scale.scaleGlyphExtents(&self.scale,value) }
+  fn scaleRect(self:&Self,value:BoundingBox<F48Dot16>) -> BoundingBox<f32> { return Scale.scaleRect(&self.scale,value) }
+}
+test effect fn theScaleChoosesTheBitmapStrike() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator = Allocator.systemAllocatorProvider() run bitmapScale() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn bitmapScale() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font = run must(FontRef.new(Fixtures.cbdtFont())) let base = metrics(&font,&[]) let upem = GlyphMetrics.unitsPerEm(&base) let gid = GlyphId.new(2)
+  let scales = [ScaleF32.fromPpem(12.0,upem),ScaleF32.new(12.0,10.0,upem)] let mut i: usize = 0
+  while i < 2 {
+    let scale = scales[i] run Testing.expect((run some(Scale.ppem(&scale))) == 12.0,"scale requests 12 ppem")
+    let wanted = Scale.scaleGlyphExtents(&scale,run expected(Expected.bitmap12DrawnBounds()))
+    let scaled = scaledF32(base,scale) let actual = run some(run ScaledGlyphMetrics.extents(&scaled,gid)) run Testing.expect(sameF32(actual,wanted),"scale selects requested strike") i = i+1
+  }
+  run Testing.expect((run some(Scale.ppem(&Scale26Dot6.new(10.0,14.0,upem)))) == 14.0,"26.6 requests larger axis size")
+  let noSize = NoSize { scale: ScaleF32.fromPpem(12.0,upem) } let wanted = Scale.scaleGlyphExtents(&noSize,run expected(Expected.bitmapLargestDrawnBounds()))
+  let scaled = scaledNoSize(base,move noSize) run Testing.expect(sameF32(run some(run ScaledGlyphMetrics.extents(&scaled,gid)),wanted),"custom scale without size selects largest")
+}
+
+fn scaledF32<'a,'c>(base: GlyphMetrics<'a,'c>,scale: ScaleF32) -> ScaledGlyphMetrics<'a,'c,'static,ScaleF32,f32,NoExtents> { return GlyphMetrics<'a,'c>.scaled<ScaleF32,f32>(base,scale) }
+fn scaledNoSize<'a,'c>(base: GlyphMetrics<'a,'c>,scale: NoSize) -> ScaledGlyphMetrics<'a,'c,'static,NoSize,f32,NoExtents> { return GlyphMetrics<'a,'c>.scaled<NoSize,f32>(base,move scale) }

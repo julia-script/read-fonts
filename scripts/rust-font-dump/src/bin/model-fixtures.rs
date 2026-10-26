@@ -12,6 +12,7 @@ use std::io::{self, Write};
 fn main() {
     let kind = std::env::args().nth(1).expect("fixture kind");
     let relative = match kind.as_str() {
+        "bitmap-largest" | "bitmap-12" | "bitmap-64" => "cbdt.ttf",
         "glyf" => "vazirmatn_var_trimmed.ttf",
         "cff" => "NotoSansJP-Regular.subset.otf",
         "cff2" => "NotoSansJP-VF.subset.otf",
@@ -23,7 +24,26 @@ fn main() {
     let bytes = std::fs::read(path).unwrap();
     let font = Font::new(bytes.clone(), 0).unwrap();
     let mut output = io::stdout().lock();
-    if kind == "glyf" {
+    if kind.starts_with("bitmap-") {
+        let ppem = match kind.as_str() {
+            "bitmap-12" => Some(12.0),
+            "bitmap-64" => Some(64.0),
+            _ => None,
+        };
+        let glyph = GlyphId::new(2);
+        let bitmap = font
+            .bitmap_strikes()
+            .select(ppem)
+            .unwrap()
+            .get(glyph)
+            .unwrap();
+        let e = bitmap.extents();
+        emit(
+            &mut output,
+            2,
+            [e.x_bearing, e.y_bearing, e.width, e.height].map(|v| F48Dot16::from_f64(v as f64)),
+        );
+    } else if kind == "glyf" {
         let coords = [NormalizedCoord::from_f32(-1.0)];
         let direct = FontRef::new(&bytes).unwrap();
         let tables = OutlineTables::new(&direct).unwrap().at(&coords, &[]);

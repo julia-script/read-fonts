@@ -906,3 +906,24 @@ All requested Phase 2 table families are now implemented. A complete debug
 corpus run is starting against immutable binary copies. Bitmap/COLR/VARC model
 extents and deferred tests, the final debug/release gates and speed comparison
 remain before M9 can be marked complete. M8 CI is still on its malformed campaign.
+
+## Session 48 — 2026-10-26 — bitmap model metrics
+
+GlyphMetrics now measures sbix, CBDT and EBDT according to its source order. It
+selects one strike for the requested size, falls through if that strike lacks
+the glyph, resolves bounded sbix dupe chains and PNG dimensions, and preserves
+upstream bitmap pixel validation and whole-font-unit rounding. Scaled metrics
+pass the scale's requested ppem through the existing selection hook.
+
+The two deferred bitmap glyph tests, the bitmap-scale test and the narrow-source
+round-trip test pass. The missing-tables test now checks typed CBDT and DSIG
+errors, completing that upstream port. Totals: **816 read_fonts tests**,
+**64 font_types tests**, and **858 upstream ports**. Three generated expectations
+come from upstream's independent bitmap-selection API; a generated font removes
+glyph 2 specifically from its 16 ppem strike. The focused root passes 82 tests
+(including its 79 imported VARC/PostScript tests).
+
+Generator drift passes for 156 outputs, 36 model fixtures and 19 Phase 2 fixtures.
+Rust all-target Clippy and formatting pass. COLR/VARC model extents, the remaining
+eight deferred glyph tests, final parity gates and the speed comparison remain.
+The immutable full-table debug corpus run is still in progress.

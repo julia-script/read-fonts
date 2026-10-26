@@ -9,6 +9,8 @@ import tables.name { Name }
 import tables.glyf { Glyf }
 import tables.loca { Loca }
 import tables.cff { Cff }
+import tables.cbdt { Cbdt }
+import tables.dsig { Dsig }
 import font_types.lib { Tag }
 import silk.option { Option }
 import silk.result { Result }
@@ -44,11 +46,12 @@ effect fn unsortedDirectoryBody() -> () ! AssertionError<'static> | OutOfMemoryE
   run bytes(FontData.asBytes(&Head.offsetData(&actual)),FontData.asBytes(&Head.offsetData(&expected)))
   drop run must(Tables.cmap(&tables)) drop run must(Tables.hmtx(&tables)) drop run must(Tables.name(&tables)) drop run must(Tables.glyf(&tables)) drop run must(Tables.loca(&tables,Option<bool>.None))
 }
-// The CBDT and DSIG typed checks are completed with their Phase 2 parsers.
 test effect fn missingKnownTablesAreMissing() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run missingTablesBody() |> Effect.provideMut<Allocator>(&mut allocator) }
 effect fn missingTablesBody() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
   let tables=run some(run Tables.new(Blob.fromStatic(ahem()),0))
   run Testing.expect(match move Tables.cff(&tables) { Result<Cff,ReadError>.Failure { error:ReadError.TableIsMissing { tag } }=>true _=>false },"missing CFF")
+  run Testing.expect(match move Tables.cbdt(&tables) { Result<Cbdt,ReadError>.Failure { error:ReadError.TableIsMissing { tag } }=>true _=>false },"missing CBDT")
+  run Testing.expect(match move Tables.dsig(&tables) { Result<Dsig,ReadError>.Failure { error:ReadError.TableIsMissing { tag } }=>true _=>false },"missing DSIG")
   run Testing.expect(match move Tables.expectRawData(&tables,Tag.new(&[67,66,68,84])) { Result<FontData,ReadError>.Failure { error:ReadError.TableIsMissing { tag } }=>true _=>false },"missing CBDT bytes")
   run Testing.expect(match move Tables.expectRawData(&tables,Tag.new(&[68,83,73,71])) { Result<FontData,ReadError>.Failure { error:ReadError.TableIsMissing { tag } }=>true _=>false },"missing DSIG bytes")
 }

@@ -96,19 +96,21 @@ synthetic['dmap15Only'] = font(None,cmap_table([(0,5,new)]))
 for name,data in synthetic.items():
     literal = ''.join(f'\\x{byte:02x}' for byte in data)
     text += f'pub fn {name}() -> &\'static [u8] {{ return b"{literal}" }}\n'
-# Re-run the unchanged Rust drawing paths used by two upstream metrics tests.
+# Re-run upstream drawing and bitmap selection paths for independent expectations.
 subprocess.run([os.environ.get('CARGO', 'cargo'), 'build', '--quiet', '--locked',
                 '--manifest-path', str(ROOT / 'scripts/rust-font-dump/Cargo.toml'),
                 '--target-dir', str(ROOT / 'build/rust'), '--bin', 'model-fixtures'], check=True)
-for kind in ('glyf', 'cff', 'cff2'):
+for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64'):
     data = subprocess.check_output([str(ROOT / 'build/rust/debug/model-fixtures'), kind])
     assert data and len(data) % 36 == 0
     literal = ''.join(f'\\x{byte:02x}' for byte in data)
-    text += f"pub fn {kind}DrawnBounds() -> &'static [u8] {{ return b\"{literal}\" }}\n"
+    parts = kind.split('-')
+    name = parts[0] + ''.join(part.title() for part in parts[1:])
+    text += f"pub fn {name}DrawnBounds() -> &'static [u8] {{ return b\"{literal}\" }}\n"
 path = ROOT / 'packages/read_fonts/src/generated_model_fixtures.silk'
 if args.check:
     if not path.exists() or path.read_text() != text:
         parser.exit(1, 'Generated model fixtures differ\n')
 else:
     path.write_text(text)
-print(f'{"Checked" if args.check else "Generated"} {len(fixtures)+len(synthetic)+4} model fixtures')
+print(f'{"Checked" if args.check else "Generated"} {len(fixtures)+len(synthetic)+7} model fixtures')
