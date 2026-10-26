@@ -1,0 +1,56 @@
+name: Milestone 0 harness
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install pinned Silk and Clang
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang-18
+          curl -fsSL https://raw.githubusercontent.com/silk-lang/silk/main/install.sh | SILK_RELEASE='v0.1.0-dev.17+1120049495d3' sh
+          echo "$HOME/.silk/bin" >> "$GITHUB_PATH"
+      - name: Build both dumpers
+        env:
+          SILK_CLANG: /usr/bin/clang-18
+        run: scripts/build
+      - name: Check reference and harness tests
+        run: |
+          cargo fmt --manifest-path scripts/rust-font-dump/Cargo.toml --check
+          cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
+          cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Run the full reference corpus gate
+        run: |
+          scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
+          scripts/verify-reference --report build/reference-report.json
+      - name: Smoke-test the Silk skeleton
+        env:
+          SILK_CLANG: /usr/bin/clang-18
+        working-directory: packages/font_dump
+        run: |
+          silk run -- --help
+          silk run -- --version
+          silk build --release
+      - name: Upload reference observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-0-reference
+          path: |
+            build/fonts.txt
+            build/corpus-inventory.json
+            build/reference-report.json

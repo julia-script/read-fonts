@@ -1,0 +1,6 @@
+[submodule "upstream"]
+	path = upstream
+	url = https://github.com/googlefonts/fontations.git
+[submodule "test-data/harfrust"]
+	path = test-data/harfrust
+	url = https://github.com/harfbuzz/harfrust.git
