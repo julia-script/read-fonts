@@ -403,3 +403,6 @@ impl<'a> FontRef<'a> { pub fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { 
 
 import tables.colr { Colr }
 impl<'a> FontRef<'a> { pub fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return TableProvider.colr(self) } }
+
+import tables.math { Math }
+impl<'a> FontRef<'a> { pub fn math(self: &Self) -> Result<Math<'a>,ReadError> { return TableProvider.math(self) } }

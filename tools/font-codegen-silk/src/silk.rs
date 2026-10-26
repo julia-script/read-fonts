@@ -5,6 +5,7 @@ use crate::parsing::*;
 use std::fmt::Write;
 mod complex;
 mod dump;
+mod math;
 pub(crate) fn generate_dump(items: &Items, silk: bool) -> syn::Result<String> {
     let code = dump::generate(items, silk)?;
     if silk {
@@ -36,6 +37,9 @@ pub(crate) fn generate(items: &Items) -> syn::Result<String> {
             Item::Extern(_) => (),
             Item::GenericGroup(g) => cx.group(&mut out, g)?,
         }
+    }
+    if items.parse_module_path.segments.last().unwrap().ident == "math" {
+        math::constants(&cx, &mut out)?;
     }
     Ok(out)
 }

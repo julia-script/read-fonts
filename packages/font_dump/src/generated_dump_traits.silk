@@ -104,6 +104,8 @@ import read_fonts.tables.eblc as EblcTables
 import generated_dump_eblc
 import read_fonts.tables.colr as ColrTables
 import generated_dump_colr
+import read_fonts.tables.math as MathTables
+import generated_dump_math
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -437,3 +439,13 @@ impl<'a> DumpTable<'a> for ColrTables.PaintVarSkew<'a> { effect fn dump(self: &S
 impl<'a> DumpTable<'a> for ColrTables.PaintSkewAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintSkewAroundCenter(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for ColrTables.PaintVarSkewAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarSkewAroundCenter(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for ColrTables.PaintComposite<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintComposite(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.Math<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMath(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathConstants<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathConstants(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathGlyphInfo<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathGlyphInfo(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathItalicsCorrectionInfo<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathItalicsCorrectionInfo(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathTopAccentAttachment<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathTopAccentAttachment(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathKernInfo<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathKernInfo(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathKern<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathKern(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathVariants<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathVariants(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.MathGlyphConstruction<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathGlyphConstruction(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MathTables.GlyphAssembly<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpGlyphAssembly(&mut path, self.*) } }

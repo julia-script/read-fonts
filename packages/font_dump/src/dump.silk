@@ -1,3 +1,4 @@
+import extensions_math
 import extensions_bitmaps
 import extensions_model
 import silk.allocator { Allocator,OutOfMemoryError }
@@ -66,6 +67,7 @@ import generated_dump_cblc
 import generated_dump_ebdt
 import generated_dump_eblc
 import generated_dump_colr
+import generated_dump_math
 import dump_support { DumpPath }
 import silk.u32
 
@@ -158,6 +160,8 @@ effect fn font<'a>(index: u32, font: FontRef<'a>, data:&'a [u8]) -> () ! WriterE
   run generated_dump_ebdt.dumpTables(&mut path, &font)
   run generated_dump_eblc.dumpTables(&mut path, &font)
   run generated_dump_colr.dumpTables(&mut path, &font)
+  run generated_dump_math.dumpTables(&mut path, &font)
+  run extensions_math.dump(&mut path,&font)
   run extensions_bitmaps.dump(&mut path,&font)
   run extensions_glyphs.dump(&mut path, &font)
   run extensions_morx.dump(&mut path, &font)

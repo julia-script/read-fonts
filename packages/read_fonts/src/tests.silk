@@ -372,3 +372,5 @@ import phase2_core_tests
 import phase2_bitmap_tests
 
 import phase2_colr_tests
+
+import phase2_math_tests

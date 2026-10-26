@@ -519,3 +519,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   as the Rust backend does, and provides MinByteRange for those groups. BASE's
   coordinate and COLR's clip-box accessors now come from that common generation.
   Resolved offset helpers remain on their concrete variants, as upstream does.
+
+- MathConstant and its 56 selectors are generated from the same field order as
+  MathConstants; all() returns a fixed value array rather than a static slice.
+  MathKernEntryIter is an explicit cursor. MathValue keeps design-unit values and
+  device pixel deltas separate, and VariationIndex records contribute no device
+  adjustment, matching the upstream API.

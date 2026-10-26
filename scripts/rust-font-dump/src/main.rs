@@ -10,9 +10,11 @@ use std::{
     process::ExitCode,
 };
 
+mod generated_dump_math;
 mod dump_support;
 mod extensions_aat_common;
 mod extensions_aat_misc;
+mod extensions_math;
 mod extensions_bitmaps;
 mod extensions_cff;
 mod extensions_cmap;
@@ -194,6 +196,8 @@ fn dump_font(
         generated_dump_ebdt::dump_tables(out, &prefix, &font)?;
         generated_dump_eblc::dump_tables(out, &prefix, &font)?;
         generated_dump_colr::dump_tables(out, &prefix, &font)?;
+        generated_dump_math::dump_tables(out, &prefix, &font)?;
+        extensions_math::dump(out, &prefix, &font)?;
         extensions_bitmaps::dump(out, &prefix, &font)?;
         extensions_glyphs::dump(out, &prefix, &font)?;
         extensions_morx::dump(out, &prefix, &font)?;

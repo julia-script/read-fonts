@@ -865,3 +865,21 @@ M9 remains draft PR #10.
 
 All 150 generated outputs, 13 Phase 2 packed fixtures and 33 model fixtures pass
 the drift check. The 20 Python harness tests also pass at this checkpoint.
+
+## Session 46 — 2026-10-26 — MATH
+
+MATH's generated tables and handwritten helpers are complete, including all 56
+constant selectors, device adjustments, glyph corrections, kerning bands and
+stretch constructions. Its 12 upstream tests and one positive-coverage regression
+pass; the full suite passes **767 read_fonts tests**, with **808 upstream ports**
+overall. font_types remains at 64 tests.
+
+**2,738 / 2,738 focused Phase 2 fixtures match** in debug. MATH is tested at every
+byte prefix, and the dumps compare all constants at six pixel sizes plus kerning
+band queries and per-entry adjustments. Evidence:
+reports/milestone-9-math-fixtures.json.gz. All 153 generated outputs, 14 packed
+Phase 2 fixtures and 33 model fixtures pass the drift check. Both dumpers build,
+Rust Clippy passes with warnings denied, and generator formatting passes.
+
+VARC, the dependent model work, final debug/release corpus comparisons and the
+speed ratio remain pending. M8 CI is still running its malformed-input campaign.

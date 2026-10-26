@@ -18,7 +18,7 @@ def fixtures():
     source = (ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk').read_text()
     packed = {name: ast.literal_eval(literal) for name, literal in re.findall(
         r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source)}
-    seeds = {b'BASE': packed['baseTable'], b'meta': packed['simpleMeta'],
+    seeds = {b'MATH': packed['mathTable'], b'BASE': packed['baseTable'], b'meta': packed['simpleMeta'],
              b'gasp': bytes.fromhex('0001000201940003ffff000c'),
              b'hdmx': bytes.fromhex('0000000300000008080d0a0c0d00000010151214150000002034262834000000'),
              b'CPAL': bytes.fromhex('00010001000100010000001a00000000001e0000002200000024010203040000000301010102'),
@@ -33,7 +33,7 @@ def fixtures():
     seeds[b'CPAL'] = bytes.fromhex('00010001000100010000001a00000000001e0000002200000024010203040000000301010102')
     for tag, data in seeds.items():
         required = {b'maxp': struct.pack('>IH', 0x5000, 3)}
-        cuts = sorted(set(range(min(64, len(data) + 1))) | {len(data) // 2, len(data) - 1, len(data)})
+        cuts = sorted(set(range(len(data)+1 if tag == b'MATH' else min(64, len(data) + 1))) | {len(data) // 2, len(data) - 1, len(data)})
         for cut in cuts:
             yield f'{tag.hex()}-prefix-{cut}', sfnt({**required, tag: data[:cut]})
         # Probe offsets/counts at both ends without changing the original fixtures.

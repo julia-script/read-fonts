@@ -31,6 +31,7 @@ import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
+  fn math(self: &Self) -> Result<Math<'a>,ReadError> { return readTable<Math<'a>,Self>(self,Math.tag()) }
   fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return readTable<Colr<'a>,Self>(self,Colr.tag()) }
   fn sbix(self: &Self) -> Result<Sbix<'a>, ReadError> {
     let maxp = match move TableProvider.selectedMaxp(self) { Result<SelectedMaxp<'a>,ReadError>.Success { value } => value Result<SelectedMaxp<'a>,ReadError>.Failure { error } => { return Result<Sbix<'a>,ReadError>.failResult(error) } }
@@ -244,3 +245,5 @@ import tables.ebdt { Ebdt }
 import tables.eblc { Eblc }
 
 import tables.colr { Colr }
+
+import tables.math { Math }
