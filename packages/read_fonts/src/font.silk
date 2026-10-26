@@ -276,6 +276,9 @@ import tables.gdef { Gdef }
 import tables.fvar { Fvar }
 import tables.avar { Avar }
 import tables.mvar { Mvar }
+import tables.gvar { Gvar, GvarExtended, SelectedGvar }
+import tables.glyf { Glyf }
+import tables.loca { Loca }
 import tables.vvar { Vvar }
 import tables.hvar { Hvar }
 import tables.gsub { Gsub }
@@ -294,6 +297,14 @@ impl<'a> FontRef<'a> {
   pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
   pub fn hvar(self: &Self) -> Result<Hvar<'a>, ReadError> { return TableProvider.hvar(self) }
   pub fn vvar(self: &Self) -> Result<Vvar<'a>, ReadError> { return TableProvider.vvar(self) }
+  pub fn glyf(self: &Self) -> Result<Glyf<'a>, ReadError> { return TableProvider.glyf(self) }
+  pub fn glyfExtended(self: &Self) -> Result<Glyf<'a>, ReadError> { return TableProvider.glyfExtended(self) }
+  pub fn loca(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> { return TableProvider.loca(self, move isLong) }
+  pub fn locaExtended(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> { return TableProvider.locaExtended(self, move isLong) }
+  pub fn selectedGlyfLoca(self: &Self, isLong: Option<bool>) -> Result<GlyfLoca<'a>, ReadError> { return TableProvider.selectedGlyfLoca(self, move isLong) }
+  pub fn gvar(self: &Self) -> Result<Gvar<'a>, ReadError> { return TableProvider.gvar(self) }
+  pub fn gvarExtended(self: &Self) -> Result<GvarExtended<'a>, ReadError> { return TableProvider.gvarExtended(self) }
+  pub fn selectedGvar(self: &Self) -> Result<SelectedGvar<'a>, ReadError> { return TableProvider.selectedGvar(self) }
   pub fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return TableProvider.mvar(self) }
   pub fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return TableProvider.fvar(self) }
   pub fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return TableProvider.avar(self) }
@@ -309,3 +320,5 @@ impl<'a> FontRef<'a> {
 
 // compiler-bugs/004: keep this generic operation on the concrete owner.
 impl<'a> FontRef<'a> { pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> { return readTable<T, FontRef<'a>>(self, tableTag<T>()) } }
+
+import table_provider { GlyfLoca }

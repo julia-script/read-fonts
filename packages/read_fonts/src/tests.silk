@@ -323,3 +323,5 @@ import axis_tests
 import selected_variation_tests
 import metric_variation_tests
 import packed_variation_tests
+import gvar_tests
+import glyf_tests

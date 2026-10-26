@@ -212,3 +212,23 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - `VarLenArray` now accepts any element type, matching upstream's lazy container.
   Only `get` and `iter` require `FontRead` and `VarSize`; this permits gvar's raw
   header-array view, whose elements require separate axis-count arguments.
+- Tuple variation iterators return `ActiveTupleVariation { variation, scalar }`
+  instead of a Rust pair. Shared optional views use private presence flags so
+  snapshots remain Copy; coordinate/cache borrows remain explicit. `TupleDelta`
+  and `PointCoord` operation contracts are separate from the arithmetic/Copy
+  bounds required by individual generic methods, since interfaces do not inherit
+  other interfaces in this Silk release.
+- `GlyphVariationData` is a transparent alias; its format-aware byte constructor
+  is `glyphVariationDataWithFormat`, while `TupleVariationData.new` constructs the
+  shared representation. Silk does not allow an inherent impl on an alias or a
+  specialized generic family. Glyph-only accumulation methods declare their
+  concrete receiver within the whole `TupleVariation` family impl.
+- Direct tuple-header getters return None for truncated coordinate data instead
+  of upstream's internal unwrap panic. Header iteration still checks the entire
+  header extent before yielding a value. Signed grammar counts preserve Rust's
+  cast to usize before saturating range arithmetic and checked field reads.
+- `CurvePoint.onCurvePoint` is the on-curve constructor; `onCurve` remains the
+  public boolean field because Silk forbids a field and method sharing a name.
+  `GlyfLoca` and `ComponentCountAndInstructions` name Rust pair results. Glyph
+  flags, component selection, read-error precedence and coordinate wrapping are
+  preserved.

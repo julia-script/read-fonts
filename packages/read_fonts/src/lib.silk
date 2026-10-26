@@ -32,3 +32,9 @@ pub import tables.avar { Avar }
 pub import tables.hvar { Hvar }
 pub import tables.vvar { Vvar }
 pub import tables.mvar { Mvar }
+
+pub import tables.gvar { Gvar, GvarExtended, SelectedGvar }
+
+pub import tables.glyf { Glyf, Glyph, SimpleGlyph, CompositeGlyph }
+pub import tables.loca { Loca, LocaGlyph }
+pub import table_provider { GlyfLoca }

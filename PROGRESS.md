@@ -316,3 +316,22 @@ run widths, bounded and unbounded iteration, fast skipping, scaled fetches,
 coordinate-boundary splits, generated streams, and overflow regression cases.
 Both scalar precisions preserve the upstream arithmetic, including the f64
 residual test. M4's tuple/glyph variation layer and differential gate remain.
+
+## Session 13 — 2026-10-26 — tuple variations and TrueType outlines
+
+The read_fonts suite passes **248 tests**; font_types remains at **64**, for **298
+upstream ports**. The 30 new ports cover the invalid intermediate-region scalar
+case, all thirteen gvar tests, dense/sparse tuple accumulation, all thirteen glyf
+tests, and loca ordering. Extended gvar cases exercise 65,537 glyphs, both offset
+widths, 24-bit serialized-data offsets, malformed headers, and selection precedence.
+
+Tuple iteration, fixed/float interpolation, shared scalar caches, phantom-point
+deltas, simple point decoding, composite components/instructions, and loca lookup
+are implemented. Original Skia, Vazirmatn, cubic outline and metric-inheritance
+fixtures are preserved. The generator now handles gvar's computed offset entries,
+glyf's signed format dispatch, and signed counts without trapping.
+
+The generator's ten tests, Clippy with warnings denied, generated-file drift, and
+library build pass. M4 remains incomplete: full glyph-delta interpolation helpers,
+vertical metric dependencies, and differential traversal/gates remain. The active
+corpus protocol still covers M3; these unit results do not claim M4 corpus parity.

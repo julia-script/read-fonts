@@ -11,6 +11,22 @@ import silk.testing { Testing, AssertionError }
 import silk.slice { Slice }
 import silk.usize
 import silk.f64
+import generated_variations { Tuple, IntermediateTuples, scalarFor }
+test effect fn scalarForIgnoresInvalidIntermediateRegion() -> () ! AssertionError<'static> {
+  let half = run must(Tuple<'static>.readAt(FontData.new(b"\x20\x00"), 0, 1))
+  let zero = run must(Tuple<'static>.readAt(FontData.new(b"\x00\x00"), 0, 1))
+  let one = run must(Tuple<'static>.readAt(FontData.new(b"\x40\x00"), 0, 1))
+  let high = run must(Tuple<'static>.readAt(FontData.new(b"\x33\x33"), 0, 1))
+  let negative = run must(Tuple<'static>.readAt(FontData.new(b"\xe0\x00"), 0, 1))
+  let invalidStart = scalarFor(&half, Option<IntermediateTuples<'static>>.some(IntermediateTuples<'static> { start: high, end: one }), &[F2Dot14.fromF64(0.9)]) |> Option<Fixed>.unwrapOr(Fixed.zero())
+  run Testing.expect(Fixed.toBits(invalidStart) == 65536, "start beyond peak is ignored")
+  let invalidEnd = scalarFor(&one, Option<IntermediateTuples<'static>>.some(IntermediateTuples<'static> { start: zero, end: half }), &[F2Dot14.fromF64(0.25)]) |> Option<Fixed>.unwrapOr(Fixed.zero())
+  run Testing.expect(Fixed.toBits(invalidEnd) == 65536, "peak beyond end is ignored")
+  let straddle = scalarFor(&half, Option<IntermediateTuples<'static>>.some(IntermediateTuples<'static> { start: negative, end: one }), &[F2Dot14.fromF64(0.25)]) |> Option<Fixed>.unwrapOr(Fixed.zero())
+  run Testing.expect(Fixed.toBits(straddle) == 65536, "region across default is ignored")
+  let valid = scalarFor(&half, Option<IntermediateTuples<'static>>.some(IntermediateTuples<'static> { start: zero, end: one }), &[F2Dot14.fromF64(0.25)]) |> Option<Fixed>.unwrapOr(Fixed.zero())
+  run Testing.expect(f64.abs(Fixed.toF64(valid) - 0.5) < 0.0001, "valid region interpolates")
+}
 
 effect fn must<T>(result: Result<T, ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T, ReadError>.Success { value } => move value _ => { run Testing.expect(false, "variation fixture parses") return Intrinsic.trap("test assertion") } } }
 effect fn deltaIs(value: Option<F48Dot16>, expected: f64) -> () ! AssertionError<'static> { run Testing.expect(match move value { Option<F48Dot16>.Some { value: delta } => F48Dot16.toF64(delta) == expected _ => false }, "exact variation delta") }
