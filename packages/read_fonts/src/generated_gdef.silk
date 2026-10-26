@@ -435,9 +435,27 @@ impl<'a> CaretValue<'a> {
     CaretValue<'a>.Format2 { value } => CaretValueFormat2<'a>.offsetData(&value)
     CaretValue<'a>.Format3 { value } => CaretValueFormat3<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn caretValueFormat(self: &Self) -> u16 { return match self.* {
+    CaretValue<'a>.Format1 { value } => CaretValueFormat1<'a>.caretValueFormat(&value)
+    CaretValue<'a>.Format2 { value } => CaretValueFormat2<'a>.caretValueFormat(&value)
+    CaretValue<'a>.Format3 { value } => CaretValueFormat3<'a>.caretValueFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for CaretValue<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return CaretValue<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for CaretValue<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    CaretValue<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    CaretValue<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    CaretValue<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    CaretValue<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    CaretValue<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    CaretValue<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> CaretValue<'a> { pub fn default() -> Self { return CaretValue<'a>.Format1 { value: CaretValueFormat1<'a>.default() } } }
 /// [CaretValue Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/gdef#caretvalue-format-1)
 pub struct CaretValueFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }

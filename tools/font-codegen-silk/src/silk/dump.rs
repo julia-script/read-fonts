@@ -46,7 +46,7 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
             .iter()
             .filter(|i| !matches!(i, Item::Table(t) if t.attrs.write_only.is_some()))
             .filter(|i| {
-                module != "gvar"
+                (module != "gvar" && module != "cvar")
                     || !matches!(
                         i.name().to_string().as_str(),
                         "TupleVariationCount" | "TupleVariationHeader"
@@ -78,6 +78,12 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
     if module == "layout" {
         dc.trait_impl(&mut out, "FeatureParams");
     }
+    if module == "meta" {
+        dc.trait_impl(&mut out, "Metadata");
+    }
+    if module == "bitmap" {
+        dc.trait_impl(&mut out, "IndexSubtable");
+    }
     dc.top_levels(&mut out, items)?;
     Ok(out)
 }
@@ -108,6 +114,8 @@ impl DumpContext<'_> {
                     "HmtxExtended" => ("hmtxExtended", "hmtx_extended"),
                     "Vmtx" => ("vmtx", "vmtx"),
                     "VmtxExtended" => ("vmtxExtended", "vmtx_extended"),
+                    "Hdmx" => ("hdmx", "hdmx"),
+                    "Sbix" => ("sbix", "sbix"),
                     _ => {
                         return Err(syn::Error::new(
                             name.span(),
@@ -248,12 +256,15 @@ impl DumpContext<'_> {
                 if self.silk {
                     writeln!(out, "  run dump{typ}(&mut path, fieldValue, base)").unwrap();
                 } else {
-                    let borrow =
-                        if matches!(self.cx.find(&self.owner_name(field)), Some(Item::Record(_))) {
-                            ""
-                        } else {
-                            "&"
-                        };
+                    let borrow = if matches!(
+                        self.cx.find(&self.owner_name(field)),
+                        Some(Item::Record(_))
+                    ) || matches!(self.cx.find(&typ.to_string()), Some(Item::Record(record)) if record.lifetime.is_none())
+                    {
+                        ""
+                    } else {
+                        "&"
+                    };
                     writeln!(out, "  dump_{typ}(out, path, {borrow}fieldValue, base)?;").unwrap();
                 }
             }
@@ -478,6 +489,20 @@ impl DumpContext<'_> {
                 writeln!(out, "  run dumpStoreEvaluation(&mut path, value)").unwrap();
             } else {
                 writeln!(out, "  dump_store_evaluation(out, path, value)?;").unwrap();
+            }
+        }
+        if name == "BitmapSize" {
+            if self.silk {
+                writeln!(out, "  run dumpBitmapSubtables(&mut path, value, base)").unwrap();
+            } else {
+                writeln!(out, "  dump_bitmap_subtables(out, path, value, base)?;").unwrap();
+            }
+        }
+        if name == "Strike" {
+            if self.silk {
+                writeln!(out, "  run dumpStrikeGlyphs(&mut path, value)").unwrap();
+            } else {
+                writeln!(out, "  dump_strike_glyphs(out, path, value)?;").unwrap();
             }
         }
         if name == "Name" {

@@ -135,6 +135,20 @@ impl<'a, T: Scalar> FontRead<'a, u16> for ScalarArray<'a, T> {
     return FontData<'a>.readArray<T>(&data, 0, end)
   }
 }
+
+impl<'a, T: Scalar> FontRead<'a, usize> for ScalarArray<'a, T> {
+  fn readWithArgs(data: FontData<'a>, count: usize) -> Result<Self, ReadError> {
+    let mut cursor = FontData.cursor(&data)
+    return Cursor<'a>.readArray<T>(&mut cursor, count)
+  }
+}
+impl<'a, T: FontReadAt<'a, ()> + ComputeSize<()>> FontRead<'a, usize> for ComputedArray<'a, (), T> {
+  fn readWithArgs(data: FontData<'a>, count: usize) -> Result<Self, ReadError> {
+    let mut cursor = FontData.cursor(&data)
+    return Cursor<'a>.readComputedArray<(), T>(&mut cursor, count, ())
+  }
+}
+import font_data { Cursor }
 impl<'a, T> FontRead<'a, ()> for VarLenArray<'a, T> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return VarLenArray<'a, T>.read(data) }
 }

@@ -1,5 +1,18 @@
 # Progress
 
+## Current status
+
+Milestones **0–9 and their required local gates are complete**. Debug and release
+full-source dumps match all **566 corpus files** and the focused fixture suites.
+The final release binary passes **23,188 / 23,188 malformed inputs**, with zero
+differences and zero process failures. It takes **4.52× Rust's wall time**
+(54.27 s versus 11.99 s median) on the fixed complete corpus.
+
+The suites pass **875 read_fonts** and **64 font_types** tests, including **909
+upstream ports** overall. Session 55 records the final evidence. Earlier milestone
+PRs are merged; [PR #10](https://github.com/julia-script/read-fonts/pull/10) carries
+Phase 2 and its final CI/merge record. Dated sessions preserve earlier checkpoints.
+
 ## Session 1 — 2026-10-25 — milestone 0 complete
 
 The harness gate passes. The Rust reference dumper completed **566 / 566 font
@@ -794,3 +807,325 @@ and focused gates, and PR #8 is merged. PR #9 contains M8, with the corruption
 campaign required in CI. Its final CI gate remains before merging. M9 Phase 2
 tables, their dependent model tests, and the speed ratio are next; the complete
 port is not yet finished.
+
+## Session 43 — 2026-10-26 — Phase 2 foundation
+
+BASE, gasp, hdmx, STAT, meta, cvar, CPAL, SVG and DSIG have generated borrowed
+parsers, public provider/model forwarding, and their handwritten extensions.
+The complete suite passes **741 read_fonts tests** (21 new), including **20 new
+upstream test ports**, for **785 upstream ports** overall. The additional test
+covers CPAL v1 typed scalar-array offset counts. The focused root passes 55 tests,
+including its 34 imported PostScript tests. font_types remains at 64 tests.
+
+The nine table families are being added to format-8 differential traversal.
+The remaining bitmap/color/math/VARC families, dependent model behavior, complete
+Phase 2 parity gates and performance ratio remain pending. M9 is not complete.
+
+The foundation dump now builds and **504 focused Phase 2 fixtures match** Rust,
+including per-table prefixes, invalid counts/offsets, CPAL v1 typed arrays, metadata
+UTF-8 errors and DSIG length validation. All 129 generated outputs pass the drift
+check, and the generator's 10 tests pass. A stale local compiler semantic cache
+caused invalid symbol-resolution diagnostics; a clean cache builds successfully.
+A reduced cache reproducer is still being investigated. The full debug corpus
+comparison is running against immutable copies of the foundation binaries.
+
+## Session 44 — 2026-10-26 — Phase 2 bitmap tables
+
+The shared bitmap grammar and sbix, CBDT/CBLC and EBDT/EBLC are implemented,
+including all five location formats and all supported image formats. Their nine
+upstream tests pass; the full parser suite passes **750 read_fonts tests**, and
+**794 upstream tests** are ported overall. font_types remains at 64 tests.
+
+**1,850 / 1,850 Phase 2 fixtures match** in debug, with zero differences/process
+failures. They include all location/image-format combinations, sparse glyphs,
+truncated paired tables, corrupt location offsets/counts and sbix equal-sized,
+empty, reversed and out-of-range glyph slices. Both dumpers include each bitmap's
+metrics and complete content. Generated model forwarding now has 62 typed methods.
+Evidence: reports/milestone-9-bitmap-fixtures.json.gz.
+
+The foundation corpus run initially hit the harness's default 30-second limit on
+AdobeBlank2; it was restarted with the established 600-second corpus limit and is
+still running against fixed binary copies. COLR, MATH, VARC, dependent model
+behavior/tests, the final parity gate and performance measurement remain pending.
+
+All 147 generated outputs pass the drift check. Rust Clippy passes with warnings
+as errors after the dump generator learned that fixed-size embedded record getters
+already return a reference. This changes borrowing syntax, not dump observations.
+
+## Session 45 — 2026-10-26 — COLR and shared format accessors
+
+All 33 COLR paint formats, clip boxes and color records are generated. Handwritten
+v0/v1 glyph, layer and clip lookups preserve upstream error/absence behavior.
+The two COLR upstream tests plus two helper/paint-identity regressions pass.
+The complete suite passes **754 read_fonts tests**, and the upstream-port count
+is **796**. Generator tests (10) and Rust Clippy with warnings denied pass.
+
+**2,349 / 2,349 focused Phase 2 fixtures match** in debug, including all 33 paint
+headers at every prefix, short/invalid paint targets, unknown formats and real
+static/variable COLR fonts. Evidence: reports/milestone-9-colr-fixtures.json.gz.
+The generator also supplies shared format-group field getters and MinByteRange,
+replacing the handwritten BASE coordinate wrapper and covering the COLR group API.
+
+The earlier foundation binaries completed the full corpus: **566 / 566 matches**,
+zero differences/process failures (reports/milestone-9-foundation-corpus.json.gz).
+That report covers the first nine Phase 2 families, before bitmap/COLR landed.
+The final complete Phase 2 debug/release corpus gate remains pending.
+
+CI now requires focused Phase 2 comparisons in debug and release. MATH, VARC,
+the dependent model implementations/tests and the speed ratio remain. M8 CI has
+passed all debug/release fixture checks and is running the corruption campaign;
+M9 remains draft PR #10.
+
+All 150 generated outputs, 13 Phase 2 packed fixtures and 33 model fixtures pass
+the drift check. The 20 Python harness tests also pass at this checkpoint.
+
+## Session 46 — 2026-10-26 — MATH
+
+MATH's generated tables and handwritten helpers are complete, including all 56
+constant selectors, device adjustments, glyph corrections, kerning bands and
+stretch constructions. Its 12 upstream tests and one positive-coverage regression
+pass; the full suite passes **767 read_fonts tests**, with **808 upstream ports**
+overall. font_types remains at 64 tests.
+
+**2,738 / 2,738 focused Phase 2 fixtures match** in debug. MATH is tested at every
+byte prefix, and the dumps compare all constants at six pixel sizes plus kerning
+band queries and per-entry adjustments. Evidence:
+reports/milestone-9-math-fixtures.json.gz. All 153 generated outputs, 14 packed
+Phase 2 fixtures and 33 model fixtures pass the drift check. Both dumpers build,
+Rust Clippy passes with warnings denied, and generator formatting passes.
+
+VARC, the dependent model work, final debug/release corpus comparisons and the
+speed ratio remain pending. M8 CI is still running its malformed-input campaign.
+
+## Session 47 — 2026-10-26 — VARC table gate
+
+VARC is generated and exposed through providers and model Tables. All **45
+upstream VARC tests** pass, covering sparse region offsets/counts/scalars, all
+condition formats, component flags and reserved payloads, 24-bit glyph IDs,
+packed axis values, randomized varints/delta runs, transforms and multivar data.
+The complete suite passes **812 read_fonts tests**; **853 upstream ports** are
+complete overall. font_types remains at 64 tests.
+
+**3,550 / 3,550 focused Phase 2 fixtures match** in debug, including every prefix
+of constructed VARC component streams, all 32 flag bits, subsequent components,
+varint boundaries, packed-run truncations and degenerate sparse regions. Dumps
+include component fields, bitwise transform matrices, decoded delta sets and
+region scalars at four coordinates. Evidence:
+reports/milestone-9-varc-fixtures.json.gz. The 156 generated outputs, 18 Phase 2
+fixtures and 33 model fixtures pass drift checks. All 10 generator tests, Rust
+formatting and Clippy with warnings denied pass; root, library and CLI builds pass.
+
+All requested Phase 2 table families are now implemented. A complete debug
+corpus run is starting against immutable binary copies. Bitmap/COLR/VARC model
+extents and deferred tests, the final debug/release gates and speed comparison
+remain before M9 can be marked complete. M8 CI is still on its malformed campaign.
+
+## Session 48 — 2026-10-26 — bitmap model metrics
+
+GlyphMetrics now measures sbix, CBDT and EBDT according to its source order. It
+selects one strike for the requested size, falls through if that strike lacks
+the glyph, resolves bounded sbix dupe chains and PNG dimensions, and preserves
+upstream bitmap pixel validation and whole-font-unit rounding. Scaled metrics
+pass the scale's requested ppem through the existing selection hook.
+
+The two deferred bitmap glyph tests, the bitmap-scale test and the narrow-source
+round-trip test pass. The missing-tables test now checks typed CBDT and DSIG
+errors, completing that upstream port. Totals: **816 read_fonts tests**,
+**64 font_types tests**, and **858 upstream ports**. Three generated expectations
+come from upstream's independent bitmap-selection API; a generated font removes
+glyph 2 specifically from its 16 ppem strike. The focused root passes 82 tests
+(including its 79 imported VARC/PostScript tests).
+
+Generator drift passes for 156 outputs, 36 model fixtures and 19 Phase 2 fixtures.
+Rust all-target Clippy and formatting pass. COLR/VARC model extents, the remaining
+eight deferred glyph tests, final parity gates and the speed comparison remain.
+The immutable full-table debug corpus run is still in progress.
+
+## Session 49 — 2026-10-26 — VARC model bounds and M8 merge
+
+M8's final CI run 40347108464 passed all gates, including the complete malformed
+corpus. PR #9 is merged as 12d7fdf381f1090ed68aded9275315708a03a13b, and the M9
+PR now targets main. The immutable complete Phase 2 table run also finished:
+**566 / 566 debug corpus files match**, with no differences or process failures.
+Evidence: reports/milestone-9-tables-corpus.json.gz (this snapshot still uses
+base-outline-only model dumps).
+
+GlyphMetrics now measures VARC composites through their drawn control points,
+with component coordinates, reset semantics, sparse tuple deltas, conditions,
+transforms, cycles and full-graph validation. Static internal gvar axes are
+retained even when the root font has no variation coordinates. Four independent
+upstream drawing fixtures cover CJK, conditionals, static gvar and delta precision.
+
+The deferred VARC glyph-metrics test and **14 upstream VARC model tests** pass,
+plus three regressions for additional fixture coverage, repeated axes and hidden
+malformed/deep graphs. The full suite passes **834 read_fonts tests** and the
+focused Phase 2 model root passes 100. **873 upstream ports** are complete
+overall; font_types remains at 64 tests. Generator drift passes for 156 outputs,
+40 model fixtures and 45 Phase 2 fixtures. Rust formatting and all-target Clippy
+with warnings denied pass.
+
+COLR model bounds and seven deferred glyph tests, the full-source model dump,
+final debug/release and malformed comparisons, and the speed ratio remain before
+M9 is complete. The allocator-backed traversal's scratch/cache adaptations are
+recorded in PORTING.md.
+
+
+## Session 50 — 2026-10-26 — COLR bounds and complete model observations
+
+COLR model bounds now cover every paint format, variable clip boxes, v0 layers,
+outline clips, transform peeling, gradients, compositing and bounded graph walks.
+All seven remaining deferred glyph-metrics tests pass, including source orders,
+color-only clips and mixed sources. Fourteen upstream COLR dependency tests and
+three bounds tests are also ported, with two additional regression tests.
+The complete suite passes **860 read_fonts tests**, with **897 upstream ports**
+overall; font_types remains at 64 tests. No requested Phase 2 model tests remain
+deferred. Scratch/cache and drawing-only adaptations are documented in PORTING.md.
+
+Dump format 9 measures the complete default bitmap/COLR/VARC/base-outline chain,
+with six explicit source orders and bitmap strike selection at 12 and 64 ppem.
+Independent Rust expectations now cover seven source orders and the real color
+fixtures. The focused model corpus expands from 154 to **356 cases**; the Phase 2
+corpus remains 3,550. All 156 generated outputs, 54 model fixtures and 47 Phase 2
+fixtures pass regeneration checks. Rust formatting and all-target Clippy pass,
+as do all 20 Python harness tests. The updated debug CLI builds successfully.
+
+Full-source debug/release parity, the final malformed-input campaign and speed
+comparison are in progress. These gates must pass before M9 can be completed.
+A temporary workspace connection outage recovered with the changes intact.
+
+
+## Session 51 — 2026-10-26 — source-order boundary regressions
+
+The complete Phase 2 fixture corpus passes **3,550 / 3,550** comparisons with
+format 9. An additional mixed bitmap/outline font with a shortened maxp count
+exposed upstream's distinction between one-source and mixed-source glyph bounds.
+The port now preserves that distinction and continues to layered sources after
+a selected base cannot measure a glyph. Two new regression tests pass, bringing
+the suite to **862 read_fonts tests**; upstream ports remain **897**.
+
+The model corpus now has **360 fixtures**, adding explicit maxp boundaries and
+short-loca fallbacks. Its 4,096-deep condition fixture is tested directly by the
+ported model test, not passed to a field dumper whose graph bound it exceeds.
+The first expanded run correctly rejected that incomplete dump after 336 matches;
+that run is not a completed parity gate. A corrected full run is underway.
+Generator drift, all 10 generator tests and all 7 Rust reference tests pass.
+Release builds and remaining complete-corpus gates are in progress.
+
+## Session 52 — 2026-10-26 — complete release parity and reproducible timing
+
+The complete format-9 release gate passes: **566 / 566 corpus files**, **360
+model fixtures**, **3,550 Phase 2 fixtures**, **8,551 AAT fixtures** and **9,146
+CFF fixtures** match, with no differences or process failures. A focused corruption
+run passes **530 / 530 mutations** of 13 real bitmap, COLR and VARC fonts.
+The final-source debug model, core, layout, variation and AAT gates also pass;
+the complete debug corpus and remaining focused checks are still running.
+
+Counts remain **862 read_fonts tests**, **64 font_types tests**, and **897
+upstream ports**. All 10 generator tests, 7 reference tests, 20 harness tests,
+formatting, Clippy, regeneration and debug/release builds pass. The unreproduced
+incremental-cache incident is documented without claiming a ninth compiler bug.
+
+`scripts/benchmark` now measures complete release CLI runs over the fixed corpus:
+one warmup per program, three timed rounds in alternating program order, and the
+ratio of median Silk to Rust wall time. Reports retain binary/input hashes,
+per-font samples and machine metadata. CI runs and uploads the same benchmark.
+The speed result is pending; no ratio is claimed at this checkpoint.
+
+Workspace restarts interrupted long local comparisons. A local recovery wrapper
+now delegates each case to the production harness and retains completed receipts
+bound to the input and both executable hashes. Incomplete or failed cases never
+count as matches. The final reports identify this recovery method; CI runs the
+ordinary complete commands independently. All production code is pushed in PR #10.
+
+
+## Session 53 — 2026-10-26 — milestone 9 local gates complete
+
+All requested Phase 2 tables and dependent model APIs are implemented. Full-source
+format-9 dumps match on **566 / 566 corpus files** in both debug and release.
+Both modes also pass **9,146 CFF**, **360 model**, **3,550 Phase 2**, and **8,551
+AAT fixtures**. The remaining debug gates pass **426 container**, **500 core-table**,
+**2,650 layout**, and **2,894 variation** fixtures. There are zero differences or
+process failures in these completed comparisons. The compressed
+reports/milestone-9-*-final-*.json.gz and corpus-debug/corpus-release reports retain
+all observations and exact input/binary hashes.
+
+The complete suites pass **862 read_fonts tests**, **64 font_types tests**,
+**10 generator tests**, **7 Rust reference tests** and **20 Python harness tests**.
+There are **897 upstream test ports** overall. Regeneration, formatting, Clippy,
+CLI help/version, and debug/release builds pass. All requested model tests deferred
+from Phase 1 are now covered; deliberate scope and runtime adaptations are recorded
+in PORTING.md. No compiler or standard-library source was modified.
+
+The speed gate is complete: three timed full-corpus release runs yield medians of
+**12.522919 s Rust** and **54.608527 s Silk**, a **4.360687× Silk/Rust wall-time ratio**.
+One whole-corpus warmup per binary preceded the measurements; program order
+alternated, stdout was discarded, and other local builds/tests were idle. This is
+whole-CLI timing, including formatting and process startup. The exact samples and
+hashes are in reports/milestone-9-benchmark.json, with methods and toolchain details
+in docs/PERFORMANCE.md.
+
+M8 already passed its complete 23,188-case malformed gate. With the final Phase 2
+sources, the 530-case bitmap/color/VARC campaign passes, and the repeated complete
+campaign is running. PR #10 requires final green CI, including that full campaign,
+before merge. Local milestone work is complete; CI and merge status are tracked
+on the PR rather than inferred from these local checks.
+
+
+## Session 54 — 2026-10-26 — malformed cubic outline correction
+
+The repeated complete malformed campaign exposed a BungeeTint point-flag mutation
+that forms an invalid cubic contour. Upstream refuses the drawn outline and
+contributes an empty color clip; the port had accumulated its raw loaded points.
+Drawn glyf bounds now use the contour-to-path state machine, preserving the
+separate raw-metric behavior. The original failing complete dump now matches.
+
+Twelve upstream path tests pass, covering contour start choices, implied points,
+quadratic/cubic commands and rejection. A 284-byte generated font reduces the
+color-layer failure, and a valid cubic companion ensures valid control bounds
+are retained. The old binary demonstrably fails the reduced font. Full-suite,
+focused fixture, final build, malformed and timing checks are being repeated;
+no final gate is inferred from the earlier binaries' reports.
+
+The full read_fonts suite passes **875 / 875 tests**, with **909 upstream ports**
+overall. Regeneration produces 49 Phase 2 fixtures; the focused model corpus now
+has 362 cases. The final debug and release builds are running.
+
+Parallel final comparisons exhausted the workspace's separate 8.8 GiB /tmp
+filesystem, causing two truncated output files and CLI write errors. These runs
+were not counted as passes. Temporary dump storage was moved to build/tmp on the
+larger workspace disk; only exact-input/executable-hash verified matches are
+reused, and failed or interrupted cases are retried. No parser change was made
+for this resource failure.
+
+
+## Session 55 — 2026-10-26 — final milestone 9 validation
+
+The corrected final binaries match all **566 corpus files** in debug and release,
+plus **9,146 CFF**, **8,551 AAT**, **362 model** and **3,550 Phase 2 fixtures** in
+both modes. Debug additionally passes **426 container**, **500 core-table**,
+**2,650 layout** and **2,894 variation** fixtures. The final release malformed
+campaign passes **23,188 / 23,188 mutations** with zero differences and zero
+process failures, including the original BungeeTint invalid-cubic case. Retrying
+the two temporary-storage failures with the same binaries produced full matches.
+
+The complete suites pass **875 read_fonts**, **64 font_types**, **10 generator**,
+**7 Rust reference** and **20 Python harness** tests. There are **909 upstream
+test ports**. All 156 generated outputs, 54 model fixtures and 49 Phase 2 fixtures
+pass regeneration checks. Formatting, all-target Clippy, CLI help/version and
+both build modes pass. No requested model tests remain deferred. The compiler,
+standard library and both pinned upstream submodules remain unchanged.
+
+The refreshed release benchmark uses the same validated binaries, after every
+other local build/test campaign finished. One complete warmup precedes three
+alternating-order rounds. Median wall times are **11.994591 s Rust** and
+**54.272735 s Silk**, for a **4.524767× Silk/Rust ratio**. This is complete CLI
+time, including startup and formatting. The report records every per-font sample,
+input and executable hashes, toolchain versions and host details.
+
+Final corpus and fixture reports replace the earlier same-named M9 observations;
+reports/milestone-9-malformed.json.gz adds the full final corruption evidence.
+Exact executable hashes are checked before archival. Local recovery batches use
+the ordinary production comparator and bind cached matches to complete inputs,
+filenames and both executables. Incomplete cases never count as passes. CI runs
+the ordinary complete commands independently, and its final status is recorded
+on PR #10 before merge.

@@ -31,6 +31,33 @@ import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
+  fn varc(self: &Self) -> Result<Varc<'a>,ReadError> { return readTable<Varc<'a>,Self>(self,Varc.tag()) }
+  fn math(self: &Self) -> Result<Math<'a>,ReadError> { return readTable<Math<'a>,Self>(self,Math.tag()) }
+  fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return readTable<Colr<'a>,Self>(self,Colr.tag()) }
+  fn sbix(self: &Self) -> Result<Sbix<'a>, ReadError> {
+    let maxp = match move TableProvider.selectedMaxp(self) { Result<SelectedMaxp<'a>,ReadError>.Success { value } => value Result<SelectedMaxp<'a>,ReadError>.Failure { error } => { return Result<Sbix<'a>,ReadError>.failResult(error) } }
+    let data = match move TableProvider.expectDataForTag(self,Sbix.tag()) { Result<FontData<'a>,ReadError>.Success { value } => value Result<FontData<'a>,ReadError>.Failure { error } => { return Result<Sbix<'a>,ReadError>.failResult(error) } }
+    return Sbix.read(data,SelectedMaxp.numGlyphs(&maxp))
+  }
+  fn cbdt(self: &Self) -> Result<Cbdt<'a>,ReadError> { return readTable<Cbdt<'a>,Self>(self,Cbdt.tag()) }
+  fn cblc(self: &Self) -> Result<Cblc<'a>,ReadError> { return readTable<Cblc<'a>,Self>(self,Cblc.tag()) }
+  fn ebdt(self: &Self) -> Result<Ebdt<'a>,ReadError> { return readTable<Ebdt<'a>,Self>(self,Ebdt.tag()) }
+  fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { return readTable<Eblc<'a>,Self>(self,Eblc.tag()) }
+
+  fn base(self: &Self) -> Result<Base<'a>, ReadError> { return readTable<Base<'a>, Self>(self, Base.tag()) }
+  fn gasp(self: &Self) -> Result<Gasp<'a>, ReadError> { return readTable<Gasp<'a>, Self>(self, Gasp.tag()) }
+  fn hdmx(self: &Self) -> Result<Hdmx<'a>, ReadError> {
+    let maxp = match move TableProvider.selectedMaxp(self) { Result<SelectedMaxp<'a>, ReadError>.Success { value } => value Result<SelectedMaxp<'a>, ReadError>.Failure { error } => { return Result<Hdmx<'a>, ReadError>.failResult(error) } }
+    let data = match move TableProvider.expectDataForTag(self, Hdmx.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Hdmx<'a>, ReadError>.failResult(error) } }
+    return Hdmx.read(data, SelectedMaxp.numGlyphs(&maxp))
+  }
+  fn stat(self: &Self) -> Result<Stat<'a>, ReadError> { return readTable<Stat<'a>, Self>(self, Stat.tag()) }
+  fn meta(self: &Self) -> Result<Meta<'a>, ReadError> { return readTable<Meta<'a>, Self>(self, Meta.tag()) }
+  fn cvar(self: &Self) -> Result<Cvar<'a>, ReadError> { return readTable<Cvar<'a>, Self>(self, Cvar.tag()) }
+  fn cpal(self: &Self) -> Result<Cpal<'a>, ReadError> { return readTable<Cpal<'a>, Self>(self, Cpal.tag()) }
+  fn svg(self: &Self) -> Result<Svg<'a>, ReadError> { return readTable<Svg<'a>, Self>(self, Svg.tag()) }
+  fn dsig(self: &Self) -> Result<Dsig<'a>, ReadError> { return readTable<Dsig<'a>, Self>(self, Dsig.tag()) }
+
   fn cff2(self: &Self) -> Result<Cff2<'a>,ReadError> { return readTable<Cff2<'a>,Self>(self,Cff2.tag()) }
   fn cff(self: &Self) -> Result<Cff<'a>,ReadError> { return readTable<Cff<'a>,Self>(self,Cff.tag()) }
   fn dataForTag(self: &Self, tag: Tag) -> Option<FontData<'a>>
@@ -193,3 +220,33 @@ import tables.cff { Cff }
 import tables.cff2 { Cff2 }
 
 impl<'a> Copy for GlyfLoca<'a> {}
+
+import tables.base { Base }
+
+import tables.gasp { Gasp }
+
+import tables.hdmx { Hdmx }
+
+import tables.stat { Stat }
+
+import tables.meta { Meta }
+
+import tables.cvar { Cvar }
+
+import tables.cpal { Cpal }
+
+import tables.svg { Svg }
+
+import tables.dsig { Dsig }
+
+import tables.sbix { Sbix }
+import tables.cbdt { Cbdt }
+import tables.cblc { Cblc }
+import tables.ebdt { Ebdt }
+import tables.eblc { Eblc }
+
+import tables.colr { Colr }
+
+import tables.math { Math }
+
+import tables.varc { Varc }

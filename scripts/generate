@@ -87,3 +87,4 @@ subprocess.run([str(ROOT / "scripts/generate-cff-fixtures")] + (["--check"] if a
 
 subprocess.run([str(ROOT / "scripts/generate-model-tables")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-model-fixtures")] + (["--check"] if args.check else []), check=True)
+subprocess.run([str(ROOT / "scripts/generate-phase2-fixtures")] + (["--check"] if args.check else []), check=True)

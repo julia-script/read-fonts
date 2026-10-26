@@ -84,7 +84,7 @@ class HarnessTests(unittest.TestCase):
         left = VALID + b"font[0].value=1\n" * 5000
         right = left[:-2] + b"2\n"
         self.assertEqual(self.compare(self.dumper("left", left), self.dumper("right", right)), 1)
-        with self.assertRaisesRegex(ValueError, "complete format-3"):
+        with self.assertRaisesRegex(ValueError, "complete font dump"):
             self.compare(self.dumper("left", left), self.dumper("right", left[:-1]))
 
     def test_graph_references_require_a_preceding_unique_node(self):

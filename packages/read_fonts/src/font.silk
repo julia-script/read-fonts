@@ -362,3 +362,50 @@ impl<'a> FontRef<'a> { pub fn cff(self: &Self) -> Result<Cff<'a>,ReadError> { re
 
 import tables.cff2 { Cff2 }
 impl<'a> FontRef<'a> { pub fn cff2(self: &Self) -> Result<Cff2<'a>,ReadError> { return TableProvider.cff2(self) } }
+
+import tables.base { Base }
+impl<'a> FontRef<'a> { pub fn base(self: &Self) -> Result<Base<'a>, ReadError> { return TableProvider.base(self) } }
+
+import tables.gasp { Gasp }
+impl<'a> FontRef<'a> { pub fn gasp(self: &Self) -> Result<Gasp<'a>, ReadError> { return TableProvider.gasp(self) } }
+
+import tables.hdmx { Hdmx }
+impl<'a> FontRef<'a> { pub fn hdmx(self: &Self) -> Result<Hdmx<'a>, ReadError> { return TableProvider.hdmx(self) } }
+
+import tables.stat { Stat }
+impl<'a> FontRef<'a> { pub fn stat(self: &Self) -> Result<Stat<'a>, ReadError> { return TableProvider.stat(self) } }
+
+import tables.meta { Meta }
+impl<'a> FontRef<'a> { pub fn meta(self: &Self) -> Result<Meta<'a>, ReadError> { return TableProvider.meta(self) } }
+
+import tables.cvar { Cvar }
+impl<'a> FontRef<'a> { pub fn cvar(self: &Self) -> Result<Cvar<'a>, ReadError> { return TableProvider.cvar(self) } }
+
+import tables.cpal { Cpal }
+impl<'a> FontRef<'a> { pub fn cpal(self: &Self) -> Result<Cpal<'a>, ReadError> { return TableProvider.cpal(self) } }
+
+import tables.svg { Svg }
+impl<'a> FontRef<'a> { pub fn svg(self: &Self) -> Result<Svg<'a>, ReadError> { return TableProvider.svg(self) } }
+
+import tables.dsig { Dsig }
+impl<'a> FontRef<'a> { pub fn dsig(self: &Self) -> Result<Dsig<'a>, ReadError> { return TableProvider.dsig(self) } }
+
+import tables.sbix { Sbix }
+impl<'a> FontRef<'a> { pub fn sbix(self: &Self) -> Result<Sbix<'a>,ReadError> { return TableProvider.sbix(self) } }
+import tables.cbdt { Cbdt }
+impl<'a> FontRef<'a> { pub fn cbdt(self: &Self) -> Result<Cbdt<'a>,ReadError> { return TableProvider.cbdt(self) } }
+import tables.cblc { Cblc }
+impl<'a> FontRef<'a> { pub fn cblc(self: &Self) -> Result<Cblc<'a>,ReadError> { return TableProvider.cblc(self) } }
+import tables.ebdt { Ebdt }
+impl<'a> FontRef<'a> { pub fn ebdt(self: &Self) -> Result<Ebdt<'a>,ReadError> { return TableProvider.ebdt(self) } }
+import tables.eblc { Eblc }
+impl<'a> FontRef<'a> { pub fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { return TableProvider.eblc(self) } }
+
+import tables.colr { Colr }
+impl<'a> FontRef<'a> { pub fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return TableProvider.colr(self) } }
+
+import tables.math { Math }
+impl<'a> FontRef<'a> { pub fn math(self: &Self) -> Result<Math<'a>,ReadError> { return TableProvider.math(self) } }
+
+import tables.varc { Varc }
+impl<'a> FontRef<'a> { pub fn varc(self: &Self) -> Result<Varc<'a>,ReadError> { return TableProvider.varc(self) } }

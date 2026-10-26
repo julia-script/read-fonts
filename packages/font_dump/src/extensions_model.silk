@@ -4,7 +4,7 @@ import read_fonts.model { Blob,Tables,TablesView }
 import read_fonts.model.charmap { Charmap,Encoding,EncodingKind,SfntIndex,SfntIds,Unicodes,UnicodeVariants,UnicodeVariant,Encodings,Codes }
 import read_fonts.model.name.glyph { GlyphName,GlyphNameSource,GlyphNameMap,GlyphNames,GlyphNameEntry,GlyphNameIndex }
 import read_fonts.model.metrics { Metrics,GlyphMetrics,GlyphExtents,LineBox,LineExtents,ScaledGlyphMetrics }
-import read_fonts.model.glyph { GlyphSourceOrder }
+import read_fonts.model.glyph { GlyphSource,GlyphSourceOrder }
 import read_fonts.tables.fvar { Fvar,VariationAxisRecord }
 import read_fonts.tables.cmap { CmapMapping }
 import read_fonts.lib { FontData,ReadError,ComputedArray }
@@ -54,7 +54,7 @@ pub effect fn dump(path:&mut DumpPath,data:&[u8],index:u32) -> () ! WriterError 
   DumpPath.push(&mut path,"locations")
   while location<locationCount { DumpPath.setIndex(&mut path,location) let coord=locations[location] let mut axis:usize=0 while axis<axisCount { coordinates[axis]=F2Dot14.fromBits(coord) axis=axis+1 } let mut activeCount=axisCount if coord==0 { activeCount=0 } let coords=Slice.view<F2Dot14>(&coordinates,0,activeCount)
     run field(&mut path,"coord",coord) run field(&mut path,"coordinates",activeCount) DumpPath.push(&mut path,"metrics") run global(&mut path,&Metrics.fromSfnt(&view,coords)) DumpPath.pop(&mut path)
-    let metrics=GlyphMetrics.withExtentsSourceOrder(metricView(&view,coords),GlyphSourceOrder.baseOutlines()) run field(&mut path,"extentsSourceOrder","base-outlines") let fine=GlyphMetrics.scaledF32(metrics,16.0) let coarse=GlyphMetrics.scaled26dot6(metrics,16.0)
+    let metrics=metricView(&view,coords) run field(&mut path,"extentsSourceOrder","default") let fine=GlyphMetrics.scaledF32(metrics,16.0) let coarse=GlyphMetrics.scaled26dot6(metrics,16.0)
     DumpPath.push(&mut path,"glyphs") i=0
     while i<List<u32>.length(&ids) { let id=List<u32>.get(&ids,i) let glyph=GlyphId.new(id) DumpPath.setIndex(&mut path,u32.toUsize(id))
       run field(&mut path,"hAdvance",F48Dot16.toBits(GlyphMetrics.hAdvanceExact(&metrics,glyph))) run field(&mut path,"vAdvance",F48Dot16.toBits(GlyphMetrics.vAdvanceExact(&metrics,glyph))) run field(&mut path,"vOriginY",F48Dot16.toBits(run GlyphMetrics.vOriginYExact(&metrics,glyph)))
@@ -62,7 +62,7 @@ pub effect fn dump(path:&mut DumpPath,data:&[u8],index:u32) -> () ! WriterError 
       DumpPath.push(&mut path,"f32") run field(&mut path,"hAdvance",f32.toBits(ScaledGlyphMetrics.hAdvance(&fine,glyph))) run field(&mut path,"vAdvance",f32.toBits(ScaledGlyphMetrics.vAdvance(&fine,glyph))) run field(&mut path,"vOriginY",f32.toBits(run ScaledGlyphMetrics.vOriginY(&fine,glyph))) DumpPath.push(&mut path,"extents") run extentsF32(&mut path,run ScaledGlyphMetrics.extents(&fine,glyph)) DumpPath.pop(&mut path) DumpPath.pop(&mut path)
       DumpPath.push(&mut path,"f26") run field(&mut path,"hAdvance",F26Dot6.toBits(ScaledGlyphMetrics.hAdvance(&coarse,glyph))) run field(&mut path,"vAdvance",F26Dot6.toBits(ScaledGlyphMetrics.vAdvance(&coarse,glyph))) run field(&mut path,"vOriginY",F26Dot6.toBits(run ScaledGlyphMetrics.vOriginY(&coarse,glyph))) DumpPath.push(&mut path,"extents") run extentsF26(&mut path,run ScaledGlyphMetrics.extents(&coarse,glyph)) DumpPath.pop(&mut path) DumpPath.pop(&mut path)
       i=i+1
-    } DumpPath.pop(&mut path) location=location+1
+    } DumpPath.pop(&mut path) run sourceProbes(&mut path,metrics,count) location=location+1
   } DumpPath.pop(&mut path) DumpPath.pop(&mut path)
 }
 effect fn extentsExact(path:&mut DumpPath,input:Option<GlyphExtents<F48Dot16>>) -> () ! WriterError ? &mut Writer {
@@ -123,4 +123,19 @@ effect fn charmap(path:&mut DumpPath,map:Charmap) -> () ! WriterError ? &mut Wri
     while n<1114112 { let e=match move Codes.next(&mut codes) { Option<CmapMapping>.Some { value }=>value _=>{break} } DumpPath.setIndex(&mut path,n) run field(&mut path,"code",e.codepoint) run field(&mut path,"glyph",GlyphId.toU32(e.glyph)) run optional(&mut path,"lookup",glyphValue(Charmap.mapCode(&map,encoding,e.codepoint))) n=n+1 }
     DumpPath.clearIndex(&mut path) run field(&mut path,"length",n) DumpPath.pop(&mut path) i=i+1
   } DumpPath.clearIndex(&mut path) run field(&mut path,"length",i) DumpPath.pop(&mut path)
+}
+
+// Every glyph above uses the complete default chain. These fixed boundary probes
+// additionally exercise custom orders and bitmap strike selection at each location.
+effect fn sourceProbes<'a,'c>(path:&mut DumpPath,metrics:GlyphMetrics<'a,'c>,count:u32) -> () ! WriterError | OutOfMemoryError ? &mut Writer | &mut Allocator {
+  let ids:[u32;7]=[0,1,2,31,u32.saturatingSubtract(count,1),count,4294967295]
+  let orders=[GlyphSourceOrder.outlines(),GlyphSourceOrder.baseOutlines(),GlyphSourceOrder.bitmaps(),GlyphSourceOrder.color(),GlyphSourceOrder.empty(),GlyphSourceOrder.new(&[GlyphSource.Cff,GlyphSource.Glyf,GlyphSource.Colr])]
+  DumpPath.push(&mut path,"sourceOrders") let mut order:usize=0
+  while order<6 { DumpPath.setIndex(&mut path,order) let selected=GlyphMetrics.withExtentsSourceOrder(metrics,orders[order]) DumpPath.push(&mut path,"glyphs") let mut i:usize=0
+    while i<7 { DumpPath.setIndex(&mut path,u32.toUsize(ids[i])) run extentsExact(&mut path,run GlyphMetrics.extentsExact(&selected,GlyphId.new(ids[i]))) i=i+1 } DumpPath.pop(&mut path) order=order+1
+  } DumpPath.pop(&mut path)
+  let sizes:[f32;2]=[12.0,64.0] DumpPath.push(&mut path,"bitmapSizes") let mut size:usize=0
+  while size<2 { DumpPath.setIndex(&mut path,size) let selected=GlyphMetrics.scaledF32(metrics,sizes[size]) run field(&mut path,"ppem",f32.toBits(sizes[size])) DumpPath.push(&mut path,"glyphs") let mut i:usize=0
+    while i<7 { DumpPath.setIndex(&mut path,u32.toUsize(ids[i])) run extentsF32(&mut path,run ScaledGlyphMetrics.extents(&selected,GlyphId.new(ids[i]))) i=i+1 } DumpPath.pop(&mut path) size=size+1
+  } DumpPath.pop(&mut path)
 }

@@ -1,12 +1,13 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestones 0–8 implement
-scalar types, borrowed sfnt/TTC parsing, core/layout/variation tables, vertical
-metrics, TrueType glyph and variation data, AAT tables/helpers, and CFF/CFF2
-names, charstrings, widths and bounds; integer sets and the requested font model APIs,
-with a reproducible malformed-input gate.**
-The full port remains in progress. See [PROGRESS.md](PROGRESS.md) and the original
+to Silk, intended to support a later HarfRust port. The requested Phase 1 and
+Phase 2 APIs are implemented: scalar types; borrowed sfnt/TTC parsing; generated
+core, layout, variation, AAT and Phase 2 tables; CFF/CFF2 names and bounds; integer
+sets; and the requested font model, including bitmap, COLR and VARC extents.
+The repository includes a byte-exact Rust/Silk harness, deterministic corruption
+checks, a release benchmark, and compiler/stdlib reports for the pinned Silk release.
+See [PROGRESS.md](PROGRESS.md), [porting decisions](PORTING.md), and the original
 [porting plan](docs/PORTING-PLAN.md).
 
 ## Set up
@@ -42,6 +43,7 @@ scripts/check-variation-fixtures --report build/variation-fixtures-report.json
 scripts/check-aat-fixtures --report build/aat-fixtures-report.json
 scripts/check-cff-fixtures --report build/cff-fixtures-report.json
 scripts/check-model-fixtures --report build/model-fixtures-report.json
+scripts/check-phase2-fixtures --report build/phase2-fixtures-report.json
 python3 -m unittest discover -s scripts/tests -v
 cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
 cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
@@ -60,11 +62,15 @@ scripts/compare --timeout 600 --fonts build/fonts.txt
 
 `compare` runs both binaries and prints the first differing line. Core, layout,
 variation, AAT, CFF, model and set-intersection dumps match on all **566 corpus
-files**, plus **9,146 CFF fixtures** and **154 model fixtures**, in debug and release. The expanded debug protocol also passes
+files**, plus **9,146 CFF fixtures**, **362 model fixtures** and **3,550 Phase 2
+fixtures**, in debug and release. The expanded debug protocol also passes
 **426 container edge cases**, **500 core-table fixtures**, **2,650 layout fixtures**,
 **2,894 variation fixtures** and **8,551 AAT fixtures**. CFF and model metrics, names and bounds are compared at four normalized locations.
-The model gate also compares character maps and exact scaled-metric bits. Complete CFF fixture reports in
-`reports/` are gzip-compressed; corpus reports remain plain JSON.
+The model gate also compares character maps and exact scaled-metric bits.
+Detailed reports retain input/output hashes; large reports in `reports/` are
+gzip-compressed. The complete Phase 2 corpus evidence is available for
+[debug](reports/milestone-9-corpus-debug.json.gz) and
+[release](reports/milestone-9-corpus-release.json.gz).
 Repeated table views use explicit references to their preceding complete field dumps.
 Matching dumps return 0, different dumps return 1, and harness/process failures
 return 2. The optional JSON report records input/output hashes and errors.
@@ -98,9 +104,11 @@ scripts/check-malformed --reference build/rust/release/rust-font-dump \
   --report build/malformed-report.json.gz
 ```
 
-All **23,188 corruptions** of the **566 corpus files** match in release: **18,660
-truncations** (31–33 lengths per font) and **4,528 byte-flip variants**. The checked-in
-[report](reports/milestone-8-malformed.json.gz) records the complete campaign.
+The complete Phase 2 gate passes all **23,188 corruptions** of the **566 corpus files**
+in release: **18,660 truncations** (31–33 lengths per font) and **4,528 byte-flip variants**. The checked-in
+[final Phase 2 report](reports/milestone-9-malformed.json.gz) records that complete
+campaign with dump format 9, including the full bitmap/COLR/VARC model chain.
+There are zero differences and zero process failures. CI repeats the campaign.
 Every discovered font receives header-edge, 1/16-length and final-byte
 truncations, plus eight seeded mutations with one to eight nonzero byte XORs.
 Mutation recipes and input/output hashes are recorded. Full dump equality also
@@ -116,6 +124,26 @@ fonts, and is retried on the next run. A passing report requires every expected
 mutation. Failing bytes, both dumps and the observation are retained under
 `build/malformed-failures/<input-sha256>/`. Reports ending in `.gz` are compressed
 without dropping observations. `--fonts` can select a reproduction list.
+
+## Speed comparison
+
+The recorded release run takes **54.27 s for Silk** and **11.99 s for Rust** over
+the full corpus: **4.52× Rust’s wall time**. See the [measurement and method](docs/PERFORMANCE.md).
+
+```sh
+scripts/build --release
+scripts/benchmark --report build/benchmark-report.json
+```
+
+The benchmark runs the fixed 566-file corpus serially, with one subprocess per
+font and stdout discarded. It warms each binary once, then measures three rounds
+in alternating Rust/Silk order. The reported ratio is median Silk wall time
+divided by median Rust wall time. This measures the complete CLI, including
+startup, parsing, model evaluation and formatting. It is not an isolated parser
+microbenchmark. The report retains per-font samples, corpus and binary hashes,
+program versions, and machine information. CI uploads the same report with its
+parity observations. `--fonts`, `--reference`, `--silk-dumper`, `--rounds` and
+`--timeout` select repeatable alternatives.
 
 ## Layout
 
@@ -136,8 +164,12 @@ are paths; future consumers can use this repository as a submodule.
 ## Contract and license
 
 The active [dump format](docs/DUMP-FORMAT.md) covers directories, core and layout
-tables, variations, vertical metrics, TrueType glyphs, AAT, CFF/CFF2 and the Phase 1
-model APIs. Bitmap, color and VARC model sources follow their Phase 2 tables.
+tables, variations, vertical metrics, TrueType glyphs, AAT, CFF/CFF2, Phase 2 tables
+and model APIs. The default metric source chain includes bitmap, COLR and VARC;
+explicit source orders and bitmap strike sizes are also compared.
+The Silk suites contain **64 font_types** and **875 read_fonts** tests; **909**
+upstream tests are ported overall. Out-of-scope APIs and platform adaptations are
+listed in the porting plan and decisions.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
 [COMPILER-BUGS.md](COMPILER-BUGS.md), and missing library APIs in
 [STDLIB-GAPS.md](STDLIB-GAPS.md).

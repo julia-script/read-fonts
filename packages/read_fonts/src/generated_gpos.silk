@@ -278,9 +278,39 @@ impl<'a> AnchorTable<'a> {
     AnchorTable<'a>.Format2 { value } => AnchorFormat2<'a>.offsetData(&value)
     AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.offsetData(&value)
   } }
+/// Format identifier, = 1
+  pub fn anchorFormat(self: &Self) -> u16 { return match self.* {
+    AnchorTable<'a>.Format1 { value } => AnchorFormat1<'a>.anchorFormat(&value)
+    AnchorTable<'a>.Format2 { value } => AnchorFormat2<'a>.anchorFormat(&value)
+    AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.anchorFormat(&value)
+  } }
+/// Horizontal value, in design units
+  pub fn xCoordinate(self: &Self) -> i16 { return match self.* {
+    AnchorTable<'a>.Format1 { value } => AnchorFormat1<'a>.xCoordinate(&value)
+    AnchorTable<'a>.Format2 { value } => AnchorFormat2<'a>.xCoordinate(&value)
+    AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.xCoordinate(&value)
+  } }
+/// Vertical value, in design units
+  pub fn yCoordinate(self: &Self) -> i16 { return match self.* {
+    AnchorTable<'a>.Format1 { value } => AnchorFormat1<'a>.yCoordinate(&value)
+    AnchorTable<'a>.Format2 { value } => AnchorFormat2<'a>.yCoordinate(&value)
+    AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.yCoordinate(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for AnchorTable<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return AnchorTable<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for AnchorTable<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    AnchorTable<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    AnchorTable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    AnchorTable<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    AnchorTable<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    AnchorTable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    AnchorTable<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> AnchorTable<'a> { pub fn default() -> Self { return AnchorTable<'a>.Format1 { value: AnchorFormat1<'a>.default() } } }
 /// [Anchor Table Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/gpos#anchor-table-format-1-design-units): Design Units
 pub struct AnchorFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 3], }
@@ -560,9 +590,37 @@ impl<'a> SinglePos<'a> {
     SinglePos<'a>.Format3 { value } => SinglePosFormat3<'a>.offsetData(&value)
     SinglePos<'a>.Format4 { value } => SinglePosFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    SinglePos<'a>.Format1 { value } => SinglePosFormat1<'a>.posFormat(&value)
+    SinglePos<'a>.Format2 { value } => SinglePosFormat2<'a>.posFormat(&value)
+    SinglePos<'a>.Format3 { value } => SinglePosFormat3<'a>.posFormat(&value)
+    SinglePos<'a>.Format4 { value } => SinglePosFormat4<'a>.posFormat(&value)
+  } }
+/// Defines the types of data in the ValueRecord.
+  pub fn valueFormat(self: &Self) -> ValueFormat { return match self.* {
+    SinglePos<'a>.Format1 { value } => SinglePosFormat1<'a>.valueFormat(&value)
+    SinglePos<'a>.Format2 { value } => SinglePosFormat2<'a>.valueFormat(&value)
+    SinglePos<'a>.Format3 { value } => SinglePosFormat3<'a>.valueFormat(&value)
+    SinglePos<'a>.Format4 { value } => SinglePosFormat4<'a>.valueFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for SinglePos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return SinglePos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for SinglePos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    SinglePos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    SinglePos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    SinglePos<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    SinglePos<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    SinglePos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    SinglePos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    SinglePos<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    SinglePos<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> SinglePos<'a> { pub fn default() -> Self { return SinglePos<'a>.Format1 { value: SinglePosFormat1<'a>.default() } } }
 /// [Single Adjustment Positioning Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/gpos#single-adjustment-positioning-format-1-single-positioning-value): Single Positioning Value
 pub struct SinglePosFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 4], }
@@ -723,9 +781,46 @@ impl<'a> PairPos<'a> {
     PairPos<'a>.Format3 { value } => PairPosFormat3<'a>.offsetData(&value)
     PairPos<'a>.Format4 { value } => PairPosFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    PairPos<'a>.Format1 { value } => PairPosFormat1<'a>.posFormat(&value)
+    PairPos<'a>.Format2 { value } => PairPosFormat2<'a>.posFormat(&value)
+    PairPos<'a>.Format3 { value } => PairPosFormat3<'a>.posFormat(&value)
+    PairPos<'a>.Format4 { value } => PairPosFormat4<'a>.posFormat(&value)
+  } }
+/// Defines the types of data in valueRecord1 — for the first
+/// glyph in the pair (may be zero).
+  pub fn valueFormat1(self: &Self) -> ValueFormat { return match self.* {
+    PairPos<'a>.Format1 { value } => PairPosFormat1<'a>.valueFormat1(&value)
+    PairPos<'a>.Format2 { value } => PairPosFormat2<'a>.valueFormat1(&value)
+    PairPos<'a>.Format3 { value } => PairPosFormat3<'a>.valueFormat1(&value)
+    PairPos<'a>.Format4 { value } => PairPosFormat4<'a>.valueFormat1(&value)
+  } }
+/// Defines the types of data in valueRecord2 — for the second
+/// glyph in the pair (may be zero).
+  pub fn valueFormat2(self: &Self) -> ValueFormat { return match self.* {
+    PairPos<'a>.Format1 { value } => PairPosFormat1<'a>.valueFormat2(&value)
+    PairPos<'a>.Format2 { value } => PairPosFormat2<'a>.valueFormat2(&value)
+    PairPos<'a>.Format3 { value } => PairPosFormat3<'a>.valueFormat2(&value)
+    PairPos<'a>.Format4 { value } => PairPosFormat4<'a>.valueFormat2(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for PairPos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return PairPos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for PairPos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    PairPos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    PairPos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    PairPos<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    PairPos<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    PairPos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    PairPos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    PairPos<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    PairPos<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> PairPos<'a> { pub fn default() -> Self { return PairPos<'a>.Format1 { value: PairPosFormat1<'a>.default() } } }
 /// [Pair Adjustment Positioning Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/gpos#pair-adjustment-positioning-format-1-adjustments-for-glyph-pairs): Adjustments for Glyph Pairs
 pub struct PairPosFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 6], }
@@ -2991,9 +3086,24 @@ impl<'a> CursivePos<'a> {
     CursivePos<'a>.Format1 { value } => CursivePosFormat1<'a>.offsetData(&value)
     CursivePos<'a>.Format2 { value } => CursivePosFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    CursivePos<'a>.Format1 { value } => CursivePosFormat1<'a>.posFormat(&value)
+    CursivePos<'a>.Format2 { value } => CursivePosFormat2<'a>.posFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for CursivePos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return CursivePos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for CursivePos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    CursivePos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    CursivePos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    CursivePos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    CursivePos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> CursivePos<'a> { pub fn default() -> Self { return CursivePos<'a>.Format1 { value: CursivePosFormat1<'a>.default() } } }
 /// MarkBasePos (ISO/IEC 14496-22:2026).
 pub union MarkBasePos<'a> {
@@ -3014,9 +3124,29 @@ impl<'a> MarkBasePos<'a> {
     MarkBasePos<'a>.Format1 { value } => MarkBasePosFormat1<'a>.offsetData(&value)
     MarkBasePos<'a>.Format2 { value } => MarkBasePosFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    MarkBasePos<'a>.Format1 { value } => MarkBasePosFormat1<'a>.posFormat(&value)
+    MarkBasePos<'a>.Format2 { value } => MarkBasePosFormat2<'a>.posFormat(&value)
+  } }
+/// Number of classes defined for marks
+  pub fn markClassCount(self: &Self) -> u16 { return match self.* {
+    MarkBasePos<'a>.Format1 { value } => MarkBasePosFormat1<'a>.markClassCount(&value)
+    MarkBasePos<'a>.Format2 { value } => MarkBasePosFormat2<'a>.markClassCount(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for MarkBasePos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return MarkBasePos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for MarkBasePos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    MarkBasePos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    MarkBasePos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    MarkBasePos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    MarkBasePos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> MarkBasePos<'a> { pub fn default() -> Self { return MarkBasePos<'a>.Format1 { value: MarkBasePosFormat1<'a>.default() } } }
 /// MarkLigPos (ISO/IEC 14496-22:2026).
 pub union MarkLigPos<'a> {
@@ -3037,9 +3167,29 @@ impl<'a> MarkLigPos<'a> {
     MarkLigPos<'a>.Format1 { value } => MarkLigPosFormat1<'a>.offsetData(&value)
     MarkLigPos<'a>.Format2 { value } => MarkLigPosFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    MarkLigPos<'a>.Format1 { value } => MarkLigPosFormat1<'a>.posFormat(&value)
+    MarkLigPos<'a>.Format2 { value } => MarkLigPosFormat2<'a>.posFormat(&value)
+  } }
+/// Number of defined mark classes
+  pub fn markClassCount(self: &Self) -> u16 { return match self.* {
+    MarkLigPos<'a>.Format1 { value } => MarkLigPosFormat1<'a>.markClassCount(&value)
+    MarkLigPos<'a>.Format2 { value } => MarkLigPosFormat2<'a>.markClassCount(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for MarkLigPos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return MarkLigPos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for MarkLigPos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    MarkLigPos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    MarkLigPos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    MarkLigPos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    MarkLigPos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> MarkLigPos<'a> { pub fn default() -> Self { return MarkLigPos<'a>.Format1 { value: MarkLigPosFormat1<'a>.default() } } }
 /// MarkMarkPos (ISO/IEC 14496-22:2026).
 pub union MarkMarkPos<'a> {
@@ -3060,9 +3210,29 @@ impl<'a> MarkMarkPos<'a> {
     MarkMarkPos<'a>.Format1 { value } => MarkMarkPosFormat1<'a>.offsetData(&value)
     MarkMarkPos<'a>.Format2 { value } => MarkMarkPosFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn posFormat(self: &Self) -> u16 { return match self.* {
+    MarkMarkPos<'a>.Format1 { value } => MarkMarkPosFormat1<'a>.posFormat(&value)
+    MarkMarkPos<'a>.Format2 { value } => MarkMarkPosFormat2<'a>.posFormat(&value)
+  } }
+/// Number of Combining Mark classes defined
+  pub fn markClassCount(self: &Self) -> u16 { return match self.* {
+    MarkMarkPos<'a>.Format1 { value } => MarkMarkPosFormat1<'a>.markClassCount(&value)
+    MarkMarkPos<'a>.Format2 { value } => MarkMarkPosFormat2<'a>.markClassCount(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for MarkMarkPos<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return MarkMarkPos<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for MarkMarkPos<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    MarkMarkPos<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    MarkMarkPos<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    MarkMarkPos<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    MarkMarkPos<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> MarkMarkPos<'a> { pub fn default() -> Self { return MarkMarkPos<'a>.Format1 { value: MarkMarkPosFormat1<'a>.default() } } }
 
 // Handwritten extension from packages/read_fonts/src/tables/gpos_impl.silk

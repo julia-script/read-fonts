@@ -87,7 +87,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Corpus paths are ordinary files. This differs from Rust `std::fs::read`, which
   follows symlinks; parser APIs themselves take byte slices and are unaffected.
 
-## Milestone 2 (in progress)
+## Milestone 2
 
 - The generator is a standalone copy of the pinned font-codegen crate, with its
   original Rust modes retained. `silk-parse` reuses its parsed/resolved AST. Two
@@ -143,7 +143,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
   limit. No field or semantic observation is suppressed.
 
-## Milestone 3 (in progress)
+## Milestone 3
 
 - Multiple read arguments use `ReadArgs2`/`ReadArgs3` products. Their fields are
   `first`, `second`, and `third`; public table constructors still take separate
@@ -191,7 +191,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   process output through temporary files, comparing every line and hashing every
   byte without retaining whole dumps in memory.
 
-## Milestone 4 (in progress)
+## Milestone 4
 
 - `storeDeltas` accepts an optional borrowed table view by value, instead of an
   optional reference to that view. Its reusable callable snapshots the Copy view
@@ -245,7 +245,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
   old cache entries without a full per-glyph cache clear.
 
-## Milestone 5 (in progress)
+## Milestone 5
 
 - AAT typed lookups retain `TypedLookup` plus the `LookupU16`, `LookupU32`, and
   `LookupGlyphId` aliases. Dynamic format-2/6 record arrays use borrowed
@@ -270,7 +270,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   sequence, including malformed unsorted input; sorted duplicate keys select
   the rightmost matching entry.
 
-## Milestone 6 (in progress)
+## Milestone 6
 
 - The CFF grammar emits the `ps.cff.v1` and `ps.cff.v2` public facades, matching
   upstream's ownership of generated types. INDEX offsets stay borrowed and use
@@ -433,11 +433,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Batches process the shorter glyph/output slice. GlyphExtents.fromBounds uses a
   static ExtentsCoord contract so float and fixed coordinates retain their own
   comparison and subtraction behavior.
-- Bitmap/COLR/VARC extents and their dependent model tests remain scheduled with
-  their Phase 2 parsers. Their source-order entries already retain upstream
-  ordering; the current implementation resolves the Phase 1 outline sources.
-  The Phase 1 glyph/scaled unit tests are complete; the differential gate is
-  recorded separately in PROGRESS.md.
+- Bitmap/COLR/VARC extents and their dependent model tests were completed with
+  their Phase 2 parsers in milestone 9. Source-order selection now resolves the
+  complete requested chain. The glyph/scaled unit tests are complete; differential
+  gate evidence is recorded separately in PROGRESS.md.
 - Public GlyphMetrics constructors collapse an all-zero coordinate slice to an
   empty borrowed view, matching the model instance builder's default-instance
   semantics. Callers still supply normalized coordinates explicitly; this subset
@@ -479,3 +478,123 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   failures and traversal limits never count as parity. Resumable receipts bind
   observations to the source, exact executable bytes and mutation settings.
   Binary snapshots prevent a concurrent rebuild from changing a running campaign.
+
+## Milestone 9
+
+- Typed array offsets now resolve directly into borrowed ScalarArray or
+  ComputedArray views. Counts are element counts and retain the upstream nullable
+  and version-dependent access rules; palette flags/name IDs have a regression.
+- BASE baseline constants and the metadata DLNG/SLNG tags use camelCase functions:
+  Tag construction is not a const expression in the pinned Silk compiler.
+  BaseInstance borrows font data and coordinates independently and exposes base()
+  in place of Rust's Deref. Device pixels and design-unit variation deltas remain
+  separate in BaseValue.
+- Hdmx DeviceRecord exposes the upstream accessor methods. Its backing fields
+  have private names because Silk disallows a field and method sharing a name.
+- CVT accumulation uses explicit i32 wrapping addition, matching upstream release
+  arithmetic and avoiding an integer-overflow trap on malformed tuple streams.
+  Upstream's debug-only overflow panic is not reproduced.
+- Dump format 8 adds Phase 2 fields and resolved offset arrays. Metadata strings
+  are serialized as UTF-8 byte hex, preserving malformed-string errors without
+  relying on platform text escaping. Signature blocks follow the public resolver's
+  format and exact-length checks.
+
+- The bitmap location/data model uses borrowed SmallGlyphMetrics and
+  BigGlyphMetrics records, so BitmapLocation, BitmapMetrics and BitmapData carry
+  a font-data lifetime. BitmapContent.Composite is a borrowed ComputedArray.
+  Location arithmetic remains checked and indexTablesSize is deliberately ignored,
+  matching upstream and FreeType. The five location formats preserve sparse-ID
+  errors, image-data bases and empty image sizes.
+- Bitmap traversal decodes each declared strike/glyph through the public location
+  and image APIs, including metrics, packed bytes, PNG bytes and composite records.
+  sbix glyph slices start separate traversal scopes because different bounded
+  slices can have equal lengths; equal lengths alone do not identify aliases.
+
+- COLR helpers return named ColorLayer and PaintWithId records in place of Rust
+  tuples. PaintId is an offset within the owning COLR table, rather than a raw
+  memory address. It preserves identity across base-glyph and layer lists for
+  cycle detection within that table; it is not a cross-font identifier.
+- The generator now forwards fields shared by every variant of a format group,
+  as the Rust backend does, and provides MinByteRange for those groups. BASE's
+  coordinate and COLR's clip-box accessors now come from that common generation.
+  Resolved offset helpers remain on their concrete variants, as upstream does.
+
+- MathConstant and its 56 selectors are generated from the same field order as
+  MathConstants; all() returns a fixed value array rather than a static slice.
+  MathKernEntryIter is an explicit cursor. MathValue keeps design-unit values and
+  device pixel deltas separate, and VariationIndex records contribute no device
+  adjustment, matching the upstream API.
+
+- VARC glyph/component iterators retain copied borrowed table views, so they do
+  not borrow a temporary facade. Component axisValues() and transform() return
+  copied snapshots instead of references. Parsing borrows the component stream
+  independently of the VARC table, as upstream does. Reserved flag payloads and
+  packed-delta cursor advancement preserve the upstream lazy validation rules.
+- VARC's upstream tests of private component parsing are included beside the
+  implementation by the generator; no private parser is added to the public API.
+  The existing font_types cast helper is now an exported module for the generated
+  random-input test's bit-preserving conversions. Platform trigonometry is
+  recorded in STDLIB-GAPS.md #005.
+
+- Bitmap metric snapshots retain their borrowed sbix/CBDT/EBDT sources eagerly.
+  Strike selection runs at the query's ppem, preserving the distinction between
+  selecting one strike for metrics and searching all strikes for drawing. Only
+  bitmap validation, selection and extents needed by GlyphMetrics are added; the
+  unrequested pixel-decoding/drawing facade is not introduced.
+- BitmapSource and OutlineSource use tryFrom(GlyphSource) and toGlyphSource() in
+  place of Rust conversion traits; failure retains the original GlyphSource.
+
+- VARC metrics validate the complete component graph before measuring it, then
+  traverse at each component's coordinates. Both walks retain upstream's 64-level
+  and 2,048-edge limits; cycles draw nothing and conditional components still
+  count during validation. Internal axes come from the maximum fvar/gvar/CFF2
+  axis count, so static fonts with internal gvar axes work at the default instance.
+- The metrics-only traversal uses allocator-backed coordinate/delta lists instead
+  of upstream's caller-supplied scratch block and atomic layout cache. The three
+  scratch-layout/cache tests and the ppem-only matrix helper test belong to the
+  unrequested drawing facade. Fourteen other VARC model tests are ported, with
+  additional repeated-axis, deep-graph and hidden-malformed-component regressions.
+  Every transformed control point is accumulated before the resulting extents
+  are converted to F48Dot16. These bounds also supply COLR outline clips.
+
+- COLR metric bounds resolve every paint format but retain only values affecting
+  bounds. Palette colors and opacity do not affect upstream's BoundsSink. Gradient
+  stop ranges and degenerate linear/sweep cases still decide whether a fill
+  exists. Glyph clips use drawn outline control boxes, including VARC when its
+  source precedes the selected base; a color-only order uses the default outlines.
+- COLR transform and clip state is passed by value through the bounded traversal,
+  instead of maintaining PaintSink stacks. The 64-level, 16,384-node and paint-ID
+  cycle limits are retained, as is transform peeling beneath PaintGlyph. Stack
+  unwinding and cached-scalar tests for the unrequested drawing/cache facade have
+  no corresponding mutable state here. Variation deltas retain implicit outer
+  indices and stop before u32::MAX; metric clip-box deltas round to whole units.
+- Rust's f32 min/max ignore a single NaN, while Silk's propagate it. The control
+  and clip bound helpers explicitly implement Rust's behavior. This matters for
+  overflowed transforms on malformed graphs, even though parsed fields are finite.
+- The source-order optimization test uses independent upstream metric records for
+  every glyph, seven orders and seven font/instance cases because this port has
+  one dispatch path. Provider-probe tests check the established eager snapshot
+  contract: queries and order changes never recall the provider or use excluded
+  sources. Unrequested Type 1 cases remain excluded.
+
+- Mixed-source metrics reject glyph IDs at or past the font's declared count.
+  A sole bitmap or COLR source keeps upstream's independent boundary behavior.
+  A failed chosen base can fall through to later layered sources; it never selects
+  a second base or enables a VARC source occurring after that base.
+- The deliberately 4,096-deep VARC condition is checked directly by the ported
+  model rejection test. It is excluded from whole-field differential fixtures
+  because it exceeds the dump adapter's graph bound; an incomplete dump is never
+  counted as a successful comparison.
+- During Phase 2 import expansion, the local incremental cache produced symbol
+  resolution errors that disappeared with a clean cache. Three reduced incremental
+  builds (adding and reordering exported modules and imports) all passed. This is
+  an unreproduced cache incident, not a confirmed additional compiler defect;
+  compiler-bugs/001–008 remain the independently reproducible reports. Generation
+  and compilation are serialized to avoid reading sources while they are replaced.
+
+- Drawn glyf bounds pass through the upstream contour-to-path state machine,
+  including cubic controls and implied midpoint interpolation. Malformed contours
+  reject the entire outline; a COLR clip discards any points emitted before that
+  rejection. Raw glyph metrics retain their distinct point/header bounds. The
+  private dependency supports f32, which is the precision used by these model
+  queries; twelve upstream path tests are ported with fixed command traces.

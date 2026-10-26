@@ -13,11 +13,13 @@ use std::{
 mod dump_support;
 mod extensions_aat_common;
 mod extensions_aat_misc;
+mod extensions_bitmaps;
 mod extensions_cff;
 mod extensions_cmap;
 mod extensions_glyphs;
 mod extensions_kern;
 mod extensions_kerx;
+mod extensions_math;
 mod extensions_metric_variations;
 mod extensions_metrics;
 mod extensions_model;
@@ -26,20 +28,39 @@ mod extensions_morx;
 mod extensions_name;
 mod extensions_post;
 mod extensions_sets;
+mod extensions_varc;
 mod generated_dump_aat;
 mod generated_dump_ankr;
+mod generated_dump_base;
+mod generated_dump_bitmap;
+mod generated_dump_cbdt;
+mod generated_dump_cblc;
 mod generated_dump_cff;
 mod generated_dump_cff2;
 mod generated_dump_cmap;
+mod generated_dump_colr;
+mod generated_dump_cpal;
+mod generated_dump_cvar;
+mod generated_dump_dsig;
+mod generated_dump_ebdt;
+mod generated_dump_eblc;
 mod generated_dump_feat;
+mod generated_dump_gasp;
+mod generated_dump_hdmx;
 mod generated_dump_head;
 mod generated_dump_kern;
 mod generated_dump_kerx;
 mod generated_dump_ltag;
+mod generated_dump_math;
 mod generated_dump_maxp;
+mod generated_dump_meta;
 mod generated_dump_mort;
 mod generated_dump_morx;
+mod generated_dump_sbix;
+mod generated_dump_stat;
+mod generated_dump_svg;
 mod generated_dump_trak;
+mod generated_dump_varc;
 
 mod generated_dump_avar;
 mod generated_dump_fvar;
@@ -162,6 +183,26 @@ fn dump_font(
         generated_dump_ankr::dump_tables(out, &prefix, &font)?;
         generated_dump_feat::dump_tables(out, &prefix, &font)?;
         generated_dump_ltag::dump_tables(out, &prefix, &font)?;
+        generated_dump_base::dump_tables(out, &prefix, &font)?;
+        generated_dump_gasp::dump_tables(out, &prefix, &font)?;
+        generated_dump_hdmx::dump_tables(out, &prefix, &font)?;
+        generated_dump_stat::dump_tables(out, &prefix, &font)?;
+        generated_dump_meta::dump_tables(out, &prefix, &font)?;
+        generated_dump_cvar::dump_tables(out, &prefix, &font)?;
+        generated_dump_cpal::dump_tables(out, &prefix, &font)?;
+        generated_dump_svg::dump_tables(out, &prefix, &font)?;
+        generated_dump_dsig::dump_tables(out, &prefix, &font)?;
+        generated_dump_sbix::dump_tables(out, &prefix, &font)?;
+        generated_dump_cbdt::dump_tables(out, &prefix, &font)?;
+        generated_dump_cblc::dump_tables(out, &prefix, &font)?;
+        generated_dump_ebdt::dump_tables(out, &prefix, &font)?;
+        generated_dump_eblc::dump_tables(out, &prefix, &font)?;
+        generated_dump_colr::dump_tables(out, &prefix, &font)?;
+        generated_dump_varc::dump_tables(out, &prefix, &font)?;
+        generated_dump_math::dump_tables(out, &prefix, &font)?;
+        extensions_varc::dump(out, &prefix, &font)?;
+        extensions_math::dump(out, &prefix, &font)?;
+        extensions_bitmaps::dump(out, &prefix, &font)?;
         extensions_glyphs::dump(out, &prefix, &font)?;
         extensions_morx::dump(out, &prefix, &font)?;
         extensions_mort::dump(out, &prefix, &font)?;
@@ -181,7 +222,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=7\ndump.scope=model-apis"
+        "font-dump.version=9\ndump.scope=phase2-model"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -230,12 +271,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 7: core, layout, variation, AAT and CFF tables plus model APIs."
+            "usage: rust-font-dump FONT\nDump format 9: Phase 1 and Phase 2 tables plus model APIs."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 7; model-apis scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 9; phase2-model scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

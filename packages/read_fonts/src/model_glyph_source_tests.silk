@@ -40,3 +40,16 @@ test effect fn emptyOrderHasNoSources() -> () ! AssertionError<'static> {
   run Testing.expect(GlyphSourceOrder.isEmpty(GlyphSourceOrder.empty()) && !GlyphSourceOrder.contains(GlyphSourceOrder.new(&[]),GlyphSource.Glyf),"empty order") run expectSources(GlyphSourceOrder.empty(),&[])
 }
 test effect fn everySourceRoundTripsThroughAnOrder() -> () ! AssertionError<'static> { run expectSources(GlyphSourceOrder.new(&all()),&all()) }
+
+import model.glyph.bitmap { BitmapSource }
+import model.glyph.outline { OutlineSource }
+import silk.result { Result }
+test effect fn narrowSourcesRoundTrip() -> () ! AssertionError<'static> {
+  let sources = all() let mut i: usize = 0
+  while i < sources.length {
+    let source = sources[i] let mut kinds: usize = 0
+    match move OutlineSource.tryFrom(source) { Result<OutlineSource,GlyphSource>.Success { value } => { run Testing.expect(OutlineSource.toGlyphSource(value) == source,"outline source round trip") kinds = kinds+1 } Result<OutlineSource,GlyphSource>.Failure { error } => run Testing.expect(error == source,"outline conversion preserves rejected source") }
+    match move BitmapSource.tryFrom(source) { Result<BitmapSource,GlyphSource>.Success { value } => { run Testing.expect(BitmapSource.toGlyphSource(value) == source,"bitmap source round trip") kinds = kinds+1 } Result<BitmapSource,GlyphSource>.Failure { error } => run Testing.expect(error == source,"bitmap conversion preserves rejected source") }
+    let mut expected: usize = 1 if source == GlyphSource.Colr { expected = 0 } run Testing.expect(kinds == expected,"only COLR is neither bitmap nor outline") i = i+1
+  }
+}

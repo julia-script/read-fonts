@@ -5,6 +5,7 @@ use crate::parsing::*;
 use std::fmt::Write;
 mod complex;
 mod dump;
+mod math;
 pub(crate) fn generate_dump(items: &Items, silk: bool) -> syn::Result<String> {
     let code = dump::generate(items, silk)?;
     if silk {
@@ -36,6 +37,9 @@ pub(crate) fn generate(items: &Items) -> syn::Result<String> {
             Item::Extern(_) => (),
             Item::GenericGroup(g) => cx.group(&mut out, g)?,
         }
+    }
+    if items.parse_module_path.segments.last().unwrap().ident == "math" {
+        math::constants(&cx, &mut out)?;
     }
     Ok(out)
 }
@@ -106,6 +110,7 @@ impl Context<'_> {
             | "TupleVariationCount" => 2,
             "LongMetric" => 4,
             "Subtable0Pair" => 6,
+            "BitmapSize" => 48,
             "Uint24" | "Int24" | "GlyphId24" | "Offset24" => 3,
             "u32" | "i32" | "Fixed" | "Tag" | "GlyphId" | "MajorMinor" | "Version16Dot16"
             | "Offset32" => 4,
@@ -335,7 +340,9 @@ impl Context<'_> {
             "u8" | "u16" | "u32" => format!("{typ}.toUsize({expr})"),
             "usize" => expr.into(),
             "i16" => format!("signedCount(i16.toI64({expr}))"),
-            "Uint24" | "GlyphId" | "GlyphId24" => format!("u32.toUsize({typ}.toU32({expr}))"),
+            "Uint24" | "GlyphId" | "GlyphId24" | "GlyphId16" => {
+                format!("u32.toUsize({typ}.toU32({expr}))")
+            }
             _ => format!("{typ}.toUsize({expr})"),
         }
     }
@@ -373,6 +380,10 @@ impl Context<'_> {
                     CountTransform::Half => format!("({} / 2)", a[0]),
                     CountTransform::Add => format!("usize.saturatingAdd({}, {})", a[0], a[1]),
                     CountTransform::Sub => format!("usize.saturatingSubtract({}, {})", a[0], a[1]),
+                    CountTransform::SubAddTwo => format!(
+                        "usize.saturatingAdd(usize.saturatingSubtract({}, {}), 2)",
+                        a[0], a[1]
+                    ),
                     CountTransform::AddMul => format!(
                         "usize.saturatingMultiply(usize.saturatingAdd({}, {}), {})",
                         a[0], a[1], a[2]
@@ -796,7 +807,71 @@ impl Context<'_> {
             )
             .unwrap();
         }
-        writeln!(out,"  }} }}\n}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\n").unwrap();
+        writeln!(out, "  }} }}").unwrap();
+        // Match the upstream format-group forwarding surface: fields with the
+        // same name and type in every variant remain accessible on the group.
+        let tables = format
+            .variants
+            .iter()
+            .map(
+                |variant| match self.find(&variant.type_name().to_string()) {
+                    Some(Item::Table(table)) => table,
+                    _ => unreachable!(),
+                },
+            )
+            .collect::<Vec<_>>();
+        if let Some(first) = tables.first() {
+            for field in first.fields.iter().filter(|field| field.has_getter()) {
+                if !tables.iter().all(|table| {
+                    table
+                        .fields
+                        .find(&field.name)
+                        .is_some_and(|other| other.has_getter() && other.typ == field.typ)
+                }) {
+                    continue;
+                }
+                let method = camel(&field.name.to_string());
+                let mut result = self.field_type(field)?;
+                if field.is_conditional() {
+                    result = format!("Option<{result}>");
+                }
+                docs(out, &field.attrs.docs);
+                writeln!(
+                    out,
+                    "  pub fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+                )
+                .unwrap();
+                for variant in &format.variants {
+                    writeln!(
+                        out,
+                        "    {name}<'a>.{} {{ value }} => {}<'a>.{method}(&value)",
+                        variant.name,
+                        variant.type_name()
+                    )
+                    .unwrap();
+                }
+                writeln!(out, "  }} }}").unwrap();
+            }
+        }
+        writeln!(out,"}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\n").unwrap();
+        writeln!(out, "impl<'a> MinByteRange<'a> for {name}<'a> {{").unwrap();
+        for (method, result) in [("minByteRange", "ByteRange"), ("minTableBytes", "&'a [u8]")] {
+            writeln!(
+                out,
+                "  fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+            )
+            .unwrap();
+            for variant in &format.variants {
+                writeln!(
+                    out,
+                    "    {name}<'a>.{} {{ value }} => MinByteRange.{method}(&value)",
+                    variant.name
+                )
+                .unwrap();
+            }
+            writeln!(out, "  }} }}").unwrap();
+        }
+        writeln!(out, "}}").unwrap();
         if let Some(v) = format.variants.first() {
             if let Some(Item::Table(table)) = self.find(&v.type_name().to_string()) {
                 if matches!(table.format_value_and_width(), None | Some((0 | 1, _))) {

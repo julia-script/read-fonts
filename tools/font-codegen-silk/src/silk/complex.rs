@@ -23,11 +23,16 @@ impl Context<'_> {
             "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
             "variations" => out.push_str("pub import tables.tuple_index { TupleIndex, TupleVariationCount }\n"),
             "fvar" => out.push_str("pub import tables.instance_record { InstanceRecord }\n"),
-            "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
+            "avar" | "hvar" | "vvar" | "mvar" | "colr" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "vmtx" => out.push_str("pub import generated_hmtx { LongMetric }\n"),
             "kern" => out.push_str("pub import generated_kerx { Subtable0Pair }\n"),
             "ankr" => out.push_str("import generated_aat { LookupU16 }\n"),
             "gvar" => out.push_str("import generated_variations { Tuple, TupleVariationHeader, TupleVariationCount }\n"),
+            "base" => out.push_str("import generated_layout { DeviceOrVariationIndex, Device, VariationIndex }\nimport generated_variations { ItemVariationStore, DeltaSetIndex }\n"),
+            "varc" => out.push_str("pub import generated_layout { CoverageTable, Condition }\npub import ps.cff.index { Index2 }\nimport generated_variations { PackedDeltas, DeltaRunIter }\nimport font_data { Cursor }\nimport font_types.lib { Matrix }\n"),
+            "math" => out.push_str("import generated_layout { CoverageTable, DeviceOrVariationIndex, Device }\n"),
+            "cvar" => out.push_str("import generated_variations { TupleVariationHeader, TupleVariationCount }\n"),
+            "cblc" | "eblc" => out.push_str("pub import generated_bitmap { BitmapSize }\n"),
             _ => (),
         }
     }
@@ -233,32 +238,57 @@ impl Context<'_> {
         if field.attrs.offset_getter.is_some() {
             return Ok(());
         }
-        let (offset, target, array) = match &field.typ {
+        let (offset, target, array, target_array) = match &field.typ {
             FieldType::Offset {
                 typ,
                 target: OffsetTarget::Table(target),
-            } => (typ, target, false),
+            } => (typ, self.offset_target_type(target), false, false),
+            FieldType::Offset {
+                typ,
+                target: OffsetTarget::Array(inner),
+            } => {
+                let name = match inner.as_ref() {
+                    FieldType::Scalar { typ } | FieldType::Struct { typ } => typ.to_string(),
+                    _ => {
+                        return Err(syn::Error::new(
+                            field.name.span(),
+                            "unsupported offset array element",
+                        ))
+                    }
+                };
+                let target = if matches!(self.find(&name), Some(Item::Record(_))) {
+                    format!("ComputedArray<'a, (), {name}<'a>>")
+                } else {
+                    format!("ScalarArray<'a, {name}>")
+                };
+                (typ, target, false, true)
+            }
             FieldType::Array { inner_typ } => match inner_typ.as_ref() {
                 FieldType::Offset {
                     typ,
                     target: OffsetTarget::Table(target),
-                } => (typ, target, true),
+                } => (typ, self.offset_target_type(target), true, false),
                 _ => return Ok(()),
             },
             _ => return Ok(()),
         };
         let owner = self.applied(owner);
-        let target = if target == "T" {
-            "T".into()
-        } else {
-            format!("{target}<'a>")
-        };
         let raw = field.name.to_string();
         let name = camel(&raw);
         let getter = camel(&field.offset_getter_name().unwrap().to_string());
         let data_arg = if record { ", data: FontData<'a>" } else { "" };
         let data = if record { "data" } else { "self._fontData" };
-        let (args, value) = self.field_args(field, true, true)?;
+        let (mut args, mut value) = self.field_args(field, true, true)?;
+        if target_array {
+            if !["u8", "u16", "u32", "usize"].contains(&args.as_str()) {
+                return Err(syn::Error::new(
+                    field.name.span(),
+                    "offset array requires one unsigned count",
+                ));
+            }
+            value = self.to_usize(&args, &value);
+            args = "usize".into();
+        }
         let nullable = field.attrs.nullable.is_some();
         if array {
             let array_name = if nullable {
@@ -302,6 +332,13 @@ impl Context<'_> {
             writeln!(out, "    return {resolve}\n  }}").unwrap();
         }
         Ok(())
+    }
+    fn offset_target_type(&self, target: &syn::Ident) -> String {
+        if target == "T" {
+            "T".into()
+        } else {
+            format!("{target}<'a>")
+        }
     }
     pub(super) fn generic_methods(&self, out: &mut String, table: &Table) -> syn::Result<()> {
         if table.attrs.generic_offset.is_none() {

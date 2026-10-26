@@ -38,6 +38,23 @@ import tables.ltag { Ltag }
 import tables.kern { Kern }
 import tables.cff { Cff }
 import tables.cff2 { Cff2 }
+import tables.base { Base }
+import tables.gasp { Gasp }
+import tables.hdmx { Hdmx }
+import tables.stat { Stat }
+import tables.meta { Meta }
+import tables.cvar { Cvar }
+import tables.cpal { Cpal }
+import tables.svg { Svg }
+import tables.dsig { Dsig }
+import tables.sbix { Sbix }
+import tables.cbdt { Cbdt }
+import tables.cblc { Cblc }
+import tables.ebdt { Ebdt }
+import tables.eblc { Eblc }
+import tables.colr { Colr }
+import tables.math { Math }
+import tables.varc { Varc }
 pub const MODEL_TABLE_TAGS: [u32; 64] = [1634626418,1635148146,1111577413,1128678944,1128678962,1128416340,1128418371,1129270354,1129333068,1668112752,1668702578,1668707360,1145913680,1146308935,1161970772,1161972803,1717920116,1718642541,1719034226,1734439792,1195656518,1735162214,1196185926,1196445523,1196643650,1735811442,1196835154,1751412088,1751474532,1751672161,1212695873,1752003704,1213027416,1213612370,1229345824,1229345880,1246975046,1801810542,1801810552,1819239265,1280262977,1819566439,1296127048,1835104368,1296128080,1835365473,1836020340,1836020344,1297498450,1851878757,1330851634,1886352244,1886545264,1935829368,1398030676,1398163232,1953653099,1447121475,1986553185,1447576897,1986884728,1447908440,1448038983,1448493394]
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Stable byte ownership and table access without self-referential views.
@@ -138,6 +155,23 @@ effect fn collectBlobRanges<'a>(bytes:&'a [u8],index:u32,ranges:&mut List<BlobTa
 
 impl<'a> TableProvider<'a> for TablesView<'a> {
   fn dataForTag(self:&Self,tag:Tag) -> Option<FontData<'a>> { return Option<FontData<'a>>.None }
+  fn varc(self:&Self) -> Result<Varc<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.varc(&raw)) }
+  fn math(self:&Self) -> Result<Math<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.math(&raw)) }
+  fn colr(self:&Self) -> Result<Colr<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.colr(&raw)) }
+  fn sbix(self:&Self) -> Result<Sbix<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.sbix(&raw)) }
+  fn cbdt(self:&Self) -> Result<Cbdt<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cbdt(&raw)) }
+  fn cblc(self:&Self) -> Result<Cblc<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cblc(&raw)) }
+  fn ebdt(self:&Self) -> Result<Ebdt<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.ebdt(&raw)) }
+  fn eblc(self:&Self) -> Result<Eblc<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.eblc(&raw)) }
+  fn base(self:&Self) -> Result<Base<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.base(&raw)) }
+  fn gasp(self:&Self) -> Result<Gasp<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.gasp(&raw)) }
+  fn hdmx(self:&Self) -> Result<Hdmx<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.hdmx(&raw)) }
+  fn stat(self:&Self) -> Result<Stat<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.stat(&raw)) }
+  fn meta(self:&Self) -> Result<Meta<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.meta(&raw)) }
+  fn cvar(self:&Self) -> Result<Cvar<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cvar(&raw)) }
+  fn cpal(self:&Self) -> Result<Cpal<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cpal(&raw)) }
+  fn svg(self:&Self) -> Result<Svg<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.svg(&raw)) }
+  fn dsig(self:&Self) -> Result<Dsig<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.dsig(&raw)) }
   fn cff2(self:&Self) -> Result<Cff2<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cff2(&raw)) }
   fn cff(self:&Self) -> Result<Cff<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cff(&raw)) }
   fn kern(self:&Self) -> Result<Kern<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.kern(&raw)) }
@@ -188,6 +222,23 @@ impl<'a> TableProvider<'a> for TablesView<'a> {
   fn hGlyphMetricRecords(self:&Self) -> Result<GlyphMetricRecords<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.hGlyphMetricRecords(&raw)) }
 }
 impl Tables {
+  pub fn varc<'a>(self:&'a Self) -> Result<Varc<'a>,ReadError> { let view=Tables.view(self) return TableProvider.varc(&view) }
+  pub fn math<'a>(self:&'a Self) -> Result<Math<'a>,ReadError> { let view=Tables.view(self) return TableProvider.math(&view) }
+  pub fn colr<'a>(self:&'a Self) -> Result<Colr<'a>,ReadError> { let view=Tables.view(self) return TableProvider.colr(&view) }
+  pub fn sbix<'a>(self:&'a Self) -> Result<Sbix<'a>, ReadError> { let view=Tables.view(self) return TableProvider.sbix(&view) }
+  pub fn cbdt<'a>(self:&'a Self) -> Result<Cbdt<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cbdt(&view) }
+  pub fn cblc<'a>(self:&'a Self) -> Result<Cblc<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cblc(&view) }
+  pub fn ebdt<'a>(self:&'a Self) -> Result<Ebdt<'a>,ReadError> { let view=Tables.view(self) return TableProvider.ebdt(&view) }
+  pub fn eblc<'a>(self:&'a Self) -> Result<Eblc<'a>,ReadError> { let view=Tables.view(self) return TableProvider.eblc(&view) }
+  pub fn base<'a>(self:&'a Self) -> Result<Base<'a>, ReadError> { let view=Tables.view(self) return TableProvider.base(&view) }
+  pub fn gasp<'a>(self:&'a Self) -> Result<Gasp<'a>, ReadError> { let view=Tables.view(self) return TableProvider.gasp(&view) }
+  pub fn hdmx<'a>(self:&'a Self) -> Result<Hdmx<'a>, ReadError> { let view=Tables.view(self) return TableProvider.hdmx(&view) }
+  pub fn stat<'a>(self:&'a Self) -> Result<Stat<'a>, ReadError> { let view=Tables.view(self) return TableProvider.stat(&view) }
+  pub fn meta<'a>(self:&'a Self) -> Result<Meta<'a>, ReadError> { let view=Tables.view(self) return TableProvider.meta(&view) }
+  pub fn cvar<'a>(self:&'a Self) -> Result<Cvar<'a>, ReadError> { let view=Tables.view(self) return TableProvider.cvar(&view) }
+  pub fn cpal<'a>(self:&'a Self) -> Result<Cpal<'a>, ReadError> { let view=Tables.view(self) return TableProvider.cpal(&view) }
+  pub fn svg<'a>(self:&'a Self) -> Result<Svg<'a>, ReadError> { let view=Tables.view(self) return TableProvider.svg(&view) }
+  pub fn dsig<'a>(self:&'a Self) -> Result<Dsig<'a>, ReadError> { let view=Tables.view(self) return TableProvider.dsig(&view) }
   pub fn cff2<'a>(self:&'a Self) -> Result<Cff2<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cff2(&view) }
   pub fn cff<'a>(self:&'a Self) -> Result<Cff<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cff(&view) }
   pub fn kern<'a>(self:&'a Self) -> Result<Kern<'a>, ReadError> { let view=Tables.view(self) return TableProvider.kern(&view) }

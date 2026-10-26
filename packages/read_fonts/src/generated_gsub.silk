@@ -212,9 +212,30 @@ impl<'a> SingleSubst<'a> {
     SingleSubst<'a>.Format3 { value } => SingleSubstFormat3<'a>.offsetData(&value)
     SingleSubst<'a>.Format4 { value } => SingleSubstFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn substFormat(self: &Self) -> u16 { return match self.* {
+    SingleSubst<'a>.Format1 { value } => SingleSubstFormat1<'a>.substFormat(&value)
+    SingleSubst<'a>.Format2 { value } => SingleSubstFormat2<'a>.substFormat(&value)
+    SingleSubst<'a>.Format3 { value } => SingleSubstFormat3<'a>.substFormat(&value)
+    SingleSubst<'a>.Format4 { value } => SingleSubstFormat4<'a>.substFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for SingleSubst<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return SingleSubst<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for SingleSubst<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    SingleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    SingleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    SingleSubst<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    SingleSubst<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    SingleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    SingleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    SingleSubst<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    SingleSubst<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> SingleSubst<'a> { pub fn default() -> Self { return SingleSubst<'a>.Format1 { value: SingleSubstFormat1<'a>.default() } } }
 /// [Single Substitution Format 1](https://learn.microsoft.com/en-us/typography/opentype/spec/gsub#11-single-substitution-format-1)
 pub struct SingleSubstFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 3], }
@@ -1493,9 +1514,24 @@ impl<'a> MultipleSubst<'a> {
     MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.offsetData(&value)
     MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn substFormat(self: &Self) -> u16 { return match self.* {
+    MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.substFormat(&value)
+    MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.substFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for MultipleSubst<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return MultipleSubst<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for MultipleSubst<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    MultipleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    MultipleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    MultipleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    MultipleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> MultipleSubst<'a> { pub fn default() -> Self { return MultipleSubst<'a>.Format1 { value: MultipleSubstFormat1<'a>.default() } } }
 /// AlternateSubst (ISO/IEC 14496-22:2026).
 pub union AlternateSubst<'a> {
@@ -1516,9 +1552,24 @@ impl<'a> AlternateSubst<'a> {
     AlternateSubst<'a>.Format1 { value } => AlternateSubstFormat1<'a>.offsetData(&value)
     AlternateSubst<'a>.Format2 { value } => AlternateSubstFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn substFormat(self: &Self) -> u16 { return match self.* {
+    AlternateSubst<'a>.Format1 { value } => AlternateSubstFormat1<'a>.substFormat(&value)
+    AlternateSubst<'a>.Format2 { value } => AlternateSubstFormat2<'a>.substFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for AlternateSubst<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return AlternateSubst<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for AlternateSubst<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    AlternateSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    AlternateSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    AlternateSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    AlternateSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> AlternateSubst<'a> { pub fn default() -> Self { return AlternateSubst<'a>.Format1 { value: AlternateSubstFormat1<'a>.default() } } }
 /// LigatureSubst (ISO/IEC 14496-22:2026).
 pub union LigatureSubst<'a> {
@@ -1539,9 +1590,24 @@ impl<'a> LigatureSubst<'a> {
     LigatureSubst<'a>.Format1 { value } => LigatureSubstFormat1<'a>.offsetData(&value)
     LigatureSubst<'a>.Format2 { value } => LigatureSubstFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn substFormat(self: &Self) -> u16 { return match self.* {
+    LigatureSubst<'a>.Format1 { value } => LigatureSubstFormat1<'a>.substFormat(&value)
+    LigatureSubst<'a>.Format2 { value } => LigatureSubstFormat2<'a>.substFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for LigatureSubst<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return LigatureSubst<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for LigatureSubst<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    LigatureSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    LigatureSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    LigatureSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    LigatureSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> LigatureSubst<'a> { pub fn default() -> Self { return LigatureSubst<'a>.Format1 { value: LigatureSubstFormat1<'a>.default() } } }
 /// ReverseChainSingleSubst (ISO/IEC 14496-22:2026).
 pub union ReverseChainSingleSubst<'a> {
@@ -1562,9 +1628,34 @@ impl<'a> ReverseChainSingleSubst<'a> {
     ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<'a>.offsetData(&value)
     ReverseChainSingleSubst<'a>.Format2 { value } => ReverseChainSingleSubstFormat2<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn substFormat(self: &Self) -> u16 { return match self.* {
+    ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<'a>.substFormat(&value)
+    ReverseChainSingleSubst<'a>.Format2 { value } => ReverseChainSingleSubstFormat2<'a>.substFormat(&value)
+  } }
+/// Number of glyphs in the backtrack sequence.
+  pub fn backtrackGlyphCount(self: &Self) -> u16 { return match self.* {
+    ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<'a>.backtrackGlyphCount(&value)
+    ReverseChainSingleSubst<'a>.Format2 { value } => ReverseChainSingleSubstFormat2<'a>.backtrackGlyphCount(&value)
+  } }
+/// Number of glyphs in lookahead sequence.
+  pub fn lookaheadGlyphCount(self: &Self) -> u16 { return match self.* {
+    ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<'a>.lookaheadGlyphCount(&value)
+    ReverseChainSingleSubst<'a>.Format2 { value } => ReverseChainSingleSubstFormat2<'a>.lookaheadGlyphCount(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for ReverseChainSingleSubst<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return ReverseChainSingleSubst<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for ReverseChainSingleSubst<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    ReverseChainSingleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    ReverseChainSingleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    ReverseChainSingleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    ReverseChainSingleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> ReverseChainSingleSubst<'a> { pub fn default() -> Self { return ReverseChainSingleSubst<'a>.Format1 { value: ReverseChainSingleSubstFormat1<'a>.default() } } }
 
 // Handwritten extension from packages/read_fonts/src/tables/gsub_impl.silk
