@@ -30,11 +30,11 @@ effect fn process() -> i32
     let flag = HostInput.text(Bytes.asSlice(&value))
     if let Result<string, InvalidUtf8>.Success { value: text } = move flag {
       if text == "--help" {
-        run Writer.writeString("usage: font_dump FONT\nDump format 4: core, layout and variation tables, glyph data and evaluated deltas.\n") |> Effect.provideMut<Writer>(&mut writer)
+        run Writer.writeString("usage: font_dump FONT\nDump format 5: core, layout, variation and AAT tables, glyph data and evaluated helpers.\n") |> Effect.provideMut<Writer>(&mut writer)
         return 0
       }
       if text == "--version" {
-        run Writer.writeString("font_dump 0.1.0 (font-dump format 4; variation-tables scope)\n") |> Effect.provideMut<Writer>(&mut writer)
+        run Writer.writeString("font_dump 0.1.0 (font-dump format 5; aat-tables scope)\n") |> Effect.provideMut<Writer>(&mut writer)
         return 0
       }
     }

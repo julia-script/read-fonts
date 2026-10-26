@@ -9,3 +9,4 @@ publish = false
 
 [dependencies]
 read-fonts = { path = "../../upstream/read-fonts" }
+bytemuck = "1.25.2"

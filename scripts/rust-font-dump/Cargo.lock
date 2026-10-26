@@ -75,6 +75,7 @@ dependencies = [
 name = "rust-font-dump"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "read-fonts",
 ]
 

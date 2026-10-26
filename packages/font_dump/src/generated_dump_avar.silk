@@ -49,7 +49,7 @@ pub effect fn dumpAvar<'a>(path: &mut DumpPath, value: Avar<'a>) -> () ! WriterE
   DumpPath.push(&mut path, "length") run scalar(&path, count) DumpPath.pop(&mut path)
   let mut iter = VarLenArray<'a, SegmentMaps<'a>>.iter(&fieldValue)
   let mut index: usize = 0
-  while index < count { DumpPath.setIndex(&mut path, index)
+  while index < count {  DumpPath.setIndex(&mut path, index)
     if let Option<Result<SegmentMaps<'a>, ReadError>>.Some { value: result } = move VarLenIter<'a, SegmentMaps<'a>>.next(&mut iter) { match move result { Result<SegmentMaps<'a>, ReadError>.Success { value: item } => run dumpSegmentMaps(&mut path, move item, base) Result<SegmentMaps<'a>, ReadError>.Failure { error } => run readError(&path, error) } }
     index = index + 1
   }

@@ -50,6 +50,24 @@ import read_fonts.tables.vmtx as VmtxTables
 import generated_dump_vmtx
 import read_fonts.tables.vorg as VorgTables
 import generated_dump_vorg
+import read_fonts.tables.aat as AatTables
+import generated_dump_aat
+import read_fonts.tables.morx as MorxTables
+import generated_dump_morx
+import read_fonts.tables.mort as MortTables
+import generated_dump_mort
+import read_fonts.tables.kerx as KerxTables
+import generated_dump_kerx
+import read_fonts.tables.kern as KernTables
+import generated_dump_kern
+import read_fonts.tables.trak as TrakTables
+import generated_dump_trak
+import read_fonts.tables.ankr as AnkrTables
+import generated_dump_ankr
+import read_fonts.tables.feat as FeatTables
+import generated_dump_feat
+import read_fonts.tables.ltag as LtagTables
+import generated_dump_ltag
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -248,3 +266,39 @@ impl<'a> DumpTable<'a> for VheaTables.VheaExtended<'a> { effect fn dump(self: &S
 impl<'a> DumpTable<'a> for VmtxTables.Vmtx<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vmtx.dumpVmtx(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for VmtxTables.VmtxExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vmtx.dumpVmtxExtended(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for VorgTables.Vorg<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_vorg.dumpVorg(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup0<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup0(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup4<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup4(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup6<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup6(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup8<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup8(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.Lookup10<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpLookup10(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.StateHeader<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpStateHeader(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.ClassSubtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpClassSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.RawBytes<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpRawBytes(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.StxHeader<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpStxHeader(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AatTables.RawWords<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpRawWords(&mut path, self.*) } }
+impl<'a, T> DumpTable<'a> for AatTables.TypedLookup<'a, T> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_aat.dumpTypedLookup(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MorxTables.Morx<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_morx.dumpMorx(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MorxTables.Chain<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_morx.dumpChain(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MorxTables.Subtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_morx.dumpSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MortTables.Mort<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_mort.dumpMort(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MortTables.Chain<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_mort.dumpChain(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MortTables.Subtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_mort.dumpSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KerxTables.Kerx<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kerx.dumpKerx(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KerxTables.Subtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kerx.dumpSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KerxTables.Subtable0<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kerx.dumpSubtable0(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.OtKern<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpOtKern(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.AatKern<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpAatKern(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.OtSubtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpOtSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.AatSubtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpAatSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.Subtable0<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpSubtable0(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.Subtable2ClassTable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpSubtable2ClassTable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for KernTables.Subtable3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_kern.dumpSubtable3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for TrakTables.Trak<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_trak.dumpTrak(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for TrakTables.TrackData<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_trak.dumpTrackData(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AnkrTables.Ankr<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ankr.dumpAnkr(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for AnkrTables.GlyphDataEntry<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ankr.dumpGlyphDataEntry(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for FeatTables.Feat<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_feat.dumpFeat(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for FeatTables.SettingNameArray<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_feat.dumpSettingNameArray(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for LtagTables.Ltag<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ltag.dumpLtag(&mut path, self.*) } }

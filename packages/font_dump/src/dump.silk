@@ -1,3 +1,18 @@
+import extensions_morx
+import extensions_mort
+import extensions_kerx
+import extensions_kern
+import extensions_aat_common
+import extensions_aat_misc
+import generated_dump_aat
+import generated_dump_morx
+import generated_dump_mort
+import generated_dump_kerx
+import generated_dump_kern
+import generated_dump_trak
+import generated_dump_ankr
+import generated_dump_feat
+import generated_dump_ltag
 //! Stable directory dump, shared by the CLI and regression tests.
 import read_fonts.lib { FileRef, FontRef, CollectionRef, TableDirectory, TableRecord, TableRecords, TTCHeader, FontData, ReadError, ScalarArray }
 import font_types.lib { Tag }
@@ -101,11 +116,23 @@ effect fn font<'a>(index: u32, font: FontRef<'a>) -> () ! WriterError ? &mut Wri
   run generated_dump_vhea.dumpTables(&mut path, &font)
   run generated_dump_vmtx.dumpTables(&mut path, &font)
   run generated_dump_vorg.dumpTables(&mut path, &font)
+  run generated_dump_morx.dumpTables(&mut path, &font)
+  run generated_dump_mort.dumpTables(&mut path, &font)
+  run generated_dump_kerx.dumpTables(&mut path, &font)
+  run generated_dump_trak.dumpTables(&mut path, &font)
+  run generated_dump_ankr.dumpTables(&mut path, &font)
+  run generated_dump_feat.dumpTables(&mut path, &font)
+  run generated_dump_ltag.dumpTables(&mut path, &font)
   run extensions_glyphs.dump(&mut path, &font)
+  run extensions_morx.dump(&mut path, &font)
+  run extensions_mort.dump(&mut path, &font)
+  run extensions_kerx.dump(&mut path, &font)
+  run extensions_kern.dump(&mut path, &font)
+  run extensions_aat_misc.dump(&mut path, &font)
   run extensions_metric_variations.dump(&mut path, &font)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
-  run Format.format("font-dump.version=4\ndump.scope=variation-tables\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=5\ndump.scope=aat-tables\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value
