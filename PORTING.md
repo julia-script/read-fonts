@@ -499,3 +499,14 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   are serialized as UTF-8 byte hex, preserving malformed-string errors without
   relying on platform text escaping. Signature blocks follow the public resolver's
   format and exact-length checks.
+
+- The bitmap location/data model uses borrowed SmallGlyphMetrics and
+  BigGlyphMetrics records, so BitmapLocation, BitmapMetrics and BitmapData carry
+  a font-data lifetime. BitmapContent.Composite is a borrowed ComputedArray.
+  Location arithmetic remains checked and indexTablesSize is deliberately ignored,
+  matching upstream and FreeType. The five location formats preserve sparse-ID
+  errors, image-data bases and empty image sizes.
+- Bitmap traversal decodes each declared strike/glyph through the public location
+  and image APIs, including metrics, packed bytes, PNG bytes and composite records.
+  sbix glyph slices start separate traversal scopes because different bounded
+  slices can have equal lengths; equal lengths alone do not identify aliases.

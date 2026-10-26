@@ -389,3 +389,14 @@ impl<'a> FontRef<'a> { pub fn svg(self: &Self) -> Result<Svg<'a>, ReadError> { r
 
 import tables.dsig { Dsig }
 impl<'a> FontRef<'a> { pub fn dsig(self: &Self) -> Result<Dsig<'a>, ReadError> { return TableProvider.dsig(self) } }
+
+import tables.sbix { Sbix }
+impl<'a> FontRef<'a> { pub fn sbix(self: &Self) -> Result<Sbix<'a>,ReadError> { return TableProvider.sbix(self) } }
+import tables.cbdt { Cbdt }
+impl<'a> FontRef<'a> { pub fn cbdt(self: &Self) -> Result<Cbdt<'a>,ReadError> { return TableProvider.cbdt(self) } }
+import tables.cblc { Cblc }
+impl<'a> FontRef<'a> { pub fn cblc(self: &Self) -> Result<Cblc<'a>,ReadError> { return TableProvider.cblc(self) } }
+import tables.ebdt { Ebdt }
+impl<'a> FontRef<'a> { pub fn ebdt(self: &Self) -> Result<Ebdt<'a>,ReadError> { return TableProvider.ebdt(self) } }
+import tables.eblc { Eblc }
+impl<'a> FontRef<'a> { pub fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { return TableProvider.eblc(self) } }

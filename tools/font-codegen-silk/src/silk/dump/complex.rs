@@ -24,6 +24,8 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "cvar" => out.push_str("import read_fonts.tables.variations { TupleVariationHeader, TupleVariationCount }\n"),
             "meta" => out.push_str("import read_fonts.tables.meta { Metadata, ScriptLangTag }\n"),
             "hdmx" => out.push_str("import read_fonts.tables.hdmx { DeviceRecord }\n"),
+            "bitmap" => out.push_str("import read_fonts.tables.bitmap { IndexSubtable }\n"),
+            "cblc" | "eblc" => out.push_str("import generated_dump_bitmap { dumpBitmapSize }\n"),
             "vmtx" => out.push_str("import generated_dump_hmtx { dumpLongMetric }\n"),
             "aat" => out.push_str("import read_fonts.tables.aat { LookupU16, TypedLookup }\n"),
             "ankr" => out.push_str("import read_fonts.tables.aat { LookupU16 }\n"),
@@ -38,6 +40,7 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "gvar" => out.push_str("use read_fonts::tables::variations::{Tuple, TupleVariationCount, TupleVariationHeader};\nuse crate::generated_dump_variations::dump_Tuple;\n"),
             "base" => out.push_str("use read_fonts::tables::{layout::DeviceOrVariationIndex, variations::ItemVariationStore};\n"),
             "cvar" => out.push_str("use read_fonts::tables::variations::{TupleVariationHeader, TupleVariationCount};\n"),
+            "cblc" | "eblc" => out.push_str("use crate::generated_dump_bitmap::dump_BitmapSize;\n"),
             "kern" => out.push_str("use crate::generated_dump_kerx::dump_Subtable0Pair;\n"),
             "vmtx" => out.push_str("use read_fonts::tables::hmtx::LongMetric;\nuse crate::generated_dump_hmtx::dump_LongMetric;\n"),
             _ => (),
@@ -86,6 +89,7 @@ impl DumpContext<'_> {
                         match typ.as_str() {
                             "u8" | "u16" | "u32" | "u64" => format!("{typ}.toU64({value})"),
                             "Tag" => format!("u32.toU64(Tag.toU32({value}))"),
+                            "GlyphId16" => format!("u32.toU64(GlyphId16.toU32({value}))"),
                             "ValueFormat" | "GvarFlags" => {
                                 format!("u16.toU64({typ}.bits(&{value}))")
                             }
@@ -102,6 +106,7 @@ impl DumpContext<'_> {
                             "Tag" => {
                                 format!("u64::from(u32::from_be_bytes({value}.to_be_bytes()))")
                             }
+                            "GlyphId16" => format!("u64::from({value}.to_u32())"),
                             "ValueFormat" | "TupleIndex" | "GvarFlags" => {
                                 format!("u64::from({value}.bits())")
                             }

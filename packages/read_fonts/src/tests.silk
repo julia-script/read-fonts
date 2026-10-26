@@ -368,3 +368,5 @@ import model_scaled_metrics_tests
 
 import model_glyph_source_tests
 import phase2_core_tests
+
+import phase2_bitmap_tests

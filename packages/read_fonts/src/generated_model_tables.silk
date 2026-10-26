@@ -47,6 +47,11 @@ import tables.cvar { Cvar }
 import tables.cpal { Cpal }
 import tables.svg { Svg }
 import tables.dsig { Dsig }
+import tables.sbix { Sbix }
+import tables.cbdt { Cbdt }
+import tables.cblc { Cblc }
+import tables.ebdt { Ebdt }
+import tables.eblc { Eblc }
 pub const MODEL_TABLE_TAGS: [u32; 64] = [1634626418,1635148146,1111577413,1128678944,1128678962,1128416340,1128418371,1129270354,1129333068,1668112752,1668702578,1668707360,1145913680,1146308935,1161970772,1161972803,1717920116,1718642541,1719034226,1734439792,1195656518,1735162214,1196185926,1196445523,1196643650,1735811442,1196835154,1751412088,1751474532,1751672161,1212695873,1752003704,1213027416,1213612370,1229345824,1229345880,1246975046,1801810542,1801810552,1819239265,1280262977,1819566439,1296127048,1835104368,1296128080,1835365473,1836020340,1836020344,1297498450,1851878757,1330851634,1886352244,1886545264,1935829368,1398030676,1398163232,1953653099,1447121475,1986553185,1447576897,1986884728,1447908440,1448038983,1448493394]
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Stable byte ownership and table access without self-referential views.
@@ -147,6 +152,11 @@ effect fn collectBlobRanges<'a>(bytes:&'a [u8],index:u32,ranges:&mut List<BlobTa
 
 impl<'a> TableProvider<'a> for TablesView<'a> {
   fn dataForTag(self:&Self,tag:Tag) -> Option<FontData<'a>> { return Option<FontData<'a>>.None }
+  fn sbix(self:&Self) -> Result<Sbix<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.sbix(&raw)) }
+  fn cbdt(self:&Self) -> Result<Cbdt<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cbdt(&raw)) }
+  fn cblc(self:&Self) -> Result<Cblc<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.cblc(&raw)) }
+  fn ebdt(self:&Self) -> Result<Ebdt<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.ebdt(&raw)) }
+  fn eblc(self:&Self) -> Result<Eblc<'a>,ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.eblc(&raw)) }
   fn base(self:&Self) -> Result<Base<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.base(&raw)) }
   fn gasp(self:&Self) -> Result<Gasp<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.gasp(&raw)) }
   fn hdmx(self:&Self) -> Result<Hdmx<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.hdmx(&raw)) }
@@ -206,6 +216,11 @@ impl<'a> TableProvider<'a> for TablesView<'a> {
   fn hGlyphMetricRecords(self:&Self) -> Result<GlyphMetricRecords<'a>, ReadError> { let raw=RawTables<'a> { tables:self.tables } return validated(TableProvider.hGlyphMetricRecords(&raw)) }
 }
 impl Tables {
+  pub fn sbix<'a>(self:&'a Self) -> Result<Sbix<'a>, ReadError> { let view=Tables.view(self) return TableProvider.sbix(&view) }
+  pub fn cbdt<'a>(self:&'a Self) -> Result<Cbdt<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cbdt(&view) }
+  pub fn cblc<'a>(self:&'a Self) -> Result<Cblc<'a>,ReadError> { let view=Tables.view(self) return TableProvider.cblc(&view) }
+  pub fn ebdt<'a>(self:&'a Self) -> Result<Ebdt<'a>,ReadError> { let view=Tables.view(self) return TableProvider.ebdt(&view) }
+  pub fn eblc<'a>(self:&'a Self) -> Result<Eblc<'a>,ReadError> { let view=Tables.view(self) return TableProvider.eblc(&view) }
   pub fn base<'a>(self:&'a Self) -> Result<Base<'a>, ReadError> { let view=Tables.view(self) return TableProvider.base(&view) }
   pub fn gasp<'a>(self:&'a Self) -> Result<Gasp<'a>, ReadError> { let view=Tables.view(self) return TableProvider.gasp(&view) }
   pub fn hdmx<'a>(self:&'a Self) -> Result<Hdmx<'a>, ReadError> { let view=Tables.view(self) return TableProvider.hdmx(&view) }

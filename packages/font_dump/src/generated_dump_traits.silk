@@ -90,6 +90,18 @@ import read_fonts.tables.svg as SvgTables
 import generated_dump_svg
 import read_fonts.tables.dsig as DsigTables
 import generated_dump_dsig
+import read_fonts.tables.bitmap as BitmapTables
+import generated_dump_bitmap
+import read_fonts.tables.sbix as SbixTables
+import generated_dump_sbix
+import read_fonts.tables.cbdt as CbdtTables
+import generated_dump_cbdt
+import read_fonts.tables.cblc as CblcTables
+import generated_dump_cblc
+import read_fonts.tables.ebdt as EbdtTables
+import generated_dump_ebdt
+import read_fonts.tables.eblc as EblcTables
+import generated_dump_eblc
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -364,3 +376,17 @@ impl<'a> DumpTable<'a> for SvgTables.Svg<'a> { effect fn dump(self: &Self, path:
 impl<'a> DumpTable<'a> for SvgTables.SVGDocumentList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_svg.dumpSVGDocumentList(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for DsigTables.Dsig<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_dsig.dumpDsig(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for DsigTables.SignatureBlockFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_dsig.dumpSignatureBlockFormat1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtableList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtableList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable4<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable4(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable5<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable5(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BitmapTables.IndexSubtable<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_bitmap.dumpIndexSubtable(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for SbixTables.Sbix<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_sbix.dumpSbix(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for SbixTables.Strike<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_sbix.dumpStrike(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for SbixTables.GlyphData<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_sbix.dumpGlyphData(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CbdtTables.Cbdt<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cbdt.dumpCbdt(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CblcTables.Cblc<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cblc.dumpCblc(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for EbdtTables.Ebdt<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ebdt.dumpEbdt(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for EblcTables.Eblc<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_eblc.dumpEblc(&mut path, self.*) } }

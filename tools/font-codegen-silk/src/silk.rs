@@ -106,6 +106,7 @@ impl Context<'_> {
             | "TupleVariationCount" => 2,
             "LongMetric" => 4,
             "Subtable0Pair" => 6,
+            "BitmapSize" => 48,
             "Uint24" | "Int24" | "GlyphId24" | "Offset24" => 3,
             "u32" | "i32" | "Fixed" | "Tag" | "GlyphId" | "MajorMinor" | "Version16Dot16"
             | "Offset32" => 4,
@@ -335,7 +336,9 @@ impl Context<'_> {
             "u8" | "u16" | "u32" => format!("{typ}.toUsize({expr})"),
             "usize" => expr.into(),
             "i16" => format!("signedCount(i16.toI64({expr}))"),
-            "Uint24" | "GlyphId" | "GlyphId24" => format!("u32.toUsize({typ}.toU32({expr}))"),
+            "Uint24" | "GlyphId" | "GlyphId24" | "GlyphId16" => {
+                format!("u32.toUsize({typ}.toU32({expr}))")
+            }
             _ => format!("{typ}.toUsize({expr})"),
         }
     }
@@ -373,6 +376,10 @@ impl Context<'_> {
                     CountTransform::Half => format!("({} / 2)", a[0]),
                     CountTransform::Add => format!("usize.saturatingAdd({}, {})", a[0], a[1]),
                     CountTransform::Sub => format!("usize.saturatingSubtract({}, {})", a[0], a[1]),
+                    CountTransform::SubAddTwo => format!(
+                        "usize.saturatingAdd(usize.saturatingSubtract({}, {}), 2)",
+                        a[0], a[1]
+                    ),
                     CountTransform::AddMul => format!(
                         "usize.saturatingMultiply(usize.saturatingAdd({}, {}), {})",
                         a[0], a[1], a[2]

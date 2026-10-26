@@ -731,3 +731,107 @@ target = "packages/font_dump/src/generated_dump_dsig.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/dsig.rs"
 target = "scripts/rust-font-dump/src/generated_dump_dsig.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/bitmap.rs"
+target = "packages/read_fonts/src/generated_bitmap.silk"
+facade = "packages/read_fonts/src/tables/bitmap.silk"
+extensions = ["packages/read_fonts/src/tables/bitmap_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/sbix.rs"
+target = "packages/read_fonts/src/generated_sbix.silk"
+facade = "packages/read_fonts/src/tables/sbix.silk"
+extensions = ["packages/read_fonts/src/tables/sbix_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/cbdt.rs"
+target = "packages/read_fonts/src/generated_cbdt.silk"
+facade = "packages/read_fonts/src/tables/cbdt.silk"
+extensions = ["packages/read_fonts/src/tables/cbdt_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/cblc.rs"
+target = "packages/read_fonts/src/generated_cblc.silk"
+facade = "packages/read_fonts/src/tables/cblc.silk"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/ebdt.rs"
+target = "packages/read_fonts/src/generated_ebdt.silk"
+facade = "packages/read_fonts/src/tables/ebdt.silk"
+extensions = ["packages/read_fonts/src/tables/ebdt_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/eblc.rs"
+target = "packages/read_fonts/src/generated_eblc.silk"
+facade = "packages/read_fonts/src/tables/eblc.silk"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/bitmap.rs"
+target = "packages/font_dump/src/generated_dump_bitmap.silk"
+extensions = ["packages/font_dump/src/extensions_dump_bitmap.silk"]
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/bitmap.rs"
+target = "scripts/rust-font-dump/src/generated_dump_bitmap.rs"
+extensions = ["scripts/rust-font-dump/src/extensions_dump_bitmap.rs"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/sbix.rs"
+target = "packages/font_dump/src/generated_dump_sbix.silk"
+extensions = ["packages/font_dump/src/extensions_dump_sbix.silk"]
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/sbix.rs"
+target = "scripts/rust-font-dump/src/generated_dump_sbix.rs"
+extensions = ["scripts/rust-font-dump/src/extensions_dump_sbix.rs"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/cbdt.rs"
+target = "packages/font_dump/src/generated_dump_cbdt.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/cbdt.rs"
+target = "scripts/rust-font-dump/src/generated_dump_cbdt.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/cblc.rs"
+target = "packages/font_dump/src/generated_dump_cblc.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/cblc.rs"
+target = "scripts/rust-font-dump/src/generated_dump_cblc.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/ebdt.rs"
+target = "packages/font_dump/src/generated_dump_ebdt.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/ebdt.rs"
+target = "scripts/rust-font-dump/src/generated_dump_ebdt.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/eblc.rs"
+target = "packages/font_dump/src/generated_dump_eblc.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/eblc.rs"
+target = "scripts/rust-font-dump/src/generated_dump_eblc.rs"

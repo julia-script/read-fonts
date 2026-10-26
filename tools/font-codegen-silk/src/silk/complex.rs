@@ -30,6 +30,7 @@ impl Context<'_> {
             "gvar" => out.push_str("import generated_variations { Tuple, TupleVariationHeader, TupleVariationCount }\n"),
             "base" => out.push_str("import generated_layout { DeviceOrVariationIndex, Device, VariationIndex }\nimport generated_variations { ItemVariationStore, DeltaSetIndex }\n"),
             "cvar" => out.push_str("import generated_variations { TupleVariationHeader, TupleVariationCount }\n"),
+            "cblc" | "eblc" => out.push_str("pub import generated_bitmap { BitmapSize }\n"),
             _ => (),
         }
     }

@@ -815,3 +815,26 @@ check, and the generator's 10 tests pass. A stale local compiler semantic cache
 caused invalid symbol-resolution diagnostics; a clean cache builds successfully.
 A reduced cache reproducer is still being investigated. The full debug corpus
 comparison is running against immutable copies of the foundation binaries.
+
+## Session 44 — 2026-10-26 — Phase 2 bitmap tables
+
+The shared bitmap grammar and sbix, CBDT/CBLC and EBDT/EBLC are implemented,
+including all five location formats and all supported image formats. Their nine
+upstream tests pass; the full parser suite passes **750 read_fonts tests**, and
+**794 upstream tests** are ported overall. font_types remains at 64 tests.
+
+**1,850 / 1,850 Phase 2 fixtures match** in debug, with zero differences/process
+failures. They include all location/image-format combinations, sparse glyphs,
+truncated paired tables, corrupt location offsets/counts and sbix equal-sized,
+empty, reversed and out-of-range glyph slices. Both dumpers include each bitmap's
+metrics and complete content. Generated model forwarding now has 62 typed methods.
+Evidence: reports/milestone-9-bitmap-fixtures.json.gz.
+
+The foundation corpus run initially hit the harness's default 30-second limit on
+AdobeBlank2; it was restarted with the established 600-second corpus limit and is
+still running against fixed binary copies. COLR, MATH, VARC, dependent model
+behavior/tests, the final parity gate and performance measurement remain pending.
+
+All 147 generated outputs pass the drift check. Rust Clippy passes with warnings
+as errors after the dump generator learned that fixed-size embedded record getters
+already return a reference. This changes borrowing syntax, not dump observations.

@@ -31,6 +31,16 @@ import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
+  fn sbix(self: &Self) -> Result<Sbix<'a>, ReadError> {
+    let maxp = match move TableProvider.selectedMaxp(self) { Result<SelectedMaxp<'a>,ReadError>.Success { value } => value Result<SelectedMaxp<'a>,ReadError>.Failure { error } => { return Result<Sbix<'a>,ReadError>.failResult(error) } }
+    let data = match move TableProvider.expectDataForTag(self,Sbix.tag()) { Result<FontData<'a>,ReadError>.Success { value } => value Result<FontData<'a>,ReadError>.Failure { error } => { return Result<Sbix<'a>,ReadError>.failResult(error) } }
+    return Sbix.read(data,SelectedMaxp.numGlyphs(&maxp))
+  }
+  fn cbdt(self: &Self) -> Result<Cbdt<'a>,ReadError> { return readTable<Cbdt<'a>,Self>(self,Cbdt.tag()) }
+  fn cblc(self: &Self) -> Result<Cblc<'a>,ReadError> { return readTable<Cblc<'a>,Self>(self,Cblc.tag()) }
+  fn ebdt(self: &Self) -> Result<Ebdt<'a>,ReadError> { return readTable<Ebdt<'a>,Self>(self,Ebdt.tag()) }
+  fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { return readTable<Eblc<'a>,Self>(self,Eblc.tag()) }
+
   fn base(self: &Self) -> Result<Base<'a>, ReadError> { return readTable<Base<'a>, Self>(self, Base.tag()) }
   fn gasp(self: &Self) -> Result<Gasp<'a>, ReadError> { return readTable<Gasp<'a>, Self>(self, Gasp.tag()) }
   fn hdmx(self: &Self) -> Result<Hdmx<'a>, ReadError> {
@@ -225,3 +235,9 @@ import tables.cpal { Cpal }
 import tables.svg { Svg }
 
 import tables.dsig { Dsig }
+
+import tables.sbix { Sbix }
+import tables.cbdt { Cbdt }
+import tables.cblc { Cblc }
+import tables.ebdt { Ebdt }
+import tables.eblc { Eblc }
