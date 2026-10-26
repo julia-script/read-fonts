@@ -241,3 +241,42 @@ matching the sfnt glyph-ID domain; `.probeCount` / `.glyphProbeCount` state that
 bound explicitly. Custom charset and encoding fields retain original order.
 Graph scopes restart for independently addressed structures so equal-size data
 cannot share a false reference. The harness still compares every emitted byte.
+
+## Version 7: model APIs and layout intersections
+
+Version `7`, scope `model-apis`, retains the complete version-6 table traversal.
+Each newly visited coverage or class-definition node additionally evaluates
+three IntSet queries: empty; the sparse glyph IDs 0, 1, 2, 10, 255, 256, 511, 512,
+65535, 65536, 70000, 16777215 and 4294967295; and the inclusive range 0–64.
+Coverage observations contain `intersects` and the complete ordered intersection.
+Class observations contain the ordered intersected classes, then boolean and
+ordered glyph intersections for classes 0, 1, 2, 3, 65535, 65536 and 4294967295.
+The observations are emitted once per visited concrete table node, including
+extended formats 3 and 4; graph references do not repeat the work.
+
+Each face then has a `model` section constructed through its model Tables source.
+Charmaps report Unicode/symbol/Mac Roman/UVS selection, fixed scalar/batch probes,
+Unicode and UVS cursors, and each encoding's identity and code cursor. Every
+emitted cursor entry also reports the corresponding scalar lookup. Glyph names
+report their source, hexadecimal UTF-8 and exact reverse lookup; the name cursor
+is observed independently of indexed lookup.
+
+`glyphProbeLimit=65536` bounds extra indexed glyph observations and the name
+cursor. Indexed probes also include the last declared glyph, the first two IDs
+after the font, and u32::MAX, without duplicates. `mappingProbeLimit=1114112`
+bounds each extra mapping cursor. These bounds apply only to evaluated helpers;
+generated table fields and arrays remain complete.
+
+Fonts without usable fvar axes have one default location. Variable fonts use
+uniform normalized coordinates 0, -8192, 8192 and 16384 on all declared usable
+axes; the default instance has an empty coordinate slice. Each location reports
+all global Metrics fields, the selected horizontal line, exact horizontal and
+vertical advances, vertical origins, and extents. It also reports the public
+ScaleF32 and Scale26Dot6 measurements at 16 ppem. Exact values use signed raw
+48.16 bits, 26.6 results use signed raw bits, and f32 results use unsigned IEEE
+bits, so comparison loses no fractions or signed zeros.
+
+The M7 `extentsSourceOrder=base-outlines` selects glyf, CFF2 and CFF (Type 1 is
+outside the port). Phase 2 adds observations for the complete bitmap/color/VARC
+chain. Unavailable ink is `none`; a present empty glyph has four zero fields.
+Allocation failure aborts the dump rather than emitting a successful observation.

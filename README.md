@@ -1,10 +1,10 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestones 0–6 implement
+to Silk, intended to support a later HarfRust port. **Milestones 0–7 implement
 scalar types, borrowed sfnt/TTC parsing, core/layout/variation tables, vertical
 metrics, TrueType glyph and variation data, AAT tables/helpers, and CFF/CFF2
-names, charstrings, widths and bounds.**
+names, charstrings, widths and bounds; integer sets and the requested font model APIs.**
 The full port remains in progress. See [PROGRESS.md](PROGRESS.md) and the original
 [porting plan](docs/PORTING-PLAN.md).
 
@@ -30,16 +30,17 @@ If cloning without `--recurse-submodules`, run `git submodule update --init --re
 scripts/generate --check
 scripts/build
 scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
-scripts/verify-reference --timeout 120 --report build/reference-report.json
+scripts/verify-reference --timeout 600 --report build/reference-report.json
 silk test --manifest-path packages/font_types/silk.toml --root src/tests.silk
 silk test --manifest-path packages/read_fonts/silk.toml --root src/tests.silk
-scripts/compare --timeout 120 --report build/parity-report.json
+scripts/compare --timeout 600 --report build/parity-report.json
 scripts/check-core-fixtures
 scripts/check-table-fixtures --report build/table-fixtures-report.json
 scripts/check-layout-fixtures --report build/layout-fixtures-report.json
 scripts/check-variation-fixtures --report build/variation-fixtures-report.json
 scripts/check-aat-fixtures --report build/aat-fixtures-report.json
 scripts/check-cff-fixtures --report build/cff-fixtures-report.json
+scripts/check-model-fixtures --report build/model-fixtures-report.json
 python3 -m unittest discover -s scripts/tests -v
 cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
 cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
@@ -53,15 +54,15 @@ and all excluded non-font files. The checked-in [report](reports/milestone-0.jso
 is the result for the pinned snapshots.
 
 ```sh
-scripts/compare --timeout 120 --fonts build/fonts.txt
+scripts/compare --timeout 600 --fonts build/fonts.txt
 ```
 
 `compare` runs both binaries and prints the first differing line. Core, layout,
-variation, AAT and CFF dumps match on all **566 corpus files**, plus **9,146 CFF
-fixtures**, in debug and release. The expanded debug protocol also passes
+variation, AAT, CFF, model and set-intersection dumps match on all **566 corpus
+files**, plus **9,146 CFF fixtures** and **154 model fixtures**, in debug and release. The expanded debug protocol also passes
 **426 container edge cases**, **500 core-table fixtures**, **2,650 layout fixtures**,
-**2,882 variation fixtures** and **8,551 AAT fixtures**. CFF names, widths and bounds
-are compared at four normalized locations. Complete CFF fixture reports in
+**2,882 variation fixtures** and **8,551 AAT fixtures**. CFF and model metrics, names and bounds are compared at four normalized locations.
+The model gate also compares character maps and exact scaled-metric bits. Complete CFF fixture reports in
 `reports/` are gzip-compressed; corpus reports remain plain JSON.
 Repeated table views use explicit references to their preceding complete field dumps.
 Matching dumps return 0, different dumps return 1, and harness/process failures
@@ -81,7 +82,7 @@ silk build --release
 `--fonts` accepts a UTF-8 file with one filename per line. Relative font paths are
 resolved against this repository; blank lines and lines beginning with `#` are
 ignored. Omitting `--fonts` discovers the complete pinned corpus. `--timeout` sets
-the per-process limit (30 seconds by default; the table gate uses 120 for large or deliberately malformed fonts). Override compiled binaries with
+the per-process limit (30 seconds by default; the table/model gate uses 600 for large or deliberately malformed fonts). Override compiled binaries with
 `--reference PATH` and `--silk-dumper PATH`. After `scripts/build --release`, pass
 `build/rust/release/rust-font-dump` and `build/llvm/<target>/release/font_dump`.
 `CARGO` and `SILK` can override build-tool executable paths.
@@ -89,7 +90,7 @@ the per-process limit (30 seconds by default; the table gate uses 120 for large 
 ## Layout
 
 - `packages/font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
-- `packages/read_fonts`: borrowed reads, checked offsets, arrays, sfnt/TTC directories, core tables and layout tables.
+- `packages/read_fonts`: borrowed parsing, generated tables, integer collections and font model APIs.
 - `packages/font_dump`: CLI producing stable directory, table and extension observations.
 - `scripts/rust-font-dump`: Rust reference binary linked to the vendored read-fonts.
 - `scripts/`: corpus listing, reference gate, comparison, and harness tests.
@@ -105,8 +106,8 @@ are paths; future consumers can use this repository as a submodule.
 ## Contract and license
 
 The active [dump format](docs/DUMP-FORMAT.md) covers directories, core and layout
-tables, variations, vertical metrics, TrueType glyphs and AAT tables/helpers.
-CFF and model results follow at later gates.
+tables, variations, vertical metrics, TrueType glyphs, AAT, CFF/CFF2 and the Phase 1
+model APIs. Bitmap, color and VARC model sources follow their Phase 2 tables.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
 [COMPILER-BUGS.md](COMPILER-BUGS.md), and missing library APIs in
 [STDLIB-GAPS.md](STDLIB-GAPS.md).

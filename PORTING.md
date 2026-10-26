@@ -335,7 +335,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   produce JSON reports larger than GitHub's per-file limit; no observations are
   removed from those reports.
 
-## Milestone 7 (in progress)
+## Milestone 7
 
 - Integer-set pages retain eight u64 words, cached membership counts, modulo-512
   indexing and ordered bidirectional iteration. Iterator structs expose `next`
@@ -436,7 +436,8 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Bitmap/COLR/VARC extents and their dependent model tests remain scheduled with
   their Phase 2 parsers. Their source-order entries already retain upstream
   ordering; the current implementation resolves the Phase 1 outline sources.
-  The full M7 differential gate and remaining glyph/scaled unit tests are pending.
+  The Phase 1 glyph/scaled unit tests are complete; the differential gate is
+  recorded separately in PROGRESS.md.
 - Public GlyphMetrics constructors collapse an all-zero coordinate slice to an
   empty borrowed view, matching the model instance builder's default-instance
   semantics. Callers still supply normalized coordinates explicitly; this subset
@@ -457,3 +458,12 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   ScaledGlyphMetrics subset. Its all-fields and clipping-line tests are excluded;
   global line-end scaling is tested directly with a custom rounding Scale, and
   agrees with the vertical advance chosen by ScaledGlyphMetrics.
+
+- Format 7 appends public model observations and layout IntSet intersections to
+  the complete existing table dump. Glyph helpers retain the explicit sfnt-domain
+  bound and also probe the last declared glyph and invalid IDs; mapping cursors
+  have a stated Unicode-domain count bound. Fixed and floating-point values use
+  raw bits. Both models read the same whole font/collection through Tables.
+- Layout intersection observations run once per concrete graph node. Their
+  short-lived allocator is local to the dump adapter; allocation failure becomes
+  a dumper failure through WriterError. Public parser/IntSet effects are unchanged.

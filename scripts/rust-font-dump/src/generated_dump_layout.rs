@@ -469,6 +469,7 @@ pub fn dump_CoverageFormat1(
             writeln!(out, "{path}={}", item.to_u16())?;
         }
     }
+    crate::extensions_sets::coverage(out, path, &CoverageTable::Format1(value.clone()))?;
     Ok(())
 }
 
@@ -508,6 +509,7 @@ pub fn dump_CoverageFormat2(
             dump_RangeRecord(out, path, item, base)?;
         }
     }
+    crate::extensions_sets::coverage(out, path, &CoverageTable::Format2(value.clone()))?;
     Ok(())
 }
 
@@ -616,6 +618,7 @@ pub fn dump_ClassDefFormat1(
             writeln!(out, "{path}={}", item)?;
         }
     }
+    crate::extensions_sets::classes(out, path, &ClassDef::Format1(value.clone()))?;
     Ok(())
 }
 
@@ -655,6 +658,7 @@ pub fn dump_ClassDefFormat2(
             dump_ClassRangeRecord(out, path, item, base)?;
         }
     }
+    crate::extensions_sets::classes(out, path, &ClassDef::Format2(value.clone()))?;
     Ok(())
 }
 
@@ -2738,6 +2742,7 @@ pub fn dump_CoverageFormat3(
             writeln!(out, "{path}={}", item.to_u32())?;
         }
     }
+    crate::extensions_sets::coverage(out, path, &CoverageTable::Format3(value.clone()))?;
     Ok(())
 }
 
@@ -2777,6 +2782,7 @@ pub fn dump_CoverageFormat4(
             dump_RangeRecord2(out, path, item, base)?;
         }
     }
+    crate::extensions_sets::coverage(out, path, &CoverageTable::Format4(value.clone()))?;
     Ok(())
 }
 
@@ -2849,6 +2855,7 @@ pub fn dump_ClassDefFormat3(
             writeln!(out, "{path}={}", item.to_u32())?;
         }
     }
+    crate::extensions_sets::classes(out, path, &ClassDef::Format3(value.clone()))?;
     Ok(())
 }
 
@@ -2888,6 +2895,7 @@ pub fn dump_ClassDefFormat4(
             dump_ClassRangeRecord2(out, path, item, base)?;
         }
     }
+    crate::extensions_sets::classes(out, path, &ClassDef::Format4(value.clone()))?;
     Ok(())
 }
 

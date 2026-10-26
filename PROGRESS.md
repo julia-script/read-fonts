@@ -710,3 +710,28 @@ facade are outside scope. Ten bitmap/color/VARC glyph tests, one bitmap-scale
 test and one narrow-source conversion test follow their Phase 2 dependencies.
 The M7 format-7 model/intersection dump and corpus comparisons remain pending;
 PR 8 stays a draft. M8–M9 have not started, and the overall port is not complete.
+
+## Session 39 — 2026-10-26 — milestone 7 local gate complete
+
+Format 7 compares public Tables, Charmap, glyph names and reverse lookup, global
+and glyph metrics, F32/26.6 scales, extents at four normalized locations, and
+Coverage/ClassDef integer-set intersections. Debug and release both match all
+**566 corpus fonts** and **154 focused model fixtures**, with no differing lines.
+The complete unit suite remains **719 read_fonts tests**, **64 font_types tests**,
+and **765 upstream ports**.
+
+All prior focused debug gates pass: 426 containers, 500 core tables, 2,650 layout,
+2,882 variations, 8,551 AAT and 9,146 CFF fixtures. Release AAT and CFF gates also
+pass. Generation drift (102 outputs and 33 model fixtures), Rust formatting,
+10 generator tests, 7 reference tests, all-target Clippy and 15 Python tests pass.
+
+The initial debug corpus run matched 429 fonts before the 65,535-glyph FDArray
+font exceeded its 120-second process limit. The remaining 137 matched with a
+600-second limit. The combined debug report verifies every input/binary hash and
+records that provenance; the release run completed all 566 uninterrupted. CI
+will rerun the full corpus from the beginning with the longer timeout.
+
+Evidence: reports/milestone-7-model.json, milestone-7-release-model.json,
+milestone-7-model-fixtures.json and milestone-7-release-model-fixtures.json.
+PR #8 is ready for CI review. M8 malformed-input campaigns and M9 Phase 2 tables
+and performance remain; the overall port is not yet complete.
