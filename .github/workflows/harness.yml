@@ -25,7 +25,7 @@ jobs:
           echo "$HOME/.silk/bin" >> "$GITHUB_PATH"
       - name: Build both dumpers
         env:
-          SILK_CLANG: clang-18
+          SILK_CLANG: /usr/bin/clang-18
         run: scripts/build
       - name: Check reference and harness tests
         run: |
@@ -39,7 +39,7 @@ jobs:
           scripts/verify-reference --report build/reference-report.json
       - name: Smoke-test the Silk skeleton
         env:
-          SILK_CLANG: clang-18
+          SILK_CLANG: /usr/bin/clang-18
         working-directory: packages/font_dump
         run: |
           silk run -- --help

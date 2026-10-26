@@ -39,6 +39,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   paths can remain bytes.
 - Root/library builds check source but do not emit a binary. Build `font_dump` from
   its member directory. The output tree is a real directory, with no symlink.
+- `SILK_CLANG` must name an absolute executable path. The first CI run used a bare
+  `clang-18` value and failed during linking with `cannot resolve path: invalid path`;
+  the workflow now uses `/usr/bin/clang-18`, matching the local absolute-path setup.
 - Keep borrowed table data lifetimes explicit; use finite generic specialization
   (GEN-006), eager offsets, checked arithmetic, and nominal unions for format groups.
   No `mod.silk` barrels are used.

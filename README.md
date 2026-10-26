@@ -15,7 +15,9 @@ export PATH="$HOME/.silk/bin:$PATH"
 ```
 
 Install Python 3.11+, a current stable Rust toolchain (with rustfmt and Clippy for
-checks), and Clang 18+. Set `SILK_CLANG` if Clang is not discoverable on `PATH`.
+checks), and Clang 18+. If needed, set `SILK_CLANG` to an **absolute executable
+path**, for example `/usr/bin/clang-18`; this release does not search `PATH` for
+the value of that variable.
 No Silk compiler or standard-library sources are built, modified, or vendored here.
 If cloning without `--recurse-submodules`, run `git submodule update --init --recursive`.
 
