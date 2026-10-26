@@ -148,3 +148,44 @@ and 65,535 glyphs referring mostly beyond the string data (68 ms in the debug ru
 
 Milestone 2 is still **in progress**: cmap mapping/iteration and their upstream tests
 remain, followed by the complete debug/release gate. Milestones 3–9 remain pending.
+
+## Session 5 — 2026-10-26 — milestone 2 local gate complete
+
+The full core-table gate passes in **debug and release: 566 / 566 files match**,
+with no differences, process failures or traps. The scope includes every generated
+field and resolved target in head/maxp/hhea/hmtx/post/name/OS2/cmap (including the
+pinned uppercase extensions), plus decoded names, metrics, post glyph names,
+cmap selection, nominal mappings, and format 14/15 variation sequences.
+
+| Check | Result |
+| --- | --- |
+| font_types Silk tests | **64 passed** (60 upstream, 4 additional) |
+| read_fonts Silk tests | **81 passed** (71 upstream, 10 additional) |
+| Total upstream tests ported | **131** |
+| Full corpus, debug and release | **566 matches each** |
+| Focused table fixtures, debug and release | **500 matches each** |
+| Container fixtures | **426 matches** |
+| Generator tests / reference tests / Python tests | **10 / 6 / 12 passed** |
+| Generated-file drift, Rust formatting, Clippy with warnings denied | Passed |
+| Root, library, CLI debug/release builds and CLI help/version | Passed |
+| Remote CI / merge | Pending PR |
+
+New upstream ports in this session: 37 cmap tests (the closure test is explicitly
+out of scope), plus three table-provider tests. Four provider tests involving
+vertical metrics or extended outlines remain with those implementation areas;
+they are not counted as ported. The extra default-view regression verifies the
+upstream null backing pool and static format/tag contracts.
+
+Evidence: [debug corpus](reports/milestone-2-core-tables.json),
+[release corpus](reports/milestone-2-release-core-tables.json),
+[debug table fixtures](reports/milestone-2-table-fixtures.json), and
+[release table fixtures](reports/milestone-2-release-table-fixtures.json).
+The focused fixtures include all known language IDs and neighboring holes,
+malformed UTF-16, wide metrics, Pascal-string failures, cmap overlaps and UVS,
+and every prefix of representative core-table payloads.
+
+Compiler report 004 records unsupported generic interface defaults and the free
+helper workaround. No compiler/stdlib changes were made. The large-dump deadline,
+explicit codepoint conversions, and one malformed cmap10 wrapping case are
+recorded in PORTING.md. Milestones 3–9 are still pending; the local milestone 2
+gate is ready for remote CI and merge.

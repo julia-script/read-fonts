@@ -10,7 +10,9 @@ read-only upstream submodule.
 matching traversals of each implementation's public API. These modes share the
 upstream grammar parser and semantic resolution. Unsupported grammar features
 produce a source diagnostic instead of silently omitting fields. The current
-prototype covers head, maxp and cmap; later tables expand this backend.
+backend covers head, maxp, hhea, hmtx, post, name, OS2 and cmap. Later tables
+expand this backend. The local plan can append handwritten extension templates
+so inherent methods and their generated nominal types share a Silk module.
 
 The fork uses a standalone locked Cargo workspace. No Silk compiler or standard
 library code is part of it. Generated files must be changed through the backend.

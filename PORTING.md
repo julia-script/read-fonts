@@ -123,3 +123,22 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   first-unreachable-string bound. Tests use fixed stack buffers instead of Vec.
 - The metrics fixture tests retain the original CBDT table and the four tested
   Vazirmatn long metrics. Full original fonts are covered by corpus comparison.
+
+- `TableProvider` supplies the supported non-generic table methods as default
+  interface operations, so custom providers have the same selection behavior as
+  FontRef. Generic `expectTable<T, P>` is a free helper (also a FontRef method)
+  because of compiler report 004. `TopLevelTable.tag()` and `Format.formatValue()`
+  replace their associated Rust constants.
+- Generated defaults use upstream's 262-byte null backing pool, including its
+  remainder-array behavior. Only format 0/1 tables get defaults, as upstream does.
+- Cmap methods accept explicit u32 codepoints/selectors; convert chars with
+  `char.toU32`. Iterator tuples use `CmapMapping` and `UvsMappingEntry`; selected
+  records use `BestCmapSubtable` and `SelectedUvsSubtable`. The cache/iteration
+  algorithms preserve the pinned upstream overlap and search behavior.
+- Cmap10 iteration uses explicit wrapping addition for a malformed range that
+  exceeds u32. This matches Rust release arithmetic and avoids a Silk trap; Rust
+  debug can overflow on that input. Valid ranges are unchanged.
+- The CLI buffers output in a fixed 64 KiB array. The expanded debug corpus uses
+  a 120-second per-process limit: FDArrayTest257 emits 2,493,805 lines / 178,689,572
+  bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
+  limit. No field or semantic observation is suppressed.

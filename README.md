@@ -1,9 +1,9 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestone 1 implements scalar
-types and the borrowed sfnt/TTC parser core.** Table payload parsing starts at
-milestone 2. See [PROGRESS.md](PROGRESS.md) and the original
+to Silk, intended to support a later HarfRust port. **Milestone 2 implements scalar types, the borrowed sfnt/TTC core, and generated
+head/maxp/hhea/hmtx/post/name/OS2/cmap tables with their handwritten extensions.**
+The full port remains in progress. See [PROGRESS.md](PROGRESS.md) and the original
 [porting plan](docs/PORTING-PLAN.md).
 
 ## Set up
@@ -22,16 +22,18 @@ the value of that variable.
 No Silk compiler or standard-library sources are built, modified, or vendored here.
 If cloning without `--recurse-submodules`, run `git submodule update --init --recursive`.
 
-## Run the core gate
+## Run the core-table gate
 
 ```sh
+scripts/generate --check
 scripts/build
 scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
 scripts/verify-reference --report build/reference-report.json
 silk test --manifest-path packages/font_types/silk.toml --root src/tests.silk
 silk test --manifest-path packages/read_fonts/silk.toml --root src/tests.silk
-scripts/compare --report build/parity-report.json
+scripts/compare --timeout 120 --report build/parity-report.json
 scripts/check-core-fixtures
+scripts/check-table-fixtures --report build/table-fixtures-report.json
 python3 -m unittest discover -s scripts/tests -v
 cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
 cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
@@ -45,11 +47,11 @@ and all excluded non-font files. The checked-in [report](reports/milestone-0.jso
 is the result for the pinned snapshots.
 
 ```sh
-scripts/compare --fonts build/fonts.txt
+scripts/compare --timeout 120 --fonts build/fonts.txt
 ```
 
-`compare` runs both binaries and prints the first differing line. Directory dumps
-match on all **566 corpus files** and **426 synthetic container edge cases**.
+`compare` runs both binaries and prints the first differing line. Core-table fields and handwritten observations match on all **566 corpus files**,
+**426 container edge cases**, and **500 focused table fixtures**.
 Matching dumps return 0, different dumps return 1, and harness/process failures
 return 2. The optional JSON report records input/output hashes and errors.
 The comparison is byte-exact, including the final newline; no fields are ignored.
@@ -67,7 +69,7 @@ silk build --release
 `--fonts` accepts a UTF-8 file with one filename per line. Relative font paths are
 resolved against this repository; blank lines and lines beginning with `#` are
 ignored. Omitting `--fonts` discovers the complete pinned corpus. `--timeout` sets
-the per-process limit (30 seconds by default). Override compiled binaries with
+the per-process limit (30 seconds by default; the core-table gate uses 120 for full-repertoire fonts). Override compiled binaries with
 `--reference PATH` and `--silk-dumper PATH`. After `scripts/build --release`, pass
 `build/rust/release/rust-font-dump` and `build/llvm/<target>/release/font_dump`.
 `CARGO` and `SILK` can override build-tool executable paths.
@@ -75,13 +77,13 @@ the per-process limit (30 seconds by default). Override compiled binaries with
 ## Layout
 
 - `packages/font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
-- `packages/read_fonts`: borrowed reads, checked offsets, arrays and sfnt/TTC directories.
-- `packages/font_dump`: CLI producing the stable directory dump.
+- `packages/read_fonts`: borrowed reads, checked offsets, arrays, sfnt/TTC directories and core tables.
+- `packages/font_dump`: CLI producing stable directory, table and extension observations.
 - `scripts/rust-font-dump`: Rust reference binary linked to the vendored read-fonts.
 - `scripts/`: corpus listing, reference gate, comparison, and harness tests.
 - `upstream/`: read-only fontations submodule, pinned to `cf5676b29faa8c7787abe003c5dfb85fd81e8a7c`.
 - `test-data/harfrust/`: read-only HarfRust submodule, pinned to `1503ff054384cc1d6a701b5ffbdc2f24118a2790`.
-- `tools/font-codegen-silk/`: reserved for the generator fork at milestone 2.
+- `tools/font-codegen-silk/`: copied upstream grammar parser with Silk and differential dump backends.
 
 Every Silk manifest pins `0.1.0-dev.17+1120049495d3`. The small root library makes
 that pin meaningful at the workspace root; `silk build` there checks the library
@@ -90,8 +92,8 @@ are paths; future consumers can use this repository as a submodule.
 
 ## Contract and license
 
-The initial [dump format](docs/DUMP-FORMAT.md) covers font/container directories.
-Table fields, variation values, and model results will be added at their gates.
+The active [dump format](docs/DUMP-FORMAT.md) covers directories and core tables.
+Layout, variation, AAT, CFF and model results will be added at their gates.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
 [COMPILER-BUGS.md](COMPILER-BUGS.md), and missing library APIs in
 [STDLIB-GAPS.md](STDLIB-GAPS.md).
@@ -99,3 +101,8 @@ Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings
 Code is available under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE),
 following fontations. The submodules retain upstream notices and individual font
 licenses; the root licenses do not replace those licenses.
+
+Regenerate with `scripts/generate`; do not edit generated files. The plan's
+`extensions` entries concatenate handwritten `tables/*_impl.silk` into their
+nominal type's module. Those templates are source files, not standalone modules.
+`generate-static` packs immutable upstream lookup tables and runs automatically.
