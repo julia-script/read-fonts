@@ -334,3 +334,12 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   CFF fixture evidence is gzip-compressed because malformed top-DICT counts can
   produce JSON reports larger than GitHub's per-file limit; no observations are
   removed from those reports.
+
+## Milestone 7 (in progress)
+
+- Integer-set pages retain eight u64 words, cached membership counts, modulo-512
+  indexing and ordered bidirectional iteration. Iterator structs expose `next`
+  and `nextBack`; inclusive ranges use `U32Range { first, last }`. Local bit-count
+  helpers fill stdlib gap 004. The reserved method name `union` is `unionValue`,
+  consistent with the earlier flag types. Silk HashKey hashing preserves equality
+  and ignores cached counts; its hash bytes are specific to Silk's hasher.

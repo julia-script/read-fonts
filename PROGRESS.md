@@ -584,3 +584,13 @@ Complete per-font observations and matching binary hashes are saved in
 Compressed reports retain every observation, including malformed dictionary errors.
 Milestones **0–6 pass**; **7 is next**, followed by malformed-input parity and
 Phase 2/speed comparison. The full port remains in progress.
+
+## Session 29 — 2026-10-26 — sparse-set bit pages
+
+All **27 upstream BitPage tests** pass, including bit scans, forward/reverse
+iteration, insertion/removal across word boundaries, range coalescing, set
+operations, hashing and cached lengths. Totals are **473 read_fonts tests**, **64
+font_types tests**, and **521 upstream ports**. Stdlib gap 004 records the missing
+integer bit counts and local workaround. U32Set, invertible IntSet and the model
+subset remain in progress; the M7 gate has not been claimed. M6's final CI is
+running on PR #7 while this work proceeds from its passing local gate.

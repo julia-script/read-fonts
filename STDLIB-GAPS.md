@@ -35,3 +35,12 @@ It cannot supply a mutable subrange of an existing `&mut [T]` (and has no
 `viewMut` operation). Axis normalization passes checked lengths alongside whole
 scratch slices to private helpers, avoiding pointer conversions or an allocation
 for each subview. Shared snapshots still use `Slice.view`. The stdlib is unchanged.
+
+## 004 — integer population and leading/trailing bit counts
+
+The pinned `silk.u64` module has bitwise operations and shifts but no equivalent
+of Rust's `count_ones`, `leading_zeros` or `trailing_zeros`. Sparse integer-set
+pages need all three. `collections/int_set/bitpage.silk` supplies bounded SWAR
+population counting and binary-search bit scans, including the zero-input result
+of 64. The 27 original page tests cover full/empty words, bit 63, page boundaries,
+forward/reverse iteration and set counts. The stdlib remains unchanged.
