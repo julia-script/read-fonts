@@ -386,3 +386,11 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   snapshot. These explicit constructors replace Rust's Into<Source> conversion.
   Variation.fromString replaces the string/tag pair conversion and keeps the
   upstream invalid-tag fallback. Allocation in model ownership is an effect.
+- GlyphName keeps 63 inline UTF-8 bytes and its source. GlyphNameMap is an
+  explicit provider-backed view for lookup and iteration, with a fromCff
+  constructor for standalone CFF; it replaces the omitted full Font facade's
+  name cache. GlyphNameIndex owns packed full names and byte ranges, so it has
+  no self-reference. Construction sorts temporary borrowed entries before
+  packing them; reverse lookup still chooses the first glyph with an exact
+  stored name and never indexes synthesized names. Type 1 name tests remain
+  outside the requested SFNT/CFF scope.

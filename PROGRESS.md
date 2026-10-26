@@ -646,3 +646,13 @@ Phase 2; its CFF assertion already passes. Model table forwarding covers all
 PR #8 is a draft. Charmap, glyph names, glyph/scaled metrics and the M7 differential
 gate remain in progress. Eager callback snapshots, copied owned blobs and repeated
 validation are documented ownership adaptations; no compiler change was needed.
+
+## Session 35 — 2026-10-26 — model glyph names
+
+All **10 in-scope upstream glyph-name tests** pass. Totals are **614 read_fonts
+tests**, **64 font_types tests**, and **660 upstream ports**. Tests cover post/CFF
+lookup and iteration, partial/bad post entries, CID synthesis, character-boundary
+truncation, full-name reverse lookup and absent name tables. The separate Type 1
+test and Type 1 branch of a mixed test are outside scope. A fixture generator bug
+that skipped a one-digit hex literal was fixed in the generator; no parser change
+was needed. Library build passes. Charmap and glyph/scaled metrics remain for M7.
