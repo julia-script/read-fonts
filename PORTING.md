@@ -86,3 +86,24 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - The CLI uses Silk's rooted filesystem provider, which rejects symlink traversal.
   Corpus paths are ordinary files. This differs from Rust `std::fs::read`, which
   follows symlinks; parser APIs themselves take byte slices and are unaffected.
+
+## Milestone 2 (in progress)
+
+- The generator is a standalone copy of the pinned font-codegen crate, with its
+  original Rust modes retained. `silk-parse` reuses its parsed/resolved AST. Two
+  traversal modes (`silk-dump`, `rust-dump`) call the respective public accessors;
+  the Rust oracle still parses only with the unchanged upstream library.
+- Table views store borrowed FontData and precomputed saturating byte ranges.
+  They validate the same minimum size as upstream and preserve lazy defaults for
+  malformed tails. Fixed records are borrowed positioned views, not native packed
+  structs. Byte range saturation is followed by checked reads; it never permits
+  unchecked indexing. Remainder arrays discard an incomplete final element.
+- Public facades live in `tables/<name>.silk`, with explicit manifest exports and
+  selective publication. This permits `read_fonts.tables.head` imports without
+  exposing generated filenames or relying on unsupported namespace re-exports.
+- Flag constants are camelCase factories. The reserved keyword `union` is exposed
+  as `unionValue`; bitwise operators preserve the upstream behavior. Private view
+  fields use an internal prefix to avoid collisions with public accessor names.
+- Prototype dump paths use a fixed stack of 32 segments. The current generated
+  table graph is acyclic and requires at most eight; font bytes cannot increase
+  the depth. Recursive grammar groups will need explicit traversal handling.

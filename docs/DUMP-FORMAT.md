@@ -79,3 +79,24 @@ The skeleton emits the first two protocol records followed by
 `dump.status=unimplemented`. This is deliberately **not** a valid parsed dump.
 New table scopes will be specified before comparison gates use them; no supported
 field may be suppressed to make two implementations agree.
+
+## Format 2: generated table fields
+
+The active prototype header is `font-dump.version=2` and
+`dump.scope=head-maxp-cmap`. Directory fields retain format 1's order and encoding.
+After each face's directory, dump `head`, `maxp`, `MAXP`, `cmap`, and `DMAP` in that
+order. A missing or unreadable table emits `font[N].TAG.error=VARIANT`.
+
+Table fields follow the input grammar's order with camelCase keys. Numbers are
+exact decimal values: fixed-point fields use their signed storage bits, versions
+use their raw unsigned bits, and flags use the decoded bits (unknown bits are
+masked as upstream specifies). MajorMinor emits `.major` and `.minor`. Other
+scalar wrappers emit their numeric value; optional absence is `none`. Reserved
+scalars with suppressed getters are read through their public byte ranges.
+
+Arrays emit `.length` followed by every indexed value or record. Offset fields
+emit their raw number, followed by the resolved target under the name without
+`Offset`. Null optional targets emit `none`; resolution failures emit `.error`.
+Format groups emit `.kind=FormatN`, followed by that variant's fields. This includes
+all bytes represented by the grammar; handwritten extension observations are
+added as their implementations land. No output fields are removed before comparing.

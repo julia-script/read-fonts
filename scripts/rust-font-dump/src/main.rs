@@ -10,6 +10,10 @@ use std::{
     process::ExitCode,
 };
 
+mod generated_dump_cmap;
+mod generated_dump_head;
+mod generated_dump_maxp;
+
 fn tag(value: Tag) -> String {
     value
         .to_be_bytes()
@@ -40,7 +44,12 @@ fn optional(value: Option<u32>) -> String {
         .unwrap_or_else(|| "none".into())
 }
 
-fn dump_font(out: &mut impl Write, index: usize, font: FontRef<'_>) -> io::Result<()> {
+fn dump_font(
+    out: &mut impl Write,
+    index: usize,
+    font: FontRef<'_>,
+    include_tables: bool,
+) -> io::Result<()> {
     let prefix = format!("font[{index}]");
     let directory = font.table_directory();
     writeln!(
@@ -74,15 +83,25 @@ fn dump_font(out: &mut impl Write, index: usize, font: FontRef<'_>) -> io::Resul
             }
         )?;
     }
+    if include_tables {
+        generated_dump_head::dump_tables(out, &prefix, &font)?;
+        generated_dump_maxp::dump_tables(out, &prefix, &font)?;
+        generated_dump_cmap::dump_tables(out, &prefix, &font)?;
+    }
     Ok(())
 }
 
 fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
-    writeln!(
-        out,
-        "font-dump.version=1\ndump.scope=directory\nfile.length={}",
-        data.len()
-    )?;
+    dump_with_tables(out, data, true)
+}
+
+fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
+    let header = if include_tables {
+        "font-dump.version=2\ndump.scope=head-maxp-cmap"
+    } else {
+        "font-dump.version=1\ndump.scope=directory"
+    };
+    writeln!(out, "{header}\nfile.length={}", data.len())?;
     let file = match FileRef::new(data) {
         Ok(file) => file,
         Err(err) => return writeln!(out, "file.error={}", error(err)),
@@ -112,7 +131,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
     }
     for (index, font) in file.fonts().enumerate() {
         match font {
-            Ok(font) => dump_font(out, index, font)?,
+            Ok(font) => dump_font(out, index, font, include_tables)?,
             Err(err) => writeln!(out, "font[{index}].error={}", error(err))?,
         }
     }
@@ -126,11 +145,11 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     if args[0] == OsStr::new("--help") {
-        println!("usage: rust-font-dump FONT\nDump format 1: sfnt/TTC directories and read-fonts errors.");
+        println!("usage: rust-font-dump FONT\nDump format 2: directories, head, maxp and cmap fields.");
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 1; directory scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 2; head/maxp/cmap scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {
@@ -154,7 +173,7 @@ mod tests {
 
     fn text(data: &[u8]) -> String {
         let mut out = Vec::new();
-        dump(&mut out, data).unwrap();
+        dump_with_tables(&mut out, data, false).unwrap();
         String::from_utf8(out).unwrap()
     }
 

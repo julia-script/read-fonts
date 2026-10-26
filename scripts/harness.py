@@ -21,7 +21,7 @@ CORPUS_ROOTS = (
 # Unsupported containers are still oracle inputs: their upstream errors are observations.
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc", ".dfont", ".woff", ".woff2"}
 FONT_MAGIC = {b"\0\1\0\0", b"OTTO", b"true", b"ttcf"}
-HEADER = b"font-dump.version=1\ndump.scope=directory\n"
+HEADER = b"font-dump.version=2\ndump.scope=head-maxp-cmap\n"
 REFERENCE = ROOT / "build/rust/debug/rust-font-dump"
 
 
@@ -86,7 +86,7 @@ def run_dumper(executable: Path, font: Path, timeout: float) -> subprocess.Compl
 
 def validate_dump(output: bytes) -> None:
     if not output.startswith(HEADER) or not output.endswith(b"\n"):
-        raise ValueError("dumper did not emit a complete format-1 directory dump")
+        raise ValueError("dumper did not emit a complete format-2 table dump")
     lines = output.splitlines()
     if len(lines) < 4 or not lines[2].startswith(b"file.length="):
         raise ValueError("dump has no file length (a skeleton is not a passing dump)")
@@ -130,7 +130,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             report.parent.mkdir(parents=True, exist_ok=True)
             report.write_text(json.dumps({
                 "summary": {
-                    "format_version": 1, "scope": "directory", "fonts_total": len(fonts),
+                    "format_version": 2, "scope": "head-maxp-cmap", "fonts_total": len(fonts),
                     "completed": sum(item["status"] in ("match", "difference") for item in observations),
                     "matched": sum(item["status"] == "match" for item in observations),
                     "differences": sum(item["status"] == "difference" for item in observations),
@@ -177,7 +177,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
         )
         if difference is not None:
             return finish(1)
-    print(f"MATCH: {len(fonts)} fonts; format 1, directory scope")
+    print(f"MATCH: {len(fonts)} fonts; format 2, head/maxp/cmap scope")
     return finish(0)
 
 
@@ -210,7 +210,7 @@ def verify(fonts: list[Path], inventory: list[dict], reference: Path,
             failures.append({"font": name, "error": str(error)})
             print(f"FAIL: {name}: {error}", file=sys.stderr)
     summary = {
-        "format_version": 1, "scope": "directory", "fonts_total": len(fonts),
+        "format_version": 2, "scope": "head-maxp-cmap", "fonts_total": len(fonts),
         "completed": len(results), "process_failures": len(failures),
         "faces_ok": totals["faces_ok"], "parse_error_records": totals["parse_error_records"],
         "missing_table_lookups": totals["missing_table_lookups"],

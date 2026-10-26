@@ -110,3 +110,25 @@ API adaptations are recorded in [PORTING.md](PORTING.md).
 Milestones 0 and 1 are merged as PRs #1 and #2. Milestone 2 is in progress;
 milestones 3–9 are pending. Directory parity does not yet establish table payload
 or model parity.
+
+## Session 3 — 2026-10-26 — milestone 2 prototype gate passed
+
+The copied upstream generator now has a `silk-parse` backend over its existing
+parser and semantic analysis. The first generated shapes cover `head`, `maxp`, and
+all `cmap` formats in the pinned grammar (including 14 and 15), plus its uppercase
+MAXP and DMAP additions. Generated Rust and Silk traversal code compares every
+exposed grammar field, reserved scalar fields, arrays and resolved offset targets.
+
+**566 / 566 corpus dumps match**, with no process failures or differences:
+[prototype evidence](reports/milestone-2-prototype.json). This exposed and fixed an
+odd-tail array bug in the generator: remainder arrays round down to whole elements.
+
+The current suites pass **64 font_types tests** and **22 read_fonts tests**;
+**73 upstream tests** are ported in total (the prior 71 plus both head tests).
+Three new tests cover generated minimum sizes/lazy optional fields, odd tails, and
+unknown format payloads. The copied generator's 10 Rust tests, the reference's 6
+Rust tests, and the harness's 12 Python tests also pass.
+
+The prototype shapes are settled. Milestone 2 remains **in progress**: generate
+hhea/hmtx/post/name/OS2, port handwritten extensions and their tests, then complete
+the full milestone gate before merging. Milestones 3–9 remain pending.

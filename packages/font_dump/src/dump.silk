@@ -6,6 +6,12 @@ import silk.result { Result }
 import silk.writer { Writer, WriterError }
 import silk.format { Format }
 
+import generated_dump_head
+import generated_dump_maxp
+import generated_dump_cmap
+import dump_support { DumpPath }
+import silk.u32
+
 effect fn text(value: string) -> () ! WriterError ? &mut Writer { run Writer.writeString(value) }
 
 pub effect fn error(input: ReadError) -> () ! WriterError ? &mut Writer {
@@ -51,9 +57,13 @@ effect fn font<'a>(index: u32, font: FontRef<'a>) -> () ! WriterError ? &mut Wri
     }
     j = j + 1
   }
+  let mut path = DumpPath.new(u32.toUsize(index))
+  run generated_dump_head.dumpTables(&mut path, &font)
+  run generated_dump_maxp.dumpTables(&mut path, &font)
+  run generated_dump_cmap.dumpTables(&mut path, &font)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
-  run Format.format("font-dump.version=1\ndump.scope=directory\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=2\ndump.scope=head-maxp-cmap\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value
