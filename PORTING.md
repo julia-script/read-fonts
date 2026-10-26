@@ -586,3 +586,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   model rejection test. It is excluded from whole-field differential fixtures
   because it exceeds the dump adapter's graph bound; an incomplete dump is never
   counted as a successful comparison.
+- During Phase 2 import expansion, the local incremental cache produced symbol
+  resolution errors that disappeared with a clean cache. Three reduced incremental
+  builds (adding and reordering exported modules and imports) all passed. This is
+  an unreproduced cache incident, not a confirmed additional compiler defect;
+  compiler-bugs/001–008 remain the independently reproducible reports. Generation
+  and compilation are serialized to avoid reading sources while they are replaced.

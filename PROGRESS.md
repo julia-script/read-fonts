@@ -997,3 +997,29 @@ The first expanded run correctly rejected that incomplete dump after 336 matches
 that run is not a completed parity gate. A corrected full run is underway.
 Generator drift, all 10 generator tests and all 7 Rust reference tests pass.
 Release builds and remaining complete-corpus gates are in progress.
+
+## Session 52 — 2026-10-26 — complete release parity and reproducible timing
+
+The complete format-9 release gate passes: **566 / 566 corpus files**, **360
+model fixtures**, **3,550 Phase 2 fixtures**, **8,551 AAT fixtures** and **9,146
+CFF fixtures** match, with no differences or process failures. A focused corruption
+run passes **530 / 530 mutations** of 13 real bitmap, COLR and VARC fonts.
+The final-source debug model, core, layout, variation and AAT gates also pass;
+the complete debug corpus and remaining focused checks are still running.
+
+Counts remain **862 read_fonts tests**, **64 font_types tests**, and **897
+upstream ports**. All 10 generator tests, 7 reference tests, 20 harness tests,
+formatting, Clippy, regeneration and debug/release builds pass. The unreproduced
+incremental-cache incident is documented without claiming a ninth compiler bug.
+
+`scripts/benchmark` now measures complete release CLI runs over the fixed corpus:
+one warmup per program, three timed rounds in alternating program order, and the
+ratio of median Silk to Rust wall time. Reports retain binary/input hashes,
+per-font samples and machine metadata. CI runs and uploads the same benchmark.
+The speed result is pending; no ratio is claimed at this checkpoint.
+
+Workspace restarts interrupted long local comparisons. A local recovery wrapper
+now delegates each case to the production harness and retains completed receipts
+bound to the input and both executable hashes. Incomplete or failed cases never
+count as matches. The final reports identify this recovery method; CI runs the
+ordinary complete commands independently. All production code is pushed in PR #10.

@@ -71,7 +71,7 @@ jobs:
         env:
           SILK_CLANG: /usr/bin/clang-18
         run: scripts/build --release
-      - name: Compare release table and variation dumps
+      - name: Compare release tables and model dumps
         run: scripts/compare --timeout 600 --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-parity-report.json
       - name: Compare release AAT fixtures
         run: scripts/check-aat-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-aat-fixtures-report.json
@@ -81,6 +81,8 @@ jobs:
         run: scripts/check-model-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-model-fixtures-report.json
       - name: Compare release Phase 2 fixtures
         run: scripts/check-phase2-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-phase2-fixtures-report.json
+      - name: Measure release dump speed
+        run: scripts/benchmark --report build/benchmark-report.json
       - name: Compare deterministic malformed corpus
         run: scripts/check-malformed --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/malformed-report.json.gz
       - name: Compress CFF observations
@@ -90,7 +92,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-9-phase2-tables
+          name: milestone-9-phase2
           path: |
             build/fonts.txt
             build/corpus-inventory.json
@@ -106,6 +108,7 @@ jobs:
             build/release-model-fixtures-report.json
             build/phase2-fixtures-report.json
             build/release-phase2-fixtures-report.json
+            build/benchmark-report.json
             build/malformed-report.json.gz
             build/malformed-failures/
             build/cff-fixtures-report.json.gz
