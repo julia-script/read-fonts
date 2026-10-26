@@ -1,8 +1,9 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestone 0 is complete; the Silk
-parser is not implemented yet.** See [PROGRESS.md](PROGRESS.md) and the original
+to Silk, intended to support a later HarfRust port. **Milestone 1 implements scalar
+types and the borrowed sfnt/TTC parser core.** Table payload parsing starts at
+milestone 2. See [PROGRESS.md](PROGRESS.md) and the original
 [porting plan](docs/PORTING-PLAN.md).
 
 ## Set up
@@ -21,12 +22,16 @@ the value of that variable.
 No Silk compiler or standard-library sources are built, modified, or vendored here.
 If cloning without `--recurse-submodules`, run `git submodule update --init --recursive`.
 
-## Run the milestone 0 gate
+## Run the core gate
 
 ```sh
 scripts/build
 scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
 scripts/verify-reference --report build/reference-report.json
+silk test --manifest-path packages/font_types/silk.toml --root src/tests.silk
+silk test --manifest-path packages/read_fonts/silk.toml --root src/tests.silk
+scripts/compare --report build/parity-report.json
+scripts/check-core-fixtures
 python3 -m unittest discover -s scripts/tests -v
 cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
 cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
@@ -43,10 +48,10 @@ is the result for the pinned snapshots.
 scripts/compare --fonts build/fonts.txt
 ```
 
-`compare` runs both binaries and prints the first differing line. It currently
-returns **2**, because the Silk skeleton returns 3 (`unimplemented`). This is an
-expected incomplete comparison, **not a parity pass**. Once implemented, matching
-dumps return 0, different dumps return 1, and harness/process failures return 2.
+`compare` runs both binaries and prints the first differing line. Directory dumps
+match on all **566 corpus files** and **426 synthetic container edge cases**.
+Matching dumps return 0, different dumps return 1, and harness/process failures
+return 2. The optional JSON report records input/output hashes and errors.
 The comparison is byte-exact, including the final newline; no fields are ignored.
 Both dumpers receive one absolute font filename as one argument. No shell is used.
 
@@ -69,9 +74,9 @@ the per-process limit (30 seconds by default). Override compiled binaries with
 
 ## Layout
 
-- `packages/font_types`: scalar library placeholder for milestone 1.
-- `packages/read_fonts`: zero-copy parser library placeholder for milestone 1.
-- `packages/font_dump`: runnable CLI skeleton.
+- `packages/font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
+- `packages/read_fonts`: borrowed reads, checked offsets, arrays and sfnt/TTC directories.
+- `packages/font_dump`: CLI producing the stable directory dump.
 - `scripts/rust-font-dump`: Rust reference binary linked to the vendored read-fonts.
 - `scripts/`: corpus listing, reference gate, comparison, and harness tests.
 - `upstream/`: read-only fontations submodule, pinned to `cf5676b29faa8c7787abe003c5dfb85fd81e8a7c`.
