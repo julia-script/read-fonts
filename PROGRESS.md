@@ -2,16 +2,16 @@
 
 ## Current status
 
-Milestones **0–9 are implemented**. Final Phase 2 corruption validation found an
-invalid-contour bounds mismatch; its fix and 875-test suite pass. Final gates are being repeated. The earlier
-Phase 2 corpus and fixture comparisons pass in debug and release. The release
-CLI benchmark reports **4.36× Rust's wall time** (54.61 s versus 12.52 s median).
-The suites pass **875 read_fonts** and **64 font_types** tests, including **909
-upstream ports** overall. Current evidence is in Session 54 below.
+Milestones **0–9 and their required local gates are complete**. Debug and release
+full-source dumps match all **566 corpus files** and the focused fixture suites.
+The final release binary passes **23,188 / 23,188 malformed inputs**, with zero
+differences and zero process failures. It takes **4.52× Rust's wall time**
+(54.27 s versus 11.99 s median) on the fixed complete corpus.
 
-Milestones 0–8 are merged. Final CI, the repeated complete malformed campaign,
-and merge status for milestone 9 are tracked in [PR #10](https://github.com/julia-script/read-fonts/pull/10).
-The dated sessions below preserve the state of each checkpoint.
+The suites pass **875 read_fonts** and **64 font_types** tests, including **909
+upstream ports** overall. Session 55 records the final evidence. Earlier milestone
+PRs are merged; [PR #10](https://github.com/julia-script/read-fonts/pull/10) carries
+Phase 2 and its final CI/merge record. Dated sessions preserve earlier checkpoints.
 
 ## Session 1 — 2026-10-25 — milestone 0 complete
 
@@ -1089,3 +1089,43 @@ no final gate is inferred from the earlier binaries' reports.
 The full read_fonts suite passes **875 / 875 tests**, with **909 upstream ports**
 overall. Regeneration produces 49 Phase 2 fixtures; the focused model corpus now
 has 362 cases. The final debug and release builds are running.
+
+Parallel final comparisons exhausted the workspace's separate 8.8 GiB /tmp
+filesystem, causing two truncated output files and CLI write errors. These runs
+were not counted as passes. Temporary dump storage was moved to build/tmp on the
+larger workspace disk; only exact-input/executable-hash verified matches are
+reused, and failed or interrupted cases are retried. No parser change was made
+for this resource failure.
+
+
+## Session 55 — 2026-10-26 — final milestone 9 validation
+
+The corrected final binaries match all **566 corpus files** in debug and release,
+plus **9,146 CFF**, **8,551 AAT**, **362 model** and **3,550 Phase 2 fixtures** in
+both modes. Debug additionally passes **426 container**, **500 core-table**,
+**2,650 layout** and **2,894 variation** fixtures. The final release malformed
+campaign passes **23,188 / 23,188 mutations** with zero differences and zero
+process failures, including the original BungeeTint invalid-cubic case. Retrying
+the two temporary-storage failures with the same binaries produced full matches.
+
+The complete suites pass **875 read_fonts**, **64 font_types**, **10 generator**,
+**7 Rust reference** and **20 Python harness** tests. There are **909 upstream
+test ports**. All 156 generated outputs, 54 model fixtures and 49 Phase 2 fixtures
+pass regeneration checks. Formatting, all-target Clippy, CLI help/version and
+both build modes pass. No requested model tests remain deferred. The compiler,
+standard library and both pinned upstream submodules remain unchanged.
+
+The refreshed release benchmark uses the same validated binaries, after every
+other local build/test campaign finished. One complete warmup precedes three
+alternating-order rounds. Median wall times are **11.994591 s Rust** and
+**54.272735 s Silk**, for a **4.524767× Silk/Rust ratio**. This is complete CLI
+time, including startup and formatting. The report records every per-font sample,
+input and executable hashes, toolchain versions and host details.
+
+Final corpus and fixture reports replace the earlier same-named M9 observations;
+reports/milestone-9-malformed.json.gz adds the full final corruption evidence.
+Exact executable hashes are checked before archival. Local recovery batches use
+the ordinary production comparator and bind cached matches to complete inputs,
+filenames and both executables. Incomplete cases never count as passes. CI runs
+the ordinary complete commands independently, and its final status is recorded
+on PR #10 before merge.

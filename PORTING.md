@@ -87,7 +87,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Corpus paths are ordinary files. This differs from Rust `std::fs::read`, which
   follows symlinks; parser APIs themselves take byte slices and are unaffected.
 
-## Milestone 2 (in progress)
+## Milestone 2
 
 - The generator is a standalone copy of the pinned font-codegen crate, with its
   original Rust modes retained. `silk-parse` reuses its parsed/resolved AST. Two
@@ -143,7 +143,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
   limit. No field or semantic observation is suppressed.
 
-## Milestone 3 (in progress)
+## Milestone 3
 
 - Multiple read arguments use `ReadArgs2`/`ReadArgs3` products. Their fields are
   `first`, `second`, and `third`; public table constructors still take separate
@@ -191,7 +191,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   process output through temporary files, comparing every line and hashing every
   byte without retaining whole dumps in memory.
 
-## Milestone 4 (in progress)
+## Milestone 4
 
 - `storeDeltas` accepts an optional borrowed table view by value, instead of an
   optional reference to that view. Its reusable callable snapshots the Copy view
@@ -245,7 +245,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
   old cache entries without a full per-glyph cache clear.
 
-## Milestone 5 (in progress)
+## Milestone 5
 
 - AAT typed lookups retain `TypedLookup` plus the `LookupU16`, `LookupU32`, and
   `LookupGlyphId` aliases. Dynamic format-2/6 record arrays use borrowed
@@ -270,7 +270,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   sequence, including malformed unsorted input; sorted duplicate keys select
   the rightmost matching entry.
 
-## Milestone 6 (in progress)
+## Milestone 6
 
 - The CFF grammar emits the `ps.cff.v1` and `ps.cff.v2` public facades, matching
   upstream's ownership of generated types. INDEX offsets stay borrowed and use
@@ -433,11 +433,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Batches process the shorter glyph/output slice. GlyphExtents.fromBounds uses a
   static ExtentsCoord contract so float and fixed coordinates retain their own
   comparison and subtraction behavior.
-- Bitmap/COLR/VARC extents and their dependent model tests remain scheduled with
-  their Phase 2 parsers. Their source-order entries already retain upstream
-  ordering; the current implementation resolves the Phase 1 outline sources.
-  The Phase 1 glyph/scaled unit tests are complete; the differential gate is
-  recorded separately in PROGRESS.md.
+- Bitmap/COLR/VARC extents and their dependent model tests were completed with
+  their Phase 2 parsers in milestone 9. Source-order selection now resolves the
+  complete requested chain. The glyph/scaled unit tests are complete; differential
+  gate evidence is recorded separately in PROGRESS.md.
 - Public GlyphMetrics constructors collapse an all-zero coordinate slice to an
   empty borrowed view, matching the model instance builder's default-instance
   semantics. Callers still supply normalized coordinates explicitly; this subset

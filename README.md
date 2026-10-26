@@ -62,7 +62,7 @@ scripts/compare --timeout 600 --fonts build/fonts.txt
 
 `compare` runs both binaries and prints the first differing line. Core, layout,
 variation, AAT, CFF, model and set-intersection dumps match on all **566 corpus
-files**, plus **9,146 CFF fixtures**, **360 model fixtures** and **3,550 Phase 2
+files**, plus **9,146 CFF fixtures**, **362 model fixtures** and **3,550 Phase 2
 fixtures**, in debug and release. The expanded debug protocol also passes
 **426 container edge cases**, **500 core-table fixtures**, **2,650 layout fixtures**,
 **2,894 variation fixtures** and **8,551 AAT fixtures**. CFF and model metrics, names and bounds are compared at four normalized locations.
@@ -104,11 +104,11 @@ scripts/check-malformed --reference build/rust/release/rust-font-dump \
   --report build/malformed-report.json.gz
 ```
 
-The milestone 8 gate passed all **23,188 corruptions** of the **566 corpus files**
+The complete Phase 2 gate passes all **23,188 corruptions** of the **566 corpus files**
 in release: **18,660 truncations** (31–33 lengths per font) and **4,528 byte-flip variants**. The checked-in
-[report](reports/milestone-8-malformed.json.gz) records that complete campaign.
-CI repeats it with the current full-source model protocol. A focused Phase 2
-release run also passes all 530 corruptions of 13 color, bitmap and VARC fonts.
+[final Phase 2 report](reports/milestone-9-malformed.json.gz) records that complete
+campaign with dump format 9, including the full bitmap/COLR/VARC model chain.
+There are zero differences and zero process failures. CI repeats the campaign.
 Every discovered font receives header-edge, 1/16-length and final-byte
 truncations, plus eight seeded mutations with one to eight nonzero byte XORs.
 Mutation recipes and input/output hashes are recorded. Full dump equality also
@@ -127,8 +127,8 @@ without dropping observations. `--fonts` can select a reproduction list.
 
 ## Speed comparison
 
-The recorded release run takes **54.61 s for Silk** and **12.52 s for Rust** over
-the full corpus: **4.36× Rust’s wall time**. See the [measurement and method](docs/PERFORMANCE.md).
+The recorded release run takes **54.27 s for Silk** and **11.99 s for Rust** over
+the full corpus: **4.52× Rust’s wall time**. See the [measurement and method](docs/PERFORMANCE.md).
 
 ```sh
 scripts/build --release
@@ -167,7 +167,7 @@ The active [dump format](docs/DUMP-FORMAT.md) covers directories, core and layou
 tables, variations, vertical metrics, TrueType glyphs, AAT, CFF/CFF2, Phase 2 tables
 and model APIs. The default metric source chain includes bitmap, COLR and VARC;
 explicit source orders and bitmap strike sizes are also compared.
-The Silk suites contain **64 font_types** and **862 read_fonts** tests; **897**
+The Silk suites contain **64 font_types** and **875 read_fonts** tests; **909**
 upstream tests are ported overall. Out-of-scope APIs and platform adaptations are
 listed in the porting plan and decisions.
 Deliberate decisions are recorded in [PORTING.md](PORTING.md), compiler findings in
