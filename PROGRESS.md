@@ -448,3 +448,28 @@ protocol. The corrected search implementation still needs its complete AAT
 fixture and final debug/release corpus gates. Generator/reference/harness tests
 (**10/7/15**), Clippy, formatting, the **96-file** drift check and debug CLI build
 pass. M5 is still in progress; no final parity report or merge is claimed yet.
+
+## Session 21 — 2026-10-26 — milestone 5 local gate complete
+
+Format 5 matches **566/566 corpus fonts** and **8,551 AAT fixtures** in both debug
+and release, with **zero differences, process failures or traversal limits**.
+All reports verify the final binary hashes. The previous **426 container**,
+**500 core-table**, **2,650 layout** and **2,882 variation** fixtures also pass the
+expanded debug protocol.
+
+The suites pass **64 font_types** and **316 read_fonts** tests (**364 upstream
+ports**). Generator/reference/harness tests pass **10/7/15**; formatting, Clippy
+with warnings denied, **96-file** drift checks, and debug/release CLI builds pass.
+AAT includes all requested table extensions and their upstream tests; mort has
+no upstream unit tests at this revision and receives focused differential cases.
+
+Evidence: [debug corpus](reports/milestone-5-aat.json),
+[release corpus](reports/milestone-5-release-aat.json),
+[debug fixtures](reports/milestone-5-aat-fixtures.json), and
+[release fixtures](reports/milestone-5-release-aat-fixtures.json).
+The fixtures preserve original examples, all compact prefixes, header mutations,
+legacy state/substitution formats, unsorted search candidates, invalid UTF-8 and
+independent equal-sized chains/subtables. Full helper observation rules are in
+`docs/DUMP-FORMAT.md`.
+
+PR #6 is open; remote CI and merge are pending. Milestones 6–9 remain pending.
