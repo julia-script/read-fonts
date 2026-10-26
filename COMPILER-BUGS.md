@@ -14,3 +14,5 @@ rediscovered or reported as new bugs.
 - [001 — inferred owner lifetime after Format.format](compiler-bugs/001-inferred-owner-after-format/README.md): valid Result arms rejected with SEM0042; explicit owner lifetime works around it.
 - [002 — explicit generic Self in a conformance](compiler-bugs/002-explicit-generic-self/README.md): the provider spelling is rejected as unsupported; using `Self` works.
 - [003 — generic operator conformances](compiler-bugs/003-generic-operators/README.md): arithmetic on a generic struct is rejected at use; concrete operator providers delegate to generic named functions.
+
+- [004 — generic default interface operation](compiler-bugs/004-generic-interface-default/README.md): native compilation reports an unsupported construct at a legal generic default operation call; use a free generic helper or concrete-owner method.

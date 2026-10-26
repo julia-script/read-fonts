@@ -86,3 +86,59 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - The CLI uses Silk's rooted filesystem provider, which rejects symlink traversal.
   Corpus paths are ordinary files. This differs from Rust `std::fs::read`, which
   follows symlinks; parser APIs themselves take byte slices and are unaffected.
+
+## Milestone 2 (in progress)
+
+- The generator is a standalone copy of the pinned font-codegen crate, with its
+  original Rust modes retained. `silk-parse` reuses its parsed/resolved AST. Two
+  traversal modes (`silk-dump`, `rust-dump`) call the respective public accessors;
+  the Rust oracle still parses only with the unchanged upstream library.
+- Table views store borrowed FontData and precomputed saturating byte ranges.
+  They validate the same minimum size as upstream and preserve lazy defaults for
+  malformed tails. Fixed records are borrowed positioned views, not native packed
+  structs. Byte range saturation is followed by checked reads; it never permits
+  unchecked indexing. Remainder arrays discard an incomplete final element.
+- Public facades live in `tables/<name>.silk`, with explicit manifest exports and
+  selective publication. This permits `read_fonts.tables.head` imports without
+  exposing generated filenames or relying on unsupported namespace re-exports.
+- Flag constants are camelCase factories. The reserved keyword `union` is exposed
+  as `unionValue`; bitwise operators preserve the upstream behavior. Private view
+  fields use an internal prefix to avoid collisions with public accessor names.
+- Prototype dump paths use a fixed stack of 32 segments. The current generated
+  table graph is acyclic and requires at most eight; font bytes cannot increase
+  the depth. Recursive grammar groups will need explicit traversal handling.
+
+- Silk inherent impls must share their nominal type's module. Handwritten
+  `tables/*_impl.silk` extension templates are therefore appended by `scripts/generate`
+  to the relevant generated module, like upstream's `include!` arrangement. Edit
+  the template, never the generated copy. Selected-table wrappers are ordinary
+  separate modules.
+- `scripts/generate-static` packs post names, Mac Roman, and language-ID strings
+  directly from the immutable upstream sources, and retains the OS/2 range data.
+  The language map contains duplicate IDs; rightmost-equal binary search preserves
+  the pinned Rust library's choice. Packed byte slices are returned by functions,
+  as in Silk's Unicode tables, because slice-valued constants are unsupported.
+- Iterator tuples use named records (`GlyphNameEntry` with `glyph` and `name`).
+  The post iterator keeps upstream's 16 checkpoints, monotonic fast path, and
+  first-unreachable-string bound. Tests use fixed stack buffers instead of Vec.
+- The metrics fixture tests retain the original CBDT table and the four tested
+  Vazirmatn long metrics. Full original fonts are covered by corpus comparison.
+
+- `TableProvider` supplies the supported non-generic table methods as default
+  interface operations, so custom providers have the same selection behavior as
+  FontRef. Generic `expectTable<T, P>` is a free helper (also a FontRef method)
+  because of compiler report 004. `TopLevelTable.tag()` and `Format.formatValue()`
+  replace their associated Rust constants.
+- Generated defaults use upstream's 262-byte null backing pool, including its
+  remainder-array behavior. Only format 0/1 tables get defaults, as upstream does.
+- Cmap methods accept explicit u32 codepoints/selectors; convert chars with
+  `char.toU32`. Iterator tuples use `CmapMapping` and `UvsMappingEntry`; selected
+  records use `BestCmapSubtable` and `SelectedUvsSubtable`. The cache/iteration
+  algorithms preserve the pinned upstream overlap and search behavior.
+- Cmap10 iteration uses explicit wrapping addition for a malformed range that
+  exceeds u32. This matches Rust release arithmetic and avoids a Silk trap; Rust
+  debug can overflow on that input. Valid ranges are unchanged.
+- The CLI buffers output in a fixed 64 KiB array. The expanded debug corpus uses
+  a 120-second per-process limit: FDArrayTest257 emits 2,493,805 lines / 178,689,572
+  bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
+  limit. No field or semantic observation is suppressed.

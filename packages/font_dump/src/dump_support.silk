@@ -1,0 +1,57 @@
+//! Allocation-free paths for the finite table graph in milestone 2.
+import silk.ownership { Copy }
+import silk.writer { Writer, WriterError }
+import silk.format { Format, Display }
+import silk.option { Option }
+import font_types.lib { Version16Dot16, readScalar }
+import read_fonts.lib { ReadError }
+import dump
+
+struct Segment { name: string<'static>, index: usize, indexed: bool, }
+impl Copy for Segment {}
+pub struct DumpPath { segments: [Segment; 32], depth: usize, }
+impl DumpPath {
+  pub fn new(index: usize) -> Self {
+    let mut value = Self { segments: [Segment { name: "", index: 0, indexed: false }; 32], depth: 1 }
+    value.segments[0] = Segment { name: "font", index: index, indexed: true }
+    return move value
+  }
+  pub fn push(self: &mut Self, name: string<'static>) -> () {
+    // The generated milestone-2 graph is acyclic and has at most eight segments.
+    // This bound depends on the grammar, never on lengths or offsets in a font.
+    if self.depth >= 32 { return Intrinsic.trap("generated dump path exceeds its static bound") }
+    self.segments[self.depth] = Segment { name: name, index: 0, indexed: false }
+    self.depth = self.depth + 1
+  }
+  pub fn pop(self: &mut Self) -> () { if self.depth > 1 { self.depth = self.depth - 1 } }
+  pub fn setIndex(self: &mut Self, index: usize) -> () { self.segments[self.depth - 1].index = index self.segments[self.depth - 1].indexed = true }
+  pub fn clearIndex(self: &mut Self) -> () { self.segments[self.depth - 1].indexed = false }
+  pub effect fn write(self: &Self) -> () ! WriterError ? &mut Writer {
+    let mut i: usize = 0
+    while i < self.depth {
+      if i != 0 { run Writer.writeString(".") }
+      run Writer.writeString(self.segments[i].name)
+      if self.segments[i].indexed { run Format.format("[{index}]", &.{ index: self.segments[i].index }) }
+      i = i + 1
+    }
+  }
+}
+pub effect fn scalar<T: Display>(path: &DumpPath, value: T) -> () ! WriterError ? &mut Writer {
+  run DumpPath.write(path)
+  run Format.format("={value}\n", &.{ value: move value })
+}
+pub effect fn absent(path: &DumpPath) -> () ! WriterError ? &mut Writer { run scalar(path, "none") }
+pub effect fn bytes(path: &DumpPath, data: &[u8]) -> () ! WriterError ? &mut Writer {
+  run DumpPath.write(path)
+  run Writer.writeString("=")
+  let mut i: usize = 0
+  while i < data.length { run Format.format("{value:02x}", &.{ value: data[i] }) i = i + 1 }
+  run Writer.writeString("\n")
+}
+pub effect fn readError(path: &DumpPath, value: ReadError) -> () ! WriterError ? &mut Writer {
+  run DumpPath.write(path)
+  run Writer.writeString(".error=")
+  run dump.error(value)
+  run Writer.writeString("\n")
+}
+pub fn versionBits(value: Version16Dot16) -> u32 { let bytes = Version16Dot16.toBeBytes(&value) return readScalar<u32>(&bytes) |> Option<u32>.unwrapOr(0) }

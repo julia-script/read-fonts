@@ -72,7 +72,7 @@ its remote status is tracked on the pull request, separately from these local ch
 Silk observations and upstream changes that affect the next gate are recorded in
 [PORTING.md](PORTING.md). No new compiler bug was found in this session.
 
-## Session 2 — 2026-10-26 — milestone 1 local gate complete
+## Session 2 — 2026-10-26 — milestone 1 complete
 
 The Silk scalar library and borrowed parser core are implemented. Directory dumps
 match Rust byte for byte on **566 / 566 corpus files** in debug and release, with
@@ -91,7 +91,7 @@ records, unsorted/duplicate tags, and legacy/extended TTC directory lists.
 | Root/libraries/CLI debug and release builds | Passed |
 | Corpus directory parity, debug and release | 566 matches each |
 | Synthetic container parity | 426 matches |
-| Remote CI | Pending PR run; required before merging |
+| Remote CI | Passed: run 40268463073, job 121395891939 |
 
 The 60 font-types ports comprise fixed arithmetic (24), fixed formatting (11),
 integer types (6), versions (2), tags (3), geometry (10), FWord (1), and borrowed
@@ -107,6 +107,85 @@ Three standalone compiler reproducers and source-level workarounds are recorded 
 [COMPILER-BUGS.md](COMPILER-BUGS.md). The pinned compiler and stdlib are unchanged.
 API adaptations are recorded in [PORTING.md](PORTING.md).
 
-Milestone 0 is merged as PR #1. Milestone 1's local gate passes; its PR/CI and merge
-remain before starting milestone 2. Milestones 2–9 are pending. Directory parity
-does not yet establish table payload or model parity.
+Milestones 0 and 1 are merged as PRs #1 and #2. Milestone 2 is in progress;
+milestones 3–9 are pending. Directory parity does not yet establish table payload
+or model parity.
+
+## Session 3 — 2026-10-26 — milestone 2 prototype gate passed
+
+The copied upstream generator now has a `silk-parse` backend over its existing
+parser and semantic analysis. The first generated shapes cover `head`, `maxp`, and
+all `cmap` formats in the pinned grammar (including 14 and 15), plus its uppercase
+MAXP and DMAP additions. Generated Rust and Silk traversal code compares every
+exposed grammar field, reserved scalar fields, arrays and resolved offset targets.
+
+**566 / 566 corpus dumps match**, with no process failures or differences:
+[prototype evidence](reports/milestone-2-prototype.json). This exposed and fixed an
+odd-tail array bug in the generator: remainder arrays round down to whole elements.
+
+The current suites pass **64 font_types tests** and **22 read_fonts tests**;
+**73 upstream tests** are ported in total (the prior 71 plus both head tests).
+Three new tests cover generated minimum sizes/lazy optional fields, odd tails, and
+unknown format payloads. The copied generator's 10 Rust tests, the reference's 6
+Rust tests, and the harness's 12 Python tests also pass.
+
+The prototype shapes are settled. Milestone 2 remains **in progress**: generate
+hhea/hmtx/post/name/OS2, port handwritten extensions and their tests, then complete
+the full milestone gate before merging. Milestones 3–9 remain pending.
+
+## Session 4 — 2026-10-26 — milestone 2 core tables and name/metric extensions
+
+All eight milestone tables now have generated borrowed views and concrete Rust/Silk
+field traversal. The handwritten name, metrics, and post-name APIs are ported,
+including UTF-16/Mac Roman decoding, language tags, extended-table selection, and
+the bounded checkpoint cache for Pascal strings.
+
+**566 / 566 dumps match**, including decoded names, post iterator results and direct
+lookup probes, and horizontal metric lookups. The suites pass **64 font_types** and
+**40 read_fonts tests**; **91 upstream tests** are ported in total. The ten post
+ports include all three 2,000-name orders, checkpoint overflow, unreadable names,
+and 65,535 glyphs referring mostly beyond the string data (68 ms in the debug run).
+
+Milestone 2 is still **in progress**: cmap mapping/iteration and their upstream tests
+remain, followed by the complete debug/release gate. Milestones 3–9 remain pending.
+
+## Session 5 — 2026-10-26 — milestone 2 local gate complete
+
+The full core-table gate passes in **debug and release: 566 / 566 files match**,
+with no differences, process failures or traps. The scope includes every generated
+field and resolved target in head/maxp/hhea/hmtx/post/name/OS2/cmap (including the
+pinned uppercase extensions), plus decoded names, metrics, post glyph names,
+cmap selection, nominal mappings, and format 14/15 variation sequences.
+
+| Check | Result |
+| --- | --- |
+| font_types Silk tests | **64 passed** (60 upstream, 4 additional) |
+| read_fonts Silk tests | **81 passed** (71 upstream, 10 additional) |
+| Total upstream tests ported | **131** |
+| Full corpus, debug and release | **566 matches each** |
+| Focused table fixtures, debug and release | **500 matches each** |
+| Container fixtures | **426 matches** |
+| Generator tests / reference tests / Python tests | **10 / 6 / 12 passed** |
+| Generated-file drift, Rust formatting, Clippy with warnings denied | Passed |
+| Root, library, CLI debug/release builds and CLI help/version | Passed |
+| Remote CI / merge | Pending PR |
+
+New upstream ports in this session: 37 cmap tests (the closure test is explicitly
+out of scope), plus three table-provider tests. Four provider tests involving
+vertical metrics or extended outlines remain with those implementation areas;
+they are not counted as ported. The extra default-view regression verifies the
+upstream null backing pool and static format/tag contracts.
+
+Evidence: [debug corpus](reports/milestone-2-core-tables.json),
+[release corpus](reports/milestone-2-release-core-tables.json),
+[debug table fixtures](reports/milestone-2-table-fixtures.json), and
+[release table fixtures](reports/milestone-2-release-table-fixtures.json).
+The focused fixtures include all known language IDs and neighboring holes,
+malformed UTF-16, wide metrics, Pascal-string failures, cmap overlaps and UVS,
+and every prefix of representative core-table payloads.
+
+Compiler report 004 records unsupported generic interface defaults and the free
+helper workaround. No compiler/stdlib changes were made. The large-dump deadline,
+explicit codepoint conversions, and one malformed cmap10 wrapping case are
+recorded in PORTING.md. Milestones 3–9 are still pending; the local milestone 2
+gate is ready for remote CI and merge.

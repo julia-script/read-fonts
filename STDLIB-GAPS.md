@@ -19,3 +19,11 @@ outside their numeric ranges; `checkedTo…` correctly returns None but does not
 reinterpret bits. `font_types/src/cast.silk` implements these operations using
 bounded arithmetic and masks, including signed minimum values. It is covered by
 `signedCastBoundaries`; no compiler or stdlib changes are required.
+
+## 002 — reusable buffered stdout writer
+
+`silk.os_writer.StdoutWriter` is deliberately unbuffered and the pinned standard
+library has no generic buffered writer. Field-by-field differential output can
+make millions of small writes. The CLI's `buffered_stdout.silk` implements Writer
+with a fixed 64 KiB buffer and explicit fallible flush. The standard library is
+unchanged; output bytes and parse behavior are unchanged.

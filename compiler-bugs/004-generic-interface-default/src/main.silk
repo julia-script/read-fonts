@@ -1,0 +1,9 @@
+interface Echo {
+  fn echo<T>(self: &Self, value: T) -> T { return move value }
+}
+struct Concrete {}
+impl Echo for Concrete {}
+pub fn main() -> i32 {
+  let provider = Concrete {}
+  return Echo.echo<i32>(&provider, 7)
+}

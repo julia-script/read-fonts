@@ -9,5 +9,14 @@ pub import offset { nonNull, resolve, resolveWithArgs, resolveNullableWithArgs, 
 pub import array { ComputedArray, ComputedIter, VarLenArray, VarLenIter }
 pub import read { VarSize, readLenAt, totalLenForCount }
 pub import font { FontIter }
-pub import table_provider { TableProvider, readTable }
+pub import table_provider { TableProvider, TopLevelTable, tableTag, readTable, expectTable }
 pub import table_ref { ByteRange, MinByteRange }
+pub import tables.head { Head }
+pub import tables.maxp { Maxp, MaxpExtended }
+pub import tables.cmap { Cmap, CmapSubtable }
+pub import tables.hhea { Hhea, HheaExtended }
+pub import tables.hmtx { Hmtx, HmtxExtended, LongMetric }
+pub import tables.name { Name, LangTagRecord, NameRecord }
+pub import tables.os2 { Os2, SelectionFlags }
+pub import tables.post { Post }
+pub import read { Format, formatValue }

@@ -306,3 +306,10 @@ test effect fn cursorComputedReadsAndCheckedOffsets() -> () ! AssertionError<'st
   run Testing.expect((CheckedOffset.get(&offset) |> Option<usize>.unwrapOr(0)) == 30, "checked arithmetic chain")
   run Testing.expect(isOob(CheckedOffset.okOrOob(CheckedOffset.add(CheckedOffset.new(usize.MAX), 1))), "checked arithmetic overflow")
 }
+
+import table_tests
+import name_tests
+import metric_tests
+import post_tests
+import cmap_tests
+import provider_tests

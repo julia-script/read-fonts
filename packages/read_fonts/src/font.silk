@@ -262,3 +262,34 @@ impl<'a> FontReadAt<'a, ()> for TableRecord<'a> {
   }
 }
 impl<'a> TTCHeader<'a> { pub fn offsetData(self: &Self) -> FontData<'a> { return self.bytes } }
+
+import table_provider { TableProvider, TopLevelTable, readTable, tableTag }
+import tables.head { Head }
+import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
+import tables.cmap { Cmap, Dmap }
+import tables.hhea { Hhea, HheaExtended, SelectedHhea }
+import tables.hmtx { Hmtx, HmtxExtended, GlyphMetricRecords }
+import tables.name { Name }
+import tables.os2 { Os2 }
+import tables.post { Post }
+impl<'a> FontRef<'a> {
+  pub fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> { return TableProvider.expectDataForTag(self, tag) }
+  pub fn head(self: &Self) -> Result<Head<'a>, ReadError> { return TableProvider.head(self) }
+  pub fn maxp(self: &Self) -> Result<Maxp<'a>, ReadError> { return TableProvider.maxp(self) }
+  pub fn maxpExtended(self: &Self) -> Result<MaxpExtended<'a>, ReadError> { return TableProvider.maxpExtended(self) }
+  pub fn cmap(self: &Self) -> Result<Cmap<'a>, ReadError> { return TableProvider.cmap(self) }
+  pub fn dmap(self: &Self) -> Result<Dmap<'a>, ReadError> { return TableProvider.dmap(self) }
+  pub fn hhea(self: &Self) -> Result<Hhea<'a>, ReadError> { return TableProvider.hhea(self) }
+  pub fn hheaExtended(self: &Self) -> Result<HheaExtended<'a>, ReadError> { return TableProvider.hheaExtended(self) }
+  pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return TableProvider.name(self) }
+  pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return TableProvider.os2(self) }
+  pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
+  pub fn hmtx(self: &Self) -> Result<Hmtx<'a>, ReadError> { return TableProvider.hmtx(self) }
+  pub fn hmtxExtended(self: &Self) -> Result<HmtxExtended<'a>, ReadError> { return TableProvider.hmtxExtended(self) }
+  pub fn selectedMaxp(self: &Self) -> Result<SelectedMaxp<'a>, ReadError> { return TableProvider.selectedMaxp(self) }
+  pub fn selectedHhea(self: &Self) -> Result<SelectedHhea<'a>, ReadError> { return TableProvider.selectedHhea(self) }
+  pub fn hGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> { return TableProvider.hGlyphMetricRecords(self) }
+}
+
+// compiler-bugs/004: keep this generic operation on the concrete owner.
+impl<'a> FontRef<'a> { pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> { return readTable<T, FontRef<'a>>(self, tableTag<T>()) } }
