@@ -27,7 +27,7 @@ import silk.u64
 import silk.i16
 import silk.i32
 
-import tables.lookup_flag { LookupFlag }
+pub import tables.lookup_flag { LookupFlag }
 /// [Script List Table](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#script-list-table-and-script-record)
 pub struct ScriptList<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
 impl<'a> Copy for ScriptList<'a> {}
@@ -3938,6 +3938,27 @@ impl<'a, T> Lookup<'a, T> {
   pub fn getSubtable(self: &Self, offset: Offset16) -> Result<T, ReadError> { return resolve<T, Offset16>(offset, self._fontData) }
 }
 
+// compiler-bugs/006: consumers retain the FontRead bound on T.
+pub interface ExtensionLookup<'a, T> { fn extension(self: &Self) -> Result<T, ReadError> }
+pub struct Subtables<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> { offsets: ScalarArray<'a, Offset16>, data: FontData<'a>, extended: bool, }
+impl<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> Copy for Subtables<'a, T, Ext> {}
+impl<'a, T, Ext> Subtables<'a, T, Ext> {
+  pub fn new(offsets: ScalarArray<'a, Offset16>, data: FontData<'a>) -> Self { return Self { offsets: offsets, data: data, extended: false } }
+  pub fn newExt(offsets: ScalarArray<'a, Offset16>, data: FontData<'a>) -> Self { return Self { offsets: offsets, data: data, extended: true } }
+  pub fn len(self: &Self) -> usize { return ScalarArray<Offset16>.len(&self.offsets) }
+  pub fn isEmpty(self: &Self) -> bool { return ScalarArray<Offset16>.isEmpty(&self.offsets) }
+  pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {
+    let offset = match move ScalarArray<Offset16>.get(&self.offsets, index) { Option<Offset16>.Some { value } => value Option<Offset16>.None => { return Result<T, ReadError>.failResult(ReadError.InvalidCollectionIndex { index: usize.toU32(index & 4294967295) }) } }
+    if self.extended { return match move resolve<Ext, Offset16>(offset, self.data) { Result<Ext, ReadError>.Success { value } => ExtensionLookup.extension(&value) Result<Ext, ReadError>.Failure { error } => Result<T, ReadError>.failResult(error) } }
+    return resolve<T, Offset16>(offset, self.data)
+  }
+  pub fn iter(self: &Self) -> SubtableIter<'a, T, Ext> { return SubtableIter<'a, T, Ext> { array: self.*, index: 0 } }
+}
+pub struct SubtableIter<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> { array: Subtables<'a, T, Ext>, index: usize, }
+impl<'a, T, Ext> SubtableIter<'a, T, Ext> {
+  pub fn next(self: &mut Self) -> Option<Result<T, ReadError>> { if self.index >= Subtables<'a, T, Ext>.len(&self.array) { return Option<Result<T, ReadError>>.None } let value = Subtables<'a, T, Ext>.get(&self.array, self.index) self.index = self.index + 1 return Option<Result<T, ReadError>>.some(move value) }
+}
+
 // Handwritten extension from packages/read_fonts/src/tables/layout_algorithms.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Coverage, class, and packed device algorithms from the pinned layout extensions.
@@ -4192,5 +4213,337 @@ impl<'a> DeviceIter<'a> {
     if (raw & u16.shiftLeft(1, self.bits - 1)) != 0 { value = value - u16.toI16(mask + 1) }
     self.index = self.index + 1
     return Option<i8>.some(i16.toI8(value))
+  }
+}
+
+// Handwritten extension from packages/read_fonts/src/tables/layout_scripts.silk
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import silk.slice { Slice }
+pub struct TaggedElement<T> { pub tag: Tag, pub element: T, }
+impl<T: Copy> Copy for TaggedElement<T> {}
+impl<T> TaggedElement<T> { pub fn new(tag: Tag, element: T) -> Self { return Self { tag: tag, element: move element } } }
+pub struct SelectedScript { pub tag: Tag, pub index: u16, pub isFallback: bool, }
+impl Copy for SelectedScript {}
+impl Equal for SelectedScript { fn equals(left: &SelectedScript, right: &SelectedScript) -> bool { return &left.tag == &right.tag && left.index == right.index && left.isFallback == right.isFallback } }
+impl<'a> ScriptList<'a> {
+  pub fn indexForTag(self: &Self, tag: Tag) -> Option<u16> {
+    let records = ScriptList<'a>.scriptRecords(self)
+    let mut lo: usize = 0
+    let mut hi = ComputedArray<'a, (), ScriptRecord<'a>>.len(&records)
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      let record = match move ComputedArray<'a, (), ScriptRecord<'a>>.get(&records, mid) { Result<ScriptRecord<'a>, ReadError>.Success { value } => value Result<ScriptRecord<'a>, ReadError>.Failure { error } => { return Option<u16>.None } }
+      if Tag.toU32(ScriptRecord<'a>.scriptTag(&record)) <= Tag.toU32(tag) { lo = mid + 1 } else { hi = mid }
+    }
+    if lo == 0 { return Option<u16>.None }
+    let record = match move ComputedArray<'a, (), ScriptRecord<'a>>.get(&records, lo - 1) { Result<ScriptRecord<'a>, ReadError>.Success { value } => value Result<ScriptRecord<'a>, ReadError>.Failure { error } => { return Option<u16>.None } }
+    if &ScriptRecord<'a>.scriptTag(&record) == &tag { return Option<u16>.some(usize.toU16(lo - 1)) }
+    return Option<u16>.None
+  }
+  pub fn get(self: &Self, index: u16) -> Result<TaggedElement<Script<'a>>, ReadError> {
+    let record = match move ComputedArray<'a, (), ScriptRecord<'a>>.get(&ScriptList<'a>.scriptRecords(self), u16.toUsize(index)) { Result<ScriptRecord<'a>, ReadError>.Success { value } => value Result<ScriptRecord<'a>, ReadError>.Failure { error } => { return Result<TaggedElement<Script<'a>>, ReadError>.failResult(ReadError.OutOfBounds) } }
+    return match move ScriptRecord<'a>.script(&record, self._fontData) { Result<Script<'a>, ReadError>.Success { value } => Result<TaggedElement<Script<'a>>, ReadError>.succeed(TaggedElement<Script<'a>>.new(ScriptRecord<'a>.scriptTag(&record), value)) Result<Script<'a>, ReadError>.Failure { error } => Result<TaggedElement<Script<'a>>, ReadError>.failResult(error) }
+  }
+}
+impl<'a> Script<'a> {
+  pub fn langSysIndexForTag(self: &Self, tag: Tag) -> Option<u16> {
+    let records = Script<'a>.langSysRecords(self)
+    let mut lo: usize = 0
+    let mut hi = ComputedArray<'a, (), LangSysRecord<'a>>.len(&records)
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      let record = match move ComputedArray<'a, (), LangSysRecord<'a>>.get(&records, mid) { Result<LangSysRecord<'a>, ReadError>.Success { value } => value Result<LangSysRecord<'a>, ReadError>.Failure { error } => { return Option<u16>.None } }
+      if Tag.toU32(LangSysRecord<'a>.langSysTag(&record)) <= Tag.toU32(tag) { lo = mid + 1 } else { hi = mid }
+    }
+    if lo == 0 { return Option<u16>.None }
+    let record = match move ComputedArray<'a, (), LangSysRecord<'a>>.get(&records, lo - 1) { Result<LangSysRecord<'a>, ReadError>.Success { value } => value Result<LangSysRecord<'a>, ReadError>.Failure { error } => { return Option<u16>.None } }
+    if &LangSysRecord<'a>.langSysTag(&record) == &tag { return Option<u16>.some(usize.toU16(lo - 1)) }
+    return Option<u16>.None
+  }
+  pub fn langSys(self: &Self, index: u16) -> Result<TaggedElement<LangSys<'a>>, ReadError> {
+    let record = match move ComputedArray<'a, (), LangSysRecord<'a>>.get(&Script<'a>.langSysRecords(self), u16.toUsize(index)) { Result<LangSysRecord<'a>, ReadError>.Success { value } => value Result<LangSysRecord<'a>, ReadError>.Failure { error } => { return Result<TaggedElement<LangSys<'a>>, ReadError>.failResult(ReadError.OutOfBounds) } }
+    return match move LangSysRecord<'a>.langSys(&record, self._fontData) { Result<LangSys<'a>, ReadError>.Success { value } => Result<TaggedElement<LangSys<'a>>, ReadError>.succeed(TaggedElement<LangSys<'a>>.new(LangSysRecord<'a>.langSysTag(&record), value)) Result<LangSys<'a>, ReadError>.Failure { error } => Result<TaggedElement<LangSys<'a>>, ReadError>.failResult(error) }
+  }
+}
+impl<'a> ScriptList<'a> {
+  pub fn select(self: &Self, tags: &[Tag]) -> Option<SelectedScript> {
+    let mut i: usize = 0
+    while i < tags.length {
+      if let Option<u16>.Some { value } = ScriptList<'a>.indexForTag(self, tags[i]) { return Option<SelectedScript>.some(SelectedScript { tag: tags[i], index: value, isFallback: false }) }
+      i = i + 1
+    }
+    let fallbacks: [Tag; 3] = [Tag.fromU32(1145457748), Tag.fromU32(1684434036), Tag.fromU32(1818326126)]
+    i = 0
+    while i < 3 {
+      if let Option<u16>.Some { value } = ScriptList<'a>.indexForTag(self, fallbacks[i]) { return Option<SelectedScript>.some(SelectedScript { tag: fallbacks[i], index: value, isFallback: true }) }
+      i = i + 1
+    }
+    return Option<SelectedScript>.None
+  }
+}
+impl<'a> FeatureList<'a> {
+  pub fn get(self: &Self, index: u16) -> Result<TaggedElement<Feature<'a>>, ReadError> {
+    let record = match move ComputedArray<'a, (), FeatureRecord<'a>>.get(&FeatureList<'a>.featureRecords(self), u16.toUsize(index)) { Result<FeatureRecord<'a>, ReadError>.Success { value } => value Result<FeatureRecord<'a>, ReadError>.Failure { error } => { return Result<TaggedElement<Feature<'a>>, ReadError>.failResult(ReadError.OutOfBounds) } }
+    return match move FeatureRecord<'a>.feature(&record, self._fontData) { Result<Feature<'a>, ReadError>.Success { value } => Result<TaggedElement<Feature<'a>>, ReadError>.succeed(TaggedElement<Feature<'a>>.new(FeatureRecord<'a>.featureTag(&record), value)) Result<Feature<'a>, ReadError>.Failure { error } => Result<TaggedElement<Feature<'a>>, ReadError>.failResult(error) }
+  }
+}
+impl<'a> LangSys<'a> {
+  pub fn featureIndexForTag<'b>(self: &Self, list: &FeatureList<'b>, tag: Tag) -> Option<u16> {
+    let indices = LangSys<'a>.featureIndices(self)
+    let records = FeatureList.featureRecords(list)
+    let mut i: usize = 0
+    while i < ScalarArray<u16>.len(&indices) {
+      let index = ScalarArray<u16>.get(&indices, i) |> Option<u16>.unwrapOr(0)
+      if let Result<FeatureRecord<'b>, ReadError>.Success { value } = ComputedArray<'b, (), FeatureRecord<'b>>.get(&records, u16.toUsize(index)) { if &FeatureRecord<'b>.featureTag(&value) == &tag { return Option<u16>.some(index) } }
+      i = i + 1
+    }
+    return Option<u16>.None
+  }
+}
+pub struct ScriptTags { tags: [Tag; 3], length: usize, }
+impl Copy for ScriptTags {}
+impl ScriptTags {
+  pub fn default() -> Self { return Self { tags: [Tag.default(); 3], length: 0 } }
+  pub fn fromUnicode(unicodeScript: Tag) -> Self {
+    let mut result = ScriptTags.default()
+    if let Option<Tag>.Some { value } = newTagFromUnicode(unicodeScript) {
+      if Tag.toU32(value) != 1836674354 { result.tags[0] = Tag.fromU32(Tag.toU32(value) + 1) result.length = 1 }
+      result.tags[result.length] = value
+      result.length = result.length + 1
+    }
+    result.tags[result.length] = oldTagFromUnicode(unicodeScript)
+    result.length = result.length + 1
+    return result
+  }
+  pub fn asSlice<'s>(self: &'s Self) -> &'s [Tag] { return Slice.view(&self.tags, 0, self.length) }
+}
+fn oldTagFromUnicode(tag: Tag) -> Tag {
+  if Tag.toU32(tag) == 1517122664 { return Tag.fromU32(1835103336) }
+  if Tag.toU32(tag) == 1214870113 { return Tag.fromU32(1801547361) }
+  if Tag.toU32(tag) == 1281453935 { return Tag.fromU32(1818324768) }
+  if Tag.toU32(tag) == 1500080489 { return Tag.fromU32(2036932640) }
+  if Tag.toU32(tag) == 1315663727 { return Tag.fromU32(1852534560) }
+  if Tag.toU32(tag) == 1449224553 { return Tag.fromU32(1986095392) }
+  let mut bytes = Tag.toBeBytes(tag)
+  if bytes[0] >= 65 && bytes[0] <= 90 { bytes[0] = bytes[0] + 32 }
+  return Tag.fromBeBytes(bytes)
+}
+fn newTagFromUnicode(tag: Tag) -> Option<Tag> {
+  if Tag.toU32(tag) == 1113943655 { return Option<Tag>.some(Tag.fromU32(1651402546)) }
+  if Tag.toU32(tag) == 1147500129 { return Option<Tag>.some(Tag.fromU32(1684370994)) }
+  if Tag.toU32(tag) == 1198877298 { return Option<Tag>.some(Tag.fromU32(1735029298)) }
+  if Tag.toU32(tag) == 1198879349 { return Option<Tag>.some(Tag.fromU32(1735750194)) }
+  if Tag.toU32(tag) == 1265525857 { return Option<Tag>.some(Tag.fromU32(1802396722)) }
+  if Tag.toU32(tag) == 1298954605 { return Option<Tag>.some(Tag.fromU32(1835822386)) }
+  if Tag.toU32(tag) == 1299803506 { return Option<Tag>.some(Tag.fromU32(1836674354)) }
+  if Tag.toU32(tag) == 1332902241 { return Option<Tag>.some(Tag.fromU32(1869773106)) }
+  if Tag.toU32(tag) == 1415671148 { return Option<Tag>.some(Tag.fromU32(1953328178)) }
+  if Tag.toU32(tag) == 1415933045 { return Option<Tag>.some(Tag.fromU32(1952803890)) }
+  return Option<Tag>.None
+}
+
+// Handwritten extension from packages/read_fonts/src/tables/layout_conditions.silk
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import model.error { Error }
+impl<'a> Condition<'a> {
+  pub fn evaluate(self: &Self, coords: &[F2Dot14], mut delta: mut fn(u32) -> Result<f64, Error>) -> Result<bool, Error> {
+    let mut budget: usize = 65536
+    return evaluateCondition(self, coords, &mut delta, 64, &mut budget)
+  }
+}
+impl<'a> ConditionSet<'a> {
+  pub fn evaluate(self: &Self, coords: &[F2Dot14], mut delta: mut fn(u32) -> Result<f64, Error>) -> Result<bool, Error> {
+    let offsets = ConditionSet<'a>.conditionOffsets(self)
+    if ScalarArray<Offset32>.len(&offsets) != u16.toUsize(ConditionSet<'a>.conditionCount(self)) { return Result<bool, Error>.failResult(Error.Malformed) }
+    let mut budget: usize = 65536
+    let mut i: usize = 0
+    while i < ScalarArray<Offset32>.len(&offsets) {
+      let offset = ScalarArray<Offset32>.get(&offsets, i) |> Option<Offset32>.unwrapOr(Offset32.new(0))
+      match move evaluateConditionOffset(self._fontData, Offset32.toU32(offset), coords, &mut delta, 64, &mut budget) {
+        Result<bool, Error>.Failure { error } => { return Result<bool, Error>.failResult(error) }
+        Result<bool, Error>.Success { value } => { if !value { return Result<bool, Error>.succeed(false) } }
+      }
+      i = i + 1
+    }
+    return Result<bool, Error>.succeed(true)
+  }
+}
+impl<'a> LookupConditionRecord<'a> {
+  pub fn evaluate(self: &Self, data: FontData, coords: &[F2Dot14], mut delta: mut fn(u32) -> Result<f64, Error>) -> Result<bool, Error> {
+    let mut budget: usize = 65536
+    return evaluateConditionOffset(data, Offset32.toU32(Nullable<Offset32>.offset(&LookupConditionRecord<'a>.conditionOffset(self)).*), coords, &mut delta, 64, &mut budget)
+  }
+}
+fn evaluateConditionOffset<'a>(data: FontData<'a>, offset: u32, coords: &[F2Dot14], delta: &mut mut fn(u32) -> Result<f64, Error>, depth: usize, budget: &mut usize) -> Result<bool, Error> {
+  if offset == 0 { return Result<bool, Error>.succeed(true) }
+  let data = match move FontData.splitOff(&data, u32.toUsize(offset)) { Option<FontData<'a>>.Some { value } => value Option<FontData<'a>>.None => { return Result<bool, Error>.failResult(Error.Malformed) } }
+  let condition = match move Condition<'a>.read(data) { Result<Condition<'a>, ReadError>.Success { value } => value Result<Condition<'a>, ReadError>.Failure { error: ReadError.InvalidFormat { value } } => { return Result<bool, Error>.succeed(false) } Result<Condition<'a>, ReadError>.Failure { error } => { return Result<bool, Error>.failResult(Error.Malformed) } }
+  return evaluateCondition(&condition, coords, &mut delta, depth, &mut budget)
+}
+fn evaluateCondition<'a>(condition: &Condition<'a>, coords: &[F2Dot14], delta: &mut mut fn(u32) -> Result<f64, Error>, depth: usize, budget: &mut usize) -> Result<bool, Error> {
+  if depth == 0 || budget.* == 0 { return Result<bool, Error>.failResult(Error.LimitExceeded) }
+  budget.* = budget.* - 1
+  match condition.* {
+    Condition<'a>.Format1AxisRange { value } => {
+      let axis = u16.toUsize(ConditionFormat1<'a>.axisIndex(&value))
+      let mut coord: i16 = 0
+      if axis < coords.length { coord = F2Dot14.toBits(coords[axis]) }
+      return Result<bool, Error>.succeed(coord >= F2Dot14.toBits(ConditionFormat1<'a>.filterRangeMinValue(&value)) && coord <= F2Dot14.toBits(ConditionFormat1<'a>.filterRangeMaxValue(&value)))
+    }
+    Condition<'a>.Format2VariableValue { value } => {
+      let index = ConditionFormat2<'a>.varIndex(&value)
+      let mut adjustment: f64 = 0.0
+      if index != 4294967295 { adjustment = match move delta.*(index) { Result<f64, Error>.Success { value: amount } => amount Result<f64, Error>.Failure { error } => { return Result<bool, Error>.failResult(error) } } }
+      return Result<bool, Error>.succeed(i16.toF64(ConditionFormat2<'a>.defaultValue(&value)) + adjustment > 0.0)
+    }
+    Condition<'a>.Format3And { value } => {
+      let offsets = ConditionFormat3<'a>.conditionOffsets(&value)
+      if ScalarArray<Offset24>.len(&offsets) != u8.toUsize(ConditionFormat3<'a>.conditionCount(&value)) { return Result<bool, Error>.failResult(Error.Malformed) }
+      let mut i: usize = 0
+      while i < ScalarArray<Offset24>.len(&offsets) {
+        let offset = ScalarArray<Offset24>.get(&offsets, i) |> Option<Offset24>.unwrapOr(Offset24.new(Uint24.new(0)))
+        match move evaluateConditionOffset(value._fontData, Offset24.toU32(offset), coords, &mut delta, depth - 1, &mut budget) {
+          Result<bool, Error>.Failure { error } => { return Result<bool, Error>.failResult(error) }
+          Result<bool, Error>.Success { value: matches } => { if !matches { return Result<bool, Error>.succeed(false) } }
+        }
+        i = i + 1
+      }
+      return Result<bool, Error>.succeed(true)
+    }
+    Condition<'a>.Format4Or { value } => {
+      let offsets = ConditionFormat4<'a>.conditionOffsets(&value)
+      if ScalarArray<Offset24>.len(&offsets) != u8.toUsize(ConditionFormat4<'a>.conditionCount(&value)) { return Result<bool, Error>.failResult(Error.Malformed) }
+      let mut i: usize = 0
+      while i < ScalarArray<Offset24>.len(&offsets) {
+        let offset = ScalarArray<Offset24>.get(&offsets, i) |> Option<Offset24>.unwrapOr(Offset24.new(Uint24.new(0)))
+        match move evaluateConditionOffset(value._fontData, Offset24.toU32(offset), coords, &mut delta, depth - 1, &mut budget) {
+          Result<bool, Error>.Failure { error } => { return Result<bool, Error>.failResult(error) }
+          Result<bool, Error>.Success { value: matches } => { if matches { return Result<bool, Error>.succeed(true) } }
+        }
+        i = i + 1
+      }
+      return Result<bool, Error>.succeed(false)
+    }
+    Condition<'a>.Format5Negate { value } => {
+      return match move evaluateConditionOffset(value._fontData, Offset24.toU32(ConditionFormat5<'a>.conditionOffset(&value)), coords, &mut delta, depth - 1, &mut budget) { Result<bool, Error>.Success { value: matches } => Result<bool, Error>.succeed(!matches) Result<bool, Error>.Failure { error } => Result<bool, Error>.failResult(error) }
+    }
+  }
+}
+impl<'a> FeatureVariations<'a> {
+  pub fn indexForCoords(self: &Self, coords: &[F2Dot14]) -> Option<u32> { return FeatureVariations<'a>.indexForCoordsWithDelta<Error>(self, coords, fn(index: u32) -> Result<f64, Error> { return Result<f64, Error>.succeed(0.0) }) }
+  pub fn indexForCoordsWithDelta<E>(self: &Self, coords: &[F2Dot14], mut delta: mut fn(u32) -> Result<f64, E>) -> Option<u32> {
+    if FeatureVariations<'a>.version(self).major != 1 { return Option<u32>.None }
+    let records = FeatureVariations<'a>.featureVariationRecords(self)
+    let mut i: usize = 0
+    while i < ComputedArray<'a, (), FeatureVariationRecord<'a>>.len(&records) {
+      let index = i
+      i = i + 1
+      let record = match move ComputedArray<'a, (), FeatureVariationRecord<'a>>.get(&records, index) { Result<FeatureVariationRecord<'a>, ReadError>.Success { value } => value Result<FeatureVariationRecord<'a>, ReadError>.Failure { error } => { continue } }
+      if Nullable<Offset32>.isNull(&FeatureVariationRecord<'a>.conditionSetOffset(&record)) { return Option<u32>.some(usize.toU32(index)) }
+      let setResult = match move FeatureVariationRecord<'a>.conditionSet(&record, self._fontData) { Option<Result<ConditionSet<'a>, ReadError>>.Some { value } => move value Option<Result<ConditionSet<'a>, ReadError>>.None => { continue } }
+      let set = match move setResult { Result<ConditionSet<'a>, ReadError>.Success { value } => value Result<ConditionSet<'a>, ReadError>.Failure { error } => { continue } }
+      let matches = ConditionSet<'a>.evaluate(&set, coords, fn(index: u32) -> Result<f64, Error> { return match move delta(index) { Result<f64, E>.Success { value } => Result<f64, Error>.succeed(value) Result<f64, E>.Failure { error } => Result<f64, Error>.failResult(Error.Malformed) } }) |> Result<bool, Error>.unwrapOr(false)
+      if matches { return Option<u32>.some(usize.toU32(index)) }
+    }
+    return Option<u32>.None
+  }
+}
+impl<'a> FeatureTableSubstitutionRecord<'a> {
+  pub fn alternateFeature<'b>(self: &Self, data: FontData<'b>) -> Result<Feature<'b>, ReadError> { return FeatureTableSubstitutionRecord<'a>.alternateFeatureWithTag(self, data, Tag.fromU32(1314212940)) }
+  pub fn alternateFeatureWithTag<'b>(self: &Self, data: FontData<'b>, featureTag: Tag) -> Result<Feature<'b>, ReadError> { return resolveWithArgs<Tag, Feature<'b>, Offset32>(FeatureTableSubstitutionRecord<'a>.alternateFeatureOffset(self), data, featureTag) }
+}
+
+// Handwritten extension from packages/read_fonts/src/tables/layout_feature_variations.silk
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import silk.list { List }
+import silk.hash_set { HashSet }
+import silk.hash { Hash, Word }
+import silk.allocator { Allocator, OutOfMemoryError }
+impl<'a> FeatureVariations<'a> {
+  pub fn lookupVariationRecords(self: &Self) -> Option<ComputedArray<'a, (), LookupVariationRecord<'a>>> {
+    if !MajorMinor.compatible(&FeatureVariations<'a>.version(self), MajorMinor.new(1, 1)) { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None }
+    if u32.toU64(FeatureVariations<'a>.featureVariationRecordCount(self)) * 8 > usize.toU64(usize.saturatingSubtract(FontData.len(&self._fontData), 8)) { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None }
+    let count = match move FeatureVariations<'a>.lookupVariationRecordCount(self) { Option<u32>.Some { value } => u32.toUsize(value) Option<u32>.None => { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None } }
+    let length = match move usize.checkedMultiply(count, 6) { Option<usize>.Some { value } => value Option<usize>.None => { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None } }
+    let start = FeatureVariations<'a>.lookupVariationRecordCountByteRange(self).end
+    let end = match move usize.checkedAdd(start, length) { Option<usize>.Some { value } => value Option<usize>.None => { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None } }
+    return match move ComputedArray<'a, (), LookupVariationRecord<'a>>.new(self._fontData, start, end, ()) { Result<ComputedArray<'a, (), LookupVariationRecord<'a>>, ReadError>.Success { value } => Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.some(value) Result<ComputedArray<'a, (), LookupVariationRecord<'a>>, ReadError>.Failure { error } => Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None }
+  }
+  pub fn lookupVariations(self: &Self) -> Option<LookupVariations<'a>> {
+    let records = match move FeatureVariations<'a>.lookupVariationRecords(self) { Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.Some { value } => value Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None => { return Option<LookupVariations<'a>>.None } }
+    if ComputedArray<'a, (), LookupVariationRecord<'a>>.isEmpty(&records) { return Option<LookupVariations<'a>>.None }
+    let mut previous: u16 = 0
+    let mut i: usize = 0
+    while i < ComputedArray<'a, (), LookupVariationRecord<'a>>.len(&records) {
+      let record = match move ComputedArray<'a, (), LookupVariationRecord<'a>>.get(&records, i) { Result<LookupVariationRecord<'a>, ReadError>.Success { value } => value Result<LookupVariationRecord<'a>, ReadError>.Failure { error } => { return Option<LookupVariations<'a>>.None } }
+      let index = LookupVariationRecord<'a>.featureIndex(&record)
+      if i != 0 && index <= previous { return Option<LookupVariations<'a>>.None }
+      previous = index
+      i = i + 1
+    }
+    return Option<LookupVariations<'a>>.some(LookupVariations<'a> { data: self._fontData, records: records })
+  }
+}
+pub struct LookupVariations<'a> { data: FontData<'a>, records: ComputedArray<'a, (), LookupVariationRecord<'a>>, }
+impl<'a> Copy for LookupVariations<'a> {}
+impl<'a> LookupVariations<'a> {
+  fn featureLookups(self: &Self, featureIndex: u16) -> Option<FeatureLookups<'a>> {
+    let mut lo: usize = 0
+    let mut hi = ComputedArray<'a, (), LookupVariationRecord<'a>>.len(&self.records)
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      let record = match move ComputedArray<'a, (), LookupVariationRecord<'a>>.get(&self.records, mid) { Result<LookupVariationRecord<'a>, ReadError>.Success { value } => value Result<LookupVariationRecord<'a>, ReadError>.Failure { error } => { return Option<FeatureLookups<'a>>.None } }
+      let index = LookupVariationRecord<'a>.featureIndex(&record)
+      if index < featureIndex { lo = mid + 1 continue }
+      if index > featureIndex { hi = mid continue }
+      if Offset32.toU32(LookupVariationRecord<'a>.featureLookupsOffset(&record)) == 0 { return Option<FeatureLookups<'a>>.None }
+      let table = match move LookupVariationRecord<'a>.featureLookups(&record, self.data) { Result<FeatureLookups<'a>, ReadError>.Success { value } => value Result<FeatureLookups<'a>, ReadError>.Failure { error } => { return Option<FeatureLookups<'a>>.None } }
+      let length = match move usize.checkedMultiply(u32.toUsize(FeatureLookups<'a>.lookupConditionCount(&table)), 8) { Option<usize>.Some { value } => value Option<usize>.None => { return Option<FeatureLookups<'a>>.None } }
+      let end = match move usize.checkedAdd(FeatureLookups<'a>.lookupConditionCountByteRange(&table).end, length) { Option<usize>.Some { value } => value Option<usize>.None => { return Option<FeatureLookups<'a>>.None } }
+      if FeatureLookups<'a>.version(&table).major != 1 || end > FontData.len(&table._fontData) { return Option<FeatureLookups<'a>>.None }
+      return Option<FeatureLookups<'a>>.some(table)
+    }
+    return Option<FeatureLookups<'a>>.None
+  }
+  pub effect fn apply<E>(self: &Self, featureIndex: u16, coords: &[F2Dot14], mut delta: mut fn(u32) -> Result<f64, E>, lookups: &mut List<u16>) -> bool ! OutOfMemoryError ? &mut Allocator {
+    let table = match move LookupVariations<'a>.featureLookups(self, featureIndex) { Option<FeatureLookups<'a>>.Some { value } => value Option<FeatureLookups<'a>>.None => { return false } }
+    if !FeatureLookupsFlags.contains(&FeatureLookups<'a>.flags(&table), FeatureLookupsFlags.addDefaultLookups()) { List<u16>.clear(&mut lookups) }
+    let mut budget: usize = 65536
+    let mut added = HashSet<Word>.make(Hash.seed(0))
+    let mut mappedDelta = fn(index: u32) -> Result<f64, Error> { return match move delta(index) { Result<f64, E>.Success { value } => Result<f64, Error>.succeed(value) Result<f64, E>.Failure { error } => Result<f64, Error>.failResult(Error.Malformed) } }
+    let records = FeatureLookups<'a>.lookupConditionRecords(&table)
+    let mut i: usize = 0
+    while i < ComputedArray<'a, (), LookupConditionRecord<'a>>.len(&records) {
+      let index = i
+      i = i + 1
+      let record = match move ComputedArray<'a, (), LookupConditionRecord<'a>>.get(&records, index) { Result<LookupConditionRecord<'a>, ReadError>.Success { value } => value Result<LookupConditionRecord<'a>, ReadError>.Failure { error } => { continue } }
+      let offset = Offset32.toU32(Nullable<Offset32>.offset(&LookupConditionRecord<'a>.conditionOffset(&record)).*)
+      let matches = evaluateConditionOffset(table._fontData, offset, coords, &mut mappedDelta, 64, &mut budget) |> Result<bool, Error>.unwrapOr(false)
+      if matches { run extendLookupList(&record, table._fontData, &mut added, &mut lookups) }
+    }
+    return true
+  }
+  pub effect fn addAll(self: &Self, featureIndex: u16, lookups: &mut List<u16>) -> bool ! OutOfMemoryError ? &mut Allocator {
+    let table = match move LookupVariations<'a>.featureLookups(self, featureIndex) { Option<FeatureLookups<'a>>.Some { value } => value Option<FeatureLookups<'a>>.None => { return false } }
+    let mut added = HashSet<Word>.make(Hash.seed(0))
+    let records = FeatureLookups<'a>.lookupConditionRecords(&table)
+    let mut i: usize = 0
+    while i < ComputedArray<'a, (), LookupConditionRecord<'a>>.len(&records) {
+      if let Result<LookupConditionRecord<'a>, ReadError>.Success { value } = ComputedArray<'a, (), LookupConditionRecord<'a>>.get(&records, i) { run extendLookupList(&value, table._fontData, &mut added, &mut lookups) }
+      i = i + 1
+    }
+    return true
+  }
+}
+effect fn extendLookupList<'a>(record: &LookupConditionRecord<'a>, data: FontData<'a>, added: &mut HashSet<Word>, lookups: &mut List<u16>) -> () ! OutOfMemoryError ? &mut Allocator {
+  let offset = Offset32.toU32(LookupConditionRecord<'a>.lookupIndexListOffset(record))
+  if offset == 0 { return }
+  if run HashSet<Word>.insert(&mut added, Hash.word(u32.toU64(offset))) { return }
+  if let Result<LookupIndexList<'a>, ReadError>.Success { value } = LookupConditionRecord<'a>.lookupIndexList(record, data) {
+    let indices = LookupIndexList<'a>.lookupIndices(&value)
+    if ScalarArray<u16>.len(&indices) == u16.toUsize(LookupIndexList<'a>.lookupIndexCount(&value)) {
+      let mut i: usize = 0
+      while i < ScalarArray<u16>.len(&indices) { run List<u16>.append(&mut lookups, ScalarArray<u16>.get(&indices, i) |> Option<u16>.unwrapOr(0)) i = i + 1 }
+    }
   }
 }

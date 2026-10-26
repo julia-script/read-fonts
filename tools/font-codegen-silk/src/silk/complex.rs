@@ -18,9 +18,9 @@ impl Context<'_> {
             .ident
             .to_string();
         match module.as_str() {
-            "layout" => out.push_str("import tables.lookup_flag { LookupFlag }\n"),
+            "layout" => out.push_str("pub import tables.lookup_flag { LookupFlag }\n"),
             "gdef" => out.push_str("import generated_layout { CoverageTable, ClassDef, DeviceOrVariationIndex, HeaderOffset, LayoutOffsetArray }\nimport generated_variations { ItemVariationStore }\n"),
-            "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList }\nimport tables.lookup_flag { LookupFlag }\n"),
+            "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
             "variations" => out.push_str("import tables.tuple_index { TupleIndex }\n"),
             _ => (),
         }
@@ -239,7 +239,7 @@ impl Context<'_> {
         };
         let raw = field.name.to_string();
         let name = camel(&raw);
-        let getter = camel(&raw.replace("_offsets", "s").replace("_offset", ""));
+        let getter = camel(&field.offset_getter_name().unwrap().to_string());
         let data_arg = if record { ", data: FontData<'a>" } else { "" };
         let data = if record { "data" } else { "self._fontData" };
         let (args, value) = self.field_args(field, true, true)?;

@@ -210,3 +210,22 @@ Ten additional read_fonts and four font_types regressions remain separate.
 traversal are pending; no layout corpus-parity claim is made. The active corpus
 protocol still covers milestone 2. Milestones 4–9 remain pending. Compiler report
 005 has a reduced reproducer and a source workaround; the toolchain is unchanged.
+
+## Session 7 — 2026-10-26 — layout helpers and condition evaluation
+
+The current suites pass **64 font_types** and **158 read_fonts tests**, including
+**208 upstream ports** in total. The 43 new read_fonts ports cover all 16 GPOS
+specification tests, five GPOS record/search tests, nine script/feature tests,
+seven condition-evaluation tests, and six lookup-variation tests. Condition
+evaluation preserves errors under negation, limits recursion/work, and handles
+unknown/null conditions. Lookup variations deduplicate shared lists.
+
+The generic lookup/subtable helpers, script selection, language/feature helpers,
+and GSUB/GPOS/GDEF provider methods are implemented. Compiler report 006 has a
+reduced reproducer and a source workaround. No toolchain modifications were made.
+
+**Milestone 3 is still incomplete:** differential traversal and the full gate
+remain. Variation-store-dependent condition/selection helpers and tests need the
+shared variation evaluation dependency; IntSet intersections remain with M7.
+The active dump protocol still covers M2, and no layout parity is claimed.
+Milestones 4–9 remain pending.

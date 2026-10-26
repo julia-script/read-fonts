@@ -161,3 +161,15 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - New layout facades and packed specification fixtures are emitted by the
   generation script; edit extension templates or their upstream-derived fixture
   generator, never generated files.
+
+- `TaggedElement` exposes `tag` and `element`; Rust Deref forwarding is explicit
+  access to `element`. ScriptTags exposes `asSlice` and retains the original order.
+- Layout conditions need the shared `model.error.Error` type before the model
+  milestone. Its error variants and messages match upstream. Callable parameters
+  preserve mutable callback state; recursion is capped at 64 and work at 65,536.
+- Lookup variation accumulation uses Silk List and HashSet<Word> in place of Vec
+  and BTreeSet. It is an allocation effect with an explicit Allocator and
+  OutOfMemoryError; lookup order and shared-offset deduplication are unchanged.
+- ValueRecord's zero-bit field-offset probe uses wrapping subtraction, matching
+  Rust release behavior. Layout test fixtures retain complete original GSUB
+  payloads from the four upstream script/feature-test fonts.

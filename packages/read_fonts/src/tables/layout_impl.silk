@@ -74,3 +74,24 @@ impl<'a, T> SelectedLookupList<'a, T> {
 impl<'a, T> Lookup<'a, T> {
   pub fn getSubtable(self: &Self, offset: Offset16) -> Result<T, ReadError> { return resolve<T, Offset16>(offset, self._fontData) }
 }
+
+// compiler-bugs/006: consumers retain the FontRead bound on T.
+pub interface ExtensionLookup<'a, T> { fn extension(self: &Self) -> Result<T, ReadError> }
+pub struct Subtables<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> { offsets: ScalarArray<'a, Offset16>, data: FontData<'a>, extended: bool, }
+impl<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> Copy for Subtables<'a, T, Ext> {}
+impl<'a, T, Ext> Subtables<'a, T, Ext> {
+  pub fn new(offsets: ScalarArray<'a, Offset16>, data: FontData<'a>) -> Self { return Self { offsets: offsets, data: data, extended: false } }
+  pub fn newExt(offsets: ScalarArray<'a, Offset16>, data: FontData<'a>) -> Self { return Self { offsets: offsets, data: data, extended: true } }
+  pub fn len(self: &Self) -> usize { return ScalarArray<Offset16>.len(&self.offsets) }
+  pub fn isEmpty(self: &Self) -> bool { return ScalarArray<Offset16>.isEmpty(&self.offsets) }
+  pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {
+    let offset = match move ScalarArray<Offset16>.get(&self.offsets, index) { Option<Offset16>.Some { value } => value Option<Offset16>.None => { return Result<T, ReadError>.failResult(ReadError.InvalidCollectionIndex { index: usize.toU32(index & 4294967295) }) } }
+    if self.extended { return match move resolve<Ext, Offset16>(offset, self.data) { Result<Ext, ReadError>.Success { value } => ExtensionLookup.extension(&value) Result<Ext, ReadError>.Failure { error } => Result<T, ReadError>.failResult(error) } }
+    return resolve<T, Offset16>(offset, self.data)
+  }
+  pub fn iter(self: &Self) -> SubtableIter<'a, T, Ext> { return SubtableIter<'a, T, Ext> { array: self.*, index: 0 } }
+}
+pub struct SubtableIter<'a, T: FontRead<'a, ()>, Ext: FontRead<'a, ()> + ExtensionLookup<'a, T>> { array: Subtables<'a, T, Ext>, index: usize, }
+impl<'a, T, Ext> SubtableIter<'a, T, Ext> {
+  pub fn next(self: &mut Self) -> Option<Result<T, ReadError>> { if self.index >= Subtables<'a, T, Ext>.len(&self.array) { return Option<Result<T, ReadError>>.None } let value = Subtables<'a, T, Ext>.get(&self.array, self.index) self.index = self.index + 1 return Option<Result<T, ReadError>>.some(move value) }
+}

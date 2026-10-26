@@ -84,3 +84,103 @@ impl<'a> Gpos<'a> {
     return match move resolve<OriginalPositionLookupList<'a>, Offset32>(selected.offset, self._fontData) { Result<OriginalPositionLookupList<'a>, ReadError>.Success { value } => Result<PositionLookupList<'a>, ReadError>.succeed(SelectedLookupList<'a, PositionLookup<'a>>.Original { value: value }) Result<OriginalPositionLookupList<'a>, ReadError>.Failure { error } => Result<PositionLookupList<'a>, ReadError>.failResult(error) }
   }
 }
+
+impl<'a, T: FontRead<'a, ()>> ExtensionLookup<'a, T> for ExtensionPosFormat1<'a, T> { fn extension(self: &Self) -> Result<T, ReadError> { return ExtensionPosFormat1<'a, T>.extension(self) } }
+pub union PositionSubtables<'a> {
+  Single { pub value: Subtables<'a, SinglePos<'a>, ExtensionPosFormat1<'a, SinglePos<'a>>> },
+  Pair { pub value: Subtables<'a, PairPos<'a>, ExtensionPosFormat1<'a, PairPos<'a>>> },
+  Cursive { pub value: Subtables<'a, CursivePos<'a>, ExtensionPosFormat1<'a, CursivePos<'a>>> },
+  MarkToBase { pub value: Subtables<'a, MarkBasePos<'a>, ExtensionPosFormat1<'a, MarkBasePos<'a>>> },
+  MarkToLig { pub value: Subtables<'a, MarkLigPos<'a>, ExtensionPosFormat1<'a, MarkLigPos<'a>>> },
+  MarkToMark { pub value: Subtables<'a, MarkMarkPos<'a>, ExtensionPosFormat1<'a, MarkMarkPos<'a>>> },
+  Contextual { pub value: Subtables<'a, PositionSequenceContext<'a>, ExtensionPosFormat1<'a, PositionSequenceContext<'a>>> },
+  ChainContextual { pub value: Subtables<'a, PositionChainContext<'a>, ExtensionPosFormat1<'a, PositionChainContext<'a>>> },
+  EmptyExtension,
+}
+impl<'a> Copy for PositionSubtables<'a> {}
+impl<'a> PositionLookup<'a> {
+  pub fn lookupFlag(self: &Self) -> LookupFlag { return Lookup<'a, ()>.lookupFlag(&PositionLookup<'a>.ofUnitType(self)) }
+  pub fn lookupType(self: &Self) -> u16 { return Lookup<'a, ()>.lookupType(&PositionLookup<'a>.ofUnitType(self)) }
+  pub fn markFilteringSet(self: &Self) -> Option<u16> { return Lookup<'a, ()>.markFilteringSet(&PositionLookup<'a>.ofUnitType(self)) }
+  pub fn subtables(self: &Self) -> Result<PositionSubtables<'a>, ReadError> {
+    let raw = PositionLookup<'a>.ofUnitType(self)
+    let offsets = Lookup<'a, ()>.subtableOffsets(&raw)
+    let data = Lookup<'a, ()>.offsetData(&raw)
+    let mut lookupType = Lookup<'a, ()>.lookupType(&raw)
+    let mut extended = false
+    if lookupType == 9 {
+      let mut index: usize = 0 let mut found = false
+      while index < ScalarArray<Offset16>.len(&offsets) {
+        let offset = ScalarArray<Offset16>.get(&offsets, index) |> Option<Offset16>.unwrapOr(Offset16.new(0))
+        if let Result<ExtensionPosFormat1<'a, ()>, ReadError>.Success { value } = move resolve<ExtensionPosFormat1<'a, ()>, Offset16>(offset, data) { lookupType = ExtensionPosFormat1<'a, ()>.extensionLookupType(&value) found = true break }
+        index = index + 1
+      }
+      if !found { return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.EmptyExtension) }
+      extended = true
+    }
+    match lookupType {
+      1 => { let mut array = Subtables<'a, SinglePos<'a>, ExtensionPosFormat1<'a, SinglePos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, SinglePos<'a>, ExtensionPosFormat1<'a, SinglePos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.Single { value: array }) }
+      2 => { let mut array = Subtables<'a, PairPos<'a>, ExtensionPosFormat1<'a, PairPos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, PairPos<'a>, ExtensionPosFormat1<'a, PairPos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.Pair { value: array }) }
+      3 => { let mut array = Subtables<'a, CursivePos<'a>, ExtensionPosFormat1<'a, CursivePos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, CursivePos<'a>, ExtensionPosFormat1<'a, CursivePos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.Cursive { value: array }) }
+      4 => { let mut array = Subtables<'a, MarkBasePos<'a>, ExtensionPosFormat1<'a, MarkBasePos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, MarkBasePos<'a>, ExtensionPosFormat1<'a, MarkBasePos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.MarkToBase { value: array }) }
+      5 => { let mut array = Subtables<'a, MarkLigPos<'a>, ExtensionPosFormat1<'a, MarkLigPos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, MarkLigPos<'a>, ExtensionPosFormat1<'a, MarkLigPos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.MarkToLig { value: array }) }
+      6 => { let mut array = Subtables<'a, MarkMarkPos<'a>, ExtensionPosFormat1<'a, MarkMarkPos<'a>>>.new(offsets, data) if extended { array = Subtables<'a, MarkMarkPos<'a>, ExtensionPosFormat1<'a, MarkMarkPos<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.MarkToMark { value: array }) }
+      7 => { let mut array = Subtables<'a, PositionSequenceContext<'a>, ExtensionPosFormat1<'a, PositionSequenceContext<'a>>>.new(offsets, data) if extended { array = Subtables<'a, PositionSequenceContext<'a>, ExtensionPosFormat1<'a, PositionSequenceContext<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.Contextual { value: array }) }
+      8 => { let mut array = Subtables<'a, PositionChainContext<'a>, ExtensionPosFormat1<'a, PositionChainContext<'a>>>.new(offsets, data) if extended { array = Subtables<'a, PositionChainContext<'a>, ExtensionPosFormat1<'a, PositionChainContext<'a>>>.newExt(offsets, data) } return Result<PositionSubtables<'a>, ReadError>.succeed(PositionSubtables<'a>.ChainContextual { value: array }) }
+      _ => { return Result<PositionSubtables<'a>, ReadError>.failResult(ReadError.InvalidFormat { value: u16.toI64(lookupType) }) }
+    }
+  }
+}
+impl<'a> AnchorTable<'a> {
+  pub fn xDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return match self.* { AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.xDevice(&value) _ => Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.None } }
+  pub fn yDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return match self.* { AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.yDevice(&value) _ => Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.None } }
+}
+impl<'a> PairSet<'a> {
+  pub fn findPairValueRecord(self: &Self, secondGlyph: GlyphId16) -> Option<PairValueRecord<'a>> {
+    let records = PairSet<'a>.pairValueRecords(self)
+    let mut lo: usize = 0 let mut hi = ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.len(&records)
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      let record = match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.get(&records, mid) { Result<PairValueRecord<'a>, ReadError>.Success { value } => value Result<PairValueRecord<'a>, ReadError>.Failure { error } => { return Option<PairValueRecord<'a>>.None } }
+      let glyph = GlyphId16.toU16(PairValueRecord<'a>.secondGlyph(&record))
+      if glyph < GlyphId16.toU16(secondGlyph) { lo = mid + 1 } else { if glyph > GlyphId16.toU16(secondGlyph) { hi = mid } else { return Option<PairValueRecord<'a>>.some(record) } }
+    }
+    return Option<PairValueRecord<'a>>.None
+  }
+}
+
+pub struct ClassValueRecords<'a> { data: FontData<'a>, start: usize, recordSize: usize, format1Len: usize, _class1Count: u16, _class2Count: u16, format1: ValueFormat, format2: ValueFormat, }
+impl<'a> Copy for ClassValueRecords<'a> {}
+impl<'a> ClassValueRecords<'a> {
+  pub fn class1Count(self: &Self) -> u16 { return self._class1Count }
+  pub fn class2Count(self: &Self) -> u16 { return self._class2Count }
+  pub fn get(self: &Self, class1: u16, class2: u16) -> Option<[ValueRecord<'a>; 2]> {
+    if class1 >= self._class1Count || class2 >= self._class2Count { return Option<[ValueRecord<'a>; 2]>.None }
+    // Counts are u16, record widths at most 32 bytes; these products fit usize.
+    let offset = self.start + u16.toUsize(class1) * self.recordSize * u16.toUsize(self._class2Count) + u16.toUsize(class2) * self.recordSize
+    return Option<[ValueRecord<'a>; 2]>.some([ValueRecord<'a>.new(self.data, offset, self.format1), ValueRecord<'a>.new(self.data, offset + self.format1Len, self.format2)])
+  }
+}
+impl<'a> PairPosFormat2<'a> {
+  pub fn classValueRecords(self: &Self) -> ClassValueRecords<'a> {
+    let format1 = PairPosFormat2<'a>.valueFormat1(self) let format2 = PairPosFormat2<'a>.valueFormat2(self)
+    let len1 = ValueFormat.recordByteLen(format1)
+    return ClassValueRecords<'a> { data: self._fontData, start: PairPosFormat2<'a>.class1RecordsByteRange(self).start, recordSize: len1 + ValueFormat.recordByteLen(format2), format1Len: len1, _class1Count: PairPosFormat2<'a>.class1Count(self), _class2Count: PairPosFormat2<'a>.class2Count(self), format1: format1, format2: format2 }
+  }
+  pub fn valueRecordRefs(self: &Self, class1: u16, class2: u16) -> Option<[ValueRecord<'a>; 2]> { return ClassValueRecords<'a>.get(&PairPosFormat2<'a>.classValueRecords(self), class1, class2) }
+}
+impl<'a> PairPosFormat4<'a> {
+  pub fn classValueRecords(self: &Self) -> ClassValueRecords<'a> {
+    let format1 = PairPosFormat4<'a>.valueFormat1(self) let format2 = PairPosFormat4<'a>.valueFormat2(self)
+    let len1 = ValueFormat.recordByteLen(format1)
+    return ClassValueRecords<'a> { data: self._fontData, start: PairPosFormat4<'a>.class1RecordsByteRange(self).start, recordSize: len1 + ValueFormat.recordByteLen(format2), format1Len: len1, _class1Count: PairPosFormat4<'a>.class1Count(self), _class2Count: PairPosFormat4<'a>.class2Count(self), format1: format1, format2: format2 }
+  }
+  pub fn valueRecordRefs(self: &Self, class1: u16, class2: u16) -> Option<[ValueRecord<'a>; 2]> { return ClassValueRecords<'a>.get(&PairPosFormat4<'a>.classValueRecords(self), class1, class2) }
+}
+impl<'a> Equal for ValueRecord<'a> {
+  fn equals(left: &ValueRecord<'a>, right: &ValueRecord<'a>) -> bool {
+    if ValueFormat.bits(&left._format) != ValueFormat.bits(&right._format) { return false }
+    let a = ValueRecord<'a>.bytes(left) let b = ValueRecord<'a>.bytes(right)
+    return match move a { Option<&'a [u8]>.Some { value: x } => match move b { Option<&'a [u8]>.Some { value: y } => { if x.length != y.length { return false } let mut i: usize = 0 while i < x.length { if x[i] != y[i] { return false } i = i + 1 } return true } Option<&'a [u8]>.None => false } Option<&'a [u8]>.None => match move b { Option<&'a [u8]>.None => true _ => false } }
+  }
+}

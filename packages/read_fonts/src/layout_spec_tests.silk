@@ -260,3 +260,268 @@ test effect fn deltaDecodeAll() -> () ! AssertionError<'static> { run deviceDelt
 test effect fn deviceDecodeDoesNotOverflow() -> () ! AssertionError<'static> { run deviceDeltas(b"\x00\x0a\x00\x01\x00\x01", &[]) }
 test effect fn defaultCoverage() -> () ! AssertionError<'static> { run Testing.expect(coverageCount(&CoverageTable.default()) == 0, "empty default coverage") }
 test effect fn defaultClassdef() -> () ! AssertionError<'static> { let table = ClassDef.default() run Testing.expect(ClassDef.population(&table) == 0 && classCount(&table) == 0, "empty default class definition") }
+
+import generated_gpos { SinglePosFormat1, SinglePosFormat2, PairPosFormat1, PairPosFormat2, PairSet, PairValueRecord, Class1Record, CursivePosFormat1, EntryExitRecord, AnchorFormat1, AnchorFormat2, AnchorFormat3, AnchorTable, MarkBasePosFormat1, BaseArray, BaseRecord, MarkLigPosFormat1, LigatureArray, LigatureAttach, ComponentRecord, MarkMarkPosFormat1, Mark2Array, Mark2Record }
+import read_args { ReadArgs2, ReadArgs3 }
+import offset { resolveNullableWithArgs }
+test effect fn singleposformat1() -> () ! AssertionError<'static> {
+  let table = run must(SinglePosFormat1.read(FontData.new(generated_layout_fixtures.gposSingleposformat1())))
+  run Testing.expect(&SinglePosFormat1.valueFormat(&table) == &ValueFormat.yPlacement(), "single adjustment format")
+  run Testing.expect((ValueRecord.yPlacement(&SinglePosFormat1.valueRecord(&table)) |> Option<i16>.unwrapOr(0)) == -80, "placement")
+  let coverage = run must(SinglePosFormat1.coverage(&table))
+  run Testing.expect(coverageCount(&coverage) == 10, "coverage population")
+}
+test effect fn singleposformat2() -> () ! AssertionError<'static> {
+  let table = run must(SinglePosFormat2.read(FontData.new(generated_layout_fixtures.gposSingleposformat2())))
+  run Testing.expect(&SinglePosFormat2.valueFormat(&table) == &(ValueFormat.xPlacement() | ValueFormat.xAdvance()) && SinglePosFormat2.valueCount(&table) == 3, "per-glyph format")
+  let records = SinglePosFormat2.valueRecords(&table)
+  let a = run must(ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, 0))
+  let b = run must(ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, 1))
+  let c = run must(ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, 2))
+  run Testing.expect((ValueRecord.xPlacement(&a) |> Option<i16>.unwrapOr(0)) == 50 && (ValueRecord.xAdvance(&b) |> Option<i16>.unwrapOr(0)) == 25 && (ValueRecord.xPlacement(&c) |> Option<i16>.unwrapOr(0)) == 10, "per-glyph records")
+  run Testing.expect(match move ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, 3) { Result<ValueRecord<'static>, ReadError>.Failure { error } => true _ => false }, "out-of-range record")
+}
+test effect fn pairposformat1() -> () ! AssertionError<'static> {
+  let table = run must(PairPosFormat1.read(FontData.new(generated_layout_fixtures.gposPairposformat1())))
+  run Testing.expect(&PairPosFormat1.valueFormat1(&table) == &ValueFormat.xAdvance() && &PairPosFormat1.valueFormat2(&table) == &ValueFormat.xPlacement() && PairPosFormat1.pairSetCount(&table) == 2, "pair formats")
+  let sets = PairPosFormat1.pairSets(&table)
+  let first = run must(ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.get(&sets, 0))
+  let second = run must(ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.get(&sets, 1))
+  let firstRecords = PairSet.pairValueRecords(&first) let secondRecords = PairSet.pairValueRecords(&second)
+  run Testing.expect(ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.len(&firstRecords) == 1 && ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.len(&secondRecords) == 1, "pair record counts")
+  let a = run must(ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.get(&firstRecords, 0))
+  let b = run must(ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.get(&secondRecords, 0))
+  run Testing.expect(GlyphId16.toU16(PairValueRecord.secondGlyph(&a)) == 89 && GlyphId16.toU16(PairValueRecord.secondGlyph(&b)) == 89, "second glyphs")
+  run Testing.expect((ValueRecord.xAdvance(&PairValueRecord.valueRecord1(&a)) |> Option<i16>.unwrapOr(0)) == -30 && (ValueRecord.xPlacement(&PairValueRecord.valueRecord2(&a)) |> Option<i16>.unwrapOr(0)) == -20, "first pair")
+  run Testing.expect(match move ValueRecord.xPlacement(&PairValueRecord.valueRecord1(&a)) { Option<i16>.None => true _ => false }, "absent placement")
+  run Testing.expect((ValueRecord.xAdvance(&PairValueRecord.valueRecord1(&b)) |> Option<i16>.unwrapOr(0)) == -40 && (ValueRecord.xPlacement(&PairValueRecord.valueRecord2(&b)) |> Option<i16>.unwrapOr(0)) == -25, "second pair")
+}
+test effect fn pairposformat2() -> () ! AssertionError<'static> {
+  let table = run must(PairPosFormat2.read(FontData.new(generated_layout_fixtures.gposPairposformat2())))
+  run Testing.expect(ValueFormat.recordByteLen(PairPosFormat2.valueFormat1(&table)) == 2 && ValueFormat.recordByteLen(PairPosFormat2.valueFormat2(&table)) == 0 && PairPosFormat2.class1Count(&table) == 2, "class pair formats")
+  run Testing.expect(ComputedArray<'static, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'static>>.len(&PairPosFormat2.class1Records(&table)) == 2, "class record count")
+  let class = run must(PairPosFormat2.classDef2(&table))
+  match class { ClassDef.Format2 { value } => { let record = run must(ComputedArray<'static, (), ClassRangeRecord<'static>>.get(&ClassDefFormat2.classRangeRecords(&value), 0)) run Testing.expect(GlyphId16.toU16(ClassRangeRecord.startGlyphId(&record)) == 106, "class range start") } _ => run Testing.expect(false, "class format 2") }
+}
+test effect fn cursiveposformat1() -> () ! AssertionError<'static> {
+  let table = run must(CursivePosFormat1.read(FontData.new(generated_layout_fixtures.gposCursiveposformat1())))
+  let records = CursivePosFormat1.entryExitRecord(&table)
+  run Testing.expect(CursivePosFormat1.entryExitCount(&table) == 2 && ComputedArray<'static, (), EntryExitRecord<'static>>.len(&records) == 2, "cursive count")
+  let record = run must(ComputedArray<'static, (), EntryExitRecord<'static>>.get(&records, 1))
+  let result = run some(resolveNullableWithArgs<(), AnchorFormat1<'static>, Offset16>(&EntryExitRecord.entryAnchorOffset(&record), CursivePosFormat1.offsetData(&table), ())) let anchor = run must(move result)
+  run Testing.expect(AnchorFormat1.xCoordinate(&anchor) == 1500 && AnchorFormat1.yCoordinate(&anchor) == 44, "entry anchor")
+}
+test effect fn markbaseposformat1() -> () ! AssertionError<'static> {
+  let table = run must(MarkBasePosFormat1.read(FontData.new(generated_layout_fixtures.gposMarkbaseposformat1())))
+  let array = run must(MarkBasePosFormat1.baseArray(&table)) let records = BaseArray.baseRecords(&array)
+  run Testing.expect(ComputedArray<'static, u16, BaseRecord<'static>>.len(&records) == 1, "base records")
+  let record = run must(ComputedArray<'static, u16, BaseRecord<'static>>.get(&records, 0)) let offsets = BaseRecord.baseAnchorOffsets(&record)
+  run Testing.expect(ScalarArray<Nullable<Offset16>>.len(&offsets) == 2, "base anchors")
+  let offset = run some(ScalarArray<Nullable<Offset16>>.get(&offsets, 1))
+  let result = run some(resolveNullableWithArgs<(), AnchorFormat1<'static>, Offset16>(&offset, BaseArray.offsetData(&array), ())) let anchor = run must(move result)
+  run Testing.expect(AnchorFormat1.xCoordinate(&anchor) == 830, "base anchor coordinate")
+}
+test effect fn markligposformat1() -> () ! AssertionError<'static> {
+  let table = run must(MarkLigPosFormat1.read(FontData.new(generated_layout_fixtures.gposMarkligposformat1())))
+  let array = run must(MarkLigPosFormat1.ligatureArray(&table))
+  run Testing.expect(LigatureArray.ligatureCount(&array) == 1, "ligature count")
+  let attach = run must(ArrayOfOffsets<'static, u16, LigatureAttach<'static>, Offset16>.get(&LigatureArray.ligatureAttaches(&array), 0))
+  run Testing.expect(LigatureAttach.componentCount(&attach) == 3, "component count")
+  let record = run must(ComputedArray<'static, u16, ComponentRecord<'static>>.get(&LigatureAttach.componentRecords(&attach), 2))
+  let a = run some(ScalarArray<Nullable<Offset16>>.get(&ComponentRecord.ligatureAnchorOffsets(&record), 0))
+  let b = run some(ScalarArray<Nullable<Offset16>>.get(&ComponentRecord.ligatureAnchorOffsets(&record), 1))
+  run Testing.expect(Nullable<Offset16>.isNull(&a) && Nullable<Offset16>.isNull(&b), "absent component anchors")
+}
+test effect fn markmarkposformat1() -> () ! AssertionError<'static> {
+  let table = run must(MarkMarkPosFormat1.read(FontData.new(generated_layout_fixtures.gposMarkmarkposformat1())))
+  run Testing.expect(MarkMarkPosFormat1.markClassCount(&table) == 1, "mark class count")
+  let array = run must(MarkMarkPosFormat1.mark2Array(&table)) let records = Mark2Array.mark2Records(&array)
+  run Testing.expect(Mark2Array.mark2Count(&array) == 1 && ComputedArray<'static, u16, Mark2Record<'static>>.len(&records) == 1, "mark record count")
+  let record = run must(ComputedArray<'static, u16, Mark2Record<'static>>.get(&records, 0)) let offsets = Mark2Record.mark2AnchorOffsets(&record)
+  run Testing.expect(ScalarArray<Nullable<Offset16>>.len(&offsets) == 1, "mark anchor count")
+  let offset = run some(ScalarArray<Nullable<Offset16>>.get(&offsets, 0)) let result = run some(resolveNullableWithArgs<(), AnchorFormat1<'static>, Offset16>(&offset, Mark2Array.offsetData(&array), ())) let anchor = run must(move result)
+  run Testing.expect(AnchorFormat1.xCoordinate(&anchor) == 221 && AnchorFormat1.yCoordinate(&anchor) == 301, "mark anchor coordinates")
+}
+test effect fn contextualposformat1() -> () ! AssertionError<'static> { drop run must(SequenceContextFormat1.read(FontData.new(generated_layout_fixtures.gposContextualposformat1()))) }
+test effect fn contextualposformat2() -> () ! AssertionError<'static> { drop run must(SequenceContextFormat2.read(FontData.new(generated_layout_fixtures.gposContextualposformat2()))) }
+test effect fn contextualposformat3() -> () ! AssertionError<'static> { drop run must(SequenceContextFormat3.read(FontData.new(generated_layout_fixtures.gposContextualposformat3()))) }
+test effect fn sequencelookuprecord() -> () ! AssertionError<'static> { let record = run must(SequenceLookupRecord.readAt(FontData.new(generated_layout_fixtures.gposSequencelookuprecord()), 0, ())) run Testing.expect(SequenceLookupRecord.sequenceIndex(&record) == 1 && SequenceLookupRecord.lookupListIndex(&record) == 1, "sequence lookup record") }
+test effect fn valueformattable() -> () ! AssertionError<'static> {
+  let table = run must(SinglePosFormat1.read(FontData.new(generated_layout_fixtures.gposValueformattable())))
+  run Testing.expect(&SinglePosFormat1.valueFormat(&table) == &(ValueFormat.xPlacement() | ValueFormat.yAdvance() | ValueFormat.xPlacementDevice() | ValueFormat.yAdvanceDevice()), "device formats")
+  let record = SinglePosFormat1.valueRecord(&table)
+  run Testing.expect((ValueRecord.yAdvance(&record) |> Option<i16>.unwrapOr(0)) == 210, "y advance")
+  let result = run some(ValueRecord.yAdvanceDevice(&record)) let target = run must(move result)
+  match target { DeviceOrVariationIndex.Device { value } => { run Testing.expect(Device.startSize(&value) == 11 && Device.endSize(&value) == 15 && Device.deltaFormat(&value) == DeltaFormat.Local2BitDeltas, "y device header") let values = Device.deltaValue(&value) run Testing.expect(ScalarArray<u16>.len(&values) == 1 && (ScalarArray<u16>.get(&values, 0) |> Option<u16>.unwrapOr(0)) == 21824, "device packed value") } _ => run Testing.expect(false, "device variant") }
+}
+test effect fn anchorformat1() -> () ! AssertionError<'static> { let table = run must(AnchorFormat1.read(FontData.new(generated_layout_fixtures.gposAnchorformat1()))) run Testing.expect(AnchorFormat1.xCoordinate(&table) == 189 && AnchorFormat1.yCoordinate(&table) == -103, "format 1 anchor") }
+test effect fn anchorformat2() -> () ! AssertionError<'static> { let table = run must(AnchorFormat2.read(FontData.new(generated_layout_fixtures.gposAnchorformat2()))) run Testing.expect(AnchorFormat2.xCoordinate(&table) == 322 && AnchorFormat2.anchorPoint(&table) == 13, "format 2 anchor") }
+test effect fn anchorformat3() -> () ! AssertionError<'static> {
+  let table = run must(AnchorFormat3.read(FontData.new(generated_layout_fixtures.gposAnchorformat3())))
+  run Testing.expect(AnchorFormat3.xCoordinate(&table) == 279 && AnchorFormat3.yCoordinate(&table) == 1301, "format 3 anchor")
+  let xr = run some(AnchorFormat3.xDevice(&table)) let yr = run some(AnchorFormat3.yDevice(&table)) let x = run must(move xr) let y = run must(move yr)
+  let devices = [x, y] let mut i: usize = 0
+  while i < 2 { match devices[i] { DeviceOrVariationIndex.Device { value } => { let values = Device.deltaValue(&value) run Testing.expect(Device.deltaFormat(&value) == DeltaFormat.Local4BitDeltas && ScalarArray<u16>.len(&values) == 2 && (ScalarArray<u16>.get(&values, 0) |> Option<u16>.unwrapOr(0)) == 4369 && (ScalarArray<u16>.get(&values, 1) |> Option<u16>.unwrapOr(0)) == 8704, "anchor device") } _ => run Testing.expect(false, "device variant") } i = i + 1 }
+}
+
+import font_types.lib { readScalar }
+
+import silk.slice { Slice }
+
+import generated_layout { ScriptTags, SelectedScript, TaggedElement }
+fn tag(bytes: &[u8]) -> Tag { return readScalar<Tag>(bytes) |> Option<Tag>.unwrapOr(Tag.default()) }
+effect fn sameTags(unicode: &[u8], expected: &[u8]) -> () ! AssertionError<'static> {
+  let mapped = ScriptTags.fromUnicode(tag(unicode))
+  let tags = ScriptTags.asSlice(&mapped)
+  run Testing.expect(tags.length * 4 == expected.length, "mapped tag count")
+  let mut i: usize = 0
+  while i < tags.length { run Testing.expect(&tags[i] == &tag(Slice.view(expected, i * 4, 4)), "mapped tag") i = i + 1 }
+}
+test effect fn simpleScriptTagFromUnicode() -> () ! AssertionError<'static> {
+  run sameTags(b"Cyrl", b"cyrl") run sameTags(b"Grek", b"grek") run sameTags(b"Hebr", b"hebr") run sameTags(b"Latn", b"latn")
+}
+test effect fn exceptionScriptTagFromUnicode() -> () ! AssertionError<'static> {
+  run sameTags(b"Kana", b"kana") run sameTags(b"Hira", b"kana") run sameTags(b"Nkoo", b"nko ") run sameTags(b"Yiii", b"yi  ") run sameTags(b"Vaii", b"vai ")
+}
+test effect fn multiScriptTagsFromUnicode() -> () ! AssertionError<'static> {
+  run sameTags(b"Beng", b"bng3bng2beng") run sameTags(b"Orya", b"ory3ory2orya") run sameTags(b"Mlym", b"mlm3mlm2mlym") run sameTags(b"Mymr", b"mym2mymr")
+}
+test effect fn scriptIndexForTag() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontNotoserifhebrewAutohintMetricsGsub())))
+  let scripts = run must(Gsub.scriptList(&gsub))
+  let expected = b"DFLTcyrlgrekhebrlatn"
+  let mut i: usize = 0
+  while i < 5 { run Testing.expect((ScriptList.indexForTag(&scripts, tag(Slice.view(expected, i * 4, 4))) |> Option<u16>.unwrapOr(65535)) == usize.toU16(i), "script index") i = i + 1 }
+}
+test effect fn selectScriptsFromUnicode() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontNotoserifhebrewAutohintMetricsGsub())))
+  let scripts = run must(Gsub.scriptList(&gsub))
+  let hebrew = ScriptTags.fromUnicode(tag(b"Hebr"))
+  let hebr = run some(ScriptList.select(&scripts, ScriptTags.asSlice(&hebrew)))
+  run Testing.expect(&hebr.tag == &tag(b"hebr") && hebr.index == 3 && !hebr.isFallback, "requested script")
+  let bengali = ScriptTags.fromUnicode(tag(b"Beng"))
+  let beng = run some(ScriptList.select(&scripts, ScriptTags.asSlice(&bengali)))
+  run Testing.expect(&beng.tag == &tag(b"DFLT") && beng.index == 0 && beng.isFallback, "fallback script")
+}
+test effect fn scriptListGet() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontCantarellVfTrimmedGsub())))
+  let scripts = run must(Gsub.scriptList(&gsub))
+  let index = run some(ScriptList.indexForTag(&scripts, tag(b"latn")))
+  run Testing.expect(index == 1, "Latin index")
+  let script = run must(ScriptList.get(&scripts, index))
+  run Testing.expect(&script.tag == &tag(b"latn"), "Latin tag")
+}
+test effect fn scriptLangSysHelpers() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontCantarellVfTrimmedGsub())))
+  let scripts = run must(Gsub.scriptList(&gsub))
+  let script = run must(ScriptList.get(&scripts, 1))
+  let index = run some(Script.langSysIndexForTag(&script.element, tag(b"TRK ")))
+  run Testing.expect(index == 0, "Turkish language index")
+  let language = run must(Script.langSys(&script.element, index))
+  run Testing.expect(&language.tag == &tag(b"TRK "), "Turkish language tag")
+}
+test effect fn featureIndexForTag() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontMaterialSymbolsSubsetGsub())))
+  let scripts = run must(Gsub.scriptList(&gsub))
+  let features = run must(Gsub.featureList(&gsub))
+  let script = run must(ScriptList.get(&scripts, 1))
+  let language = run must(run some(Script.defaultLangSys(&script.element)))
+  run Testing.expect((LangSys.featureIndexForTag(&language, &features, tag(b"rclt")) |> Option<u16>.unwrapOr(65535)) == 0, "rclt feature")
+  run Testing.expect((LangSys.featureIndexForTag(&language, &features, tag(b"rlig")) |> Option<u16>.unwrapOr(65535)) == 1, "rlig feature")
+  let absent = b"loclabvsliga"
+  let mut i: usize = 0
+  while i < 3 { run Testing.expect((LangSys.featureIndexForTag(&language, &features, tag(Slice.view(absent, i * 4, 4))) |> Option<u16>.unwrapOr(65535)) == 65535, "absent feature") i = i + 1 }
+}
+test effect fn featureListGet() -> () ! AssertionError<'static> {
+  let gsub = run must(Gsub.read(FontData.new(generated_layout_fixtures.fontNotoserifAutohintShapingGsub())))
+  let features = run must(Gsub.featureList(&gsub))
+  let first = run must(FeatureList.get(&features, 0))
+  let second = run must(FeatureList.get(&features, 1))
+  run Testing.expect(&first.tag == &tag(b"c2sc") && &second.tag == &tag(b"liga"), "feature tags")
+  run Testing.expect(match move FeatureList.get(&features, 2) { Result<TaggedElement<Feature<'static>>, ReadError>.Failure { error } => true _ => false }, "feature bounds")
+}
+
+import generated_gpos { Class2Record, ClassValueRecords, ExtensionSubtable, ExtensionPosFormat1, SinglePos }
+effect fn sameValueRecord<'a>(a: ValueRecord<'a>, b: ValueRecord<'a>) -> () ! AssertionError<'static> {
+  run Testing.expect(ValueFormat.bits(&ValueRecord.format(&a)) == ValueFormat.bits(&ValueRecord.format(&b)), "value record format")
+  run Testing.expect(Equal.equals(&a, &b), "value record bytes")
+}
+test effect fn pairPos2HoistedMatchesNested() -> () ! AssertionError<'static> {
+  let table = run must(PairPosFormat2.read(FontData.new(generated_layout_fixtures.gposPairposformat2())))
+  let c1 = PairPosFormat2.class1Count(&table) let c2 = PairPosFormat2.class2Count(&table)
+  run Testing.expect(c1 > 0 && c2 > 0, "class counts")
+  let hoisted = PairPosFormat2.classValueRecords(&table)
+  let rows = PairPosFormat2.class1Records(&table)
+  let mut i: u16 = 0
+  while i < c1 {
+    let row = run must(ComputedArray<'static, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'static>>.get(&rows, u16.toUsize(i)))
+    let cells = Class1Record.class2Records(&row)
+    let mut j: u16 = 0
+    while j < c2 {
+      let cell = run must(ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, Class2Record<'static>>.get(&cells, u16.toUsize(j)))
+      let found = run some(ClassValueRecords.get(&hoisted, i, j))
+      run sameValueRecord(found[0], Class2Record.valueRecord1(&cell))
+      run sameValueRecord(found[1], Class2Record.valueRecord2(&cell))
+      j = j + 1
+    }
+    i = i + 1
+  }
+  run Testing.expect(match move ClassValueRecords.get(&hoisted, c1, 0) { Option<[ValueRecord<'static>; 2]>.None => true _ => false }, "class1 bounds")
+  run Testing.expect(match move ClassValueRecords.get(&hoisted, 0, c2) { Option<[ValueRecord<'static>; 2]>.None => true _ => false }, "class2 bounds")
+}
+test effect fn pairSetFindMatchesScan() -> () ! AssertionError<'static> {
+  let table = run must(PairPosFormat1.read(FontData.new(generated_layout_fixtures.gposPairposformat1())))
+  let sets = PairPosFormat1.pairSets(&table)
+  let mut i: usize = 0 let mut seen: usize = 0
+  while i < ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.len(&sets) {
+    let set = run must(ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.get(&sets, i))
+    let records = PairSet.pairValueRecords(&set)
+    run Testing.expect(!ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.isEmpty(&records), "nonempty pair records")
+    let mut j: usize = 0
+    while j < ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.len(&records) {
+      let want = run must(ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.get(&records, j))
+      let found = run some(PairSet.findPairValueRecord(&set, PairValueRecord.secondGlyph(&want)))
+      run Testing.expect(GlyphId16.toU16(PairValueRecord.secondGlyph(&want)) == GlyphId16.toU16(PairValueRecord.secondGlyph(&found)), "found glyph")
+      run sameValueRecord(PairValueRecord.valueRecord1(&want), PairValueRecord.valueRecord1(&found))
+      run sameValueRecord(PairValueRecord.valueRecord2(&want), PairValueRecord.valueRecord2(&found))
+      seen = seen + 1 j = j + 1
+    }
+    run Testing.expect(match move PairSet.findPairValueRecord(&set, GlyphId16.new(65535)) { Option<PairValueRecord<'static>>.None => true _ => false }, "absent pair")
+    i = i + 1
+  }
+  run Testing.expect(seen > 0, "visited pairs")
+}
+test effect fn valueRecordResolvesDevicesAgainstItsTable() -> () ! AssertionError<'static> {
+  let table = run must(SinglePosFormat1.read(FontData.new(generated_layout_fixtures.gposValueformattable())))
+  let record = SinglePosFormat1.valueRecord(&table)
+  run Testing.expect(ValueFormat.intersects(&ValueRecord.format(&record), ValueFormat.anyDeviceOrVaridx()), "device format")
+  run Testing.expect(ValueRecord.offset(&record) > 0, "located record")
+  drop run must(run some(ValueRecord.xPlacementDevice(&record)))
+  drop run must(run some(ValueRecord.yAdvanceDevice(&record)))
+}
+test effect fn singlePos2RecordsAreEvenlySpaced() -> () ! AssertionError<'static> {
+  let table = run must(SinglePosFormat2.read(FontData.new(generated_layout_fixtures.gposSingleposformat2())))
+  let records = SinglePosFormat2.valueRecords(&table)
+  let stride = ValueFormat.recordByteLen(SinglePosFormat2.valueFormat(&table))
+  let count = ComputedArray<'static, ValueFormat, ValueRecord<'static>>.len(&records)
+  run Testing.expect(count > 1, "multiple value records")
+  let first = run must(ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, 0))
+  let mut i: usize = 0
+  while i < count {
+    let record = run must(ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, i))
+    run Testing.expect(ValueRecord.offset(&record) == ValueRecord.offset(&first) + i * stride, "record stride")
+    run Testing.expect(ValueFormat.bits(&ValueRecord.format(&record)) == ValueFormat.bits(&SinglePosFormat2.valueFormat(&table)), "record format")
+    i = i + 1
+  }
+  run Testing.expect(match move ComputedArray<'static, ValueFormat, ValueRecord<'static>>.get(&records, count) { Result<ValueRecord<'static>, ReadError>.Failure { error } => true _ => false }, "record bounds")
+}
+test effect fn defaultForGenerics() -> () ! AssertionError<'static> {
+  let table = ExtensionSubtable<'static>.default()
+  match table { ExtensionSubtable<'static>.Single { value } => {
+    run Testing.expect(ExtensionPosFormat1<'static, SinglePos<'static>>.extensionLookupType(&value) == 0, "default extension type")
+    let inner = ExtensionPosFormat1<'static, SinglePos<'static>>.extension(&value) |> Result<SinglePos<'static>, ReadError>.unwrapOr(SinglePos<'static>.default())
+    run Testing.expect(match inner { SinglePos<'static>.Format1 { value: first } => true _ => false }, "default first variant")
+  } _ => run Testing.expect(false, "default extension variant") }
+}
+
+import silk.equal { Equal }

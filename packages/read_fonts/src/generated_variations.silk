@@ -463,7 +463,7 @@ impl<'a> ItemVariationStore<'a> {
   pub fn itemVariationDataOffsets(self: &Self) -> ScalarArray<'a, Nullable<Offset32>> {
     return match move FontData<'a>.readArray<Nullable<Offset32>>(&self._fontData, self._fieldRanges[3].start, self._fieldRanges[3].end) { Result<ScalarArray<'a, Nullable<Offset32>>, ReadError>.Success { value } => value Result<ScalarArray<'a, Nullable<Offset32>>, ReadError>.Failure { error } => ScalarArray<Nullable<Offset32>>.empty() }
   }
-  pub fn itemVariationDatas(self: &Self) -> ArrayOfNullableOffsets<'a, (), ItemVariationData<'a>, Offset32> { return ArrayOfNullableOffsets<'a, (), ItemVariationData<'a>, Offset32>.new(ItemVariationStore<'a>.itemVariationDataOffsets(self), self._fontData, ()) }
+  pub fn itemVariationData(self: &Self) -> ArrayOfNullableOffsets<'a, (), ItemVariationData<'a>, Offset32> { return ArrayOfNullableOffsets<'a, (), ItemVariationData<'a>, Offset32>.new(ItemVariationStore<'a>.itemVariationDataOffsets(self), self._fontData, ()) }
   pub fn itemVariationDataOffsetsByteRange(self: &Self) -> ByteRange { return self._fieldRanges[3] }
 }
 impl<'a> FontRead<'a, ()> for ItemVariationStore<'a> {

@@ -314,3 +314,7 @@ import post_tests
 import cmap_tests
 import provider_tests
 import layout_spec_tests
+
+import condition_tests
+
+import lookup_variation_tests
