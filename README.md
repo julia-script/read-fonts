@@ -87,6 +87,31 @@ the per-process limit (30 seconds by default; the table/model gate uses 600 for 
 `build/rust/release/rust-font-dump` and `build/llvm/<target>/release/font_dump`.
 `CARGO` and `SILK` can override build-tool executable paths.
 
+## Malformed-input campaign
+
+After building release binaries, run the deterministic corpus campaign:
+
+```sh
+scripts/check-malformed --reference build/rust/release/rust-font-dump \
+  --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump \
+  --report build/malformed-report.json.gz
+```
+
+Every discovered font receives header-edge, 1/16-length and final-byte
+truncations, plus eight seeded mutations with one to eight nonzero byte XORs.
+Mutation recipes and input/output hashes are recorded. Full dump equality also
+requires identical table errors. Crashes, timeouts, malformed output and traversal
+limits fail the gate, even when both processes fail the same way.
+
+Three worker processes run by default (`--jobs` overrides this). `--seed` defaults
+to 20261026 and `--timeout` to 600 seconds per process. Completed matches can resume
+from `build/malformed-cache`; source hashes, binary hashes and campaign settings
+must match. A failure stops that source's remaining mutations, keeps testing other
+fonts, and is retried on the next run. A passing report requires every expected
+mutation. Failing bytes, both dumps and the observation are retained under
+`build/malformed-failures/<input-sha256>/`. Reports ending in `.gz` are compressed
+without dropping observations. `--fonts` can select a reproduction list.
+
 ## Layout
 
 - `packages/font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.

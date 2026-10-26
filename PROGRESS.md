@@ -735,3 +735,17 @@ Evidence: reports/milestone-7-model.json, milestone-7-release-model.json,
 milestone-7-model-fixtures.json and milestone-7-release-model-fixtures.json.
 PR #8 is ready for CI review. M8 malformed-input campaigns and M9 Phase 2 tables
 and performance remain; the overall port is not yet complete.
+
+## Session 40 — 2026-10-26 — deterministic malformed-input campaign
+
+M7 PR #8 is in CI. M8 adds a reproducible whole-corpus campaign with dozens of
+truncation boundaries and eight seeded byte-flip variants per font. Each case
+compares the complete dump, validates graph references and records exact hashes
+and error counts. Both crashes and timeouts fail; identical failures never count
+as matches. Per-source receipts only reuse successful observations when source,
+binary and campaign hashes/settings agree. Failure artifacts remain reproducible.
+
+The Python suite now passes **19 tests**, including crash/timeout rejection and
+resume invalidation. Library counts remain **719 read_fonts**, **64 font_types**,
+**765 upstream ports**. The full release campaign is running; M8 is not yet
+complete, and M9 has not started.
