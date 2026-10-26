@@ -10,7 +10,7 @@ import silk.usize
 pub const PAGE_BITS:u32=512
 pub struct U32Range { pub first:u32, pub last:u32, }
 impl Copy for U32Range {}
-// STDLIB-GAPS.md 004: this release has no population/leading/trailing bit counts.
+// docs/stdlib-gaps.md 004: this release has no population/leading/trailing bit counts.
 pub fn countOnes(value:u64) -> u32 {
   let a=value-((u64.shiftRight(value,1)) & 0x5555555555555555)
   let b=(a & 0x3333333333333333)+((u64.shiftRight(a,2)) & 0x3333333333333333)
