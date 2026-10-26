@@ -100,7 +100,7 @@ for name,data in synthetic.items():
 subprocess.run([os.environ.get('CARGO', 'cargo'), 'build', '--quiet', '--locked',
                 '--manifest-path', str(ROOT / 'scripts/rust-font-dump/Cargo.toml'),
                 '--target-dir', str(ROOT / 'build/rust'), '--bin', 'model-fixtures'], check=True)
-for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64'):
+for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64', 'varc-cjk', 'varc-static', 'varc-conditionals', 'varc-precision'):
     data = subprocess.check_output([str(ROOT / 'build/rust/debug/model-fixtures'), kind])
     assert data and len(data) % 36 == 0
     literal = ''.join(f'\\x{byte:02x}' for byte in data)
@@ -113,4 +113,5 @@ if args.check:
         parser.exit(1, 'Generated model fixtures differ\n')
 else:
     path.write_text(text)
-print(f'{"Checked" if args.check else "Generated"} {len(fixtures)+len(synthetic)+7} model fixtures')
+fixture_count = text.count("pub fn ")
+print(f'{"Checked" if args.check else "Generated"} {fixture_count} model fixtures')

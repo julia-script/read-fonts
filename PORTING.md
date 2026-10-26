@@ -544,3 +544,16 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   unrequested pixel-decoding/drawing facade is not introduced.
 - BitmapSource and OutlineSource use tryFrom(GlyphSource) and toGlyphSource() in
   place of Rust conversion traits; failure retains the original GlyphSource.
+
+- VARC metrics validate the complete component graph before measuring it, then
+  traverse at each component's coordinates. Both walks retain upstream's 64-level
+  and 2,048-edge limits; cycles draw nothing and conditional components still
+  count during validation. Internal axes come from the maximum fvar/gvar/CFF2
+  axis count, so static fonts with internal gvar axes work at the default instance.
+- The metrics-only traversal uses allocator-backed coordinate/delta lists instead
+  of upstream's caller-supplied scratch block and atomic layout cache. The three
+  scratch-layout/cache tests and the ppem-only matrix helper test belong to the
+  unrequested drawing facade. Fourteen other VARC model tests are ported, with
+  additional repeated-axis, deep-graph and hidden-malformed-component regressions.
+  Every transformed control point is accumulated before the resulting extents
+  are converted to F48Dot16. These bounds are also available for the pending COLR clip support.

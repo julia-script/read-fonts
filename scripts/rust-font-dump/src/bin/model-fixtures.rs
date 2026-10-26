@@ -13,6 +13,10 @@ fn main() {
     let kind = std::env::args().nth(1).expect("fixture kind");
     let relative = match kind.as_str() {
         "bitmap-largest" | "bitmap-12" | "bitmap-64" => "cbdt.ttf",
+        "varc-cjk" => "varc-6868.ttf",
+        "varc-static" => "varc-static-gvar.ttf",
+        "varc-conditionals" => "varc-ac01-conditional.ttf",
+        "varc-precision" => "varc-delta-precision.ttf",
         "glyf" => "vazirmatn_var_trimmed.ttf",
         "cff" => "NotoSansJP-Regular.subset.otf",
         "cff2" => "NotoSansJP-VF.subset.otf",
@@ -24,7 +28,17 @@ fn main() {
     let bytes = std::fs::read(path).unwrap();
     let font = Font::new(bytes.clone(), 0).unwrap();
     let mut output = io::stdout().lock();
-    if kind.starts_with("bitmap-") {
+    if kind.starts_with("varc-") {
+        let outlines = font.outline_glyphs();
+        for gid in 0..font.num_glyphs() {
+            let e = outlines.get(GlyphId::new(gid)).unwrap().extents().unwrap();
+            emit(
+                &mut output,
+                gid,
+                [e.x_bearing, e.y_bearing, e.width, e.height].map(|v| F48Dot16::from_f64(v as f64)),
+            );
+        }
+    } else if kind.starts_with("bitmap-") {
         let ppem = match kind.as_str() {
             "bitmap-12" => Some(12.0),
             "bitmap-64" => Some(64.0),

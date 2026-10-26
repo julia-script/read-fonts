@@ -58,3 +58,33 @@ effect fn bitmapScale() -> () ! AssertionError<'static> | OutOfMemoryError ? &mu
 
 fn scaledF32<'a,'c>(base: GlyphMetrics<'a,'c>,scale: ScaleF32) -> ScaledGlyphMetrics<'a,'c,'static,ScaleF32,f32,NoExtents> { return GlyphMetrics<'a,'c>.scaled<ScaleF32,f32>(base,scale) }
 fn scaledNoSize<'a,'c>(base: GlyphMetrics<'a,'c>,scale: NoSize) -> ScaledGlyphMetrics<'a,'c,'static,NoSize,f32,NoExtents> { return GlyphMetrics<'a,'c>.scaled<NoSize,f32>(base,move scale) }
+
+import model.metrics.varc { VarcOutlines }
+import model.optional { Maybe }
+import silk.u32
+import silk.usize
+// upstream model/metrics/glyph.rs::a_varc_composite_measures_by_what_it_draws
+test effect fn aVarcCompositeMeasuresByWhatItDraws() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run varcBounds(Fixtures.varcCjkFont(),Expected.varcCjkDrawnBounds()) |> Effect.provideMut<Allocator>(&mut allocator) }
+test effect fn staticConditionalAndPrecisionVarcBounds() -> () ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator=Allocator.systemAllocatorProvider()
+  run varcBounds(Fixtures.varcStaticFont(),Expected.varcStaticDrawnBounds()) |> Effect.provideMut<Allocator>(&mut allocator)
+  run varcBounds(Fixtures.varcConditionalsFont(),Expected.varcConditionalsDrawnBounds()) |> Effect.provideMut<Allocator>(&mut allocator)
+  run varcBounds(Fixtures.varcDeltaPrecisionFont(),Expected.varcPrecisionDrawnBounds()) |> Effect.provideMut<Allocator>(&mut allocator)
+}
+effect fn varcBounds(bytes:&'static [u8],expectedBytes:&'static [u8]) -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(bytes)) let base=metrics(&font,&[]) let onlyBase=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.baseOutlines())
+  let outlines=match VarcOutlines.read(&font) { Maybe<VarcOutlines<'static>>.Some { value }=>value _=>{run Testing.expect(false,"VARC source exists") return} }
+  let expectedData=FontData.new(expectedBytes) let mut gid:u32=0 let mut count:usize=0
+  while gid<GlyphMetrics.numGlyphs(&base) {
+    let glyph=GlyphId.new(gid)
+    if VarcOutlines.covers(&outlines,glyph) {
+      let at=u32.toUsize(gid)*36 run Testing.expect((run must(FontData<'static>.readAt<u32>(&expectedData,at)))==gid,"reference glyph")
+      let e=GlyphExtents<F48Dot16> { xBearing:F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&expectedData,at+4))),yBearing:F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&expectedData,at+12))),width:F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&expectedData,at+20))),height:F48Dot16.fromBits(run must(FontData<'static>.readAt<i64>(&expectedData,at+28))) }
+      let actual=run some(run GlyphMetrics.extentsExact(&base,glyph))
+      run Testing.expect(same(actual,e),"VARC control bounds match independent upstream drawing") count=count+1
+    } else { let actual=run GlyphMetrics.extentsExact(&base,glyph) let expected=run GlyphMetrics.extentsExact(&onlyBase,glyph) run Testing.expect(sameOptional(move actual,move expected),"uncovered glyph uses its base outline") }
+    gid=gid+1
+  }
+  run Testing.expect(count>0,"fixture covers composites")
+}
+fn sameOptional(a:Option<GlyphExtents<F48Dot16>>,b:Option<GlyphExtents<F48Dot16>>) -> bool { return match move a { Option<GlyphExtents<F48Dot16>>.Some { value:left }=>match move b { Option<GlyphExtents<F48Dot16>>.Some { value:right }=>same(left,right) _=>false } _=>none(move b) } }

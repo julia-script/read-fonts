@@ -927,3 +927,31 @@ Generator drift passes for 156 outputs, 36 model fixtures and 19 Phase 2 fixture
 Rust all-target Clippy and formatting pass. COLR/VARC model extents, the remaining
 eight deferred glyph tests, final parity gates and the speed comparison remain.
 The immutable full-table debug corpus run is still in progress.
+
+## Session 49 — 2026-10-26 — VARC model bounds and M8 merge
+
+M8's final CI run 40347108464 passed all gates, including the complete malformed
+corpus. PR #9 is merged as 12d7fdf381f1090ed68aded9275315708a03a13b, and the M9
+PR now targets main. The immutable complete Phase 2 table run also finished:
+**566 / 566 debug corpus files match**, with no differences or process failures.
+Evidence: reports/milestone-9-tables-corpus.json.gz (this snapshot still uses
+base-outline-only model dumps).
+
+GlyphMetrics now measures VARC composites through their drawn control points,
+with component coordinates, reset semantics, sparse tuple deltas, conditions,
+transforms, cycles and full-graph validation. Static internal gvar axes are
+retained even when the root font has no variation coordinates. Four independent
+upstream drawing fixtures cover CJK, conditionals, static gvar and delta precision.
+
+The deferred VARC glyph-metrics test and **14 upstream VARC model tests** pass,
+plus three regressions for additional fixture coverage, repeated axes and hidden
+malformed/deep graphs. The full suite passes **834 read_fonts tests** and the
+focused Phase 2 model root passes 100. **873 upstream ports** are complete
+overall; font_types remains at 64 tests. Generator drift passes for 156 outputs,
+40 model fixtures and 45 Phase 2 fixtures. Rust formatting and all-target Clippy
+with warnings denied pass.
+
+COLR model bounds and seven deferred glyph tests, the full-source model dump,
+final debug/release and malformed comparisons, and the speed ratio remain before
+M9 is complete. The allocator-backed traversal's scratch/cache adaptations are
+recorded in PORTING.md.
