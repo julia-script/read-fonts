@@ -387,3 +387,10 @@ target = "packages/font_dump/src/generated_dump_vorg.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/vorg.rs"
 target = "scripts/rust-font-dump/src/generated_dump_vorg.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/aat.rs"
+target = "packages/read_fonts/src/generated_aat.silk"
+facade = "packages/read_fonts/src/tables/aat.silk"
+extensions = ["packages/read_fonts/src/tables/aat_lookup.silk", "packages/read_fonts/src/tables/aat_state.silk"]

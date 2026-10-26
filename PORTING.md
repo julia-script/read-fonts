@@ -244,3 +244,18 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   remain unchanged. The variation dumper resets its graph scope per glyph so
   equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
   old cache entries without a full per-glyph cache clear.
+
+## Milestone 5 (in progress)
+
+- AAT typed lookups retain `TypedLookup` plus the `LookupU16`, `LookupU32`, and
+  `LookupGlyphId` aliases. Dynamic format-2/6 record arrays use borrowed
+  `ComputedArray` views; each fetched `LookupSegment2`/`LookupSingle` contains
+  decoded scalar fields instead of a packed native structure. Disk widths remain
+  explicit and independent of native structure layout.
+- State tables take an explicit payload type because Silk has no default generic
+  type arguments. `StateEntry` reads payloads through `FontRead` and `FixedSize`,
+  replacing Rust's native-layout cast. BigEndian payloads retain their wrapper.
+  `ClassMappings` names the first-glyph/classes pair, and `headerLen()` replaces
+  the associated constant. Legacy reciprocal division, deleted-glyph classes,
+  read-error precedence, and the differing null-offset behavior of `read` versus
+  `fromParts` are preserved.

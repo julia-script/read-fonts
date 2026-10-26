@@ -402,3 +402,17 @@ The full outputs are compared byte for byte and hashed; tuple-delta evaluation
 and glyph scope semantics are specified in `docs/DUMP-FORMAT.md`.
 
 PR #5 is ready for CI and merge. Milestones 5–9 remain pending.
+
+## Session 18 — 2026-10-26 — milestone 4 merged; AAT common tables
+
+Milestone 4 merged as **PR #5** at `65c3bde` after every CI step passed
+([run 40293432786](https://github.com/julia-script/read-fonts/actions/runs/40293432786)).
+This includes the reference run, debug/release corpus comparisons, focused
+fixtures, pinned compiler builds, unit tests, formatting and generated drift.
+
+On the milestone 5 branch, all six AAT lookup formats and legacy/extended state
+tables are implemented. All eight upstream aat tests pass, including the original
+state transitions and typed payloads; cached-parts reconstruction is also checked.
+The full suite passes **285 read_fonts tests**, with **64 font_types tests** and
+**334 upstream ports** in total. The **70-file** drift check passes. Remaining
+AAT tables, their extension tests, and the M5 differential gate are pending.
