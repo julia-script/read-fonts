@@ -34,6 +34,14 @@ pub interface TableProvider<'a> {
   fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> {
     return match move TableProvider.dataForTag(self, tag) { Option<FontData<'a>>.Some { value } => Result<FontData<'a>, ReadError>.succeed(value) Option<FontData<'a>>.None => Result<FontData<'a>, ReadError>.failResult(ReadError.TableIsMissing { tag: tag }) }
   }
+  fn kern(self: &Self) -> Result<Kern<'a>, ReadError> { return readTable<Kern<'a>, Self>(self, Kern.tag()) }
+  fn kerx(self: &Self) -> Result<Kerx<'a>, ReadError> { return readTable<Kerx<'a>, Self>(self, Kerx.tag()) }
+  fn morx(self: &Self) -> Result<Morx<'a>, ReadError> { return readTable<Morx<'a>, Self>(self, Morx.tag()) }
+  fn mort(self: &Self) -> Result<Mort<'a>, ReadError> { return readTable<Mort<'a>, Self>(self, Mort.tag()) }
+  fn trak(self: &Self) -> Result<Trak<'a>, ReadError> { return readTable<Trak<'a>, Self>(self, Trak.tag()) }
+  fn ankr(self: &Self) -> Result<Ankr<'a>, ReadError> { return readTable<Ankr<'a>, Self>(self, Ankr.tag()) }
+  fn feat(self: &Self) -> Result<Feat<'a>, ReadError> { return readTable<Feat<'a>, Self>(self, Feat.tag()) }
+  fn ltag(self: &Self) -> Result<Ltag<'a>, ReadError> { return readTable<Ltag<'a>, Self>(self, Ltag.tag()) }
   fn head(self: &Self) -> Result<Head<'a>, ReadError> { return readTable<Head<'a>, Self>(self, Head.tag()) }
   fn maxp(self: &Self) -> Result<Maxp<'a>, ReadError> { return readTable<Maxp<'a>, Self>(self, Maxp.tag()) }
   fn maxpExtended(self: &Self) -> Result<MaxpExtended<'a>, ReadError> { return readTable<MaxpExtended<'a>, Self>(self, MaxpExtended.tag()) }
@@ -160,3 +168,19 @@ fn isMissingTable(error: ReadError, expected: Tag) -> bool { return match error 
 pub fn expectTable<'a, T: TopLevelTable + FontRead<'a, ()>, P: TableProvider<'a>>(provider: &P) -> Result<T, ReadError> { return readTable<T, P>(provider, tableTag<T>()) }
 
 pub struct GlyfLoca<'a> { pub glyf: Glyf<'a>, pub loca: Loca<'a>, }
+
+import tables.kerx { Kerx }
+
+import tables.morx { Morx }
+
+import tables.mort { Mort }
+
+import tables.trak { Trak }
+
+import tables.ankr { Ankr }
+
+import tables.feat { Feat }
+
+import tables.ltag { Ltag }
+
+import tables.kern { Kern }

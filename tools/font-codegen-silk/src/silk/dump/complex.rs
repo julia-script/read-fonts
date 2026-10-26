@@ -21,6 +21,9 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "gvar" => out.push_str("import read_fonts.tables.gvar { U16Or32 }\nimport read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }\nimport generated_dump_variations { dumpTuple }\n"),
             "vmtx" => out.push_str("import generated_dump_hmtx { dumpLongMetric }\n"),
+            "aat" => out.push_str("import read_fonts.tables.aat { LookupU16, TypedLookup }\n"),
+            "ankr" => out.push_str("import read_fonts.tables.aat { LookupU16 }\n"),
+            "kern" => out.push_str("import generated_dump_kerx { dumpSubtable0Pair }\n"),
             "layout" => out.push_str("import read_fonts.tables.layout { FeatureParams }\n"),
             _ => (),
         }
@@ -29,6 +32,7 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "gsub" | "gpos" => writeln!(out, "use read_fonts::tables::layout::{{{shared}}};").unwrap(),
             "gdef" => out.push_str("use read_fonts::tables::{layout::{CoverageTable, ClassDef, DeviceOrVariationIndex}, variations::ItemVariationStore};\n"),
             "gvar" => out.push_str("use read_fonts::tables::variations::{Tuple, TupleVariationCount, TupleVariationHeader};\nuse crate::generated_dump_variations::dump_Tuple;\n"),
+            "kern" => out.push_str("use crate::generated_dump_kerx::dump_Subtable0Pair;\n"),
             "vmtx" => out.push_str("use read_fonts::tables::hmtx::LongMetric;\nuse crate::generated_dump_hmtx::dump_LongMetric;\n"),
             _ => (),
         }
@@ -280,11 +284,26 @@ impl DumpContext<'_> {
         field: &Field,
         typ: &str,
     ) -> syn::Result<()> {
+        let base_arg = if matches!(self.cx.find(typ), Some(Item::Table(_))) {
+            ""
+        } else {
+            ", base"
+        };
+        // Variable tables have independent slice ends; equal lengths are not aliases.
+        let scope = if base_arg.is_empty() {
+            if self.silk {
+                "DumpPath.beginTable(&mut path)"
+            } else {
+                "crate::dump_support::begin_table();"
+            }
+        } else {
+            ""
+        };
         if self.silk {
             let array = self.cx.field_type(field)?;
-            writeln!(out, "  let mut counter = {array}.iter(&fieldValue)\n  let mut count: usize = 0\n  while true {{ if let Option<Result<{typ}<'a>, ReadError>>.None = move VarLenIter<'a, {typ}<'a>>.next(&mut counter) {{ break }} count = count + 1 }}\n  DumpPath.push(&mut path, \"length\") run scalar(&path, count) DumpPath.pop(&mut path)\n  let mut iter = {array}.iter(&fieldValue)\n  let mut index: usize = 0\n  while index < count {{ DumpPath.setIndex(&mut path, index)\n    if let Option<Result<{typ}<'a>, ReadError>>.Some {{ value: result }} = move VarLenIter<'a, {typ}<'a>>.next(&mut iter) {{ match move result {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, move item, base) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }} }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
+            writeln!(out, "  let mut counter = {array}.iter(&fieldValue)\n  let mut count: usize = 0\n  while true {{ if let Option<Result<{typ}<'a>, ReadError>>.None = move VarLenIter<'a, {typ}<'a>>.next(&mut counter) {{ break }} count = count + 1 }}\n  DumpPath.push(&mut path, \"length\") run scalar(&path, count) DumpPath.pop(&mut path)\n  let mut iter = {array}.iter(&fieldValue)\n  let mut index: usize = 0\n  while index < count {{ {scope} DumpPath.setIndex(&mut path, index)\n    if let Option<Result<{typ}<'a>, ReadError>>.Some {{ value: result }} = move VarLenIter<'a, {typ}<'a>>.next(&mut iter) {{ match move result {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, move item{base_arg}) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }} }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
         } else {
-            writeln!(out, "  writeln!(out, \"{{path}}.length={{}}\", fieldValue.iter().count())?;\n  for (index, item) in fieldValue.iter().enumerate() {{ let path = &format!(\"{{path}}[{{index}}]\"); match item {{ Ok(item) => dump_{typ}(out, path, &item, base)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
+            writeln!(out, "  writeln!(out, \"{{path}}.length={{}}\", fieldValue.iter().count())?;\n  for (index, item) in fieldValue.iter().enumerate() {{ {scope} let path = &format!(\"{{path}}[{{index}}]\"); match item {{ Ok(item) => dump_{typ}(out, path, &item{base_arg})?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
         }
         Ok(())
     }

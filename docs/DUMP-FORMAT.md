@@ -144,7 +144,7 @@ include hashes of the complete streamed dumps.
 
 ## Version 4: variations, vertical metrics and glyph data
 
-The active header is `font-dump.version=4` and `dump.scope=variation-tables`.
+Version 4 used `font-dump.version=4` and `dump.scope=variation-tables`.
 After the version 3 fields, dump fvar, avar, HVAR, VVAR, MVAR, gvar/GVAR, glyf,
 vhea/VHEA, vmtx/VMTX, and VORG in that order. Their generated traversal includes
 all grammar fields and resolved targets. fvar instance records include optional
@@ -179,3 +179,39 @@ side bearings and vertical origins use signed 48.16 bits. `MVARMetrics` evaluate
 every metric tag with the upstream rounded metric API and emits 16.16 bits.
 Vertical metric tables also include advance/side-bearing lookups as in format 2.
 All earlier format bounds, reference validation and error rules still apply.
+
+
+## Version 5: AAT tables and decoded helpers
+
+The active header is `font-dump.version=5` and `dump.scope=aat-tables`.
+After the VORG grammar fields, generated traversal emits morx, mort, kerx, trak,
+ankr, feat and ltag. This covers all their grammar fields, arrays and resolved
+references, including AAT lookup/state headers. The kern wrapper selects the
+OpenType or AAT header and emits every subtable's generated fields separately.
+Variable-length tables start independent graph scopes: equal-sized chains and
+subtables can contain different bytes and therefore cannot share a cache entry.
+
+Before the metric variation observations, morxKinds, mortKinds, kerxKinds and
+kernKinds emit format dispatch, coverage predicates, cached-parts fields and
+reconstruction status, state headers/classes, complete action/component/glyph
+arrays, typed lookup fields and values, and kerning matrices/vectors. Lookup and
+state class queries cover glyph IDs zero through the font's selected glyph count,
+clamped to 65535. Typed lookups also probe glyph 65535. State entry queries use
+states [0, 1, 2, 65535] and classes [0, 1, 2, 3, 255, 65535] (254 replaces 65535 for
+legacy byte classes). Payloads retain their actual format-specific fields. Raw
+state and entry bytes are also included through their generated header targets.
+
+Kerning format 0 additionally queries every stored pair. All pair/class formats
+query the Cartesian product of glyph IDs [0, 1, 2, 31, lastGlyph, glyphCount,
+65535, 65536]; an empty font uses zero for lastGlyph. Complete class lookups and
+value/index arrays remain part of the dump independently of those probes.
+Legacy mort contextual substitutions probe five signed offsets and four glyphs;
+ligature readers probe positive, negative and out-of-range absolute offsets.
+
+trakValues contains complete Fixed size arrays (raw 16.16 bits) and per-size
+tracking values. ankrPoints queries every glyph through the selected count,
+clamped to 65536, and emits every resolved anchor. featSettings includes exclusive
+flags, default setting indices and feature-name lookup results. ltagStrings
+contains every valid tag's UTF-8 bytes in hexadecimal and its lookup index.
+Missing, null and malformed data retain the previous error/absence syntax.
+The variation and glyph observations remain unchanged after these additions.

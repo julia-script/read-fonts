@@ -49,13 +49,14 @@ jobs:
         run: |
           scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
           scripts/verify-reference --timeout 120 --report build/reference-report.json
-      - name: Compare core, layout, variations and focused edge cases
+      - name: Compare tables and focused edge cases
         run: |
           scripts/compare --timeout 120 --report build/parity-report.json
           scripts/check-core-fixtures
           scripts/check-table-fixtures --report build/table-fixtures-report.json
           scripts/check-layout-fixtures --report build/layout-fixtures-report.json
           scripts/check-variation-fixtures --report build/variation-fixtures-report.json
+          scripts/check-aat-fixtures --report build/aat-fixtures-report.json
       - name: Check the CLI and release build
         env:
           SILK_CLANG: /usr/bin/clang-18
@@ -69,11 +70,13 @@ jobs:
         run: scripts/build --release
       - name: Compare release table and variation dumps
         run: scripts/compare --timeout 120 --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-parity-report.json
+      - name: Compare release AAT fixtures
+        run: scripts/check-aat-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-aat-fixtures-report.json
       - name: Upload parity observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-4-variation-tables
+          name: milestone-5-aat-tables
           path: |
             build/fonts.txt
             build/corpus-inventory.json
@@ -83,3 +86,5 @@ jobs:
             build/table-fixtures-report.json
             build/layout-fixtures-report.json
             build/variation-fixtures-report.json
+            build/aat-fixtures-report.json
+            build/release-aat-fixtures-report.json

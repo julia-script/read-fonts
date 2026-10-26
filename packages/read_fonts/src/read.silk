@@ -68,3 +68,9 @@ pub interface Format<T> { fn formatValue() -> T }
 pub fn formatValue<T, F: Format<T>>() -> T { return Format.formatValue() }
 
 impl<'a> FontRead<'a, ()> for () { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Result<Self, ReadError>.succeed(()) } }
+
+// State-table payloads retain the same BigEndian value wrapper as upstream.
+import font_types.lib { Scalar, BigEndian }
+impl<'a, T: Scalar> FontRead<'a, ()> for BigEndian<T> {
+  fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return FontData<'a>.readBeAt<T>(&data, 0) }
+}

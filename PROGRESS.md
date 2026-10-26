@@ -402,3 +402,74 @@ The full outputs are compared byte for byte and hashed; tuple-delta evaluation
 and glyph scope semantics are specified in `docs/DUMP-FORMAT.md`.
 
 PR #5 is ready for CI and merge. Milestones 5–9 remain pending.
+
+## Session 18 — 2026-10-26 — milestone 4 merged; AAT common tables
+
+Milestone 4 merged as **PR #5** at `65c3bde` after every CI step passed
+([run 40293432786](https://github.com/julia-script/read-fonts/actions/runs/40293432786)).
+This includes the reference run, debug/release corpus comparisons, focused
+fixtures, pinned compiler builds, unit tests, formatting and generated drift.
+
+On the milestone 5 branch, all six AAT lookup formats and legacy/extended state
+tables are implemented. All eight upstream aat tests pass, including the original
+state transitions and typed payloads; cached-parts reconstruction is also checked.
+The full suite passes **285 read_fonts tests**, with **64 font_types tests** and
+**334 upstream ports** in total. The **70-file** drift check passes. Remaining
+AAT tables, their extension tests, and the M5 differential gate are pending.
+
+## Session 19 — 2026-10-26 — AAT table extensions and upstream tests
+
+The complete suite passes **315 read_fonts tests**, with **64 font_types tests**
+and **364 upstream ports**. Thirty new ports cover all seven morx tests, nine kerx
+tests, four kern tests, six trak tests, two feat tests, and the ankr/ltag tests.
+The original MORX and legacy kerning payloads are regenerated from the pinned
+snapshot. The **78-file** drift check and generator formatting check pass.
+
+All nine M5 table areas now have generated views and handwritten APIs: legacy and
+extended metamorphosis state machines, cached parts, kerning format dispatch and
+pair/class/vector lookups, tracking arrays, anchor points, feature settings and
+language tags. Parser builds pass. The differential dumper still has M4 scope;
+**M5 parity, debug/release corpus gates, CI and merge remain pending**.
+
+## Session 20 — 2026-10-26 — AAT differential traversal and malformed searches
+
+The suites pass **316 read_fonts tests**, **64 font_types tests**, and **364
+upstream ports**. The additional regression checks Rust's binary-search candidate
+on unsorted kerning pairs, features and all three searched AAT lookup formats.
+The focused differential run exposed this distinction: an upper-bound search
+agreed on sorted inputs but returned a different candidate on malformed records.
+The parser now follows Rust's exact search steps.
+
+Both dumpers implement format 5, covering all AAT grammar fields, decoded kinds,
+state/lookup/action data and documented helper probes. The five original MORX
+fonts and 42 seed fixtures match. The initial full debug corpus passed **566/566**,
+and the previous **426/500/2,650/2,882** focused fixtures passed the expanded
+protocol. The corrected search implementation still needs its complete AAT
+fixture and final debug/release corpus gates. Generator/reference/harness tests
+(**10/7/15**), Clippy, formatting, the **96-file** drift check and debug CLI build
+pass. M5 is still in progress; no final parity report or merge is claimed yet.
+
+## Session 21 — 2026-10-26 — milestone 5 local gate complete
+
+Format 5 matches **566/566 corpus fonts** and **8,551 AAT fixtures** in both debug
+and release, with **zero differences, process failures or traversal limits**.
+All reports verify the final binary hashes. The previous **426 container**,
+**500 core-table**, **2,650 layout** and **2,882 variation** fixtures also pass the
+expanded debug protocol.
+
+The suites pass **64 font_types** and **316 read_fonts** tests (**364 upstream
+ports**). Generator/reference/harness tests pass **10/7/15**; formatting, Clippy
+with warnings denied, **96-file** drift checks, and debug/release CLI builds pass.
+AAT includes all requested table extensions and their upstream tests; mort has
+no upstream unit tests at this revision and receives focused differential cases.
+
+Evidence: [debug corpus](reports/milestone-5-aat.json),
+[release corpus](reports/milestone-5-release-aat.json),
+[debug fixtures](reports/milestone-5-aat-fixtures.json), and
+[release fixtures](reports/milestone-5-release-aat-fixtures.json).
+The fixtures preserve original examples, all compact prefixes, header mutations,
+legacy state/substitution formats, unsorted search candidates, invalid UTF-8 and
+independent equal-sized chains/subtables. Full helper observation rules are in
+`docs/DUMP-FORMAT.md`.
+
+PR #6 is open; remote CI and merge are pending. Milestones 6–9 remain pending.

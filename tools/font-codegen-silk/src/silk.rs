@@ -105,6 +105,7 @@ impl Context<'_> {
             | "TupleIndex"
             | "TupleVariationCount" => 2,
             "LongMetric" => 4,
+            "Subtable0Pair" => 6,
             "Uint24" | "Int24" | "GlyphId24" | "Offset24" => 3,
             "u32" | "i32" | "Fixed" | "Tag" | "GlyphId" | "MajorMinor" | "Version16Dot16"
             | "Offset32" => 4,

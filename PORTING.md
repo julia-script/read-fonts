@@ -244,3 +244,28 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   remain unchanged. The variation dumper resets its graph scope per glyph so
   equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
   old cache entries without a full per-glyph cache clear.
+
+## Milestone 5 (in progress)
+
+- AAT typed lookups retain `TypedLookup` plus the `LookupU16`, `LookupU32`, and
+  `LookupGlyphId` aliases. Dynamic format-2/6 record arrays use borrowed
+  `ComputedArray` views; each fetched `LookupSegment2`/`LookupSingle` contains
+  decoded scalar fields instead of a packed native structure. Disk widths remain
+  explicit and independent of native structure layout.
+- State tables take an explicit payload type because Silk has no default generic
+  type arguments. `StateEntry` reads payloads through `FontRead` and `FixedSize`,
+  replacing Rust's native-layout cast. BigEndian payloads retain their wrapper.
+  `ClassMappings` names the first-glyph/classes pair, and `headerLen()` replaces
+  the associated constant. Legacy reciprocal division, deleted-glyph classes,
+  read-error precedence, and the differing null-offset behavior of `read` versus
+  `fromParts` are preserved.
+- The morx/mort state payload records remain borrowed generated views and add
+  `FontRead` conformance for entry decoding. Cached parts preserve the upstream
+  distinction between direct reads and pre-resolved offsets. `SubtableParts`
+  stores explicit arrays and `ReadArgs2` carries multi-argument kerning reads.
+- `Kern.subtables` returns the named `Subtables` cursor. It preserves the OpenType
+  last-subtable length exception and AAT's explicit lengths. `TagIndices` yields
+  named index/tag pairs; malformed ranges and invalid UTF-8 are skipped as upstream.
+  Kerning, feature-name and AAT lookup searches preserve Rust's exact candidate
+  sequence, including malformed unsorted input; sorted duplicate keys select
+  the rightmost matching entry.
