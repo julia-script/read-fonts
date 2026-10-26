@@ -1,0 +1,14 @@
+// Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import font_types.lib { Tag,InvalidTag,F2Dot14 }
+import silk.ownership { Copy }
+import silk.equal { Equal }
+import silk.result { Result }
+import silk.string { String }
+pub type NormalizedCoord = F2Dot14
+pub struct Variation { pub tag:Tag,pub value:f32, }
+impl Copy for Variation {}
+impl Variation {
+  pub fn new(tag:Tag,value:f32) -> Self { return Variation { tag:tag,value:value } }
+  pub fn fromString(tag:string,value:f32) -> Self { return Variation.new(Tag.newChecked(String.utf8Bytes(tag)) |> Result<Tag,InvalidTag>.unwrapOr(Tag.default()),value) }
+}
+impl Equal for Variation { fn equals(a:&Self,b:&Self) -> bool { return &a.tag== &b.tag && a.value==b.value } }

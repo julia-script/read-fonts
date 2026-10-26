@@ -371,3 +371,18 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   needs the allocator because upstream computes a set for wide class formats.
   The coverage heuristic uses explicit wrapping arithmetic for Rust's u32 cast
   and product. Range iteration and absent-class decisions preserve full glyph IDs.
+- Blob provides static and owned byte storage. Owned clones copy their bytes:
+  Silk Shared only lends data inside callbacks, so it cannot back escaping
+  zero-copy table views. TableFunction uses a static TableCallback interface and
+  snapshots the upstream tag catalog eagerly, once per tag. Tables owns blobs
+  and checked byte ranges; TablesView supplies the borrowed TableProvider.
+- Typed model table access reparses immutable bytes and maps parse failures to
+  ValidationError, preserving missing-table errors. It has no interior-mutability
+  validation flag. Raw named accessors preserve table bytes, while the generic
+  TableProvider dataForTag remains absent as upstream. The model forwarding
+  generator derives methods from the current provider and raw tags from the
+  pinned upstream catalog; Phase 2 adds typed accessors with its parsers.
+- Tables.new takes a Blob; fromTableFunction accepts an already resolved
+  snapshot. These explicit constructors replace Rust's Into<Source> conversion.
+  Variation.fromString replaces the string/tag pair conversion and keeps the
+  upstream invalid-tag fallback. Allocation in model ownership is an effect.

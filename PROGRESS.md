@@ -632,3 +632,17 @@ and wide formats, empty tables and truncated class arrays. Totals are **600
 read_fonts tests**, **64 font_types tests**, and **648 upstream ports**. Library
 build and 102-file regeneration pass. M7's model subset and differential gate
 are next; this is not yet a completed M7 gate.
+
+## Session 34 — 2026-10-26 — model byte ownership and table access
+
+Blob, TableFunction, Tables and Variation build with **604 read_fonts tests** and
+**64 font_types tests** passing. Two complete upstream model table tests cover
+unsorted directories and callback byte parity, bringing the upstream-port count
+to **650**. Two additional checks cover raw missing tables and repeated validation
+errors. The upstream missing-tables test's CBDT/DSIG typed assertions remain for
+Phase 2; its CFF assertion already passes. Model table forwarding covers all
+**64 catalog tags** and the **48 currently supported typed methods**.
+
+PR #8 is a draft. Charmap, glyph names, glyph/scaled metrics and the M7 differential
+gate remain in progress. Eager callback snapshots, copied owned blobs and repeated
+validation are documented ownership adaptations; no compiler change was needed.
