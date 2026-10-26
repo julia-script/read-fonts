@@ -21,7 +21,7 @@ for symbol, function in [('KERN_VER_0_FMT_0_DATA','otKern0'), ('KERN_VER_1_FMT_0
     body = source.split(f'const {symbol}: &[u8] = &[', 1)[1].split('];', 1)[0]
     body = re.sub(r'//[^\n]*', '', body)
     append(function, bytes(int(v, 16) for v in re.findall(r'0x([0-9A-Fa-f]+)', body)))
-target = root / 'packages/read_fonts/src/generated_aat_fixtures.silk'
+target = root / 'read_fonts/src/generated_aat_fixtures.silk'
 if '--check' in sys.argv:
     if not target.exists() or target.read_text() != out:
         raise SystemExit('AAT fixtures differ')

@@ -152,7 +152,7 @@ def main() -> int:
     parser.add_argument("--reference", type=Path, default=harness.REFERENCE)
     parser.add_argument("--silk-dumper", type=Path)
     parser.add_argument("--seed", type=int, default=20261026)
-    parser.add_argument("--jobs", type=int, default=3)
+    parser.add_argument("--jobs", type=int, default=harness.JOBS)
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--cache", type=Path, default=harness.ROOT / "build/malformed-cache")
     parser.add_argument("--failures", type=Path, default=harness.ROOT / "build/malformed-failures")

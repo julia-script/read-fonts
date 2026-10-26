@@ -1,0 +1,74 @@
+# Pull request CI. Budget: 15 minutes wall clock, worst case, cold caches.
+# The slow differential checks against Rust read-fonts live in baseline.yml.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Silk tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-silk
+      - run: silk test --manifest-path font_types/silk.toml --root src/tests.silk
+      - run: silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
+
+  codegen:
+    name: Generated code and tools
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Generated files are current
+        run: scripts/generate --check
+      - name: Codegen tool
+        run: |
+          cargo fmt --manifest-path tools/font-codegen-silk/Cargo.toml --check
+          cargo clippy --locked --manifest-path tools/font-codegen-silk/Cargo.toml --target-dir build/codegen --all-targets -- -D warnings
+          cargo test --locked --manifest-path tools/font-codegen-silk/Cargo.toml --target-dir build/codegen
+      - name: Script tests
+        run: python3 -m unittest discover -s scripts/tests
+
+  robustness:
+    name: Corpus and corrupted fonts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-silk
+      - name: Build release font_dump
+        working-directory: font_dump
+        run: silk build --release
+      - name: CLI
+        run: |
+          build/llvm/x86_64-unknown-linux-gnu/release/font_dump --help
+          build/llvm/x86_64-unknown-linux-gnu/release/font_dump --version
+      - name: Every corpus font and 4 corrupted variants of each dump cleanly
+        env:
+          READ_FONTS_PROFILE: release
+        run: scripts/check-robustness --mutations-per-font 4
+      - name: Upload failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robustness-failures
+          path: build/robustness-failures/
+          if-no-files-found: ignore

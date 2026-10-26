@@ -107,7 +107,7 @@ for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64', 
     parts = kind.split('-')
     name = parts[0] + ''.join(part.title() for part in parts[1:])
     text += f"pub fn {name}DrawnBounds() -> &'static [u8] {{ return b\"{literal}\" }}\n"
-path = ROOT / 'packages/read_fonts/src/generated_model_fixtures.silk'
+path = ROOT / 'read_fonts/src/generated_model_fixtures.silk'
 if args.check:
     if not path.exists() or path.read_text() != text:
         parser.exit(1, 'Generated model fixtures differ\n')

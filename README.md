@@ -15,8 +15,7 @@ See [PROGRESS.md](PROGRESS.md), [porting decisions](PORTING.md), and the origina
 ```sh
 git clone --recurse-submodules https://github.com/julia-script/read-fonts.git
 cd read-fonts
-curl -fsSL https://raw.githubusercontent.com/silk-lang/silk/main/install.sh | SILK_RELEASE='v0.1.0-dev.17+1120049495d3' sh
-export PATH="$HOME/.silk/bin:$PATH"
+export PATH="$(scripts/install-silk):$PATH"   # the Silk release pinned in silk.toml
 ```
 
 Install Python 3.11+, a current stable Rust toolchain (with rustfmt and Clippy for
@@ -26,28 +25,37 @@ the value of that variable.
 No Silk compiler or standard-library sources are built, modified, or vendored here.
 If cloning without `--recurse-submodules`, run `git submodule update --init --recursive`.
 
-## Run the table parity gate
+## Checks
+
+Pull request CI ([ci.yml](.github/workflows/ci.yml)) has a hard 15 minute budget
+and runs three jobs in parallel:
 
 ```sh
+# Silk tests
+silk test --manifest-path font_types/silk.toml --root src/tests.silk
+silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
+# Generated code and tools
 scripts/generate --check
-scripts/build
-scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
-scripts/verify-reference --timeout 600 --report build/reference-report.json
-silk test --manifest-path packages/font_types/silk.toml --root src/tests.silk
-silk test --manifest-path packages/read_fonts/silk.toml --root src/tests.silk
-scripts/compare --timeout 600 --report build/parity-report.json
-scripts/check-core-fixtures
-scripts/check-table-fixtures --report build/table-fixtures-report.json
-scripts/check-layout-fixtures --report build/layout-fixtures-report.json
-scripts/check-variation-fixtures --report build/variation-fixtures-report.json
-scripts/check-aat-fixtures --report build/aat-fixtures-report.json
-scripts/check-cff-fixtures --report build/cff-fixtures-report.json
-scripts/check-model-fixtures --report build/model-fixtures-report.json
-scripts/check-phase2-fixtures --report build/phase2-fixtures-report.json
-python3 -m unittest discover -s scripts/tests -v
-cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
-cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
+python3 -m unittest discover -s scripts/tests
+# Corpus and corrupted fonts: every corpus font plus 4 seeded corruptions of
+# each must dump without a trap, crash, hang or incomplete output
+(cd font_dump && silk build --release)
+READ_FONTS_PROFILE=release scripts/check-robustness
 ```
+
+The differential checks against the Rust read-fonts the port started from are
+slower and run weekly or by hand ([baseline.yml](.github/workflows/baseline.yml)):
+
+```sh
+scripts/build --release
+export READ_FONTS_PROFILE=release   # check against the release dumpers
+scripts/verify-reference --timeout 600
+scripts/compare --timeout 600
+scripts/check-{core,table,layout,variation,aat,cff,model,phase2}-fixtures
+scripts/check-malformed --report build/malformed-report.json.gz
+```
+
+Comparisons use every core; set `READ_FONTS_JOBS` to change that.
 
 `verify-reference` runs the Rust dumper on **every font** in the four configured
 corpus directories, including unsupported containers. It reports parse errors as
@@ -80,7 +88,7 @@ Both dumpers receive one absolute font filename as one argument. No shell is use
 Run the Silk CLI directly:
 
 ```sh
-cd packages/font_dump
+cd font_dump
 silk run -- --help
 silk run -- /absolute/path/to/font.ttf
 silk build --release
@@ -108,14 +116,14 @@ The complete Phase 2 gate passes all **23,188 corruptions** of the **566 corpus 
 in release: **18,660 truncations** (31–33 lengths per font) and **4,528 byte-flip variants**. The checked-in
 [final Phase 2 report](reports/milestone-9-malformed.json.gz) records that complete
 campaign with dump format 9, including the full bitmap/COLR/VARC model chain.
-There are zero differences and zero process failures. CI repeats the campaign.
+There are zero differences and zero process failures. The baseline workflow repeats the campaign.
 Every discovered font receives header-edge, 1/16-length and final-byte
 truncations, plus eight seeded mutations with one to eight nonzero byte XORs.
 Mutation recipes and input/output hashes are recorded. Full dump equality also
 requires identical table errors. Crashes, timeouts, malformed output and traversal
 limits fail the gate, even when both processes fail the same way.
 
-Three worker processes run by default (`--jobs` overrides this). `--seed` defaults
+One worker process per core runs by default (`--jobs` overrides this). `--seed` defaults
 to 20261026 and `--timeout` to 600 seconds per process. Completed matches can resume
 from `build/malformed-cache`; source hashes, binary hashes and campaign settings
 must match. Each run executes immutable binary snapshots so concurrent rebuilds
@@ -141,15 +149,15 @@ in alternating Rust/Silk order. The reported ratio is median Silk wall time
 divided by median Rust wall time. This measures the complete CLI, including
 startup, parsing, model evaluation and formatting. It is not an isolated parser
 microbenchmark. The report retains per-font samples, corpus and binary hashes,
-program versions, and machine information. CI uploads the same report with its
-parity observations. `--fonts`, `--reference`, `--silk-dumper`, `--rounds` and
+program versions, and machine information. The baseline workflow uploads the
+same report with its parity observations. `--fonts`, `--reference`, `--silk-dumper`, `--rounds` and
 `--timeout` select repeatable alternatives.
 
 ## Layout
 
-- `packages/font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
-- `packages/read_fonts`: borrowed parsing, generated tables, integer collections and font model APIs.
-- `packages/font_dump`: CLI producing stable directory, table and extension observations.
+- `font_types`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
+- `read_fonts`: borrowed parsing, generated tables, integer collections and font model APIs.
+- `font_dump`: CLI producing stable directory, table and extension observations.
 - `scripts/rust-font-dump`: Rust reference binary linked to the vendored read-fonts.
 - `scripts/`: corpus listing, reference gate, comparison, and harness tests.
 - `upstream/`: read-only fontations submodule, pinned to `cf5676b29faa8c7787abe003c5dfb85fd81e8a7c`.

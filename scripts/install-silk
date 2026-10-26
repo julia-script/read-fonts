@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Install the Silk release pinned in silk.toml into ~/.silk and print its bin directory.
+set -eu
+root=$(cd "$(dirname "$0")/.." && pwd)
+version=$(sed -n 's/^silk-version = "\(.*\)"$/\1/p' "$root/silk.toml")
+target=x86_64-unknown-linux-gnu
+home=${SILK_HOME:-$HOME/.silk}
+dir="$home/toolchains/$version"
+if [ ! -x "$dir/bin/silkc" ]; then
+  tag=$(printf 'v%s' "$version" | sed 's/+/%2B/')
+  name=$(printf 'silk-%s-%s.tar.gz' "$version" "$target" | sed 's/+/%2B/')
+  mkdir -p "$dir"
+  curl -fsSL --retry 3 "https://github.com/silk-lang/silk/releases/download/$tag/$name" \
+    | tar xz -C "$dir" --strip-components=1
+fi
+mkdir -p "$home/bin"
+ln -sf "$dir/bin/silkc" "$home/bin/silk"
+echo "$home/bin"

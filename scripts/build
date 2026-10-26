@@ -20,7 +20,7 @@ try:
         version = subprocess.check_output([silk, "--version"], text=True).strip()
         if version != f"silk v{VERSION}":
             raise ValueError(f"expected silk v{VERSION}; got {version}")
-        for package in (ROOT, ROOT / "packages/font_types", ROOT / "packages/read_fonts", ROOT / "packages/font_dump"):
+        for package in (ROOT, ROOT / "font_types", ROOT / "read_fonts", ROOT / "font_dump"):
             subprocess.run([silk, "build"] + (["--release"] if args.release else []), cwd=package, check=True)
 except (OSError, ValueError, subprocess.CalledProcessError) as error:
     parser.exit(2, f"build: {error}\n")
