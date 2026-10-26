@@ -1,3 +1,22 @@
+# Silk generator fork
+
+Copied from fontations `cf5676b29faa8c7787abe003c5dfb85fd81e8a7c`.
+The original documentation follows below. Run `scripts/generate` from this
+repository root, or `scripts/generate --check` to reject generated-file drift.
+The local plan is `tools/codegen-plan.toml`; never run a plan that writes into the
+read-only upstream submodule.
+
+`silk-parse` emits borrowed Silk accessors; `silk-dump` and `rust-dump` emit
+matching traversals of each implementation's public API. These modes share the
+upstream grammar parser and semantic resolution. Unsupported grammar features
+produce a source diagnostic instead of silently omitting fields. The current
+prototype covers head, maxp and cmap; later tables expand this backend.
+
+The fork uses a standalone locked Cargo workspace. No Silk compiler or standard
+library code is part of it. Generated files must be changed through the backend.
+
+---
+
 # codegen
 
 This crate contains utilities used to generate code for parsing and

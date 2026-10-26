@@ -70,7 +70,9 @@ fn run_plan(path: &Path) -> miette::Result<()> {
 }
 
 fn ensure_correct_working_directory() -> miette::Result<()> {
-    if !(Path::new("read-fonts").is_dir() && Path::new("resources").is_dir()) {
+    if !(Path::new("read-fonts").is_dir() && Path::new("resources").is_dir()
+        || Path::new("packages/read_fonts").is_dir() && Path::new("upstream/resources").is_dir())
+    {
         return Err(miette!(
             "codegen tool must be run from the root of the workspace"
         ));
@@ -111,7 +113,7 @@ mod flags {
         /// Generate font table representations
         cmd args {
             cmd file {
-                /// Code to generate; either 'parse' or 'compile'.
+                /// Code to generate: 'parse', 'compile', or 'silk-parse'.
                 required mode: Mode
                 /// Path to the input file
                 required path: PathBuf

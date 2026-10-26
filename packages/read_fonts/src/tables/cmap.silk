@@ -1,0 +1,1 @@
+pub import generated_cmap { Cmap, Dmap, EncodingRecord, PlatformId, CmapSubtable, Cmap0, Cmap2, SubHeader, Cmap4, Cmap6, Cmap8, SequentialMapGroup, Cmap10, Cmap12, Cmap13, ConstantMapGroup, Cmap14, Cmap15, VariationSelector, VariationSelector15, DefaultUvs, NonDefaultUvs, NonDefaultUvs24, UvsMapping, UvsMapping24, UnicodeRange }

@@ -52,6 +52,9 @@ pub struct ComputedArray<'a, Args: Copy, T: FontReadAt<'a, Args> + ComputeSize<A
 }
 impl<'a, Args: Copy, T: FontReadAt<'a, Args> + ComputeSize<Args>> Copy for ComputedArray<'a, Args, T> {}
 impl<'a, Args, T> ComputedArray<'a, Args, T> {
+  pub fn empty(args: Args) -> Self {
+    return Self { itemLen: 0, count: 0, start: 0, data: FontData.new(b""), args: args }
+  }
   pub fn new(data: FontData<'a>, start: usize, end: usize, args: Args) -> Result<Self, ReadError> {
     let itemLen = match move computeSize<Args, T>(args) {
       Result<usize, ReadError>.Success { value } => value

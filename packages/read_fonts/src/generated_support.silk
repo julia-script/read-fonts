@@ -1,0 +1,21 @@
+// Copyright 2026 the fontations-silk Authors. Licensed under Apache-2.0 or MIT.
+//! Shared checked operations for grammar-generated borrowed views.
+import font_data { FontData }
+import read { ReadError, FontReadAt, ComputeSize }
+import array { ComputedArray }
+import font_types.lib { Scalar, FixedSize, fixedByteLen }
+import silk.result { Result }
+
+pub fn scalarOr<'a, T: Scalar>(data: FontData<'a>, position: usize, fallback: T) -> T {
+  return match move FontData<'a>.readAt<T>(&data, position) {
+    Result<T, ReadError>.Success { value } => move value
+    Result<T, ReadError>.Failure { error } => move fallback
+  }
+}
+
+pub fn recordArray<'a, T: FixedSize + FontReadAt<'a, ()> + ComputeSize<()>>(data: FontData<'a>, start: usize, end: usize) -> Result<ComputedArray<'a, (), T>, ReadError> {
+  if start > end || end > FontData.len(&data) { return Result<ComputedArray<'a, (), T>, ReadError>.failResult(ReadError.OutOfBounds) }
+  let width = fixedByteLen<T>()
+  if width == 0 || (end - start) % width != 0 { return Result<ComputedArray<'a, (), T>, ReadError>.failResult(ReadError.InvalidArrayLen) }
+  return ComputedArray<'a, (), T>.new(data, start, end, ())
+}

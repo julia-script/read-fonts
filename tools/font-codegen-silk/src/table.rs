@@ -348,9 +348,11 @@ impl Table {
                     "an embedded record must precede any variable-length field, so that it is covered by the table's minimum size",
                 ));
             }
-            if fld.attrs.discriminant.is_some() && self.attrs.generic_offset.is_none() {
+            if let (Some(discriminant), None) =
+                (&fld.attrs.discriminant, &self.attrs.generic_offset)
+            {
                 return Err(logged_syn_error(
-                    fld.attrs.discriminant.as_ref().unwrap().span(),
+                    discriminant.span(),
                     "#[discriminant] is only valid in tables with #[generic_offset]",
                 ));
             }

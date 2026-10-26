@@ -14,6 +14,7 @@ mod formatting;
 mod generic_group;
 mod parsing;
 mod record;
+mod silk;
 mod table;
 
 use parsing::{Item, Items};
@@ -28,6 +29,13 @@ pub enum Mode {
     Parse,
     /// Generate compilation code
     Compile,
+    /// Generate borrowed Silk parsers from the same resolved table grammar.
+    #[serde(rename = "silk-parse")]
+    SilkParse,
+    #[serde(rename = "silk-dump")]
+    SilkDump,
+    #[serde(rename = "rust-dump")]
+    RustDump,
 }
 
 /// we check invariants twice
@@ -52,11 +60,20 @@ pub fn generate_code(code_str: &str, mode: Mode) -> Result<String, syn::Error> {
     items.resolve_pending()?;
     items.sanity_check(Phase::Analysis)?;
 
+    if matches!(mode, Mode::SilkParse) {
+        return silk::generate(&items);
+    }
+
+    if matches!(mode, Mode::SilkDump | Mode::RustDump) {
+        return silk::generate_dump(&items, matches!(mode, Mode::SilkDump));
+    }
+
     // 3. Generate
     debug!("Generate (mode {:?})", mode);
     let tables = match &mode {
         Mode::Parse => generate_parse_module(&items),
         Mode::Compile => generate_compile_module(&items),
+        Mode::SilkParse | Mode::SilkDump | Mode::RustDump => unreachable!(),
     }?;
 
     // 4. Touchup
@@ -135,8 +152,11 @@ impl std::str::FromStr for Mode {
         match s {
             "parse" => Ok(Self::Parse),
             "compile" => Ok(Self::Compile),
+            "silk-parse" => Ok(Self::SilkParse),
+            "silk-dump" => Ok(Self::SilkDump),
+            "rust-dump" => Ok(Self::RustDump),
             other => Err(miette::Error::msg(format!(
-                "expected one of 'parse' or 'compile' (found {other})"
+                "expected 'parse', 'compile', or 'silk-parse' (found {other})"
             ))),
         }
     }

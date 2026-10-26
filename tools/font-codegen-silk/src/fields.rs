@@ -477,11 +477,11 @@ impl Field {
             }
         }
 
-        if self.attrs.version.is_some() && self.name != "version" {
+        if let (Some(version), false) = (&self.attrs.version, self.name == "version") {
             // this seems to be always true and it simplifies our lives; if not
             // we will need to handle custom idents in more places.
             return Err(logged_syn_error(
-                self.attrs.version.as_ref().unwrap().span(),
+                version.span(),
                 "#[version] attribute expects to be on field named 'version",
             ));
         }

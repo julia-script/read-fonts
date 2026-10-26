@@ -1,0 +1,46 @@
+clean = []
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/head.rs"
+target = "packages/read_fonts/src/generated_head.silk"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/maxp.rs"
+target = "packages/read_fonts/src/generated_maxp.silk"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/cmap.rs"
+target = "packages/read_fonts/src/generated_cmap.silk"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/head.rs"
+target = "packages/font_dump/src/generated_dump_head.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/head.rs"
+target = "scripts/rust-font-dump/src/generated_dump_head.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/maxp.rs"
+target = "packages/font_dump/src/generated_dump_maxp.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/maxp.rs"
+target = "scripts/rust-font-dump/src/generated_dump_maxp.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/cmap.rs"
+target = "packages/font_dump/src/generated_dump_cmap.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/cmap.rs"
+target = "scripts/rust-font-dump/src/generated_dump_cmap.rs"
