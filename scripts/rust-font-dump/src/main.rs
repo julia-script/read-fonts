@@ -10,6 +10,7 @@ use std::{
     process::ExitCode,
 };
 
+mod extensions_cmap;
 mod extensions_metrics;
 mod extensions_name;
 mod extensions_post;
@@ -160,12 +161,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 2: directories, head, maxp and cmap fields."
+            "usage: rust-font-dump FONT\nDump format 2: directories and core OpenType tables, names, metrics and mappings."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 2; head/maxp/cmap scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 2; core-tables scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

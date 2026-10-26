@@ -62,3 +62,7 @@ pub fn totalLenForCount<T: VarSize>(data: FontData, count: usize) -> Result<usiz
   }
   return Result<usize, ReadError>.succeed(position)
 }
+
+/// A format discriminator known from the table grammar.
+pub interface Format<T> { fn formatValue() -> T }
+pub fn formatValue<T, F: Format<T>>() -> T { return Format.formatValue() }

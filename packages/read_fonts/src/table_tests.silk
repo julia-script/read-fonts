@@ -55,3 +55,17 @@ test effect fn unknownFormatPreservesDiscriminant() -> () ! AssertionError<'stat
   let correct = match move result { Result<CmapSubtable, ReadError>.Failure { error } => match error { ReadError.InvalidFormat { value } => value == 65534 _ => false } _ => false }
   run Testing.expect(correct, "unknown cmap format payload")
 }
+
+import tables.hmtx { Hmtx }
+import lib { formatValue }
+test effect fn generatedDefaultsRetainUpstreamBackingPool() -> () ! AssertionError<'static> {
+  let head = Head.default()
+  run Testing.expect(FontData.len(&Head.offsetData(&head)) == 262, "default pool length")
+  run Testing.expect(Head.minSize() == 54 && Head.unitsPerEm(&head) == 0, "default fixed header")
+  let cmap = Cmap0.default()
+  run Testing.expect(ScalarArray<u8>.len(&Cmap0.glyphIdArray(&cmap)) == 256, "default fixed array retains zero elements")
+  let metrics = Hmtx.default()
+  run Testing.expect(ScalarArray<i16>.len(&Hmtx.leftSideBearings(&metrics)) == 131, "default remainder array sees the pool")
+  run Testing.expect(formatValue<u16, Cmap4>() == 4, "static table format")
+  run Testing.expect(&Flags.default() == &Flags.empty(), "default flags")
+}

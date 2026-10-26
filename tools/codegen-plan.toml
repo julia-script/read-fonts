@@ -14,6 +14,7 @@ target = "packages/read_fonts/src/generated_maxp.silk"
 mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/cmap.rs"
 target = "packages/read_fonts/src/generated_cmap.silk"
+extensions = ["packages/read_fonts/src/tables/cmap_impl.silk"]
 
 [[generate]]
 mode = "silk-dump"
@@ -49,6 +50,7 @@ target = "scripts/rust-font-dump/src/generated_dump_cmap.rs"
 mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/hhea.rs"
 target = "packages/read_fonts/src/generated_hhea.silk"
+extensions = ["packages/read_fonts/src/tables/hhea_impl.silk"]
 
 [[generate]]
 mode = "silk-parse"

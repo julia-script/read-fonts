@@ -263,7 +263,7 @@ impl<'a> FontReadAt<'a, ()> for TableRecord<'a> {
 }
 impl<'a> TTCHeader<'a> { pub fn offsetData(self: &Self) -> FontData<'a> { return self.bytes } }
 
-import table_provider { readTable }
+import table_provider { TableProvider, TopLevelTable, readTable, tableTag }
 import tables.head { Head }
 import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
 import tables.cmap { Cmap, Dmap }
@@ -273,52 +273,23 @@ import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
 impl<'a> FontRef<'a> {
-  pub fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> {
-    return match move FontRef<'a>.tableData(self, tag) { Option<FontData<'a>>.Some { value } => Result<FontData<'a>, ReadError>.succeed(value) Option<FontData<'a>>.None => Result<FontData<'a>, ReadError>.failResult(ReadError.TableIsMissing { tag: tag }) }
-  }
-  pub fn head(self: &Self) -> Result<Head<'a>, ReadError> { return readTable<Head<'a>, FontRef<'a>>(self, Head.tag()) }
-  pub fn maxp(self: &Self) -> Result<Maxp<'a>, ReadError> { return readTable<Maxp<'a>, FontRef<'a>>(self, Maxp.tag()) }
-  pub fn maxpExtended(self: &Self) -> Result<MaxpExtended<'a>, ReadError> { return readTable<MaxpExtended<'a>, FontRef<'a>>(self, MaxpExtended.tag()) }
-  pub fn cmap(self: &Self) -> Result<Cmap<'a>, ReadError> { return readTable<Cmap<'a>, FontRef<'a>>(self, Cmap.tag()) }
-  pub fn dmap(self: &Self) -> Result<Dmap<'a>, ReadError> { return readTable<Dmap<'a>, FontRef<'a>>(self, Dmap.tag()) }
-  pub fn hhea(self: &Self) -> Result<Hhea<'a>, ReadError> { return readTable<Hhea<'a>, FontRef<'a>>(self, Hhea.tag()) }
-  pub fn hheaExtended(self: &Self) -> Result<HheaExtended<'a>, ReadError> { return readTable<HheaExtended<'a>, FontRef<'a>>(self, HheaExtended.tag()) }
-  pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return readTable<Name<'a>, FontRef<'a>>(self, Name.tag()) }
-  pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return readTable<Os2<'a>, FontRef<'a>>(self, Os2.tag()) }
-  pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return readTable<Post<'a>, FontRef<'a>>(self, Post.tag()) }
-  pub fn hmtx(self: &Self) -> Result<Hmtx<'a>, ReadError> {
-    let header = match move FontRef<'a>.hhea(self) { Result<Hhea<'a>, ReadError>.Success { value } => value Result<Hhea<'a>, ReadError>.Failure { error } => { return Result<Hmtx<'a>, ReadError>.failResult(error) } }
-    let data = match move FontRef<'a>.expectDataForTag(self, Hmtx.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Hmtx<'a>, ReadError>.failResult(error) } }
-    return Hmtx<'a>.read(data, Hhea<'a>.numberOfHMetrics(&header))
-  }
-  pub fn hmtxExtended(self: &Self) -> Result<HmtxExtended<'a>, ReadError> {
-    let data = match move FontRef<'a>.expectDataForTag(self, HmtxExtended.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<HmtxExtended<'a>, ReadError>.failResult(error) } }
-    let header = match move FontRef<'a>.hheaExtended(self) { Result<HheaExtended<'a>, ReadError>.Success { value } => value Result<HheaExtended<'a>, ReadError>.Failure { error } => { return Result<HmtxExtended<'a>, ReadError>.failResult(error) } }
-    return HmtxExtended<'a>.read(data, HheaExtended<'a>.numberOfHMetrics(&header))
-  }
+  pub fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> { return TableProvider.expectDataForTag(self, tag) }
+  pub fn head(self: &Self) -> Result<Head<'a>, ReadError> { return TableProvider.head(self) }
+  pub fn maxp(self: &Self) -> Result<Maxp<'a>, ReadError> { return TableProvider.maxp(self) }
+  pub fn maxpExtended(self: &Self) -> Result<MaxpExtended<'a>, ReadError> { return TableProvider.maxpExtended(self) }
+  pub fn cmap(self: &Self) -> Result<Cmap<'a>, ReadError> { return TableProvider.cmap(self) }
+  pub fn dmap(self: &Self) -> Result<Dmap<'a>, ReadError> { return TableProvider.dmap(self) }
+  pub fn hhea(self: &Self) -> Result<Hhea<'a>, ReadError> { return TableProvider.hhea(self) }
+  pub fn hheaExtended(self: &Self) -> Result<HheaExtended<'a>, ReadError> { return TableProvider.hheaExtended(self) }
+  pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return TableProvider.name(self) }
+  pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return TableProvider.os2(self) }
+  pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
+  pub fn hmtx(self: &Self) -> Result<Hmtx<'a>, ReadError> { return TableProvider.hmtx(self) }
+  pub fn hmtxExtended(self: &Self) -> Result<HmtxExtended<'a>, ReadError> { return TableProvider.hmtxExtended(self) }
+  pub fn selectedMaxp(self: &Self) -> Result<SelectedMaxp<'a>, ReadError> { return TableProvider.selectedMaxp(self) }
+  pub fn selectedHhea(self: &Self) -> Result<SelectedHhea<'a>, ReadError> { return TableProvider.selectedHhea(self) }
+  pub fn hGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> { return TableProvider.hGlyphMetricRecords(self) }
 }
 
-impl<'a> FontRef<'a> {
-  pub fn selectedMaxp(self: &Self) -> Result<SelectedMaxp<'a>, ReadError> {
-    match move FontRef<'a>.maxpExtended(self) {
-      Result<MaxpExtended<'a>, ReadError>.Success { value } => { return Result<SelectedMaxp<'a>, ReadError>.succeed(SelectedMaxp<'a>.Extended { table: value }) }
-      Result<MaxpExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, MaxpExtended.tag()) { return Result<SelectedMaxp<'a>, ReadError>.failResult(error) } }
-    }
-    return match move FontRef<'a>.maxp(self) { Result<Maxp<'a>, ReadError>.Success { value } => Result<SelectedMaxp<'a>, ReadError>.succeed(SelectedMaxp<'a>.Original { table: value }) Result<Maxp<'a>, ReadError>.Failure { error } => Result<SelectedMaxp<'a>, ReadError>.failResult(error) }
-  }
-  pub fn selectedHhea(self: &Self) -> Result<SelectedHhea<'a>, ReadError> {
-    match move FontRef<'a>.hheaExtended(self) {
-      Result<HheaExtended<'a>, ReadError>.Success { value } => { return Result<SelectedHhea<'a>, ReadError>.succeed(SelectedHhea<'a>.Extended { table: value }) }
-      Result<HheaExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, HheaExtended.tag()) { return Result<SelectedHhea<'a>, ReadError>.failResult(error) } }
-    }
-    return match move FontRef<'a>.hhea(self) { Result<Hhea<'a>, ReadError>.Success { value } => Result<SelectedHhea<'a>, ReadError>.succeed(SelectedHhea<'a>.Original { table: value }) Result<Hhea<'a>, ReadError>.Failure { error } => Result<SelectedHhea<'a>, ReadError>.failResult(error) }
-  }
-  pub fn hGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> {
-    match move FontRef<'a>.hmtxExtended(self) {
-      Result<HmtxExtended<'a>, ReadError>.Success { value } => { return Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromHmtxExtended(value)) }
-      Result<HmtxExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, HmtxExtended.tag()) { return Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) } }
-    }
-    return match move FontRef<'a>.hmtx(self) { Result<Hmtx<'a>, ReadError>.Success { value } => Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromHmtx(value)) Result<Hmtx<'a>, ReadError>.Failure { error } => Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) }
-  }
-}
-fn isMissingTable(error: ReadError, expected: Tag) -> bool { return match error { ReadError.TableIsMissing { tag } => &tag == &expected _ => false } }
+// compiler-bugs/004: keep this generic operation on the concrete owner.
+impl<'a> FontRef<'a> { pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> { return readTable<T, FontRef<'a>>(self, tableTag<T>()) } }

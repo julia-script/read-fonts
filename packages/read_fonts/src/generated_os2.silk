@@ -2,7 +2,8 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
@@ -12,6 +13,9 @@ import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
 import silk.equal { Equal }
+import silk.order { Order, Ordering }
+import silk.format { Debug, Formatter }
+import silk.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.usize
 import silk.u8
@@ -65,6 +69,22 @@ impl SelectionFlags {
   pub fn oblique() -> SelectionFlags { return SelectionFlags { raw: 512 } }
 }
 impl Equal for SelectionFlags { fn equals(left: &Self, right: &Self) -> bool { return left.raw == right.raw } }
+impl SelectionFlags { pub fn default() -> Self { return SelectionFlags.empty() } }
+impl Order for SelectionFlags { fn compare(left: &Self, right: &Self) -> Ordering { if left.raw < right.raw { return Ordering.Less } if left.raw > right.raw { return Ordering.Greater } return Ordering.Equal } }
+impl Debug for SelectionFlags { effect fn debug(self: &Self, formatter: &mut Formatter) -> () ! WriterError ? &mut Writer {
+  let mut first = true
+  if SelectionFlags.contains(self, SelectionFlags.italic()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("ITALIC") }
+  if SelectionFlags.contains(self, SelectionFlags.underscore()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("UNDERSCORE") }
+  if SelectionFlags.contains(self, SelectionFlags.negative()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("NEGATIVE") }
+  if SelectionFlags.contains(self, SelectionFlags.outlined()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("OUTLINED") }
+  if SelectionFlags.contains(self, SelectionFlags.strikeout()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("STRIKEOUT") }
+  if SelectionFlags.contains(self, SelectionFlags.bold()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("BOLD") }
+  if SelectionFlags.contains(self, SelectionFlags.regular()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("REGULAR") }
+  if SelectionFlags.contains(self, SelectionFlags.useTypoMetrics()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("USE_TYPO_METRICS") }
+  if SelectionFlags.contains(self, SelectionFlags.wws()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("WWS") }
+  if SelectionFlags.contains(self, SelectionFlags.oblique()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("OBLIQUE") }
+  if first { run Writer.writeString("(empty)") }
+} }
 impl BitAnd<SelectionFlags, SelectionFlags> for SelectionFlags { fn bitAnd(left: Self, right: Self) -> Self { return Self { raw: left.raw & right.raw } } }
 impl BitOr<SelectionFlags, SelectionFlags> for SelectionFlags { fn bitOr(left: Self, right: Self) -> Self { return Self { raw: left.raw | right.raw } } }
 impl BitXor<SelectionFlags, SelectionFlags> for SelectionFlags { fn bitXor(left: Self, right: Self) -> Self { return Self { raw: left.raw ^ right.raw } } }
@@ -81,6 +101,7 @@ impl FixedSize for SelectionFlags { fn rawByteLen() -> usize { return 2 } }
 pub struct Os2<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 39], }
 impl<'a> Copy for Os2<'a> {}
 impl<'a> Os2<'a> {
+  pub fn default() -> Self { return Os2<'a>.read(FontData.defaultTableData()) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 39] }) }
   pub fn minSize() -> usize { return 78 }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {
     if FontData.len(&data) < 78 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -456,6 +477,7 @@ impl<'a> Os2<'a> {
 impl<'a> FontRead<'a, ()> for Os2<'a> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Os2<'a>.read(data) }
 }
+impl<'a> TopLevelTable for Os2<'a> { fn tag() -> Tag { return Os2<'a>.tag() } }
 impl<'a> MinByteRange<'a> for Os2<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[29].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[29].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }

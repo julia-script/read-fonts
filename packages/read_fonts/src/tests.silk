@@ -311,3 +311,5 @@ import table_tests
 import name_tests
 import metric_tests
 import post_tests
+import cmap_tests
+import provider_tests

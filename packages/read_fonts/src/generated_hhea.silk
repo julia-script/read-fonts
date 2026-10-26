@@ -2,7 +2,8 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
@@ -12,6 +13,9 @@ import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
 import silk.equal { Equal }
+import silk.order { Order, Ordering }
+import silk.format { Debug, Formatter }
+import silk.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.usize
 import silk.u8
@@ -25,6 +29,7 @@ import silk.i32
 pub struct Hhea<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 17], }
 impl<'a> Copy for Hhea<'a> {}
 impl<'a> Hhea<'a> {
+  pub fn default() -> Self { return Hhea<'a>.read(FontData.defaultTableData()) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] }) }
   pub fn minSize() -> usize { return 36 }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {
     if FontData.len(&data) < 36 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -164,6 +169,7 @@ impl<'a> Hhea<'a> {
 impl<'a> FontRead<'a, ()> for Hhea<'a> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Hhea<'a>.read(data) }
 }
+impl<'a> TopLevelTable for Hhea<'a> { fn tag() -> Tag { return Hhea<'a>.tag() } }
 impl<'a> MinByteRange<'a> for Hhea<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[16].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[16].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }
@@ -173,6 +179,7 @@ impl<'a> MinByteRange<'a> for Hhea<'a> {
 pub struct HheaExtended<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 17], }
 impl<'a> Copy for HheaExtended<'a> {}
 impl<'a> HheaExtended<'a> {
+  pub fn default() -> Self { return HheaExtended<'a>.read(FontData.defaultTableData()) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] }) }
   pub fn minSize() -> usize { return 38 }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {
     if FontData.len(&data) < 38 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -294,8 +301,16 @@ impl<'a> HheaExtended<'a> {
 impl<'a> FontRead<'a, ()> for HheaExtended<'a> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return HheaExtended<'a>.read(data) }
 }
+impl<'a> TopLevelTable for HheaExtended<'a> { fn tag() -> Tag { return HheaExtended<'a>.tag() } }
 impl<'a> MinByteRange<'a> for HheaExtended<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[16].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[16].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }
 }
 
+
+// Handwritten extension from packages/read_fonts/src/tables/hhea_impl.silk
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+impl<'a> Hhea<'a> {
+  /// Deprecated upstream alias; prefer numberOfHMetrics.
+  pub fn numberOfLongMetrics(self: &Self) -> u16 { return Hhea<'a>.numberOfHMetrics(self) }
+}

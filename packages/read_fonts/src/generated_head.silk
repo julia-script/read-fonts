@@ -2,7 +2,8 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
@@ -12,6 +13,9 @@ import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
 import silk.equal { Equal }
+import silk.order { Order, Ordering }
+import silk.format { Debug, Formatter }
+import silk.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.usize
 import silk.u8
@@ -55,6 +59,19 @@ impl MacStyle {
   pub fn extended() -> MacStyle { return MacStyle { raw: 64 } }
 }
 impl Equal for MacStyle { fn equals(left: &Self, right: &Self) -> bool { return left.raw == right.raw } }
+impl MacStyle { pub fn default() -> Self { return MacStyle.empty() } }
+impl Order for MacStyle { fn compare(left: &Self, right: &Self) -> Ordering { if left.raw < right.raw { return Ordering.Less } if left.raw > right.raw { return Ordering.Greater } return Ordering.Equal } }
+impl Debug for MacStyle { effect fn debug(self: &Self, formatter: &mut Formatter) -> () ! WriterError ? &mut Writer {
+  let mut first = true
+  if MacStyle.contains(self, MacStyle.bold()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("BOLD") }
+  if MacStyle.contains(self, MacStyle.italic()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("ITALIC") }
+  if MacStyle.contains(self, MacStyle.underline()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("UNDERLINE") }
+  if MacStyle.contains(self, MacStyle.outline()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("OUTLINE") }
+  if MacStyle.contains(self, MacStyle.shadow()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("SHADOW") }
+  if MacStyle.contains(self, MacStyle.condensed()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("CONDENSED") }
+  if MacStyle.contains(self, MacStyle.extended()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("EXTENDED") }
+  if first { run Writer.writeString("(empty)") }
+} }
 impl BitAnd<MacStyle, MacStyle> for MacStyle { fn bitAnd(left: Self, right: Self) -> Self { return Self { raw: left.raw & right.raw } } }
 impl BitOr<MacStyle, MacStyle> for MacStyle { fn bitOr(left: Self, right: Self) -> Self { return Self { raw: left.raw | right.raw } } }
 impl BitXor<MacStyle, MacStyle> for MacStyle { fn bitXor(left: Self, right: Self) -> Self { return Self { raw: left.raw ^ right.raw } } }
@@ -105,6 +122,21 @@ impl Flags {
   pub fn lastResortFont() -> Flags { return Flags { raw: 16384 } }
 }
 impl Equal for Flags { fn equals(left: &Self, right: &Self) -> bool { return left.raw == right.raw } }
+impl Flags { pub fn default() -> Self { return Flags.empty() } }
+impl Order for Flags { fn compare(left: &Self, right: &Self) -> Ordering { if left.raw < right.raw { return Ordering.Less } if left.raw > right.raw { return Ordering.Greater } return Ordering.Equal } }
+impl Debug for Flags { effect fn debug(self: &Self, formatter: &mut Formatter) -> () ! WriterError ? &mut Writer {
+  let mut first = true
+  if Flags.contains(self, Flags.baselineAtY0()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("BASELINE_AT_Y_0") }
+  if Flags.contains(self, Flags.lsbAtX0()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("LSB_AT_X_0") }
+  if Flags.contains(self, Flags.instructionsMayDependOnPointSize()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("INSTRUCTIONS_MAY_DEPEND_ON_POINT_SIZE") }
+  if Flags.contains(self, Flags.forceIntegerPpem()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("FORCE_INTEGER_PPEM") }
+  if Flags.contains(self, Flags.instructionsMayAlterAdvanceWidth()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("INSTRUCTIONS_MAY_ALTER_ADVANCE_WIDTH") }
+  if Flags.contains(self, Flags.losslessTransformedFontData()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("LOSSLESS_TRANSFORMED_FONT_DATA") }
+  if Flags.contains(self, Flags.convertedFont()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("CONVERTED_FONT") }
+  if Flags.contains(self, Flags.optimizedForCleartype()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("OPTIMIZED_FOR_CLEARTYPE") }
+  if Flags.contains(self, Flags.lastResortFont()) { if !first { run Writer.writeString(" | ") } first = false run Writer.writeString("LAST_RESORT_FONT") }
+  if first { run Writer.writeString("(empty)") }
+} }
 impl BitAnd<Flags, Flags> for Flags { fn bitAnd(left: Self, right: Self) -> Self { return Self { raw: left.raw & right.raw } } }
 impl BitOr<Flags, Flags> for Flags { fn bitOr(left: Self, right: Self) -> Self { return Self { raw: left.raw | right.raw } } }
 impl BitXor<Flags, Flags> for Flags { fn bitXor(left: Self, right: Self) -> Self { return Self { raw: left.raw ^ right.raw } } }
@@ -122,6 +154,7 @@ impl FixedSize for Flags { fn rawByteLen() -> usize { return 2 } }
 pub struct Head<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 17], }
 impl<'a> Copy for Head<'a> {}
 impl<'a> Head<'a> {
+  pub fn default() -> Self { return Head<'a>.read(FontData.defaultTableData()) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] }) }
   pub fn minSize() -> usize { return 54 }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {
     if FontData.len(&data) < 54 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -280,6 +313,7 @@ impl<'a> Head<'a> {
 impl<'a> FontRead<'a, ()> for Head<'a> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Head<'a>.read(data) }
 }
+impl<'a> TopLevelTable for Head<'a> { fn tag() -> Tag { return Head<'a>.tag() } }
 impl<'a> MinByteRange<'a> for Head<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[16].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[16].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }

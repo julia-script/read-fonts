@@ -25,6 +25,7 @@ pub fn dump_Cmap(out: &mut impl Write, path: &str, value: &Cmap<'_>) -> io::Resu
             dump_EncodingRecord(out, path, item, base)?;
         }
     }
+    crate::extensions_cmap::dump(out, path, value)?;
     Ok(())
 }
 
@@ -49,6 +50,7 @@ pub fn dump_Dmap(out: &mut impl Write, path: &str, value: &Dmap<'_>) -> io::Resu
             dump_EncodingRecord(out, path, item, base)?;
         }
     }
+    crate::extensions_cmap::dump(out, path, &value.as_cmap())?;
     Ok(())
 }
 
@@ -131,6 +133,7 @@ pub fn dump_CmapSubtable(
             dump_Cmap15(out, path, table)?;
         }
     }
+    crate::extensions_cmap::subtable(out, path, value)?;
     Ok(())
 }
 

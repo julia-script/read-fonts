@@ -2,7 +2,8 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
@@ -12,6 +13,9 @@ import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
 import silk.equal { Equal }
+import silk.order { Order, Ordering }
+import silk.format { Debug, Formatter }
+import silk.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.usize
 import silk.u8
@@ -25,6 +29,7 @@ import silk.i32
 pub struct Hmtx<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
 impl<'a> Copy for Hmtx<'a> {}
 impl<'a> Hmtx<'a> {
+  pub fn default() -> Self { return Hmtx<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] }) }
   pub fn minSize() -> usize { return 0 }
   pub fn read(data: FontData<'a>, numberOfHMetrics: u16) -> Result<Self, ReadError> {
     if FontData.len(&data) < 0 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -57,6 +62,7 @@ impl<'a> Hmtx<'a> {
 impl<'a> FontRead<'a, u16> for Hmtx<'a> {
   fn readWithArgs(data: FontData<'a>, args: u16) -> Result<Self, ReadError> { return Hmtx<'a>.read(data, args) }
 }
+impl<'a> TopLevelTable for Hmtx<'a> { fn tag() -> Tag { return Hmtx<'a>.tag() } }
 impl<'a> MinByteRange<'a> for Hmtx<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[1].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[1].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }
@@ -66,6 +72,7 @@ impl<'a> MinByteRange<'a> for Hmtx<'a> {
 pub struct HmtxExtended<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
 impl<'a> Copy for HmtxExtended<'a> {}
 impl<'a> HmtxExtended<'a> {
+  pub fn default() -> Self { return HmtxExtended<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] }) }
   pub fn minSize() -> usize { return 0 }
   pub fn read(data: FontData<'a>, numberOfHMetrics: u32) -> Result<Self, ReadError> {
     if FontData.len(&data) < 0 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -94,6 +101,7 @@ impl<'a> HmtxExtended<'a> {
 impl<'a> FontRead<'a, u32> for HmtxExtended<'a> {
   fn readWithArgs(data: FontData<'a>, args: u32) -> Result<Self, ReadError> { return HmtxExtended<'a>.read(data, args) }
 }
+impl<'a> TopLevelTable for HmtxExtended<'a> { fn tag() -> Tag { return HmtxExtended<'a>.tag() } }
 impl<'a> MinByteRange<'a> for HmtxExtended<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[1].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[1].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }

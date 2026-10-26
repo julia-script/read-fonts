@@ -2,7 +2,8 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
@@ -12,6 +13,9 @@ import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
 import silk.equal { Equal }
+import silk.order { Order, Ordering }
+import silk.format { Debug, Formatter }
+import silk.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.usize
 import silk.u8
@@ -25,6 +29,7 @@ import silk.i32
 pub struct Name<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 6], }
 impl<'a> Copy for Name<'a> {}
 impl<'a> Name<'a> {
+  pub fn default() -> Self { return Name<'a>.read(FontData.defaultTableData()) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] }) }
   pub fn minSize() -> usize { return 6 }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {
     if FontData.len(&data) < 6 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -91,6 +96,7 @@ impl<'a> Name<'a> {
 impl<'a> FontRead<'a, ()> for Name<'a> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Name<'a>.read(data) }
 }
+impl<'a> TopLevelTable for Name<'a> { fn tag() -> Tag { return Name<'a>.tag() } }
 impl<'a> MinByteRange<'a> for Name<'a> {
   fn minByteRange(self: &Self) -> ByteRange { return ByteRange { start: 0, end: self._fieldRanges[3].end } }
   fn minTableBytes(self: &Self) -> &'a [u8] { return match move FontData.slice(&self._fontData, 0, self._fieldRanges[3].end) { Option<FontData<'a>>.Some { value } => FontData.asBytes(&value) Option<FontData<'a>>.None => b"" } }
