@@ -280,3 +280,13 @@ The M7 `extentsSourceOrder=base-outlines` selects glyf, CFF2 and CFF (Type 1 is
 outside the port). Phase 2 adds observations for the complete bitmap/color/VARC
 chain. Unavailable ink is `none`; a present empty glyph has four zero fields.
 Allocation failure aborts the dump rather than emitting a successful observation.
+
+## Version 8 — Phase 2 (in progress)
+
+Version `8`, scope `phase2-tables`, retains version 7 observations and adds the
+Phase 2 table families as their ports land. Generated array offsets traverse each
+resolved element in order, including optional palette flag/name-ID arrays.
+`hdmx` device records include pixel size, maximum width and all width bytes.
+Metadata includes its variant, every language/script entry as UTF-8 byte hex or
+its read error, and opaque bytes for other tags. DSIG follows the public resolver:
+unknown signature formats and inconsistent lengths produce `none`.

@@ -794,3 +794,24 @@ and focused gates, and PR #8 is merged. PR #9 contains M8, with the corruption
 campaign required in CI. Its final CI gate remains before merging. M9 Phase 2
 tables, their dependent model tests, and the speed ratio are next; the complete
 port is not yet finished.
+
+## Session 43 — 2026-10-26 — Phase 2 foundation
+
+BASE, gasp, hdmx, STAT, meta, cvar, CPAL, SVG and DSIG have generated borrowed
+parsers, public provider/model forwarding, and their handwritten extensions.
+The complete suite passes **741 read_fonts tests** (21 new), including **20 new
+upstream test ports**, for **785 upstream ports** overall. The additional test
+covers CPAL v1 typed scalar-array offset counts. The focused root passes 55 tests,
+including its 34 imported PostScript tests. font_types remains at 64 tests.
+
+The nine table families are being added to format-8 differential traversal.
+The remaining bitmap/color/math/VARC families, dependent model behavior, complete
+Phase 2 parity gates and performance ratio remain pending. M9 is not complete.
+
+The foundation dump now builds and **504 focused Phase 2 fixtures match** Rust,
+including per-table prefixes, invalid counts/offsets, CPAL v1 typed arrays, metadata
+UTF-8 errors and DSIG length validation. All 129 generated outputs pass the drift
+check, and the generator's 10 tests pass. A stale local compiler semantic cache
+caused invalid symbol-resolution diagnostics; a clean cache builds successfully.
+A reduced cache reproducer is still being investigated. The full debug corpus
+comparison is running against immutable copies of the foundation binaries.

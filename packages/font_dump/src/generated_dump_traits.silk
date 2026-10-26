@@ -72,6 +72,24 @@ import read_fonts.ps.cff.v1 as CffTables
 import generated_dump_cff
 import read_fonts.ps.cff.v2 as Cff2Tables
 import generated_dump_cff2
+import read_fonts.tables.base as BaseTables
+import generated_dump_base
+import read_fonts.tables.gasp as GaspTables
+import generated_dump_gasp
+import read_fonts.tables.hdmx as HdmxTables
+import generated_dump_hdmx
+import read_fonts.tables.stat as StatTables
+import generated_dump_stat
+import read_fonts.tables.meta as MetaTables
+import generated_dump_meta
+import read_fonts.tables.cvar as CvarTables
+import generated_dump_cvar
+import read_fonts.tables.cpal as CpalTables
+import generated_dump_cpal
+import read_fonts.tables.svg as SvgTables
+import generated_dump_svg
+import read_fonts.tables.dsig as DsigTables
+import generated_dump_dsig
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -318,3 +336,31 @@ impl<'a> DumpTable<'a> for CffTables.CharsetFormat1<'a> { effect fn dump(self: &
 impl<'a> DumpTable<'a> for CffTables.CharsetFormat2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCharsetFormat2(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for Cff2Tables.Cff2Header<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff2.dumpCff2Header(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for Cff2Tables.Index<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff2.dumpIndex(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.Base<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBase(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.Axis<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpAxis(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseTagList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseTagList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseScriptList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseScriptList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseScript<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseScript(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseValues<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseValues(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.MinMax<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpMinMax(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseCoord<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseCoord(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseCoordFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseCoordFormat1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseCoordFormat2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseCoordFormat2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for BaseTables.BaseCoordFormat3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_base.dumpBaseCoordFormat3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for GaspTables.Gasp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_gasp.dumpGasp(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for HdmxTables.Hdmx<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_hdmx.dumpHdmx(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.Stat<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpStat(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValueArray<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValueArray(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValue<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValue(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValueFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValueFormat1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValueFormat2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValueFormat2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValueFormat3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValueFormat3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for StatTables.AxisValueFormat4<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_stat.dumpAxisValueFormat4(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MetaTables.Meta<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_meta.dumpMeta(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for MetaTables.Metadata<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_meta.dumpMetadata(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CvarTables.Cvar<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cvar.dumpCvar(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CpalTables.Cpal<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cpal.dumpCpal(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for SvgTables.Svg<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_svg.dumpSvg(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for SvgTables.SVGDocumentList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_svg.dumpSVGDocumentList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for DsigTables.Dsig<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_dsig.dumpDsig(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for DsigTables.SignatureBlockFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_dsig.dumpSignatureBlockFormat1(&mut path, self.*) } }

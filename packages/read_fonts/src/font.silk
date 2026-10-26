@@ -362,3 +362,30 @@ impl<'a> FontRef<'a> { pub fn cff(self: &Self) -> Result<Cff<'a>,ReadError> { re
 
 import tables.cff2 { Cff2 }
 impl<'a> FontRef<'a> { pub fn cff2(self: &Self) -> Result<Cff2<'a>,ReadError> { return TableProvider.cff2(self) } }
+
+import tables.base { Base }
+impl<'a> FontRef<'a> { pub fn base(self: &Self) -> Result<Base<'a>, ReadError> { return TableProvider.base(self) } }
+
+import tables.gasp { Gasp }
+impl<'a> FontRef<'a> { pub fn gasp(self: &Self) -> Result<Gasp<'a>, ReadError> { return TableProvider.gasp(self) } }
+
+import tables.hdmx { Hdmx }
+impl<'a> FontRef<'a> { pub fn hdmx(self: &Self) -> Result<Hdmx<'a>, ReadError> { return TableProvider.hdmx(self) } }
+
+import tables.stat { Stat }
+impl<'a> FontRef<'a> { pub fn stat(self: &Self) -> Result<Stat<'a>, ReadError> { return TableProvider.stat(self) } }
+
+import tables.meta { Meta }
+impl<'a> FontRef<'a> { pub fn meta(self: &Self) -> Result<Meta<'a>, ReadError> { return TableProvider.meta(self) } }
+
+import tables.cvar { Cvar }
+impl<'a> FontRef<'a> { pub fn cvar(self: &Self) -> Result<Cvar<'a>, ReadError> { return TableProvider.cvar(self) } }
+
+import tables.cpal { Cpal }
+impl<'a> FontRef<'a> { pub fn cpal(self: &Self) -> Result<Cpal<'a>, ReadError> { return TableProvider.cpal(self) } }
+
+import tables.svg { Svg }
+impl<'a> FontRef<'a> { pub fn svg(self: &Self) -> Result<Svg<'a>, ReadError> { return TableProvider.svg(self) } }
+
+import tables.dsig { Dsig }
+impl<'a> FontRef<'a> { pub fn dsig(self: &Self) -> Result<Dsig<'a>, ReadError> { return TableProvider.dsig(self) } }

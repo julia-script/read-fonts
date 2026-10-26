@@ -479,3 +479,23 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   failures and traversal limits never count as parity. Resumable receipts bind
   observations to the source, exact executable bytes and mutation settings.
   Binary snapshots prevent a concurrent rebuild from changing a running campaign.
+
+## Milestone 9 (in progress)
+
+- Typed array offsets now resolve directly into borrowed ScalarArray or
+  ComputedArray views. Counts are element counts and retain the upstream nullable
+  and version-dependent access rules; palette flags/name IDs have a regression.
+- BASE baseline constants and the metadata DLNG/SLNG tags use camelCase functions:
+  Tag construction is not a const expression in the pinned Silk compiler.
+  BaseInstance borrows font data and coordinates independently and exposes base()
+  in place of Rust's Deref. Device pixels and design-unit variation deltas remain
+  separate in BaseValue.
+- Hdmx DeviceRecord exposes the upstream accessor methods. Its backing fields
+  have private names because Silk disallows a field and method sharing a name.
+- CVT accumulation uses explicit i32 wrapping addition, matching upstream release
+  arithmetic and avoiding an integer-overflow trap on malformed tuple streams.
+  Upstream's debug-only overflow panic is not reproduced.
+- Dump format 8 adds Phase 2 fields and resolved offset arrays. Metadata strings
+  are serialized as UTF-8 byte hex, preserving malformed-string errors without
+  relying on platform text escaping. Signature blocks follow the public resolver's
+  format and exact-length checks.

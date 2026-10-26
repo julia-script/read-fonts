@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Pack pinned Phase 2 fixtures and expectations from upstream table tests."""
+from pathlib import Path
+import re
+import struct
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+fixtures = {}
+source = (ROOT / 'upstream/font-test-data/src/lib.rs').read_text()
+for symbol, name in [('CVAR', 'cvarFont'), ('COLR_GRADIENT_RECT', 'gradientFont')]:
+    filename = re.search(r'pub static ' + symbol + r':[^=]*=\s*include_bytes!\("([^"]+)"\)', source).group(1)
+    fixtures[name] = (ROOT / 'upstream/font-test-data/src' / filename).read_bytes()
+body = source.split('pub static SIMPLE_META_TABLE:', 1)[1].split('&[', 2)[2].split('];', 1)[0]
+body = re.sub(r'//[^\n]*', '', body)
+fixtures['simpleMeta'] = bytes(int(x.strip(), 0) for x in body.split(',') if x.strip())
+
+# The source's base_table() builder, retaining all three script records,
+# device pixels and the independent BASE item variation store.
+out = bytearray()
+positions = {}
+def mark(name):
+    positions[name] = len(out)
+def words(*values):
+    for value in values:
+        out.extend((value & 65535).to_bytes(2, 'big'))
+def long(value):
+    out.extend(value.to_bytes(4, 'big'))
+def tagged(name, width=2):
+    mark(name)
+    out.extend(bytes(width))
+def tags(*values):
+    for value in values:
+        out.extend(value.encode())
+words(1, 1); tagged('axis_offset'); words(0); tagged('store_offset', 4)
+mark('axis'); tagged('tags_offset'); tagged('scripts_offset')
+mark('tags'); words(3); tags('hang', 'ideo', 'romn')
+mark('scripts'); words(3)
+for script in ('DFLT', 'hani', 'latn'):
+    tags(script); tagged(script + '_offset')
+mark('latn'); tagged('latn_values_offset'); words(0, 0)
+mark('latn_values'); words(2, 3)
+for name in ('latn_hang', 'latn_ideo', 'latn_romn'): tagged(name + '_offset')
+mark('hani'); words(0, 0, 0)
+mark('DFLT'); tagged('DFLT_values_offset'); words(0, 0)
+mark('DFLT_values'); words(2, 3)
+for name in ('DFLT_hang', 'DFLT_ideo', 'DFLT_romn'): tagged(name + '_offset')
+mark('latn_hang'); words(3, 700); tagged('device_offset')
+mark('latn_ideo'); words(1, -120)
+mark('latn_romn'); words(3, 0); tagged('index_offset')
+mark('DFLT_hang'); words(1, 600)
+mark('DFLT_ideo'); words(2, -100, 9, 3)
+mark('DFLT_romn'); words(1, 5)
+mark('device'); words(10, 11, 3, 0x02fe)
+mark('index'); words(0, 0, 0x8000)
+mark('store'); words(1); tagged('regions_offset', 4); words(1); tagged('deltas_offset', 4)
+mark('regions'); words(1, 1, 0, 16384, 16384)
+mark('deltas'); words(1, 1, 1, 0, -40)
+patches = [('axis_offset', 'axis', None, 2), ('store_offset', 'store', None, 4),
+           ('tags_offset', 'tags', 'axis', 2), ('scripts_offset', 'scripts', 'axis', 2),
+           ('device_offset', 'device', 'latn_hang', 2), ('index_offset', 'index', 'latn_romn', 2),
+           ('regions_offset', 'regions', 'store', 4), ('deltas_offset', 'deltas', 'store', 4)]
+patches += [(s + '_offset', s, 'scripts', 2) for s in ('DFLT', 'hani', 'latn')]
+patches += [(s + '_values_offset', s + '_values', s, 2) for s in ('DFLT', 'latn')]
+patches += [(s + '_' + b + '_offset', s + '_' + b, s + '_values', 2)
+            for s in ('DFLT', 'latn') for b in ('hang', 'ideo', 'romn')]
+for label, target, base, width in patches:
+    value = positions[target] - (positions[base] if base else 0)
+    out[positions[label]:positions[label] + width] = value.to_bytes(width, 'big')
+fixtures['baseTable'] = bytes(out)
+base_source = (ROOT / 'upstream/read-fonts/src/tables/base.rs').read_text()
+for constant, name in [('HANGING_SCRIPTS', 'hangingScripts'), ('IDEOGRAPHIC_SCRIPTS', 'ideographicScripts')]:
+    body = base_source.split('const ' + constant + ':', 1)[1].split('];', 1)[0]
+    fixtures[name] = b''.join(tag.encode() for tag in re.findall(r'Tag::new\(b"([^"]+)"\)', body))
+
+cvar = (ROOT / 'upstream/read-fonts/src/tables/cvar.rs').read_text()
+body = cvar.split('let cases = &[', 1)[1].split('];', 1)[0]
+cases = re.findall(r'\(\s*\[([\d.,\s-]+)\],\s*\[([\d,\s-]+)\],?\s*\)', body)
+assert len(cases) == 8
+records = []
+count = None
+for coordinates, deltas in cases:
+    coordinates = [round(float(x.strip()) * 16384) for x in coordinates.split(',') if x.strip()]
+    deltas = [int(x.strip()) for x in deltas.split(',') if x.strip()]
+    assert len(coordinates) == 2
+    if count is None: count = len(deltas)
+    assert len(deltas) == count
+    records.append(struct.pack('>2h', *coordinates) + struct.pack(f'>{count}i', *deltas))
+fixtures['cvarScaledExpected'] = struct.pack('>HH', len(cases), count) + b''.join(records)
+body = cvar.split('fn raw_tuple_deltas()', 1)[1].split('let expected = [', 1)[1].split('];', 1)[0]
+rows = re.findall(r'&\[([^\]]+)\]', body)
+assert len(rows) == 11
+out = bytearray(struct.pack('>H', len(rows)))
+for row in rows:
+    pairs = [(int(a), int(b)) for a, b in re.findall(r'\((\d+),\s*(-?\d+)\)', row)]
+    out.extend(struct.pack('>H', len(pairs)))
+    for position, value in pairs: out.extend(struct.pack('>Hi', position, value))
+fixtures['cvarRawExpected'] = bytes(out)
+
+output = '// THIS FILE IS AUTOGENERATED. DO NOT EDIT.\n// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.\n'
+for name, data in fixtures.items():
+    literal = ''.join(f'\\x{byte:02x}' for byte in data)
+    output += f'pub fn {name}() -> &\'static [u8] {{ return b"{literal}" }}\n'
+destination = ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk'
+if '--check' in sys.argv:
+    if not destination.exists() or destination.read_text() != output:
+        raise SystemExit('Phase 2 fixtures differ')
+else:
+    destination.write_text(output)
+print(f'{"Checked" if "--check" in sys.argv else "Generated"} {len(fixtures)} Phase 2 fixtures')

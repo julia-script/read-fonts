@@ -20,6 +20,10 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "gdef" => out.push_str("import read_fonts.tables.layout { CoverageTable, ClassDef, DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
             "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "gvar" => out.push_str("import read_fonts.tables.gvar { U16Or32 }\nimport read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }\nimport generated_dump_variations { dumpTuple }\n"),
+            "base" => out.push_str("import read_fonts.tables.layout { DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
+            "cvar" => out.push_str("import read_fonts.tables.variations { TupleVariationHeader, TupleVariationCount }\n"),
+            "meta" => out.push_str("import read_fonts.tables.meta { Metadata, ScriptLangTag }\n"),
+            "hdmx" => out.push_str("import read_fonts.tables.hdmx { DeviceRecord }\n"),
             "vmtx" => out.push_str("import generated_dump_hmtx { dumpLongMetric }\n"),
             "aat" => out.push_str("import read_fonts.tables.aat { LookupU16, TypedLookup }\n"),
             "ankr" => out.push_str("import read_fonts.tables.aat { LookupU16 }\n"),
@@ -32,6 +36,8 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "gsub" | "gpos" => writeln!(out, "use read_fonts::tables::layout::{{{shared}}};").unwrap(),
             "gdef" => out.push_str("use read_fonts::tables::{layout::{CoverageTable, ClassDef, DeviceOrVariationIndex}, variations::ItemVariationStore};\n"),
             "gvar" => out.push_str("use read_fonts::tables::variations::{Tuple, TupleVariationCount, TupleVariationHeader};\nuse crate::generated_dump_variations::dump_Tuple;\n"),
+            "base" => out.push_str("use read_fonts::tables::{layout::DeviceOrVariationIndex, variations::ItemVariationStore};\n"),
+            "cvar" => out.push_str("use read_fonts::tables::variations::{TupleVariationHeader, TupleVariationCount};\n"),
             "kern" => out.push_str("use crate::generated_dump_kerx::dump_Subtable0Pair;\n"),
             "vmtx" => out.push_str("use read_fonts::tables::hmtx::LongMetric;\nuse crate::generated_dump_hmtx::dump_LongMetric;\n"),
             _ => (),
@@ -314,6 +320,21 @@ impl DumpContext<'_> {
         field: &Field,
         record: bool,
     ) -> syn::Result<()> {
+        if name == "SignatureRecord" && field.name == "signature_block_offset" {
+            if self.silk {
+                writeln!(out, "  DumpPath.push(&mut path, \"signatureBlock\")\n  match move SignatureRecord<'a>.signatureBlock(&value, base) {{ Option<SignatureBlockFormat1<'a>>.Some {{ value: block }} => run dumpSignatureBlockFormat1(&mut path, block) Option<SignatureBlockFormat1<'a>>.None => run absent(&path) }}\n  DumpPath.pop(&mut path)").unwrap();
+            } else {
+                writeln!(out, "  {{ let path = &format!(\"{{path}}.signatureBlock\"); match value.signature_block(base) {{ Some(block) => dump_SignatureBlockFormat1(out, path, &block)?, None => writeln!(out, \"{{path}}=none\")?, }} }}").unwrap();
+            }
+            return Ok(());
+        }
+        if let FieldType::Offset {
+            target: OffsetTarget::Array(inner),
+            ..
+        } = &field.typ
+        {
+            return self.resolved_array_field(out, name, field, inner, record);
+        }
         let (offset, target, array) = match &field.typ {
             FieldType::Offset {
                 typ,
@@ -396,6 +417,51 @@ impl DumpContext<'_> {
         } else {
             let optional = nullable || field.is_conditional();
             self.resolve_result(out, &expr, &target, optional);
+        }
+        if self.silk {
+            writeln!(out, "  DumpPath.pop(&mut path)").unwrap();
+        }
+        writeln!(out, "  }}").unwrap();
+        Ok(())
+    }
+    fn resolved_array_field(
+        &self,
+        out: &mut String,
+        name: &str,
+        field: &Field,
+        inner: &FieldType,
+        record: bool,
+    ) -> syn::Result<()> {
+        let getter = field.offset_getter_name().unwrap().to_string();
+        let silk_getter = camel(&getter);
+        let mut resolved = field.clone();
+        resolved.typ = FieldType::Array {
+            inner_typ: Box::new(inner.clone()),
+        };
+        resolved.attrs.nullable = None;
+        let array_type = self.cx.field_type(&resolved)?;
+        let result = format!("Result<{array_type}, ReadError>");
+        let optional = field.attrs.nullable.is_some() || field.is_conditional();
+        if self.silk {
+            let owner = self.cx.applied(name);
+            writeln!(out, "  if true {{ DumpPath.push(&mut path, \"{silk_getter}\")\n  let arrayResult = {owner}.{silk_getter}(&value{})", if record { ", base" } else { "" }).unwrap();
+            if optional {
+                writeln!(out, "  match move arrayResult {{ Option<{result}>.None => run absent(&path) Option<{result}>.Some {{ value: resolved }} => {{").unwrap();
+            } else {
+                writeln!(out, "  let resolved = move arrayResult").unwrap();
+            }
+            writeln!(out, "  match move resolved {{ {result}.Failure {{ error }} => run readError(&path, error) {result}.Success {{ value: fieldValue }} => {{").unwrap();
+        } else {
+            writeln!(out, "  {{ let path = &format!(\"{{path}}.{silk_getter}\"); let resolved = value.{getter}({});", if record { "base" } else { "" }).unwrap();
+            if optional {
+                writeln!(out, "  match resolved {{ None => writeln!(out, \"{{path}}=none\")?, Some(resolved) => {{").unwrap();
+            }
+            writeln!(out, "  match resolved {{ Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, Ok(fieldValue) => {{").unwrap();
+        }
+        self.field_value(out, &resolved)?;
+        writeln!(out, "  }} }}").unwrap();
+        if optional {
+            writeln!(out, "  }} }}").unwrap();
         }
         if self.silk {
             writeln!(out, "  DumpPath.pop(&mut path)").unwrap();
