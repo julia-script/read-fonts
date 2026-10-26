@@ -93,3 +93,7 @@ impl ScaledFontMatrix {
     return Self { matrix: Matrix.fromElements<Fixed>(matrix), scale: scaledUpem }
   }
 }
+import silk.equal { Equal }
+impl Equal for ScaledFontMatrix {
+  fn equals(a: &ScaledFontMatrix,b: &ScaledFontMatrix) -> bool { if a.scale != b.scale { return false } let aa=Matrix.elements<Fixed>(&a.matrix) let bb=Matrix.elements<Fixed>(&b.matrix) let mut i: usize=0 while i<6 { if Fixed.toBits(aa[i])!=Fixed.toBits(bb[i]) { return false } i=i+1 } return true }
+}

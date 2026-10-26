@@ -356,3 +356,9 @@ impl<'a> FontRef<'a> { pub fn ltag(self: &Self) -> Result<Ltag<'a>, ReadError> {
 
 import tables.kern { Kern }
 impl<'a> FontRef<'a> { pub fn kern(self: &Self) -> Result<Kern<'a>, ReadError> { return TableProvider.kern(self) } }
+
+import tables.cff { Cff }
+impl<'a> FontRef<'a> { pub fn cff(self: &Self) -> Result<Cff<'a>,ReadError> { return TableProvider.cff(self) } }
+
+import tables.cff2 { Cff2 }
+impl<'a> FontRef<'a> { pub fn cff2(self: &Self) -> Result<Cff2<'a>,ReadError> { return TableProvider.cff2(self) } }

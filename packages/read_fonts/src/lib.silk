@@ -51,3 +51,7 @@ pub import tables.feat { Feat }
 pub import tables.ltag { Ltag }
 
 pub import tables.kern { Kern }
+
+pub import tables.cff { Cff }
+
+pub import tables.cff2 { Cff2 }

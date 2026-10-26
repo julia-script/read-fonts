@@ -30,6 +30,8 @@ import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
+  fn cff2(self: &Self) -> Result<Cff2<'a>,ReadError> { return readTable<Cff2<'a>,Self>(self,Cff2.tag()) }
+  fn cff(self: &Self) -> Result<Cff<'a>,ReadError> { return readTable<Cff<'a>,Self>(self,Cff.tag()) }
   fn dataForTag(self: &Self, tag: Tag) -> Option<FontData<'a>>
   fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> {
     return match move TableProvider.dataForTag(self, tag) { Option<FontData<'a>>.Some { value } => Result<FontData<'a>, ReadError>.succeed(value) Option<FontData<'a>>.None => Result<FontData<'a>, ReadError>.failResult(ReadError.TableIsMissing { tag: tag }) }
@@ -184,3 +186,7 @@ import tables.feat { Feat }
 import tables.ltag { Ltag }
 
 import tables.kern { Kern }
+
+import tables.cff { Cff }
+
+import tables.cff2 { Cff2 }

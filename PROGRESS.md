@@ -507,3 +507,15 @@ allocation. The existing generic-operator compiler workaround is reused; no new
 compiler issue or toolchain modification was needed. Library and **98-file**
 drift checks pass. DICT decoding, top-level CFF/CFF2 access, charstring evaluation
 and the M6 differential gate are still pending.
+
+## Session 24 — 2026-10-26 — CFF DICTs and table access
+
+All **15 DICT and CFF/CFF2 table-access upstream tests** pass. The complete suite
+passes **389 read_fonts tests**, with **64 font_types tests** and **437 upstream
+ports**. Validation covers token errors, variable private dictionaries, matrix
+precision and degeneracy, malformed ranges, font names and glyph-name lookup.
+The library build and **98-file** generation drift check pass.
+
+Top-level Cff/Cff2 types and table-provider methods now expose parsed indexes and
+metadata inputs. Unified CFF font/subfont access, charstring evaluation and the
+names/bounds differential gate remain in progress; no M6 parity is claimed.

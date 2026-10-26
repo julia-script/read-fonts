@@ -298,3 +298,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   `drop` identifier. Numeric operands use the `IntoNumber` interface, and cursor
   types replace fixed-value and scalar iterators. Blend state keeps font and
   coordinate lifetimes separate and preserves the 16-entry scalar cache.
+- DICT token and entry cursors replace Rust iterators and retain unknown-operator
+  consumption, stack clearing and variable-operand state changes. Hinting values
+  use fixed-capacity Blues and StemSnaps arrays with borrowed active slices.
+  Cff/Cff2 accessors return Copy table views in place of shared references.

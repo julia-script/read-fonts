@@ -548,11 +548,11 @@ mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/cff.rs"
 target = "packages/read_fonts/src/generated_cff.silk"
 facade = "packages/read_fonts/src/ps/cff/v1.silk"
-extensions = ["packages/read_fonts/src/ps/cff/cff_index_impl.silk", "packages/read_fonts/src/ps/cff/cff_fdselect_impl.silk"]
+extensions = ["packages/read_fonts/src/ps/cff/cff_index_impl.silk", "packages/read_fonts/src/ps/cff/cff_fdselect_impl.silk", "packages/read_fonts/src/ps/cff/cff_impl.silk"]
 
 [[generate]]
 mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/cff2.rs"
 target = "packages/read_fonts/src/generated_cff2.silk"
 facade = "packages/read_fonts/src/ps/cff/v2.silk"
-extensions = ["packages/read_fonts/src/ps/cff/cff2_index_impl.silk"]
+extensions = ["packages/read_fonts/src/ps/cff/cff2_index_impl.silk", "packages/read_fonts/src/ps/cff/cff2_impl.silk"]
