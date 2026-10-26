@@ -1,5 +1,17 @@
 # Progress
 
+## Current status
+
+Milestones **0–9 are implemented**, and their local gates are complete. The final
+Phase 2 corpus and fixture comparisons pass in debug and release. The release
+CLI benchmark reports **4.36× Rust's wall time** (54.61 s versus 12.52 s median).
+The suites pass **862 read_fonts** and **64 font_types** tests, including **897
+upstream ports** overall. Current evidence is in Session 53 below.
+
+Milestones 0–8 are merged. Final CI, the repeated complete malformed campaign,
+and merge status for milestone 9 are tracked in [PR #10](https://github.com/julia-script/read-fonts/pull/10).
+The dated sessions below preserve the state of each checkpoint.
+
 ## Session 1 — 2026-10-25 — milestone 0 complete
 
 The harness gate passes. The Rust reference dumper completed **566 / 566 font
@@ -1023,3 +1035,36 @@ now delegates each case to the production harness and retains completed receipts
 bound to the input and both executable hashes. Incomplete or failed cases never
 count as matches. The final reports identify this recovery method; CI runs the
 ordinary complete commands independently. All production code is pushed in PR #10.
+
+
+## Session 53 — 2026-10-26 — milestone 9 local gates complete
+
+All requested Phase 2 tables and dependent model APIs are implemented. Full-source
+format-9 dumps match on **566 / 566 corpus files** in both debug and release.
+Both modes also pass **9,146 CFF**, **360 model**, **3,550 Phase 2**, and **8,551
+AAT fixtures**. The remaining debug gates pass **426 container**, **500 core-table**,
+**2,650 layout**, and **2,894 variation** fixtures. There are zero differences or
+process failures in these completed comparisons. The compressed
+reports/milestone-9-*-final-*.json.gz and corpus-debug/corpus-release reports retain
+all observations and exact input/binary hashes.
+
+The complete suites pass **862 read_fonts tests**, **64 font_types tests**,
+**10 generator tests**, **7 Rust reference tests** and **20 Python harness tests**.
+There are **897 upstream test ports** overall. Regeneration, formatting, Clippy,
+CLI help/version, and debug/release builds pass. All requested model tests deferred
+from Phase 1 are now covered; deliberate scope and runtime adaptations are recorded
+in PORTING.md. No compiler or standard-library source was modified.
+
+The speed gate is complete: three timed full-corpus release runs yield medians of
+**12.522919 s Rust** and **54.608527 s Silk**, a **4.360687× Silk/Rust wall-time ratio**.
+One whole-corpus warmup per binary preceded the measurements; program order
+alternated, stdout was discarded, and other local builds/tests were idle. This is
+whole-CLI timing, including formatting and process startup. The exact samples and
+hashes are in reports/milestone-9-benchmark.json, with methods and toolchain details
+in docs/PERFORMANCE.md.
+
+M8 already passed its complete 23,188-case malformed gate. With the final Phase 2
+sources, the 530-case bitmap/color/VARC campaign passes, and the repeated complete
+campaign is running. PR #10 requires final green CI, including that full campaign,
+before merge. Local milestone work is complete; CI and merge status are tracked
+on the PR rather than inferred from these local checks.

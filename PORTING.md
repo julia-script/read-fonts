@@ -480,7 +480,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   observations to the source, exact executable bytes and mutation settings.
   Binary snapshots prevent a concurrent rebuild from changing a running campaign.
 
-## Milestone 9 (in progress)
+## Milestone 9
 
 - Typed array offsets now resolve directly into borrowed ScalarArray or
   ComputedArray views. Counts are element counts and retain the upstream nullable

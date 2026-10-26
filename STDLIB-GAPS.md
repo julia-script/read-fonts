@@ -2,15 +2,6 @@
 
 No new missing API blocked milestone 0.
 
-## Planned verification at milestone 1: signed bit reinterpretation
-
-The porting brief identifies the lack of truncating/same-width signed-to-unsigned
-reinterpretation in the pinned release. Verify the exact scalar APIs when porting
-big-endian signed reads. Implement the required conversions in one
-`packages/font_types/src/cast.silk` module with boundary tests, then record the
-minimal example and workaround here. No cast helper or signed-read implementation
-exists yet; this is a carried-forward requirement, not a newly reproduced finding.
-
 ## 001 — truncating and signed bit reinterpretation integer conversions
 
 Big-endian signed font fields and fixed-point arithmetic need signed/unsigned
@@ -49,7 +40,7 @@ forward/reverse iteration and set counts. The stdlib remains unchanged.
 
 The pinned f32 module has deterministic sin/cos approximations (documented to
 within four ULP), and no tangent function. VARC transform matrices must agree with
-upstream's platform f32 trigonometry. `tables/varc_impl.silk` calls the platform
-`sinf`, `cosf` and `tanf` through the C ABI, as the glyph loader already does for
-`hypotf`. The stdlib and compiler remain unchanged. The seven upstream matrix
+upstream's platform f32 trigonometry. `tables/varc_impl.silk` and COLR metric
+transforms call the platform `sinf`, `cosf` and `tanf` through the C ABI, as the glyph
+loader already does for `hypotf`. The stdlib and compiler remain unchanged. The seven upstream matrix
 tests and bitwise differential matrix observations cover this adaptation.
