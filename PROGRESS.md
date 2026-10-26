@@ -492,3 +492,18 @@ The **98-file** generation drift and library build checks pass.
 CFF/CFF2 top-level wrappers, numeric/DICT decoding, charstring evaluation, names
 and bounds differential dumps are still pending. This is an implementation
 checkpoint, not an M6 parity claim. Milestones 7–9 remain pending.
+
+## Session 23 — 2026-10-26 — CFF numeric evaluation and blending
+
+All **16 numeric/transform** and **11 stack/blend** upstream tests pass. The full
+suite passes **374 read_fonts tests**, with **64 font_types tests** and **422
+upstream ports** in total. These cover decimal precision, dynamic matrix scaling,
+exponent-overflow consumption, metric transforms, degenerate matrices, operand
+coercion and permissive stack reads, delta prefix sums, and region blending at
+seven coordinates using the original CFF2 example.
+
+The implementation keeps the 513-operand stack and 16-scalar cache without parser
+allocation. The existing generic-operator compiler workaround is reused; no new
+compiler issue or toolchain modification was needed. Library and **98-file**
+drift checks pass. DICT decoding, top-level CFF/CFF2 access, charstring evaluation
+and the M6 differential gate are still pending.

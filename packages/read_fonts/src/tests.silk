@@ -336,3 +336,5 @@ import morx_tests
 import kerning_tests
 
 import cff_basic_tests
+import ps_numeric_tests
+import cff_stack_tests

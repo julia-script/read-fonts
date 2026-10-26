@@ -284,3 +284,17 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Custom encodings expose borrowed scalar/record arrays in named union fields.
   Supplemental lookup precedence, range saturation, glyph-count boundaries and
   Rust's exact FDSelect binary-search candidate sequence are preserved.
+
+- Internal PostScript decoders use typed failures through small adapters, while
+  public parsing methods retain Result/Option values. `DynamicFixed { value,
+  scale }` names the dynamically scaled number pair. Decimal counters are checked
+  and final exponent arithmetic uses wider intermediates so extremely long
+  malformed encodings cannot overflow Silk integers.
+- `Transform.scale` remains a public Option, so the containing Silk value is
+  affine. `identity()` replaces the associated constant. Numeric scaling and
+  matrix normalization preserve the upstream fixed-point arithmetic and rounding.
+- `Stack.fixedArray(firstIndex, output)` fills a caller-owned slice because this
+  compiler has no const-generic array lengths. `dropValues` replaces the reserved
+  `drop` identifier. Numeric operands use the `IntoNumber` interface, and cursor
+  types replace fixed-value and scalar iterators. Blend state keeps font and
+  coordinate lifetimes separate and preserves the 16-entry scalar cache.
