@@ -22,6 +22,8 @@ impl Context<'_> {
             "gdef" => out.push_str("import generated_layout { CoverageTable, ClassDef, DeviceOrVariationIndex, HeaderOffset, LayoutOffsetArray }\nimport generated_variations { ItemVariationStore }\n"),
             "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
             "variations" => out.push_str("pub import tables.tuple_index { TupleIndex }\n"),
+            "fvar" => out.push_str("pub import tables.instance_record { InstanceRecord }\n"),
+            "avar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             _ => (),
         }
     }
@@ -423,6 +425,46 @@ impl Context<'_> {
             writeln!(out,"    end = match move usize.checkedAdd(end, {len}) {{ Option<usize>.Some {{ value }} => value Option<usize>.None => {{ return Result<usize, ReadError>.failResult(ReadError.OutOfBounds) }} }}").unwrap();
         }
         writeln!(out,"    return Result<usize, ReadError>.succeed(end)\n}} }}\nimpl<'a> FontReadAt<'a, {arg_type}> for {name}<'a> {{ fn readAt(data: FontData<'a>, position: usize, args: {arg_type}) -> Result<Self, ReadError> {{ return {name}<'a>.readAt(data, position, args) }} }}\nimpl<'a> FontRead<'a, {arg_type}> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: {arg_type}) -> Result<Self, ReadError> {{ return {name}<'a>.readAt(data, 0, args) }} }}").unwrap();
+        Ok(())
+    }
+
+    /// A record whose byte length is encoded in its own prefix (e.g. avar maps).
+    /// Unlike a parameterized record, its size cannot be computed from read args.
+    pub(super) fn variable_record(&self, out: &mut String, record: &Record) -> syn::Result<()> {
+        let name = &record.name;
+        let fields = &record.fields;
+        let count = fields.iter().count();
+        docs(out, &record.attrs.docs);
+        writeln!(out, "pub struct {name}<'a> {{ _fontData: FontData<'a>, _fieldRanges: [ByteRange; {count}], }}\nimpl<'a> Copy for {name}<'a> {{}}\nimpl<'a> {name}<'a> {{\n  pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {{\n    let mut ranges = [ByteRange {{ start: 0, end: 0 }}; {count}]\n    let mut end: usize = 0").unwrap();
+        for (i, f) in fields.iter().enumerate() {
+            let len = self.field_length(f, fields)?;
+            writeln!(out, "    ranges[{i}].start = end\n    end = usize.saturatingAdd(end, {len})\n    ranges[{i}].end = end").unwrap();
+            if matches!(f.typ, FieldType::Scalar { .. }) {
+                let typ = self.field_type(f)?;
+                writeln!(out, "    let {}Value = match move FontData<'a>.readAt<{typ}>(&data, ranges[{i}].start) {{ Result<{typ}, ReadError>.Success {{ value }} => value Result<{typ}, ReadError>.Failure {{ error }} => {{ return Result<Self, ReadError>.failResult(error) }} }}", camel(&f.name.to_string())).unwrap();
+            }
+        }
+        writeln!(out, "    if end > FontData.len(&data) {{ return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }}\n    return Result<Self, ReadError>.succeed(Self {{ _fontData: data, _fieldRanges: ranges }})\n  }}").unwrap();
+        for (i, f) in fields.iter().enumerate() {
+            self.getter(
+                out,
+                &name.to_string(),
+                f,
+                &format!("self._fieldRanges[{i}].start"),
+                &format!("self._fieldRanges[{i}].end"),
+                true,
+            )?;
+        }
+        writeln!(out, "}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\nimport read {{ VarSize }}\nimpl<'a> VarSize for {name}<'a> {{ fn readLenAt<'b>(data: FontData<'b>, position: usize) -> Option<usize> {{\n    let mut end = position").unwrap();
+        for f in fields.iter() {
+            if matches!(f.typ, FieldType::Scalar { .. }) {
+                let typ = self.field_type(f)?;
+                writeln!(out, "    let {}Value = match move FontData<'b>.readAt<{typ}>(&data, end) {{ Result<{typ}, ReadError>.Success {{ value }} => value _ => {{ return Option<usize>.None }} }}", camel(&f.name.to_string())).unwrap();
+            }
+            let len = self.field_length(f, fields)?;
+            writeln!(out, "    end = match move usize.checkedAdd(end, {len}) {{ Option<usize>.Some {{ value }} => value Option<usize>.None => {{ return Option<usize>.None }} }}").unwrap();
+        }
+        writeln!(out, "    return Option<usize>.some(end - position)\n}} }}").unwrap();
         Ok(())
     }
 }

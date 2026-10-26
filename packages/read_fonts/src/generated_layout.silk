@@ -4481,6 +4481,52 @@ import silk.list { List }
 import silk.hash_set { HashSet }
 import silk.hash { Hash, Word }
 import silk.allocator { Allocator, OutOfMemoryError }
+import table_provider { TableProvider }
+import generated_gsub { Gsub }
+import generated_gpos { Gpos }
+import generated_gdef { Gdef }
+pub struct SelectedFeatureVariations { pub gsub: Option<u32>, pub gpos: Option<u32>, pub hasLookupVariations: bool, }
+impl SelectedFeatureVariations {
+  pub fn default() -> Self { return Self { gsub: Option<u32>.None, gpos: Option<u32>.None, hasLookupVariations: false } }
+  pub fn new<'a, P: TableProvider<'a>>(tables: &P, coords: &[F2Dot14]) -> Self {
+    let sub = match move TableProvider.gsub(tables) { Result<Gsub<'a>, ReadError>.Success { value } => featureVars(Gsub.featureVariations(&value)) _ => Option<FeatureVariations<'a>>.None }
+    let pos = match move TableProvider.gpos(tables) { Result<Gpos<'a>, ReadError>.Success { value } => featureVars(Gpos.featureVariations(&value)) _ => Option<FeatureVariations<'a>>.None }
+    let mut store = Option<ItemVariationStore<'a>>.None
+    let hasSub = match &sub { Option<FeatureVariations<'a>>.Some { value } => true _ => false }
+    let hasPos = match &pos { Option<FeatureVariations<'a>>.Some { value } => true _ => false }
+    if hasSub || hasPos {
+      match move TableProvider.gdef(tables) {
+        Result<Gdef<'a>, ReadError>.Success { value } => {
+          match move Gdef.itemVarStore(&value) {
+            Option<Result<ItemVariationStore<'a>, ReadError>>.Some { value: Result<ItemVariationStore<'a>, ReadError>.Success { value: found } } => { store = Option<ItemVariationStore<'a>>.some(found) }
+            _ => {}
+          }
+        }
+        _ => {}
+      }
+    }
+    let hasLookups = containsLookupVariations(&sub) || containsLookupVariations(&pos)
+    let gsub = selectFeatureIndex(move sub, &store, coords)
+    let gpos = selectFeatureIndex(move pos, &store, coords)
+    return Self { gsub: move gsub, gpos: move gpos, hasLookupVariations: hasLookups }
+  }
+}
+fn featureVars<'a>(value: Option<Result<FeatureVariations<'a>, ReadError>>) -> Option<FeatureVariations<'a>> { return match move value { Option<Result<FeatureVariations<'a>, ReadError>>.Some { value: Result<FeatureVariations<'a>, ReadError>.Success { value: table } } => Option<FeatureVariations<'a>>.some(table) _ => Option<FeatureVariations<'a>>.None } }
+fn containsLookupVariations<'a>(value: &Option<FeatureVariations<'a>>) -> bool { return match &value.* { Option<FeatureVariations<'a>>.Some { value: table } => match move FeatureVariations.lookupVariations(&table) { Option<LookupVariations<'a>>.Some { value: found } => true _ => false } _ => false } }
+fn selectFeatureIndex<'a>(value: Option<FeatureVariations<'a>>, store: &Option<ItemVariationStore<'a>>, coords: &[F2Dot14]) -> Option<u32> {
+  let table = match move value { Option<FeatureVariations<'a>>.Some { value: table } => table _ => { return Option<u32>.None } }
+  let copy = match &store.* { Option<ItemVariationStore<'a>>.Some { value: foundStore } => Option<ItemVariationStore<'a>>.some(foundStore) _ => Option<ItemVariationStore<'a>>.None }
+  return FeatureVariations<'a>.indexForCoordsWithDelta<Error>(&table, coords, storeDeltas(move copy, coords))
+}
+impl Equal for SelectedFeatureVariations {
+  fn equals(left: &Self, right: &Self) -> bool {
+    let leftSub = match &left.gsub { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let rightSub = match &right.gsub { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let leftPos = match &left.gpos { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let rightPos = match &right.gpos { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    return leftSub == rightSub && leftPos == rightPos && left.hasLookupVariations == right.hasLookupVariations
+  }
+}
 impl<'a> FeatureVariations<'a> {
   pub fn lookupVariationRecords(self: &Self) -> Option<ComputedArray<'a, (), LookupVariationRecord<'a>>> {
     if !MajorMinor.compatible(&FeatureVariations<'a>.version(self), MajorMinor.new(1, 1)) { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None }

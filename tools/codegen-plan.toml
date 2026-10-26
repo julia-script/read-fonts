@@ -2,6 +2,20 @@ clean = []
 
 [[generate]]
 mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/fvar.rs"
+target = "packages/read_fonts/src/generated_fvar.silk"
+facade = "packages/read_fonts/src/tables/fvar.silk"
+extensions = ["packages/read_fonts/src/tables/fvar_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/avar.rs"
+target = "packages/read_fonts/src/generated_avar.silk"
+facade = "packages/read_fonts/src/tables/avar.silk"
+extensions = ["packages/read_fonts/src/tables/avar_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/head.rs"
 target = "packages/read_fonts/src/generated_head.silk"
 

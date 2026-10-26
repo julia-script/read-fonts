@@ -610,6 +610,9 @@ impl Context<'_> {
         if record.attrs.read_args.is_some() {
             return self.computed_record(out, record);
         }
+        if self.width(&record.name.to_string()).is_err() {
+            return self.variable_record(out, record);
+        }
         let name = record.name.to_string();
         let width = self.width(&name)?;
         docs(out, &record.attrs.docs);

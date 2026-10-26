@@ -280,3 +280,17 @@ and **165 read_fonts**, including **215 upstream ports**, after five variation-s
 tests and the fractional layout-condition test. Shared index mapping, region scalar
 evaluation, cached scalars, and exact 48.16 deltas pass those tests. The M4 corpus
 gate is pending.
+
+## Session 10 — 2026-10-26 — axis normalization and feature selection
+
+The suites now pass **64 font_types** and **185 read_fonts tests**, including
+**235 upstream ports** in total. The 20 added ports cover all eleven fvar tests,
+all six avar tests, and the three deferred coordinate-dependent layout selection
+tests. Original font payloads cover Vazirmatn, the avar2 checker, Amstelvar, Material
+Symbols, and the names-only font. Large-axis tests also exercise heap scratch.
+
+The generator now handles records whose variable length is encoded in their own
+prefix. fvar instances retain optional PostScript IDs; axis normalization keeps
+the upstream indexed search and 16.16 avar2 precision. Feature selection resolves
+GDEF deltas when needed. M4 remains incomplete: metric/glyph variation parsing,
+outlines, and differential dumps are next. Milestones 5–9 remain pending.

@@ -26,3 +26,6 @@ pub import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets, OffsetIter, Nu
 pub import tables.gdef { Gdef }
 pub import tables.gsub { Gsub }
 pub import tables.gpos { Gpos }
+
+pub import tables.fvar { Fvar }
+pub import tables.avar { Avar }

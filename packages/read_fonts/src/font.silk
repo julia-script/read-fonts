@@ -273,6 +273,8 @@ import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
 import tables.gdef { Gdef }
+import tables.fvar { Fvar }
+import tables.avar { Avar }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 impl<'a> FontRef<'a> {
@@ -287,6 +289,8 @@ impl<'a> FontRef<'a> {
   pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return TableProvider.name(self) }
   pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return TableProvider.os2(self) }
   pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
+  pub fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return TableProvider.fvar(self) }
+  pub fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return TableProvider.avar(self) }
   pub fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return TableProvider.gdef(self) }
   pub fn gsub(self: &Self) -> Result<Gsub<'a>, ReadError> { return TableProvider.gsub(self) }
   pub fn gpos(self: &Self) -> Result<Gpos<'a>, ReadError> { return TableProvider.gpos(self) }

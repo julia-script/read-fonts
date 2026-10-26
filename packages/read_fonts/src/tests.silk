@@ -319,3 +319,5 @@ import condition_tests
 
 import lookup_variation_tests
 import variation_tests
+import axis_tests
+import selected_variation_tests

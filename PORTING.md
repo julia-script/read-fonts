@@ -197,3 +197,12 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   optional reference to that view. Its reusable callable snapshots the Copy view
   and retains the font and coordinate lifetimes. Missing or unreadable deltas are
   zero, and condition evaluation preserves fractional 48.16 contributions.
+- `Fvar.userToNormalized` accepts a slice of `UserCoordinate { tag, value }` in
+  place of a Rust pair iterator. It is an allocation effect: stack scratch covers
+  up to 64 coordinates and 128 axis indices, then Silk Lists provide larger
+  scratch buffers. The indexed path uses heap sort and binary search, preserving
+  duplicate tags and last-user-value precedence without quadratic large-font
+  behavior. Version 2 avar arithmetic retains 16.16 values until final conversion.
+- `SelectedFeatureVariations` retains the two public Option fields. Silk Option
+  is affine, so the containing record is not Copy; its equality and selection
+  behavior are preserved.

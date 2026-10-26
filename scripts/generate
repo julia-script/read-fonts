@@ -79,3 +79,4 @@ print(f"{'Checked' if args.check else 'Generated'} {len(plan['generate'])} files
 
 subprocess.run([str(ROOT / "scripts/generate-static")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-layout-fixtures")] + (["--check"] if args.check else []), check=True)
+subprocess.run([str(ROOT / "scripts/generate-variation-fixtures")] + (["--check"] if args.check else []), check=True)
