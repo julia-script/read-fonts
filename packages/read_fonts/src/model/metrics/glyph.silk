@@ -118,22 +118,39 @@ impl<'a,'c> GlyphMetrics<'a,'c> {
   }
   pub effect fn extents(self:&Self,glyph:GlyphId) -> Option<GlyphExtents<f32>> ! OutOfMemoryError ? &mut Allocator { if let Option<GlyphExtents<F48Dot16>>.Some { value }=run GlyphMetrics.extentsExact(self,glyph) { return Option<GlyphExtents<f32>>.some(narrowExtents(value)) } return Option<GlyphExtents<f32>>.None }
   pub effect fn extentsExact(self:&Self,glyph:GlyphId) -> Option<GlyphExtents<F48Dot16>> ! OutOfMemoryError ? &mut Allocator {
-    let mut sources=GlyphSourceOrder.iter(self.order)
+    // Upstream's mixed-source path checks maxp; its one-source bitmap/color
+    // path can still answer an ID beyond maxp. Preserve that distinction.
+    if GlyphId.toU32(glyph)>=self.count && GlyphMetrics.multipleExtentsSources(self) { return Option<GlyphExtents<F48Dot16>>.None }
+    let mut sources=GlyphSourceOrder.iter(self.order) let mut baseTaken=false
     while let Option<GlyphSource>.Some { value:source }=GlyphSources.next(&mut sources) {
       if source==GlyphSource.Sbix || source==GlyphSource.Cbdt || source==GlyphSource.Ebdt { if let Option<GlyphExtents<F48Dot16>>.Some { value }=BitmapSources.extents(&self.bitmaps,source,self.bitmapPpem,glyph,self.upem) { return Option<GlyphExtents<F48Dot16>>.some(value) } }
       if source==GlyphSource.Colr { if let Maybe<ColorSources<'a>>.Some { value }=self.colors { if let Option<GlyphExtents<F48Dot16>>.Some { value:extents }=run ColorSources.extents(&value,GlyphMetrics.baseOutlines(self),self.varc,glyph,self.coords) { return Option<GlyphExtents<F48Dot16>>.some(extents) } } }
-      if source==GlyphSource.Varc { if let Maybe<VarcOutlines<'a>>.Some { value }=self.varc { if GlyphId.toU32(glyph)<self.count && BaseOutlines.available(&GlyphMetrics.baseOutlines(self)) && VarcOutlines.covers(&value,glyph) {
+      if source==GlyphSource.Varc && !baseTaken { if let Maybe<VarcOutlines<'a>>.Some { value }=self.varc { if GlyphId.toU32(glyph)<self.count && BaseOutlines.available(&GlyphMetrics.baseOutlines(self)) && VarcOutlines.covers(&value,glyph) {
         let result=run Effect.result(VarcOutlines.controlBox(&value,&GlyphMetrics.baseOutlines(self),glyph,self.coords))
         match move result { Result<BoundingBox<f32>,Error | OutOfMemoryError>.Success { value:bounds }=>{return Option<GlyphExtents<F48Dot16>>.some(exactExtents(GlyphExtents<f32>.fromBounds(bounds)))} Result<BoundingBox<f32>,Error | OutOfMemoryError>.Failure { error }=>match move error { Error problem=>{} OutOfMemoryError problem=>{fail move problem} } }
       } } }
-      if source==GlyphSource.Glyf { if let Maybe<GlyfLoca<'a>>.Some { value }=self.outlines { return run GlyphMetrics.glyfExtents(self,value,glyph) } }
-      if source==GlyphSource.Cff || source==GlyphSource.Cff2 {
-        if source==GlyphSource.Cff { if let Maybe<&'a CffFontRef<'a>>.Some { value:font }=self.standalone { return cffExtents(font,self.coords,glyph) } }
+      if source==GlyphSource.Glyf && !baseTaken { if let Maybe<GlyfLoca<'a>>.Some { value }=self.outlines { baseTaken=true if let Option<GlyphExtents<F48Dot16>>.Some { value:extents }=run GlyphMetrics.glyfExtents(self,value,glyph) { return Option<GlyphExtents<F48Dot16>>.some(extents) } } }
+      if (source==GlyphSource.Cff || source==GlyphSource.Cff2) && !baseTaken {
+        if source==GlyphSource.Cff { if let Maybe<&'a CffFontRef<'a>>.Some { value:font }=self.standalone { baseTaken=true if let Option<GlyphExtents<F48Dot16>>.Some { value }=cffExtents(font,self.coords,glyph) { return Option<GlyphExtents<F48Dot16>>.some(value) } continue } }
         let mut data=self.cff if source==GlyphSource.Cff2 { data=self.cff2 }
-        if let Maybe<FontData<'a>>.Some { value }=data { let font=CffFontRef.new(FontData.asBytes(&value),0,Option<i32>.some(u16.toI32(self.upem))) if let Result<CffFontRef<'a>,Error>.Success { value:parsed }=move font { return cffExtents(&parsed,self.coords,glyph) } }
+        if let Maybe<FontData<'a>>.Some { value }=data { let font=CffFontRef.new(FontData.asBytes(&value),0,Option<i32>.some(u16.toI32(self.upem))) if let Result<CffFontRef<'a>,Error>.Success { value:parsed }=move font { baseTaken=true if let Option<GlyphExtents<F48Dot16>>.Some { value:extents }=cffExtents(&parsed,self.coords,glyph) { return Option<GlyphExtents<F48Dot16>>.some(extents) } } }
       }
     }
     return Option<GlyphExtents<F48Dot16>>.None
+  }
+  fn multipleExtentsSources(self:&Self) -> bool {
+    let mut count:usize=0 let mut baseTaken=false let mut varc=false let mut sources=GlyphSourceOrder.iter(self.order)
+    while let Option<GlyphSource>.Some { value:source }=GlyphSources.next(&mut sources) {
+      if BitmapSources.available(&self.bitmaps,source) { count=count+1 }
+      if source==GlyphSource.Colr && Maybe<ColorSources<'a>>.present(&self.colors) { count=count+1 }
+      if source==GlyphSource.Varc && !baseTaken { varc=Maybe<VarcOutlines<'a>>.present(&self.varc) }
+      if !baseTaken && (source==GlyphSource.Glyf || source==GlyphSource.Cff || source==GlyphSource.Cff2) {
+        let mut base=GlyphMetrics.baseOutlines(self) base.order=GlyphSourceOrder.new(&[source])
+        if BaseOutlines.available(&base) { baseTaken=true count=count+1 if varc { count=count+1 } }
+      }
+      if count>1 { return true }
+    }
+    return false
   }
   effect fn glyfExtents(self:&Self,tables:GlyfLoca<'a>,glyph:GlyphId) -> Option<GlyphExtents<F48Dot16>> ! OutOfMemoryError ? &mut Allocator {
     if GlyphId.toU32(glyph)>=self.count { return Option<GlyphExtents<F48Dot16>>.None }

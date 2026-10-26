@@ -577,3 +577,12 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   one dispatch path. Provider-probe tests check the established eager snapshot
   contract: queries and order changes never recall the provider or use excluded
   sources. Unrequested Type 1 cases remain excluded.
+
+- Mixed-source metrics reject glyph IDs at or past the font's declared count.
+  A sole bitmap or COLR source keeps upstream's independent boundary behavior.
+  A failed chosen base can fall through to later layered sources; it never selects
+  a second base or enables a VARC source occurring after that base.
+- The deliberately 4,096-deep VARC condition is checked directly by the ported
+  model rejection test. It is excluded from whole-field differential fixtures
+  because it exceeds the dump adapter's graph bound; an incomplete dump is never
+  counted as a successful comparison.

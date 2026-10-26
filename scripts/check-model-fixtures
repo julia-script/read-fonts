@@ -100,7 +100,10 @@ def fixtures():
                     {tag: value for tag, value in records.items() if tag not in hidden})
     base = tables(seeds['materialSymbols'])
     for name, data in phase.items():
-        if name.startswith('varc') and name not in names:
+        # The 4,096-deep condition is an implementation-level rejection test,
+        # exercised directly by model_phase2_tests, beyond the field dumper's
+        # explicit graph-depth limit. Never count an incomplete dump as parity.
+        if name.startswith('varc') and name not in names and name != 'varcDeepCondition':
             yield 'model-' + name, sfnt({**base, b'VARC': data})
             for cut in sorted({0, 4, 24, len(data)//2, len(data)-1}):
                 yield f'model-{name}-prefix-{cut}', sfnt({**base, b'VARC': data[:cut]})
@@ -109,7 +112,19 @@ def fixtures():
     for name in ('cbdtFont', 'cbdtMissingGlyph2At16'):
         bitmap = {tag: value for tag, value in tables(phase[name]).items()
                   if tag in (b'CBDT', b'CBLC')}
-        yield 'mixed-' + name, sfnt({**base, **bitmap})
+        combined = {**base, **bitmap}
+        yield 'mixed-' + name, sfnt(combined)
+        for count in (0, 2):
+            maxp = bytearray(combined[b'maxp'])
+            struct.pack_into('>H', maxp, 4, count)
+            yield f'mixed-{name}-count-{count}', sfnt({**combined, b'maxp': maxp})
+            yield f'only-{name}-count-{count}', sfnt({**bitmap, b'maxp': maxp})
+    # A failed selected base can fall through to color/bitmap sources, but never
+    # chooses a second base outline or activates VARC after its chosen base.
+    for name in ('variableColrFont', 'colrFont'):
+        records = tables(phase[name])
+        if b'loca' in records:
+            yield name + '-short-loca', sfnt({**records, b'loca': b'\x00\x00'})
 
 
 def main():

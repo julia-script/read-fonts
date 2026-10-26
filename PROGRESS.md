@@ -979,3 +979,21 @@ as do all 20 Python harness tests. The updated debug CLI builds successfully.
 Full-source debug/release parity, the final malformed-input campaign and speed
 comparison are in progress. These gates must pass before M9 can be completed.
 A temporary workspace connection outage recovered with the changes intact.
+
+
+## Session 51 — 2026-10-26 — source-order boundary regressions
+
+The complete Phase 2 fixture corpus passes **3,550 / 3,550** comparisons with
+format 9. An additional mixed bitmap/outline font with a shortened maxp count
+exposed upstream's distinction between one-source and mixed-source glyph bounds.
+The port now preserves that distinction and continues to layered sources after
+a selected base cannot measure a glyph. Two new regression tests pass, bringing
+the suite to **862 read_fonts tests**; upstream ports remain **897**.
+
+The model corpus now has **360 fixtures**, adding explicit maxp boundaries and
+short-loca fallbacks. Its 4,096-deep condition fixture is tested directly by the
+ported model test, not passed to a field dumper whose graph bound it exceeds.
+The first expanded run correctly rejected that incomplete dump after 336 matches;
+that run is not a completed parity gate. A corrected full run is underway.
+Generator drift, all 10 generator tests and all 7 Rust reference tests pass.
+Release builds and remaining complete-corpus gates are in progress.

@@ -31,6 +31,12 @@ impl<'a> Copy for BitmapSources<'a> {}
 impl<'a> BitmapSources<'a> {
   pub fn empty() -> Self { return Self { sbix: Maybe<Sbix<'a>>.None, cblc: Maybe<Cblc<'a>>.None, cbdt: Maybe<Cbdt<'a>>.None, eblc: Maybe<Eblc<'a>>.None, ebdt: Maybe<Ebdt<'a>>.None } }
   pub fn new<P: TableProvider<'a>>(provider: &P) -> Self { return Self { sbix: Maybe<Sbix<'a>>.fromResult(TableProvider.sbix(provider)), cblc: Maybe<Cblc<'a>>.fromResult(TableProvider.cblc(provider)), cbdt: Maybe<Cbdt<'a>>.fromResult(TableProvider.cbdt(provider)), eblc: Maybe<Eblc<'a>>.fromResult(TableProvider.eblc(provider)), ebdt: Maybe<Ebdt<'a>>.fromResult(TableProvider.ebdt(provider)) } }
+  pub fn available(self:&Self,source:GlyphSource) -> bool {
+    if source==GlyphSource.Sbix { if let Maybe<Sbix<'a>>.Some { value }=self.sbix { return ArrayOfOffsets<'a,u32,Strike<'a>,Offset32>.len(&Sbix.strikes(&value))!=0 } }
+    if source==GlyphSource.Cbdt && Maybe<Cbdt<'a>>.present(&self.cbdt) { if let Maybe<Cblc<'a>>.Some { value }=self.cblc { return ComputedArray<'a,(),BitmapSize<'a>>.len(&Cblc.bitmapSizes(&value))!=0 } }
+    if source==GlyphSource.Ebdt && Maybe<Ebdt<'a>>.present(&self.ebdt) { if let Maybe<Eblc<'a>>.Some { value }=self.eblc { return ComputedArray<'a,(),BitmapSize<'a>>.len(&Eblc.bitmapSizes(&value))!=0 } }
+    return false
+  }
   pub fn extents(self: &Self,source: GlyphSource,ppem: Maybe<f32>,glyph: GlyphId,upem: u16) -> Option<GlyphExtents<F48Dot16>> {
     if source == GlyphSource.Sbix {
       if let Maybe<Sbix<'a>>.Some { value: table } = self.sbix {

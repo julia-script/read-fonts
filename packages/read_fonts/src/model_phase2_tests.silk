@@ -182,3 +182,35 @@ effect fn outlineSourceProbe() -> () ! AssertionError<'static> | OutOfMemoryErro
   let outlines=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.baseOutlines()) run Testing.expect(none(run GlyphMetrics.extentsExact(&outlines,GlyphId.new(2))),"outline order excludes bitmaps")
   run Testing.expect(!none(run GlyphMetrics.extentsExact(&base,GlyphId.new(2))),"default order uses captured bitmap") run Testing.expect(captured>0 && unsafe Atomic.load<u32>(counter,MemoryOrder.Relaxed)==captured,"queries perform no provider reads")
 }
+
+// Regression: the mixed path checks maxp while a sole bitmap source does not.
+struct BoundarySources<'a> { base:FontRef<'a>,bitmap:FontRef<'a>, }
+impl<'a> TableProvider<'a> for BoundarySources<'a> {
+  fn dataForTag(self:&Self,tag:Tag) -> Option<FontData<'a>> {
+    let value=Tag.toU32(tag)
+    if value==1835104368 { return Option<FontData<'a>>.some(FontData.new(b"\x00\x00\x50\x00\x00\x02")) }
+    if value==1128416340 || value==1128418371 { return FontRef.tableData(&self.bitmap,tag) }
+    return FontRef.tableData(&self.base,tag)
+  }
+}
+test effect fn mixedSourcesRejectOutOfRangeButOneBitmapCanAnswer() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run mixedBoundary() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn mixedBoundary() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let provider=BoundarySources { base:run must(FontRef.new(Expected.tinos())),bitmap:run must(FontRef.new(Fixtures.cbdtFont())) }
+  let coords:[F2Dot14;0]=[] let mixed=GlyphMetrics.new(&provider,&coords) let glyph=GlyphId.new(2)
+  run Testing.expect(GlyphMetrics.numGlyphs(&mixed)==2,"declared glyph boundary")
+  run Testing.expect(none(run GlyphMetrics.extentsExact(&mixed,glyph)),"multiple sources reject the boundary ID")
+  let bitmap=GlyphMetrics.withExtentsSourceOrder(mixed,GlyphSourceOrder.bitmaps())
+  run Testing.expect(!none(run GlyphMetrics.extentsExact(&bitmap,glyph)),"one bitmap source retains upstream boundary behavior")
+}
+struct ShortLoca<'a> { font:FontRef<'a>, }
+impl<'a> TableProvider<'a> for ShortLoca<'a> {
+  fn dataForTag(self:&Self,tag:Tag) -> Option<FontData<'a>> { if Tag.toU32(tag)==1819239265 { return Option<FontData<'a>>.some(FontData.new(b"\x00\x00")) } return FontRef.tableData(&self.font,tag) }
+}
+test effect fn aMissingGlyphInTheSelectedBaseFallsThroughToColor() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run missingBaseColor() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn missingBaseColor() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let provider=ShortLoca { font:run must(FontRef.new(Fixtures.variableColrFont())) } let coords:[F2Dot14;0]=[] let base=GlyphMetrics.new(&provider,&coords) let glyph=run mapped(&provider.font,986112)
+  let outlines=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.baseOutlines())
+  run Testing.expect(none(run GlyphMetrics.extentsExact(&outlines,glyph)),"short loca has no glyph")
+  let fallback=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.new(&[GlyphSource.Glyf,GlyphSource.Colr]))
+  run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&fallback,glyph)),run colorExpected(Expected.colorVariableDrawnBounds(),glyph)),"color clip answers after the chosen base fails")
+}
