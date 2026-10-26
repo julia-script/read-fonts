@@ -343,3 +343,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   helpers fill stdlib gap 004. The reserved method name `union` is `unionValue`,
   consistent with the earlier flag types. Silk HashKey hashing preserves equality
   and ignores cached counts; its hash bytes are specific to Silk's hasher.
+- U32Set retains separate page storage and its sorted page map. Shared lookups
+  binary-search the map instead of updating Rust's atomic last-page hint; bulk
+  insertion retains a local last-page cache. Set operations merge into fresh
+  storage, then replace the receiver, rather than compacting it in place. This
+  preserves membership, ordering and empty-page behavior while leaving the old
+  set intact if allocation fails. Allocation is an explicit effect. Slice-based
+  `fromValues`/`extend` and named cursors replace Rust's iterator/collect contracts.

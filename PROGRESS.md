@@ -594,3 +594,12 @@ font_types tests**, and **521 upstream ports**. Stdlib gap 004 records the missi
 integer bit counts and local workaround. U32Set, invertible IntSet and the model
 subset remain in progress; the M7 gate has not been claimed. M6's final CI is
 running on PR #7 while this work proceeds from its passing local gate.
+
+## Session 30 — 2026-10-26 — U32Set
+
+All **36 upstream U32Set tests** pass. The complete suite passes **509 read_fonts
+tests**, with **64 font_types tests** and **557 upstream ports**. The library
+build passes. Tests cover ordered and mixed-direction iteration, coalesced ranges,
+full-u32 boundaries, set operations, emptied pages, insertion order, lookup order,
+hashing, subset checks and intersection counts. Invertible IntSet, sparse encoding,
+deferred layout intersections and model APIs remain pending for M7.
