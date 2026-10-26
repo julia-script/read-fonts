@@ -1,6 +1,6 @@
 # 007: interface result with a bounded Self type application is unsupported
 
-Toolchain: `0.1.0-dev.17+1120049495d3` (unmodified release).
+Toolchain: `0.1.0-dev.20+10a8c67813a1` (unmodified release).
 
 Run from the repository root:
 

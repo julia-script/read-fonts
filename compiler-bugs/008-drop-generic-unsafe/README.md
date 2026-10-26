@@ -1,6 +1,6 @@
 # 008 — dropping a generic unsafe operation with a static argument
 
-Toolchain: unmodified Silk `0.1.0-dev.17+1120049495d3` on x86_64 Linux.
+Toolchain: unmodified Silk `0.1.0-dev.20+10a8c67813a1` on x86_64 Linux.
 
 Reproduce from the repository root:
 

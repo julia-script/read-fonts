@@ -164,7 +164,7 @@ same report with its parity observations. `--fonts`, `--reference`, `--silk-dump
 - `test-data/harfrust/`: read-only HarfRust submodule, pinned to `1503ff054384cc1d6a701b5ffbdc2f24118a2790`.
 - `tools/font-codegen-silk/`: copied upstream grammar parser with Silk and differential dump backends.
 
-Every Silk manifest pins `0.1.0-dev.17+1120049495d3`. The small root library makes
+Every Silk manifest pins `0.1.0-dev.20+10a8c67813a1`. The small root library makes
 that pin meaningful at the workspace root; `silk build` there checks the library
 graph. `scripts/build` additionally builds the executable. Library dependencies
 are paths; future consumers can use this repository as a submodule.

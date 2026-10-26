@@ -1,6 +1,6 @@
 # Explicit generic Self spelling rejected in a conformance
 
-Toolchain: unmodified `silk v0.1.0-dev.17+1120049495d3`, Linux x86_64.
+Toolchain: unmodified `silk v0.1.0-dev.20+10a8c67813a1`, Linux x86_64.
 
 Run `silk build` in this directory. The porting host's exact command is:
 
