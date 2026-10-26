@@ -13,6 +13,9 @@ import tables.hmtx { Hmtx, HmtxExtended, GlyphMetricRecords }
 import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
+import tables.gdef { Gdef }
+import tables.gsub { Gsub }
+import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
@@ -30,6 +33,9 @@ pub interface TableProvider<'a> {
   fn name(self: &Self) -> Result<Name<'a>, ReadError> { return readTable<Name<'a>, Self>(self, Name.tag()) }
   fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return readTable<Os2<'a>, Self>(self, Os2.tag()) }
   fn post(self: &Self) -> Result<Post<'a>, ReadError> { return readTable<Post<'a>, Self>(self, Post.tag()) }
+  fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return readTable<Gdef<'a>, Self>(self, Gdef.tag()) }
+  fn gsub(self: &Self) -> Result<Gsub<'a>, ReadError> { return readTable<Gsub<'a>, Self>(self, Gsub.tag()) }
+  fn gpos(self: &Self) -> Result<Gpos<'a>, ReadError> { return readTable<Gpos<'a>, Self>(self, Gpos.tag()) }
   fn hmtx(self: &Self) -> Result<Hmtx<'a>, ReadError> {
     let header = match move TableProvider.hhea(self) { Result<Hhea<'a>, ReadError>.Success { value } => value Result<Hhea<'a>, ReadError>.Failure { error } => { return Result<Hmtx<'a>, ReadError>.failResult(error) } }
     let data = match move TableProvider.expectDataForTag(self, Hmtx.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Hmtx<'a>, ReadError>.failResult(error) } }

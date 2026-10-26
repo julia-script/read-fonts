@@ -48,12 +48,13 @@ jobs:
       - name: Run the full reference corpus gate
         run: |
           scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
-          scripts/verify-reference --report build/reference-report.json
-      - name: Compare core tables and focused edge cases
+          scripts/verify-reference --timeout 120 --report build/reference-report.json
+      - name: Compare core/layout tables and focused edge cases
         run: |
           scripts/compare --timeout 120 --report build/parity-report.json
           scripts/check-core-fixtures
           scripts/check-table-fixtures --report build/table-fixtures-report.json
+          scripts/check-layout-fixtures --report build/layout-fixtures-report.json
       - name: Check the CLI and release build
         env:
           SILK_CLANG: /usr/bin/clang-18
@@ -65,13 +66,13 @@ jobs:
         env:
           SILK_CLANG: /usr/bin/clang-18
         run: scripts/build --release
-      - name: Compare release core table dumps
+      - name: Compare release core and layout dumps
         run: scripts/compare --timeout 120 --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-parity-report.json
       - name: Upload parity observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-2-core-tables
+          name: milestone-3-layout-tables
           path: |
             build/fonts.txt
             build/corpus-inventory.json
@@ -79,3 +80,4 @@ jobs:
             build/parity-report.json
             build/release-parity-report.json
             build/table-fixtures-report.json
+            build/layout-fixtures-report.json

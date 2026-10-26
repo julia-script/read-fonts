@@ -10,6 +10,7 @@ use std::{
     process::ExitCode,
 };
 
+mod dump_support;
 mod extensions_cmap;
 mod extensions_metrics;
 mod extensions_name;
@@ -18,11 +19,16 @@ mod generated_dump_cmap;
 mod generated_dump_head;
 mod generated_dump_maxp;
 
+mod generated_dump_gdef;
+mod generated_dump_gpos;
+mod generated_dump_gsub;
 mod generated_dump_hhea;
 mod generated_dump_hmtx;
+mod generated_dump_layout;
 mod generated_dump_name;
 mod generated_dump_os2;
 mod generated_dump_post;
+mod generated_dump_variations;
 
 fn tag(value: Tag) -> String {
     value
@@ -60,6 +66,7 @@ fn dump_font(
     font: FontRef<'_>,
     include_tables: bool,
 ) -> io::Result<()> {
+    dump_support::reset();
     let prefix = format!("font[{index}]");
     let directory = font.table_directory();
     writeln!(
@@ -101,6 +108,9 @@ fn dump_font(
         generated_dump_hmtx::dump_tables(out, &prefix, &font)?;
         generated_dump_name::dump_tables(out, &prefix, &font)?;
         generated_dump_os2::dump_tables(out, &prefix, &font)?;
+        generated_dump_gdef::dump_tables(out, &prefix, &font)?;
+        generated_dump_gsub::dump_tables(out, &prefix, &font)?;
+        generated_dump_gpos::dump_tables(out, &prefix, &font)?;
         generated_dump_post::dump_tables(out, &prefix, &font)?;
     }
     Ok(())
@@ -112,7 +122,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=2\ndump.scope=core-tables"
+        "font-dump.version=3\ndump.scope=layout-tables"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -161,12 +171,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 2: directories and core OpenType tables, names, metrics and mappings."
+            "usage: rust-font-dump FONT\nDump format 3: core and layout tables, names, metrics, mappings and referenced table graphs."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 2; core-tables scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 3; layout-tables scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

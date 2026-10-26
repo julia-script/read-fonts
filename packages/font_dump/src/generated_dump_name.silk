@@ -2,14 +2,20 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import extensions_name
 import read_fonts.tables.name { Name, LangTagRecord, NameRecord }
-import read_fonts.lib { FontData, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter }
+import read_fonts.lib { FontData, FontRead, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter, ReadArgs2, ReadArgs3, ArrayOfOffsets, ArrayOfNullableOffsets }
 import font_types.lib { Fixed, F2Dot14, FWord, UfWord, Tag, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId16, GlyphId24, GlyphId, NameId, Nullable, Offset16, Offset24, Offset32 }
-import dump_support { DumpPath, scalar, absent, readError, versionBits, bytes }
+import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
 import silk.option { Option }
 import silk.result { Result }
 import silk.writer { Writer, WriterError }
+import silk.u8
+import silk.u16
+import silk.u32
+import silk.u64
 
 pub effect fn dumpName<'a>(path: &mut DumpPath, value: Name<'a>) -> () ! WriterError ? &mut Writer {
+  let dumpArgs = DumpPath.arguments(&path)
+  if !run DumpPath.visit(&mut path, 2061821393, FontData.len(&Name<'a>.offsetData(&value)), dumpArgs) { return }
   let base = Name<'a>.offsetData(&value)
   if true {
   DumpPath.push(&mut path, "version")
@@ -38,6 +44,7 @@ pub effect fn dumpName<'a>(path: &mut DumpPath, value: Name<'a>) -> () ! WriterE
   let mut index: usize = 0
   while index < ComputedArray<'a, (), NameRecord<'a>>.len(&fieldValue) {
     DumpPath.setIndex(&mut path, index)
+    DumpPath.setArguments(&mut path, [0; 3])
     match move ComputedArray<'a, (), NameRecord<'a>>.get(&fieldValue, index) { Result<NameRecord<'a>, ReadError>.Success { value: item } => run dumpNameRecord(&mut path, item, base) Result<NameRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
@@ -60,6 +67,7 @@ pub effect fn dumpName<'a>(path: &mut DumpPath, value: Name<'a>) -> () ! WriterE
   let mut index: usize = 0
   while index < ComputedArray<'a, (), LangTagRecord<'a>>.len(&fieldValue) {
     DumpPath.setIndex(&mut path, index)
+    DumpPath.setArguments(&mut path, [0; 3])
     match move ComputedArray<'a, (), LangTagRecord<'a>>.get(&fieldValue, index) { Result<LangTagRecord<'a>, ReadError>.Success { value: item } => run dumpLangTagRecord(&mut path, item, base) Result<LangTagRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
@@ -71,6 +79,8 @@ pub effect fn dumpName<'a>(path: &mut DumpPath, value: Name<'a>) -> () ! WriterE
 }
 
 pub effect fn dumpLangTagRecord<'a>(path: &mut DumpPath, value: LangTagRecord<'a>, base: FontData<'a>) -> () ! WriterError ? &mut Writer {
+  let dumpArgs = DumpPath.arguments(&path)
+  if !DumpPath.enter(&mut path) { run scalar(&path, "traversal-limit") return }
   if true {
   DumpPath.push(&mut path, "length")
   let fieldValue = LangTagRecord<'a>.length(&value)
@@ -86,6 +96,8 @@ pub effect fn dumpLangTagRecord<'a>(path: &mut DumpPath, value: LangTagRecord<'a
 }
 
 pub effect fn dumpNameRecord<'a>(path: &mut DumpPath, value: NameRecord<'a>, base: FontData<'a>) -> () ! WriterError ? &mut Writer {
+  let dumpArgs = DumpPath.arguments(&path)
+  if !DumpPath.enter(&mut path) { run scalar(&path, "traversal-limit") return }
   if true {
   DumpPath.push(&mut path, "platformId")
   let fieldValue = NameRecord<'a>.platformId(&value)
@@ -127,6 +139,7 @@ pub effect fn dumpNameRecord<'a>(path: &mut DumpPath, value: NameRecord<'a>, bas
 import read_fonts.lib { FontRef }
 pub effect fn dumpTables<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> () ! WriterError ? &mut Writer {
   if true {
+  DumpPath.beginTable(&mut path)
   DumpPath.push(&mut path, "name")
   match move FontRef<'a>.tableData(font, Tag.fromU32(1851878757)) {
     Option<FontData<'a>>.None => run readError(&path, ReadError.TableIsMissing { tag: Tag.fromU32(1851878757) })

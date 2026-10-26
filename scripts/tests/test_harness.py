@@ -75,6 +75,25 @@ class HarnessTests(unittest.TestCase):
                 self.assertEqual(data["results"][0]["rust_dump_sha256"],
                                  data["results"][0]["silk_dump_sha256"])
 
+    def test_traversal_limit_is_not_a_passing_field_comparison(self):
+        output = VALID + b"font[0].GSUB=traversal-limit\n"
+        with self.assertRaisesRegex(ValueError, "traversal bound"):
+            self.compare(self.dumper("left", output), self.dumper("right", output))
+
+    def test_streaming_comparison_preserves_late_difference_and_final_newline(self):
+        left = VALID + b"font[0].value=1\n" * 5000
+        right = left[:-2] + b"2\n"
+        self.assertEqual(self.compare(self.dumper("left", left), self.dumper("right", right)), 1)
+        with self.assertRaisesRegex(ValueError, "complete format-3"):
+            self.compare(self.dumper("left", left), self.dumper("right", left[:-1]))
+
+    def test_graph_references_require_a_preceding_unique_node(self):
+        for suffix in (b"font[0].GSUB.ref=1\n", b"font[0].GSUB.node=1\nfont[0].GPOS.node=1\n"):
+            with self.assertRaises(ValueError):
+                self.compare(self.dumper("left", VALID + suffix), self.dumper("right", VALID + suffix))
+        output = VALID + b"font[0].GSUB.node=1\nfont[0].GSUB.child.ref=1\n"
+        self.assertEqual(self.compare(self.dumper("left", output), self.dumper("right", output)), 0)
+
     def test_subprocess_timeout_is_failure(self):
         path = self.root / "slow"
         path.write_text(f"#!{sys.executable}\nimport time\ntime.sleep(5)\n")

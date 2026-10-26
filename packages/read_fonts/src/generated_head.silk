@@ -2,10 +2,12 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format, computeSize, readAtWithArgs }
 import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
-import offset { resolve, resolveNullableWithArgs }
+import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
+import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
+import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
 import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
@@ -163,54 +165,71 @@ impl<'a> Head<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[0].end = end
+    let versionValue = scalarOr<MajorMinor>(data, ranges[0].start, MajorMinor.new(0, 0))
     ranges[1].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[1].end = end
+    let fontRevisionValue = scalarOr<Fixed>(data, ranges[1].start, Fixed.zero())
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
+    let checksumAdjustmentValue = scalarOr<u32>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[3].end = end
+    let magicNumberValue = scalarOr<u32>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[4].end = end
+    let flagsValue = scalarOr<Flags>(data, ranges[4].start, Flags.empty())
     ranges[5].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[5].end = end
+    let unitsPerEmValue = scalarOr<u16>(data, ranges[5].start, 0)
     ranges[6].start = end
     end = usize.saturatingAdd(end, 8)
     ranges[6].end = end
+    let createdValue = scalarOr<LongDateTime>(data, ranges[6].start, LongDateTime.new(0))
     ranges[7].start = end
     end = usize.saturatingAdd(end, 8)
     ranges[7].end = end
+    let modifiedValue = scalarOr<LongDateTime>(data, ranges[7].start, LongDateTime.new(0))
     ranges[8].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[8].end = end
+    let xMinValue = scalarOr<i16>(data, ranges[8].start, 0)
     ranges[9].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[9].end = end
+    let yMinValue = scalarOr<i16>(data, ranges[9].start, 0)
     ranges[10].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[10].end = end
+    let xMaxValue = scalarOr<i16>(data, ranges[10].start, 0)
     ranges[11].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[11].end = end
+    let yMaxValue = scalarOr<i16>(data, ranges[11].start, 0)
     ranges[12].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[12].end = end
+    let macStyleValue = scalarOr<MacStyle>(data, ranges[12].start, MacStyle.empty())
     ranges[13].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[13].end = end
+    let lowestRecPpemValue = scalarOr<u16>(data, ranges[13].start, 0)
     ranges[14].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[14].end = end
+    let fontDirectionHintValue = scalarOr<i16>(data, ranges[14].start, 0)
     ranges[15].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[15].end = end
+    let indexToLocFormatValue = scalarOr<i16>(data, ranges[15].start, 0)
     ranges[16].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[16].end = end
+    let glyphDataFormatValue = scalarOr<i16>(data, ranges[16].start, 0)
     return Result<Self, ReadError>.succeed(Self { _fontData: data, _fieldRanges: ranges })
   }
   pub fn offsetData(self: &Self) -> FontData<'a> { return self._fontData }

@@ -13,6 +13,11 @@ import generated_dump_hhea
 import generated_dump_hmtx
 import generated_dump_name
 import generated_dump_os2
+import generated_dump_layout
+import generated_dump_variations
+import generated_dump_gdef
+import generated_dump_gsub
+import generated_dump_gpos
 import generated_dump_post
 import dump_support { DumpPath }
 import silk.u32
@@ -70,10 +75,13 @@ effect fn font<'a>(index: u32, font: FontRef<'a>) -> () ! WriterError ? &mut Wri
   run generated_dump_hmtx.dumpTables(&mut path, &font)
   run generated_dump_name.dumpTables(&mut path, &font)
   run generated_dump_os2.dumpTables(&mut path, &font)
+  run generated_dump_gdef.dumpTables(&mut path, &font)
+  run generated_dump_gsub.dumpTables(&mut path, &font)
+  run generated_dump_gpos.dumpTables(&mut path, &font)
   run generated_dump_post.dumpTables(&mut path, &font)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
-  run Format.format("font-dump.version=2\ndump.scope=core-tables\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=3\ndump.scope=layout-tables\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value

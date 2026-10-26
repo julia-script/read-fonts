@@ -189,3 +189,83 @@ helper workaround. No compiler/stdlib changes were made. The large-dump deadline
 explicit codepoint conversions, and one malformed cmap10 wrapping case are
 recorded in PORTING.md. Milestones 3–9 are still pending; the local milestone 2
 gate is ready for remote CI and merge.
+
+## Session 6 — 2026-10-26 — milestone 2 merged; layout implementation underway
+
+Milestone 2 passed remote CI (run **40274115950**, job **121413083655**) and PR #3
+is merged at **f425245**. Milestones 0–2 are complete.
+
+Milestone 3 now generates borrowed layout/GDEF/GSUB/GPOS views, parameterized
+records and lookup groups, typed offset arrays, flag-dependent fields, and the
+GDEF ItemVariationStore dependency. Header precedence, value-record reads,
+coverage/class lookup and iteration, and packed device deltas are implemented.
+
+The current suites pass **64 font_types** and **115 read_fonts tests**. The
+**165 upstream ports** include 34 new layout tests: five GDEF specification tests,
+six GSUB tests, three ValueRecord tests, three header selection tests, three
+script/feature specification tests, and fourteen coverage/class/device tests.
+Ten additional read_fonts and four font_types regressions remain separate.
+
+**Milestone 3 is incomplete:** remaining extensions/tests and generated differential
+traversal are pending; no layout corpus-parity claim is made. The active corpus
+protocol still covers milestone 2. Milestones 4–9 remain pending. Compiler report
+005 has a reduced reproducer and a source workaround; the toolchain is unchanged.
+
+## Session 7 — 2026-10-26 — layout helpers and condition evaluation
+
+The current suites pass **64 font_types** and **158 read_fonts tests**, including
+**208 upstream ports** in total. The 43 new read_fonts ports cover all 16 GPOS
+specification tests, five GPOS record/search tests, nine script/feature tests,
+seven condition-evaluation tests, and six lookup-variation tests. Condition
+evaluation preserves errors under negation, limits recursion/work, and handles
+unknown/null conditions. Lookup variations deduplicate shared lists.
+
+The generic lookup/subtable helpers, script selection, language/feature helpers,
+and GSUB/GPOS/GDEF provider methods are implemented. Compiler report 006 has a
+reduced reproducer and a source workaround. No toolchain modifications were made.
+
+**Milestone 3 is still incomplete:** differential traversal and the full gate
+remain. Variation-store-dependent condition/selection helpers and tests need the
+shared variation evaluation dependency; IntSet intersections remain with M7.
+The active dump protocol still covers M2, and no layout parity is claimed.
+Milestones 4–9 remain pending.
+
+## Session 8 — 2026-10-26 — milestone 3 local gate complete
+
+The layout field gate passes in **debug and release: 566 / 566 corpus files match**,
+with no differences, process failures or traversal limits. The generated traversal
+includes every layout/GDEF/GSUB/GPOS grammar field, typed offset array and nested
+record, plus the ItemVariationStore dependency and ValueRecord scalar/device data.
+
+| Check | Result |
+| --- | --- |
+| font_types Silk tests | **64 passed** (60 upstream, 4 additional) |
+| read_fonts Silk tests | **159 passed** (149 upstream, 10 additional) |
+| Total upstream tests ported | **209** |
+| Full corpus, debug and release | **566 matches each** |
+| Layout fixtures, debug and release | **2,650 matches each** |
+| Core-table fixtures, debug and release | **500 matches each** |
+| Container fixtures | **426 matches** |
+| Generator / reference / Python tests | **10 / 6 / 15 passed** |
+| Generated drift, Rust formatting, Clippy with warnings denied | Passed |
+| Root/libraries/CLI debug and release | Passed |
+| Remote CI / merge | Pending PR |
+
+The layout fixtures include every prefix of the original GSUB/GPOS specimens,
+extension lookups, GDEF and script/feature examples, extended-header precedence,
+shared feature data read with different tags, and lookup variations.
+
+Dump format 3 represents repeated table views with explicit node references. This
+keeps malformed alias graphs finite without discarding fields. The harness now
+streams output and rejects limit markers, dangling references and duplicate node
+IDs; exact comparison includes every byte and final newline.
+
+Evidence: [debug corpus](reports/milestone-3-layout.json),
+[release corpus](reports/milestone-3-release-layout.json),
+[debug layout fixtures](reports/milestone-3-layout-fixtures.json), and
+[release layout fixtures](reports/milestone-3-release-layout-fixtures.json).
+
+Dependency follow-ups remain explicit: variation-store delta callbacks and the
+font-level SelectedFeatureVariations helper/tests are with M4; set intersection
+methods/tests are with IntSet in M7. They are not counted as ported. Milestone 3
+is ready for CI; milestones 4–9 remain pending.

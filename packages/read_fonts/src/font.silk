@@ -272,6 +272,9 @@ import tables.hmtx { Hmtx, HmtxExtended, GlyphMetricRecords }
 import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
+import tables.gdef { Gdef }
+import tables.gsub { Gsub }
+import tables.gpos { Gpos }
 impl<'a> FontRef<'a> {
   pub fn expectDataForTag(self: &Self, tag: Tag) -> Result<FontData<'a>, ReadError> { return TableProvider.expectDataForTag(self, tag) }
   pub fn head(self: &Self) -> Result<Head<'a>, ReadError> { return TableProvider.head(self) }
@@ -284,6 +287,9 @@ impl<'a> FontRef<'a> {
   pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return TableProvider.name(self) }
   pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return TableProvider.os2(self) }
   pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
+  pub fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return TableProvider.gdef(self) }
+  pub fn gsub(self: &Self) -> Result<Gsub<'a>, ReadError> { return TableProvider.gsub(self) }
+  pub fn gpos(self: &Self) -> Result<Gpos<'a>, ReadError> { return TableProvider.gpos(self) }
   pub fn hmtx(self: &Self) -> Result<Hmtx<'a>, ReadError> { return TableProvider.hmtx(self) }
   pub fn hmtxExtended(self: &Self) -> Result<HmtxExtended<'a>, ReadError> { return TableProvider.hmtxExtended(self) }
   pub fn selectedMaxp(self: &Self) -> Result<SelectedMaxp<'a>, ReadError> { return TableProvider.selectedMaxp(self) }

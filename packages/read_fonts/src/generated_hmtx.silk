@@ -2,10 +2,12 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format, computeSize, readAtWithArgs }
 import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
-import offset { resolve, resolveNullableWithArgs }
+import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
+import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
+import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
 import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
@@ -26,10 +28,10 @@ import silk.i16
 import silk.i32
 
 /// The [hmtx (Horizontal Metrics)](https://docs.microsoft.com/en-us/typography/opentype/spec/hmtx) table
-pub struct Hmtx<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
+pub struct Hmtx<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], _numberOfHMetrics: u16, }
 impl<'a> Copy for Hmtx<'a> {}
 impl<'a> Hmtx<'a> {
-  pub fn default() -> Self { return Hmtx<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] }) }
+  pub fn default() -> Self { return Hmtx<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2], _numberOfHMetrics: 0 }) }
   pub fn minSize() -> usize { return 0 }
   pub fn read(data: FontData<'a>, numberOfHMetrics: u16) -> Result<Self, ReadError> {
     if FontData.len(&data) < 0 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -42,7 +44,7 @@ impl<'a> Hmtx<'a> {
     ranges[1].start = end
     end = usize.saturatingAdd(end, (usize.saturatingSubtract(FontData.len(&data), end) / 2 * 2))
     ranges[1].end = end
-    return Result<Self, ReadError>.succeed(Self { _fontData: data, _fieldRanges: ranges })
+    return Result<Self, ReadError>.succeed(Self { _fontData: data, _fieldRanges: ranges, _numberOfHMetrics: numberOfHMetrics })
   }
   pub fn offsetData(self: &Self) -> FontData<'a> { return self._fontData }
   pub fn tag() -> Tag { return Tag.fromU32(1752003704) }
@@ -69,10 +71,10 @@ impl<'a> MinByteRange<'a> for Hmtx<'a> {
 }
 
 /// HMTX horizontal metrics (ISO/IEC 14496-22:2026, 5.1.11).
-pub struct HmtxExtended<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
+pub struct HmtxExtended<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], _numberOfHMetrics: u32, }
 impl<'a> Copy for HmtxExtended<'a> {}
 impl<'a> HmtxExtended<'a> {
-  pub fn default() -> Self { return HmtxExtended<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] }) }
+  pub fn default() -> Self { return HmtxExtended<'a>.read(FontData.defaultTableData(), 0) |> Result<Self, ReadError>.unwrapOr(Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2], _numberOfHMetrics: 0 }) }
   pub fn minSize() -> usize { return 0 }
   pub fn read(data: FontData<'a>, numberOfHMetrics: u32) -> Result<Self, ReadError> {
     if FontData.len(&data) < 0 { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
@@ -85,7 +87,7 @@ impl<'a> HmtxExtended<'a> {
     ranges[1].start = end
     end = usize.saturatingAdd(end, (usize.saturatingSubtract(FontData.len(&data), end) / 2 * 2))
     ranges[1].end = end
-    return Result<Self, ReadError>.succeed(Self { _fontData: data, _fieldRanges: ranges })
+    return Result<Self, ReadError>.succeed(Self { _fontData: data, _fieldRanges: ranges, _numberOfHMetrics: numberOfHMetrics })
   }
   pub fn offsetData(self: &Self) -> FontData<'a> { return self._fontData }
   pub fn tag() -> Tag { return Tag.fromU32(1213027416) }
@@ -114,6 +116,7 @@ impl<'a> LongMetric<'a> {
     if position > FontData.len(&data) || 4 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Advance width/height, in font design units.
   pub fn advance(self: &Self) -> u16 {
     return match move FontData<'a>.readAt<u16>(&self._fontData, (self.position + 0)) { Result<u16, ReadError>.Success { value } => value Result<u16, ReadError>.Failure { error } => 0 }

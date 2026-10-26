@@ -2,10 +2,12 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format, computeSize, readAtWithArgs }
 import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
-import offset { resolve, resolveNullableWithArgs }
+import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
+import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
+import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
 import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
@@ -46,6 +48,7 @@ impl<'a> Name<'a> {
     ranges[2].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[2].end = end
+    let storageOffsetValue = scalarOr<u16>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply(u16.toUsize(countValue), 12))
     ranges[3].end = end
@@ -110,6 +113,7 @@ impl<'a> LangTagRecord<'a> {
     if position > FontData.len(&data) || 4 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Language-tag string length (in bytes)
   pub fn length(self: &Self) -> u16 {
     return match move FontData<'a>.readAt<u16>(&self._fontData, (self.position + 0)) { Result<u16, ReadError>.Success { value } => value Result<u16, ReadError>.Failure { error } => 0 }
@@ -132,6 +136,7 @@ impl<'a> NameRecord<'a> {
     if position > FontData.len(&data) || 12 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Platform ID.
   pub fn platformId(self: &Self) -> u16 {
     return match move FontData<'a>.readAt<u16>(&self._fontData, (self.position + 0)) { Result<u16, ReadError>.Success { value } => value Result<u16, ReadError>.Failure { error } => 0 }

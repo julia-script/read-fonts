@@ -20,3 +20,9 @@ pub import tables.name { Name, LangTagRecord, NameRecord }
 pub import tables.os2 { Os2, SelectionFlags }
 pub import tables.post { Post }
 pub import read { Format, formatValue }
+
+pub import read_args { ReadArgs2, ReadArgs3 }
+pub import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets, OffsetIter, NullableOffsetIter }
+pub import tables.gdef { Gdef }
+pub import tables.gsub { Gsub }
+pub import tables.gpos { Gpos }

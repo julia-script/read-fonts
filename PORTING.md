@@ -142,3 +142,51 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   a 120-second per-process limit: FDArrayTest257 emits 2,493,805 lines / 178,689,572
   bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
   limit. No field or semantic observation is suppressed.
+
+## Milestone 3 (in progress)
+
+- Multiple read arguments use `ReadArgs2`/`ReadArgs3` products. Their fields are
+  `first`, `second`, and `third`; public table constructors still take separate
+  named parameters. Compiler report 005 documents why Copy bounds live on the
+  product's conformance instead of its declaration.
+- Positioned GPOS records retain the enclosing FontData and their field ranges.
+  ValueRecord construction remains lazy, including its saturating u32 position;
+  reads of absent or truncated fields preserve Option/Result distinctions.
+- GDEF requires ItemVariationStore, so its generated variations dependency and
+  TupleIndex scalar are included here. Variation evaluation and its full gate
+  remain milestone 4.
+- Core layout glyph lookups take explicit GlyphId values. Iterators use named
+  ClassEntry/ClassEntry16 records in place of Rust pairs. Set intersections and
+  their tests require the IntSet port in milestone 7.
+- New layout facades and packed specification fixtures are emitted by the
+  generation script; edit extension templates or their upstream-derived fixture
+  generator, never generated files.
+
+- `TaggedElement` exposes `tag` and `element`; Rust Deref forwarding is explicit
+  access to `element`. ScriptTags exposes `asSlice` and retains the original order.
+- Layout conditions need the shared `model.error.Error` type before the model
+  milestone. Its error variants and messages match upstream. Callable parameters
+  preserve mutable callback state; recursion is capped at 64 and work at 65,536.
+- Lookup variation accumulation uses Silk List and HashSet<Word> in place of Vec
+  and BTreeSet. It is an allocation effect with an explicit Allocator and
+  OutOfMemoryError; lookup order and shared-offset deduplication are unchanged.
+- ValueRecord's zero-bit field-offset probe uses wrapping subtraction, matching
+  Rust release behavior. Layout test fixtures retain complete original GSUB
+  payloads from the four upstream script/feature-test fonts.
+
+- Dump format 3 records table graphs: a view's first visit emits a `.node` ID and
+  all its fields; later visits emit `.ref`. The per-top-level identity includes
+  the grammar type, the remaining suffix length, and all read arguments. Every
+  generated offset resolves a suffix of the same top-level payload, so length
+  identifies its start without pointer casts. The fixed cache evicts by printing
+  a later visit again; eviction cannot suppress a field. Type-ID collisions fail
+  generation. Both parsers construct views independently.
+- Traversal implementations live with the DumpTable interface, as required by
+  Silk's conformance ownership rule. The generation script builds that module
+  from emitted declarations. Traversal limits produce an explicit marker that
+  the corpus harness rejects, never a successful parity claim.
+- The initial expanded traversal repeated a 55 KiB malformed regression font
+  into gigabytes of output and was terminated. With graph references it produces
+  5,704,912 lines / 698,627,724 bytes and matches exactly. The harness now streams
+  process output through temporary files, comparing every line and hashing every
+  byte without retaining whole dumps in memory.
