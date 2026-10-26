@@ -1,13 +1,2 @@
-[package]
-name = "fontations_silk"
-version = "0.1.0"
-silk-version = "0.1.0-dev.20+10a8c67813a1"
-kind = "library"
-exports = []
-
-[dependencies]
-font_types = { path = "font_types" }
-read_fonts = { path = "read_fonts" }
-
 [workspace]
 members = ["font_types", "read_fonts", "font_dump"]
