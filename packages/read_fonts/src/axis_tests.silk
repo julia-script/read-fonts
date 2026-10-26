@@ -192,3 +192,14 @@ test effect fn piecewiseLinearBeforeStartAfterLeadingDuplicateCap() -> () ! Asse
 }
 
 fn getAxis<'a>(fvar: &Fvar<'a>, index: usize) -> Result<VariationAxisRecord<'a>, ReadError> { return match move Fvar.axes(fvar) { Result<ComputedArray<'a, (), VariationAxisRecord<'a>>, ReadError>.Success { value } => ComputedArray<'a, (), VariationAxisRecord<'a>>.get(&value, index) Result<ComputedArray<'a, (), VariationAxisRecord<'a>>, ReadError>.Failure { error } => Result<VariationAxisRecord<'a>, ReadError>.failResult(error) } }
+
+// The upstream accessor exposes the suffix; its declared range only locates
+// subsequent fields. This matters for avar2, whose offsets follow the maps.
+test effect fn avarSegmentAccessorRetainsTrailingRecords() -> () ! AssertionError<'static> {
+  let avar = run must(Avar.read(FontData.new(b"\x00\x01\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x40\x00")))
+  let maps = Avar.axisSegmentMaps(&avar)
+  let extra = run must(run some(VarLenArray<'static, SegmentMaps<'static>>.get(&maps, 1)))
+  run Testing.expect(SegmentMaps.positionMapCount(&extra) == 1, "suffix records remain observable")
+  let range = Avar.axisSegmentMapsByteRange(&avar)
+  run Testing.expect(range.start == 8 && range.end == 10, "declared range still ends after one map")
+}

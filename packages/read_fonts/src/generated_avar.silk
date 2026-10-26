@@ -79,7 +79,7 @@ impl<'a> Avar<'a> {
   pub fn axisCountByteRange(self: &Self) -> ByteRange { return self._fieldRanges[2] }
 /// The segment maps array — one segment map for each axis, in the order of axes specified in the 'fvar' table.
   pub fn axisSegmentMaps(self: &Self) -> VarLenArray<'a, SegmentMaps<'a>> {
-    return match move varLenArray<SegmentMaps<'a>>(self._fontData, self._fieldRanges[3].start, self._fieldRanges[3].end) { Result<VarLenArray<'a, SegmentMaps<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, SegmentMaps<'a>>, ReadError>.Failure { error } => VarLenArray<'a, SegmentMaps<'a>>.empty() }
+    return match move varLenArray<SegmentMaps<'a>>(self._fontData, self._fieldRanges[3].start, FontData.len(&self._fontData)) { Result<VarLenArray<'a, SegmentMaps<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, SegmentMaps<'a>>, ReadError>.Failure { error } => VarLenArray<'a, SegmentMaps<'a>>.empty() }
   }
   pub fn axisSegmentMapsByteRange(self: &Self) -> ByteRange { return self._fieldRanges[3] }
 /// Offset to DeltaSetIndexMap table (may be NULL).

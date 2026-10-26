@@ -245,7 +245,7 @@ impl Context<'_> {
                 format!("{typ}.new({data}, {start}, {end}, {value})")
             }
             FieldType::VarLenArray(array) => format!(
-                "varLenArray<{}>({data}, {start}, {end})",
+                "varLenArray<{}>({data}, {start}, FontData.len(&{data}))",
                 self.array_element_type(array)
             ),
             _ => unreachable!(),

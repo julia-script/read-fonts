@@ -328,7 +328,7 @@ impl<'a> GlyphVariationDataHeader<'a> {
   pub fn serializedDataOffsetByteRange(self: &Self) -> ByteRange { return self._fieldRanges[1] }
 /// Array of tuple variation headers.
   pub fn tupleVariationHeaders(self: &Self) -> VarLenArray<'a, TupleVariationHeader<'a>> {
-    return match move varLenArray<TupleVariationHeader<'a>>(self._fontData, self._fieldRanges[2].start, self._fieldRanges[2].end) { Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Failure { error } => VarLenArray<'a, TupleVariationHeader<'a>>.empty() }
+    return match move varLenArray<TupleVariationHeader<'a>>(self._fontData, self._fieldRanges[2].start, FontData.len(&self._fontData)) { Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Failure { error } => VarLenArray<'a, TupleVariationHeader<'a>>.empty() }
   }
   pub fn tupleVariationHeadersByteRange(self: &Self) -> ByteRange { return self._fieldRanges[2] }
 }
@@ -377,7 +377,7 @@ impl<'a> GlyphVariationDataHeaderExtended<'a> {
   }
   pub fn serializedDataOffsetByteRange(self: &Self) -> ByteRange { return self._fieldRanges[1] }
   pub fn tupleVariationHeaders(self: &Self) -> VarLenArray<'a, TupleVariationHeader<'a>> {
-    return match move varLenArray<TupleVariationHeader<'a>>(self._fontData, self._fieldRanges[2].start, self._fieldRanges[2].end) { Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Failure { error } => VarLenArray<'a, TupleVariationHeader<'a>>.empty() }
+    return match move varLenArray<TupleVariationHeader<'a>>(self._fontData, self._fieldRanges[2].start, FontData.len(&self._fontData)) { Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Success { value } => value Result<VarLenArray<'a, TupleVariationHeader<'a>>, ReadError>.Failure { error } => VarLenArray<'a, TupleVariationHeader<'a>>.empty() }
   }
   pub fn tupleVariationHeadersByteRange(self: &Self) -> ByteRange { return self._fieldRanges[2] }
 }
