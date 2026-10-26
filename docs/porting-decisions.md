@@ -1,5 +1,8 @@
 # Porting decisions and deviations
 
+Decisions recorded while porting, grouped by the milestone that made them. The
+port started from Rust read-fonts as a baseline; later changes need not match it.
+
 ## Milestone 0
 
 - The destination is `julia-script/read-fonts`, as supplied by the user, rather than

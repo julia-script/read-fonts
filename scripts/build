@@ -7,7 +7,7 @@ import subprocess
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = tomllib.loads((ROOT / "silk.toml").read_text())["package"]["silk-version"]
+VERSION = tomllib.loads((ROOT / "font_dump/silk.toml").read_text())["package"]["silk-version"]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--reference-only", action="store_true")
 parser.add_argument("--release", action="store_true")
@@ -21,7 +21,6 @@ try:
         version = subprocess.check_output([silk, "--version"], text=True).strip()
         if version != f"silk v{VERSION}":
             raise ValueError(f"expected silk v{VERSION}; got {version}")
-        for package in (ROOT, ROOT / "font_types", ROOT / "read_fonts", ROOT / "font_dump"):
-            subprocess.run([silk, "build"] + (["--release"] if args.release else []), cwd=package, check=True)
+        subprocess.run([silk, "build", "--workspace"] + (["--release"] if args.release else []), cwd=ROOT, check=True)
 except (OSError, ValueError, subprocess.CalledProcessError) as error:
     parser.exit(2, f"build: {error}\n")

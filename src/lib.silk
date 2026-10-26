@@ -1,4 +1,0 @@
-//! Workspace build root. Consumers depend on the packages directly.
-
-import font_types.lib as FontTypes
-import read_fonts.lib as ReadFonts
