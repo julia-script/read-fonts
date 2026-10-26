@@ -17,7 +17,7 @@ sfnt, tables = helpers['sfnt'], helpers['tables']
 def fixtures():
     source = (ROOT / 'read_fonts/src/generated_misc_table_fixtures.silk').read_text()
     packed = {name: ast.literal_eval(literal) for name, literal in re.findall(
-        r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source)}
+        r"pub fn (\w+)\(\) -> &'static \[u8\] \{\s*return (b\"[^\"]*\")\s*\}", source)}
     seeds = {b'MATH': packed['mathTable'], b'BASE': packed['baseTable'], b'meta': packed['simpleMeta'],
              b'gasp': bytes.fromhex('0001000201940003ffff000c'),
              b'hdmx': bytes.fromhex('0000000300000008080d0a0c0d00000010151214150000002034262834000000'),
