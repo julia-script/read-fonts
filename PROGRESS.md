@@ -307,3 +307,12 @@ and exact instance values. The generated readers and provider methods compile.
 Milestone 4 remains in progress: packed tuple/glyph variations, glyph outlines,
 vertical metrics, and the full differential gate remain. These unit results do
 not claim M4 corpus parity. Milestones 5–9 remain pending.
+
+## Session 12 — 2026-10-26 — packed variation streams
+
+The suites pass **64 font_types** and **218 read_fonts tests**, including **268
+upstream ports**. Seventeen new ports cover packed point numbers, all four delta
+run widths, bounded and unbounded iteration, fast skipping, scaled fetches,
+coordinate-boundary splits, generated streams, and overflow regression cases.
+Both scalar precisions preserve the upstream arithmetic, including the f64
+residual test. M4's tuple/glyph variation layer and differential gate remain.

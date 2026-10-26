@@ -206,3 +206,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - `SelectedFeatureVariations` retains the two public Option fields. Silk Option
   is affine, so the containing record is not Copy; its equality and selection
   behavior are preserved.
+- Packed stream structs store optional counters as private `bounded`/`limit`
+  fields so their cursor snapshots remain Copy. Public optional counts are
+  reconstructed; `PackedPointSplit` names the returned points/remainder pair.
+- `VarLenArray` now accepts any element type, matching upstream's lazy container.
+  Only `get` and `iter` require `FontRead` and `VarSize`; this permits gvar's raw
+  header-array view, whose elements require separate axis-count arguments.

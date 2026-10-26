@@ -23,7 +23,7 @@ pub fn recordArray<'a, T: FixedSize + FontReadAt<'a, ()> + ComputeSize<()>>(data
   return ComputedArray<'a, (), T>.new(data, start, end, ())
 }
 
-pub fn varLenArray<'a, T: FontRead<'a, ()> + VarSize>(data: FontData<'a>, start: usize, end: usize) -> Result<VarLenArray<'a, T>, ReadError> {
+pub fn varLenArray<'a, T>(data: FontData<'a>, start: usize, end: usize) -> Result<VarLenArray<'a, T>, ReadError> {
   return match move FontData.slice(&data, start, end) {
     Option<FontData<'a>>.Some { value } => VarLenArray<'a, T>.read(value)
     Option<FontData<'a>>.None => Result<VarLenArray<'a, T>, ReadError>.failResult(ReadError.OutOfBounds)

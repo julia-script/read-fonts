@@ -172,7 +172,7 @@ mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/variations.rs"
 target = "packages/read_fonts/src/generated_variations.silk"
 facade = "packages/read_fonts/src/tables/variations.silk"
-extensions = ["packages/read_fonts/src/tables/variations_impl.silk"]
+extensions = ["packages/read_fonts/src/tables/variations_impl.silk", "packages/read_fonts/src/tables/variations_packed.silk"]
 
 [[generate]]
 mode = "silk-dump"
