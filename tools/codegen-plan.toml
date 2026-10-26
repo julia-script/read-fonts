@@ -5,7 +5,7 @@ mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/gvar.rs"
 target = "packages/read_fonts/src/generated_gvar.silk"
 facade = "packages/read_fonts/src/tables/gvar.silk"
-extensions = ["packages/read_fonts/src/tables/gvar_impl.silk"]
+extensions = ["packages/read_fonts/src/tables/gvar_impl.silk", "packages/read_fonts/src/tables/gvar_deltas.silk"]
 
 [[generate]]
 mode = "silk-parse"
@@ -179,7 +179,7 @@ mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/variations.rs"
 target = "packages/read_fonts/src/generated_variations.silk"
 facade = "packages/read_fonts/src/tables/variations.silk"
-extensions = ["packages/read_fonts/src/tables/variations_impl.silk", "packages/read_fonts/src/tables/variations_packed.silk", "packages/read_fonts/src/tables/variations_tuple.silk"]
+extensions = ["packages/read_fonts/src/tables/variations_impl.silk", "packages/read_fonts/src/tables/variations_packed.silk", "packages/read_fonts/src/tables/variations_tuple.silk", "packages/read_fonts/src/tables/variations_glyph_deltas.silk"]
 
 [[generate]]
 mode = "silk-dump"

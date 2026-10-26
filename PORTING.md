@@ -232,3 +232,8 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   `GlyfLoca` and `ComponentCountAndInstructions` name Rust pair results. Glyph
   flags, component selection, read-error precedence and coordinate wrapping are
   preserved.
+- `PointFrom<C>` expresses the coordinate conversion bound used by glyph delta
+  interpolation (identity conversions plus i32 to Fixed). `DeltaBuffers` keeps
+  caller-owned mutable slices. Contour interpolation passes checked index ranges
+  over those slices because this stdlib lacks mutable slice subviews; the contour
+  bounds, arithmetic order, zeroing behavior and error results match upstream.

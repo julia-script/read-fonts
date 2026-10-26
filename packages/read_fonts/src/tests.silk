@@ -325,3 +325,5 @@ import metric_variation_tests
 import packed_variation_tests
 import gvar_tests
 import glyf_tests
+
+import glyph_delta_tests

@@ -335,3 +335,17 @@ The generator's ten tests, Clippy with warnings denied, generated-file drift, an
 library build pass. M4 remains incomplete: full glyph-delta interpolation helpers,
 vertical metric dependencies, and differential traversal/gates remain. The active
 corpus protocol still covers M3; these unit results do not claim M4 corpus parity.
+
+## Session 14 — 2026-10-26 — complete glyph delta interpolation
+
+The full read_fonts suite passes **271 tests**; with the unchanged **64 font_types**
+tests this includes **321 upstream ports**. All 23 gvar/deltas tests pass: contour
+interpolation and wraparound, equal-coordinate references, malformed contour ends,
+real-font variation, output clearing between calls, short-buffer validation, and
+agreement between table-level and glyph-data entry points.
+
+`DeltaBuffers`, simple/composite delta evaluation, cached-scalar variants, and
+inferred deltas for unreferenced points are implemented without parser allocation.
+The generated-file drift check and library build pass. Milestone 4 still needs the
+vertical metrics dependencies and the full differential dump gate; later milestones
+remain pending.

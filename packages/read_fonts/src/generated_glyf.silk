@@ -750,3 +750,12 @@ impl<'a> Glyph<'a> {
   pub fn xMax(self: &Self) -> i16 { return match self.* { Glyph<'a>.Simple { value } => SimpleGlyph.xMax(&value) Glyph<'a>.Composite { value } => CompositeGlyph.xMax(&value) } }
   pub fn yMax(self: &Self) -> i16 { return match self.* { Glyph<'a>.Simple { value } => SimpleGlyph.yMax(&value) Glyph<'a>.Composite { value } => CompositeGlyph.yMax(&value) } }
 }
+
+// Coordinate conversions admitted by upstream's From bound.
+pub interface PointFrom<C> { fn fromCoordinate(value: C) -> Self }
+impl PointFrom<i32> for i32 { fn fromCoordinate(value: i32) -> Self { return value } }
+impl PointFrom<Fixed> for Fixed { fn fromCoordinate(value: Fixed) -> Self { return value } }
+impl PointFrom<F26Dot6> for F26Dot6 { fn fromCoordinate(value: F26Dot6) -> Self { return value } }
+impl PointFrom<f32> for f32 { fn fromCoordinate(value: f32) -> Self { return value } }
+impl PointFrom<i32> for Fixed { fn fromCoordinate(value: i32) -> Self { return Fixed.fromI32(value) } }
+pub fn convertPointCoord<C, D: PointFrom<C>>(value: C) -> D { return PointFrom<C>.fromCoordinate(move value) }
