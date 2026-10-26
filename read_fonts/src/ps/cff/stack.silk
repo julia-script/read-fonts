@@ -9,120 +9,334 @@ import silk.result { Result }
 import silk.effect { Effect }
 import silk.i32
 import silk.usize
-pub union Number { I32 { pub value: i32 }, Fixed { pub value: Fixed }, }
+
+pub union Number {
+  I32 { pub value: i32 },
+  Fixed { pub value: Fixed },
+}
+
 impl Copy for Number {}
-pub interface IntoNumber { fn intoNumber(self: Self) -> Number }
-impl IntoNumber for i32 { fn intoNumber(self: i32) -> Number { return Number.I32 { value: self } } }
-impl IntoNumber for Fixed { fn intoNumber(self: Fixed) -> Number { return Number.Fixed { value: self } } }
-impl IntoNumber for Number { fn intoNumber(self: Number) -> Number { return self } }
-fn intoNumber<T: IntoNumber>(number: T) -> Number { return IntoNumber.intoNumber(move number) }
-pub struct Stack { values: [i32;513], valueIsFixed: [bool;513], top: usize, }
+
+pub interface IntoNumber {
+  fn intoNumber(self: Self) -> Number
+}
+
+impl IntoNumber for i32 {
+  fn intoNumber(self: i32) -> Number {
+    return Number.I32 { value: self }
+  }
+}
+
+impl IntoNumber for Fixed {
+  fn intoNumber(self: Fixed) -> Number {
+    return Number.Fixed { value: self }
+  }
+}
+
+impl IntoNumber for Number {
+  fn intoNumber(self: Number) -> Number {
+    return self
+  }
+}
+
+fn intoNumber<T: IntoNumber>(number: T) -> Number {
+  return IntoNumber.intoNumber(move number)
+}
+
+pub struct Stack {
+  values: [i32; 513],
+  valueIsFixed: [bool; 513],
+  top: usize,
+}
+
 impl Stack {
-  pub fn new() -> Self { return Self { values: [0;513], valueIsFixed: [false;513], top: 0 } }
-  pub fn default() -> Self { return Stack.new() }
-  pub fn isEmpty(self: &Self) -> bool { return self.top == 0 }
-  pub fn len(self: &Self) -> usize { return self.top }
-  pub fn lenIsOdd(self: &Self) -> bool { return self.top & 1 != 0 }
-  pub fn clear(self: &mut Self) { self.top = 0 }
-  pub fn dropValues(self: &mut Self, n: usize) { self.top = usize.saturatingSubtract(self.top,n) }
-  pub fn exch(self: &mut Self) -> Result<(),Error> {
-    if self.top < 2 { return Result<(),Error>.failResult(Error.InvalidOperation) }
-    let a = self.top - 1 let b = a - 1 let value = self.values[a] let flag = self.valueIsFixed[a]
-    self.values[a] = self.values[b] self.valueIsFixed[a] = self.valueIsFixed[b]
-    self.values[b] = value self.valueIsFixed[b] = flag return Result<(),Error>.succeed(())
+  pub fn new() -> Self {
+    return Self { values: [0; 513], valueIsFixed: [false; 513], top: 0 }
   }
-  pub fn push<T: IntoNumber>(self: &mut Self, number: T) -> Result<(),Error> {
-    if self.top == 513 { return Result<(),Error>.failResult(Error.LimitExceeded) }
-    let index = self.top self.top = self.top + 1
-    return Stack.set<Number>(&mut self,index,intoNumber(move number))
+
+  pub fn default() -> Self {
+    return Stack.new()
   }
-  pub fn set<T: IntoNumber>(self: &mut Self, index: usize, number: T) -> Result<(),Error> {
-    if index >= self.top { return Result<(),Error>.failResult(Error.LimitExceeded) }
-    match intoNumber(move number) { Number.I32 { value } => { self.values[index] = value self.valueIsFixed[index] = false } Number.Fixed { value } => { self.values[index] = Fixed.toBits(value) self.valueIsFixed[index] = true } }
-    return Result<(),Error>.succeed(())
+
+  pub fn isEmpty(self: &Self) -> bool {
+    return self.top == 0
   }
-  pub fn getI32(self: &Self, index: usize) -> Result<i32,Error> {
-    if index >= 513 { return Result<i32,Error>.succeed(0) }
-    if self.valueIsFixed[index] { return Result<i32,Error>.failResult(Error.InvalidOperation) }
-    return Result<i32,Error>.succeed(self.values[index])
+
+  pub fn len(self: &Self) -> usize {
+    return self.top
   }
-  pub fn getFixed(self: &Self, index: usize) -> Result<Fixed,Error> {
-    if index >= 513 { return Result<Fixed,Error>.succeed(Fixed.zero()) }
-    if self.valueIsFixed[index] { return Result<Fixed,Error>.succeed(Fixed.fromBits(self.values[index])) }
-    return Result<Fixed,Error>.succeed(Fixed.fromI32(self.values[index]))
+
+  pub fn lenIsOdd(self: &Self) -> bool {
+    return self.top & 1 != 0
   }
-  fn pop(self: &mut Self) -> usize { if self.top > 0 { self.top = self.top - 1 } return self.top }
-  pub fn popI32(self: &mut Self) -> Result<i32,Error> { let index = Stack.pop(&mut self) return Stack.getI32(&self,index) }
-  pub fn popFixed(self: &mut Self) -> Result<Fixed,Error> { let index = Stack.pop(&mut self) return Stack.getFixed(&self,index) }
-  pub fn fixedValues<'s>(self: &'s Self) -> FixedValues<'s> { return FixedValues<'s> { stack: self, index: 0 } }
+
+  pub fn clear(self: &mut Self) {
+    self.top = 0
+  }
+
+  pub fn dropValues(self: &mut Self, n: usize) {
+    self.top = usize.saturatingSubtract(self.top, n)
+  }
+
+  pub fn exch(self: &mut Self) -> Result<(), Error> {
+    if self.top < 2 {
+      return Result<(), Error>.failResult(Error.InvalidOperation)
+    }
+    let a = self.top - 1
+    let b = a - 1
+    let value = self.values[a]
+    let flag = self.valueIsFixed[a]
+    self.values[a] = self.values[b]
+    self.valueIsFixed[a] = self.valueIsFixed[b]
+    self.values[b] = value
+    self.valueIsFixed[b] = flag
+    return Result<(), Error>.succeed(())
+  }
+
+  pub fn push<T: IntoNumber>(self: &mut Self, number: T) -> Result<(), Error> {
+    if self.top == 513 {
+      return Result<(), Error>.failResult(Error.LimitExceeded)
+    }
+    let index = self.top
+    self.top = self.top + 1
+    return Stack.set<Number>(&mut self, index, intoNumber(move number))
+  }
+
+  pub fn set<T: IntoNumber>(self: &mut Self, index: usize, number: T) -> Result<(), Error> {
+    if index >= self.top {
+      return Result<(), Error>.failResult(Error.LimitExceeded)
+    }
+    match intoNumber(move number) {
+      Number.I32 { value } => {
+        self.values[index] = value
+        self.valueIsFixed[index] = false
+      }
+      Number.Fixed { value } => {
+        self.values[index] = Fixed.toBits(value)
+        self.valueIsFixed[index] = true
+      }
+    }
+    return Result<(), Error>.succeed(())
+  }
+
+  pub fn getI32(self: &Self, index: usize) -> Result<i32, Error> {
+    if index >= 513 {
+      return Result<i32, Error>.succeed(0)
+    }
+    if self.valueIsFixed[index] {
+      return Result<i32, Error>.failResult(Error.InvalidOperation)
+    }
+    return Result<i32, Error>.succeed(self.values[index])
+  }
+
+  pub fn getFixed(self: &Self, index: usize) -> Result<Fixed, Error> {
+    if index >= 513 {
+      return Result<Fixed, Error>.succeed(Fixed.zero())
+    }
+    if self.valueIsFixed[index] {
+      return Result<Fixed, Error>.succeed(Fixed.fromBits(self.values[index]))
+    }
+    return Result<Fixed, Error>.succeed(Fixed.fromI32(self.values[index]))
+  }
+
+  fn pop(self: &mut Self) -> usize {
+    if self.top > 0 {
+      self.top = self.top - 1
+    }
+    return self.top
+  }
+
+  pub fn popI32(self: &mut Self) -> Result<i32, Error> {
+    let index = Stack.pop(&mut self)
+    return Stack.getI32(&self, index)
+  }
+
+  pub fn popFixed(self: &mut Self) -> Result<Fixed, Error> {
+    let index = Stack.pop(&mut self)
+    return Stack.getFixed(&self, index)
+  }
+
+  pub fn fixedValues<'s>(self: &'s Self) -> FixedValues<'s> {
+    return FixedValues<'s> { stack: self, index: 0 }
+  }
+
   // Caller-owned output replaces Rust's const-generic return array.
-  pub fn fixedArray(self: &Self, firstIndex: usize, output: &mut [Fixed]) -> Result<(),Error> {
+  pub fn fixedArray(self: &Self, firstIndex: usize, output: &mut [Fixed]) -> Result<(), Error> {
     let mut i: usize = 0
     while i < output.length {
       output[i] = Fixed.zero()
-      if firstIndex < self.top && i < self.top - firstIndex { let index = firstIndex+i if self.valueIsFixed[index] { output[i] = Fixed.fromBits(self.values[index]) } else { output[i] = Fixed.fromI32(self.values[index]) } }
+      if firstIndex < self.top && i < self.top - firstIndex {
+        let index = firstIndex + i
+        if self.valueIsFixed[index] {
+          output[i] = Fixed.fromBits(self.values[index])
+        } else {
+          output[i] = Fixed.fromI32(self.values[index])
+        }
+      }
       i = i + 1
     }
-    return Result<(),Error>.succeed(())
+    return Result<(), Error>.succeed(())
   }
+
   pub fn applyDeltaPrefixSum(self: &mut Self) {
-    if self.top <= 1 { return }
-    let mut sum = Fixed.zero() let mut i: usize = 0
-    while i < self.top { let mut value = Fixed.fromI32(self.values[i]) if self.valueIsFixed[i] { value = Fixed.fromBits(self.values[i]) } sum = Fixed.wrappingAdd(sum,value) self.values[i] = Fixed.toBits(sum) self.valueIsFixed[i] = true i = i + 1 }
+    if self.top <= 1 {
+      return
+    }
+    let mut sum = Fixed.zero()
+    let mut i: usize = 0
+    while i < self.top {
+      let mut value = Fixed.fromI32(self.values[i])
+      if self.valueIsFixed[i] {
+        value = Fixed.fromBits(self.values[i])
+      }
+      sum = Fixed.wrappingAdd(sum, value)
+      self.values[i] = Fixed.toBits(sum)
+      self.valueIsFixed[i] = true
+      i = i + 1
+    }
   }
-  pub fn applyBlend<'a,'c>(self: &mut Self, state: &BlendState<'a,'c>) -> Result<(),Error> { return run Effect.result(Stack.applyBlendImpl(&mut self,state)) }
-  effect fn applyBlendImpl<'a,'c>(self: &mut Self, state: &BlendState<'a,'c>) -> () ! Error {
+
+  pub fn applyBlend<'a, 'c>(self: &mut Self, state: &BlendState<'a, 'c>) -> Result<(), Error> {
+    return run Effect.result(Stack.applyBlendImpl(&mut self, state))
+  }
+
+  effect fn applyBlendImpl<'a, 'c>(self: &mut Self, state: &BlendState<'a, 'c>) -> ()
+    ! Error {
     let targetRaw = run take(Stack.popI32(&mut self))
-    if targetRaw < 0 || i32.toUsize(targetRaw) > self.top { fail Error.InvalidOperation }
-    let targets = i32.toUsize(targetRaw) let regions = run take(BlendState.regionCount(state))
-    let regionCount = run require(usize.checkedAdd(regions,1),Error.InvalidOperation)
-    let operands = run require(usize.checkedMultiply(targets,regionCount),Error.InvalidOperation)
-    if self.top < operands { fail Error.InvalidOperation }
-    let start = self.top - operands let end = start + operands
-    let mut i = start while i < end { if !self.valueIsFixed[i] { self.values[i] = Fixed.toBits(Fixed.fromI32(self.values[i])) self.valueIsFixed[i] = true } i = i + 1 }
-    let mut scalars = run take(BlendState.scalars(state)) let mut regionIndex: usize = 0
+    if targetRaw < 0 || i32.toUsize(targetRaw) > self.top {
+      fail Error.InvalidOperation
+    }
+    let targets = i32.toUsize(targetRaw)
+    let regions = run take(BlendState.regionCount(state))
+    let regionCount = run require(usize.checkedAdd(regions, 1), Error.InvalidOperation)
+    let operands = run require(usize.checkedMultiply(targets, regionCount), Error.InvalidOperation)
+    if self.top < operands {
+      fail Error.InvalidOperation
+    }
+    let start = self.top - operands
+    let end = start + operands
+    let mut i = start
+    while i < end {
+      if !self.valueIsFixed[i] {
+        self.values[i] = Fixed.toBits(Fixed.fromI32(self.values[i]))
+        self.valueIsFixed[i] = true
+      }
+      i = i + 1
+    }
+    let mut scalars = run take(BlendState.scalars(state))
+    let mut regionIndex: usize = 0
     while true {
-      let scalar = match move Scalars.next(&mut scalars) { Option<Result<Fixed,Error>>.Some { value } => run take(move value) _ => { break } }
+      let scalar = match move Scalars.next(&mut scalars) {
+        Option<Result<Fixed, Error>>.Some { value } => run take(move value)
+        _ => {
+          break
+        }
+      }
       if Fixed.toBits(scalar) != 0 {
-        let mut valueIndex: usize = 0 while valueIndex < targets { let deltaIndex = start + targets + regions * valueIndex + regionIndex let delta = Fixed.fromBits(self.values[deltaIndex]) self.values[start+valueIndex] = Fixed.toBits(Fixed.wrappingAdd(Fixed.fromBits(self.values[start+valueIndex]),delta*scalar)) valueIndex = valueIndex+1 }
+        let mut valueIndex: usize = 0
+        while valueIndex < targets {
+          let deltaIndex = start + targets + regions * valueIndex + regionIndex
+          let delta = Fixed.fromBits(self.values[deltaIndex])
+          self.values[start + valueIndex] = Fixed.toBits(
+            Fixed.wrappingAdd(Fixed.fromBits(self.values[start + valueIndex]), delta * scalar),
+          )
+          valueIndex = valueIndex + 1
+        }
       }
       regionIndex = regionIndex + 1
     }
     self.top = start + targets
   }
-  pub fn roll(self: &mut Self, count: i32, shift: i32) -> Result<(),Error> {
-    if count < 2 { return Result<(),Error>.succeed(()) }
-    let amount = i32.toUsize(count) if amount > self.top { return Result<(),Error>.failResult(Error.InvalidOperation) }
-    let offset = self.top - amount let mut rotation = shift % count if shift < 0 { rotation = -(i32.wrappingNegate(shift) % count) }
-    if rotation == 0 { return Result<(),Error>.succeed(()) }
-    let mut startIndex: i32 = -1 let mut index: i32 = -1 let mut last: i32 = 0 let mut lastFixed = false let mut i: usize = 0
+
+  pub fn roll(self: &mut Self, count: i32, shift: i32) -> Result<(), Error> {
+    if count < 2 {
+      return Result<(), Error>.succeed(())
+    }
+    let amount = i32.toUsize(count)
+    if amount > self.top {
+      return Result<(), Error>.failResult(Error.InvalidOperation)
+    }
+    let offset = self.top - amount
+    let mut rotation = shift % count
+    if shift < 0 {
+      rotation = -(i32.wrappingNegate(shift) % count)
+    }
+    if rotation == 0 {
+      return Result<(), Error>.succeed(())
+    }
+    let mut startIndex: i32 = -1
+    let mut index: i32 = -1
+    let mut last: i32 = 0
+    let mut lastFixed = false
+    let mut i: usize = 0
     while i < amount {
-      if startIndex == index { startIndex = startIndex + 1 index = startIndex let u = offset + i32.toUsize(index) last = self.values[u] lastFixed = self.valueIsFixed[u] }
-      index = index + rotation if index >= count { index = index - count } else if index < 0 { index = index + count }
-      let u = offset + i32.toUsize(index) let value = self.values[u] let flag = self.valueIsFixed[u]
-      self.values[u] = last self.valueIsFixed[u] = lastFixed last = value lastFixed = flag i = i + 1
+      if startIndex == index {
+        startIndex = startIndex + 1
+        index = startIndex
+        let u = offset + i32.toUsize(index)
+        last = self.values[u]
+        lastFixed = self.valueIsFixed[u]
+      }
+      index = index + rotation
+      if index >= count {
+        index = index - count
+      } else if index < 0 {
+        index = index + count
+      }
+      let u = offset + i32.toUsize(index)
+      let value = self.values[u]
+      let flag = self.valueIsFixed[u]
+      self.values[u] = last
+      self.valueIsFixed[u] = lastFixed
+      last = value
+      lastFixed = flag
+      i = i + 1
     }
-    return Result<(),Error>.succeed(())
+    return Result<(), Error>.succeed(())
   }
-  pub fn div(self: &mut Self, isType1: bool) -> Result<(),Error> { return run Effect.result(Stack.divImpl(&mut self,isType1)) }
-  effect fn divImpl(self: &mut Self, isType1: bool) -> () ! Error {
-    let bIndex = Stack.pop(&mut self) let aIndex = Stack.pop(&mut self)
-    let mut a = Fixed.zero() let mut b = Fixed.zero()
-    if self.valueIsFixed[aIndex] { a = run take(Stack.getFixed(&self,aIndex)) b = run take(Stack.getFixed(&self,bIndex)) }
-    else {
-      let integer = run take(Stack.getI32(&self,aIndex))
-      if isType1 && (integer < -32000 || integer > 32000) { a = Fixed.fromBits(integer) b = Fixed.fromBits(run take(Stack.getI32(&self,bIndex))) }
-      else { a = run take(Stack.getFixed(&self,aIndex)) b = run take(Stack.getFixed(&self,bIndex)) }
+
+  pub fn div(self: &mut Self, isType1: bool) -> Result<(), Error> {
+    return run Effect.result(Stack.divImpl(&mut self, isType1))
+  }
+
+  effect fn divImpl(self: &mut Self, isType1: bool) -> ()
+    ! Error {
+    let bIndex = Stack.pop(&mut self)
+    let aIndex = Stack.pop(&mut self)
+    let mut a = Fixed.zero()
+    let mut b = Fixed.zero()
+    if self.valueIsFixed[aIndex] {
+      a = run take(Stack.getFixed(&self, aIndex))
+      b = run take(Stack.getFixed(&self, bIndex))
+    } else {
+      let integer = run take(Stack.getI32(&self, aIndex))
+      if isType1 && (integer < -32000 || integer > 32000) {
+        a = Fixed.fromBits(integer)
+        b = Fixed.fromBits(run take(Stack.getI32(&self, bIndex)))
+      } else {
+        a = run take(Stack.getFixed(&self, aIndex))
+        b = run take(Stack.getFixed(&self, bIndex))
+      }
     }
-    run take(Stack.push<Fixed>(&mut self,a/b))
+    run take(Stack.push<Fixed>(&mut self, a / b))
   }
 }
-pub struct FixedValues<'s> { stack: &'s Stack, index: usize, }
+
+pub struct FixedValues<'s> {
+  stack: &'s Stack,
+  index: usize,
+}
+
 impl<'s> FixedValues<'s> {
   pub fn next(self: &mut Self) -> Option<Fixed> {
-    if self.index >= self.stack.top { return Option<Fixed>.None }
-    let index = self.index self.index = self.index + 1
-    if self.stack.valueIsFixed[index] { return Option<Fixed>.some(Fixed.fromBits(self.stack.values[index])) }
+    if self.index >= self.stack.top {
+      return Option<Fixed>.None
+    }
+    let index = self.index
+    self.index = self.index + 1
+    if self.stack.valueIsFixed[index] {
+      return Option<Fixed>.some(Fixed.fromBits(self.stack.values[index]))
+    }
     return Option<Fixed>.some(Fixed.fromI32(self.stack.values[index]))
   }
 }

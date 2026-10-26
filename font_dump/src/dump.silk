@@ -3,7 +3,7 @@ import generated_dump_varc
 import extensions_math
 import extensions_bitmaps
 import extensions_model
-import silk.allocator { Allocator,OutOfMemoryError }
+import silk.allocator { Allocator, OutOfMemoryError }
 import extensions_cff
 import extensions_morx
 import extensions_mort
@@ -21,13 +21,23 @@ import generated_dump_ankr
 import generated_dump_feat
 import generated_dump_ltag
 //! Stable directory dump, shared by the CLI and regression tests.
-import read_fonts.lib { FileRef, FontRef, CollectionRef, TableDirectory, TableRecord, TableRecords, TTCHeader, FontData, ReadError, ScalarArray }
+import read_fonts.lib {
+  FileRef,
+  FontRef,
+  CollectionRef,
+  TableDirectory,
+  TableRecord,
+  TableRecords,
+  TTCHeader,
+  FontData,
+  ReadError,
+  ScalarArray
+}
 import font_types.lib { Tag }
 import silk.option { Option }
 import silk.result { Result }
 import silk.writer { Writer, WriterError }
 import silk.format { Format }
-
 import extensions_metric_variations
 import extensions_glyphs
 import generated_dump_head
@@ -73,48 +83,113 @@ import generated_dump_math
 import dump_support { DumpPath }
 import silk.u32
 
-effect fn text(value: string) -> () ! WriterError ? &mut Writer { run Writer.writeString(value) }
+effect fn text(value: string) -> ()
+  ! WriterError
+  ? &mut Writer {
+  run Writer.writeString(value)
+}
 
-pub effect fn error(input: ReadError) -> () ! WriterError ? &mut Writer {
+pub effect fn error(input: ReadError) -> ()
+  ! WriterError
+  ? &mut Writer {
   match input {
     ReadError.OutOfBounds => run text("OutOfBounds")
-    ReadError.InvalidFormat { value } => run Format.format("InvalidFormat({value})", &.{ value: value })
-    ReadError.InvalidSfnt { value } => run Format.format("InvalidSfnt(0x{value:08x})", &.{ value: value })
-    ReadError.InvalidTtc { tag } => run Format.format("InvalidTtc({value:08x})", &.{ value: Tag.toU32(tag) })
-    ReadError.InvalidCollectionIndex { index } => run Format.format("InvalidCollectionIndex({value})", &.{ value: index })
+    ReadError.InvalidFormat { value } => run Format.format(
+      "InvalidFormat({value})",
+      &.{ value: value },
+    )
+    ReadError.InvalidSfnt { value } => run Format.format(
+      "InvalidSfnt(0x{value:08x})",
+      &.{ value: value },
+    )
+    ReadError.InvalidTtc { tag } => run Format.format(
+      "InvalidTtc({value:08x})",
+      &.{ value: Tag.toU32(tag) },
+    )
+    ReadError.InvalidCollectionIndex { index } => run Format.format(
+      "InvalidCollectionIndex({value})",
+      &.{ value: index },
+    )
     ReadError.InvalidArrayLen => run text("InvalidArrayLen")
     ReadError.ValidationError => run text("ValidationError")
     ReadError.NullOffset => run text("NullOffset")
-    ReadError.TableIsMissing { tag } => run Format.format("TableIsMissing({value:08x})", &.{ value: Tag.toU32(tag) })
-    ReadError.MalformedData { message } => run Format.format("MalformedData({value:?})", &.{ value: message })
+    ReadError.TableIsMissing { tag } => run Format.format(
+      "TableIsMissing({value:08x})",
+      &.{ value: Tag.toU32(tag) },
+    )
+    ReadError.MalformedData { message } => run Format.format(
+      "MalformedData({value:?})",
+      &.{ value: message },
+    )
   }
 }
-effect fn optional(input: Option<u32>) -> () ! WriterError ? &mut Writer {
+
+effect fn optional(input: Option<u32>) -> ()
+  ! WriterError
+  ? &mut Writer {
   match move input {
     Option<u32>.Some { value } => run Format.format("{value}\n", &.{ value: value })
     Option<u32>.None => run text("none\n")
   }
 }
-effect fn font<'a>(index: u32, font: FontRef<'a>, data:&'a [u8]) -> () ! WriterError | OutOfMemoryError ? &mut Writer | &mut Allocator {
+
+effect fn font<'a>(index: u32, font: FontRef<'a>, data: &'a [u8]) -> ()
+  ! WriterError | OutOfMemoryError
+  ? &mut Writer | &mut Allocator {
   let directory = FontRef.tableDirectory(&font)
-  run Format.format("font[{i}].sfntVersion=0x{value:08x}\n", &.{ i: index, value: TableDirectory.sfntVersion(directory) })
-  run Format.format("font[{i}].numTables={value}\n", &.{ i: index, value: TableDirectory.numTables(directory) })
-  run Format.format("font[{i}].searchRange={value}\n", &.{ i: index, value: TableDirectory.searchRange(directory) })
-  run Format.format("font[{i}].entrySelector={value}\n", &.{ i: index, value: TableDirectory.entrySelector(directory) })
-  run Format.format("font[{i}].rangeShift={value}\n", &.{ i: index, value: TableDirectory.rangeShift(directory) })
+  run Format.format(
+    "font[{i}].sfntVersion=0x{value:08x}\n",
+    &.{ i: index, value: TableDirectory.sfntVersion(directory) },
+  )
+  run Format.format(
+    "font[{i}].numTables={value}\n",
+    &.{ i: index, value: TableDirectory.numTables(directory) },
+  )
+  run Format.format(
+    "font[{i}].searchRange={value}\n",
+    &.{ i: index, value: TableDirectory.searchRange(directory) },
+  )
+  run Format.format(
+    "font[{i}].entrySelector={value}\n",
+    &.{ i: index, value: TableDirectory.entrySelector(directory) },
+  )
+  run Format.format(
+    "font[{i}].rangeShift={value}\n",
+    &.{ i: index, value: TableDirectory.rangeShift(directory) },
+  )
   let records = TableDirectory.tableRecords(directory)
-  run Format.format("font[{i}].tableRecords.length={value}\n", &.{ i: index, value: TableRecords.len(&records) })
+  run Format.format(
+    "font[{i}].tableRecords.length={value}\n",
+    &.{ i: index, value: TableRecords.len(&records) },
+  )
   let mut j: usize = 0
   while j < TableRecords.len(&records) {
     if let Option<TableRecord<'a>>.Some { value: record } = move TableRecords<'a>.get(&records, j) {
       let tag = TableRecord.tag(&record)
-      run Format.format("font[{i}].tableRecords[{j}].tag={value:08x}\n", &.{ i: index, j: j, value: Tag.toU32(tag) })
-      run Format.format("font[{i}].tableRecords[{j}].checksum=0x{value:08x}\n", &.{ i: index, j: j, value: TableRecord.checksum(&record) })
-      run Format.format("font[{i}].tableRecords[{j}].offset={value}\n", &.{ i: index, j: j, value: TableRecord.offset(&record) })
-      run Format.format("font[{i}].tableRecords[{j}].length={value}\n", &.{ i: index, j: j, value: TableRecord.length(&record) })
+      run Format.format(
+        "font[{i}].tableRecords[{j}].tag={value:08x}\n",
+        &.{ i: index, j: j, value: Tag.toU32(tag) },
+      )
+      run Format.format(
+        "font[{i}].tableRecords[{j}].checksum=0x{value:08x}\n",
+        &.{ i: index, j: j, value: TableRecord.checksum(&record) },
+      )
+      run Format.format(
+        "font[{i}].tableRecords[{j}].offset={value}\n",
+        &.{ i: index, j: j, value: TableRecord.offset(&record) },
+      )
+      run Format.format(
+        "font[{i}].tableRecords[{j}].length={value}\n",
+        &.{ i: index, j: j, value: TableRecord.length(&record) },
+      )
       let mut lookup: string<'static> = "missing"
-      if let Option<FontData<'a>>.Some { value } = move FontRef<'a>.tableData(&font, tag) { lookup = "available" }
-      run Format.format("font[{i}].tableRecords[{j}].lookup={value}\n", &.{ i: index, j: j, value: lookup })
+      if let Option<FontData<'a>>.Some { value } = move FontRef<'a>.tableData(&font, tag) {
+        lookup = "available"
+      }
+      run Format.format(
+        "font[{i}].tableRecords[{j}].lookup={value}\n",
+        &.{ i: index, j: j, value: lookup },
+      )
     }
     j = j + 1
   }
@@ -164,9 +239,9 @@ effect fn font<'a>(index: u32, font: FontRef<'a>, data:&'a [u8]) -> () ! WriterE
   run generated_dump_colr.dumpTables(&mut path, &font)
   run generated_dump_varc.dumpTables(&mut path, &font)
   run generated_dump_math.dumpTables(&mut path, &font)
-  run extensions_varc.dump(&mut path,&font)
-  run extensions_math.dump(&mut path,&font)
-  run extensions_bitmaps.dump(&mut path,&font)
+  run extensions_varc.dump(&mut path, &font)
+  run extensions_math.dump(&mut path, &font)
+  run extensions_bitmaps.dump(&mut path, &font)
   run extensions_glyphs.dump(&mut path, &font)
   run extensions_morx.dump(&mut path, &font)
   run extensions_mort.dump(&mut path, &font)
@@ -175,10 +250,17 @@ effect fn font<'a>(index: u32, font: FontRef<'a>, data:&'a [u8]) -> () ! WriterE
   run extensions_aat_misc.dump(&mut path, &font)
   run extensions_metric_variations.dump(&mut path, &font)
   run extensions_cff.dump(&mut path, &font)
-  run extensions_model.dump(&mut path,data,index)
+  run extensions_model.dump(&mut path, data, index)
 }
-pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError | OutOfMemoryError ? &mut Writer | &mut Allocator {
-  run Format.format("font-dump.version=9\ndump.scope=all\nfile.length={value}\n", &.{ value: data.length })
+
+pub effect fn dump<'a>(data: &'a [u8]) -> ()
+  ! WriterError | OutOfMemoryError
+  ? &mut Writer | &mut Allocator {
+  run Format.format(
+    "font-dump.version=9\ndump.scope=all\nfile.length={value}\n",
+    &.{ value: data.length },
+  )
+
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value
@@ -192,30 +274,50 @@ pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError | OutOfMemoryError ? 
   match file {
     FileRef.Font { font } => run text("file.kind=sfnt\nfile.fonts=1\n")
     FileRef.Collection { collection } => {
-      run Format.format("file.kind=ttc\nfile.fonts={value}\n", &.{ value: CollectionRef.len(&collection) })
-      if let Result<TTCHeader<'a>, ReadError>.Success { value: header } = move TTCHeader<'a>.read(FontData.new(data)) {
-        run Format.format("ttc.ttcTag={value:08x}\n", &.{ value: Tag.toU32(TTCHeader.ttcTag(&header)) })
-        run Format.format("ttc.version.major={value}\n", &.{ value: TTCHeader.version(&header).major })
-        run Format.format("ttc.version.minor={value}\n", &.{ value: TTCHeader.version(&header).minor })
+      run Format.format(
+        "file.kind=ttc\nfile.fonts={value}\n",
+        &.{ value: CollectionRef.len(&collection) },
+      )
+      if let Result<TTCHeader<'a>, ReadError>.Success { value: header } = move TTCHeader<'a>.read(
+        FontData.new(data),
+      ) {
+        run Format.format(
+          "ttc.ttcTag={value:08x}\n",
+          &.{ value: Tag.toU32(TTCHeader.ttcTag(&header)) },
+        )
+        run Format.format(
+          "ttc.version.major={value}\n",
+          &.{ value: TTCHeader.version(&header).major },
+        )
+        run Format.format(
+          "ttc.version.minor={value}\n",
+          &.{ value: TTCHeader.version(&header).minor },
+        )
         run Format.format("ttc.numFonts={value}\n", &.{ value: TTCHeader.numFonts(&header) })
         let offsets = TTCHeader.tableDirectoryOffsets(&header)
-        run Format.format("ttc.tableDirectoryOffsets.length={value}\n", &.{ value: ScalarArray<u32>.len(&offsets) })
+        run Format.format(
+          "ttc.tableDirectoryOffsets.length={value}\n",
+          &.{ value: ScalarArray<u32>.len(&offsets) },
+        )
         let mut i: usize = 0
         while i < ScalarArray<u32>.len(&offsets) {
           let offset = ScalarArray<u32>.get(&offsets, i) |> Option<u32>.unwrapOr(0)
           run Format.format("ttc.tableDirectoryOffsets[{i}]={value}\n", &.{ i: i, value: offset })
           i = i + 1
         }
-        run text("ttc.dsigTag=") run optional(TTCHeader.dsigTag(&header))
-        run text("ttc.dsigLength=") run optional(TTCHeader.dsigLength(&header))
-        run text("ttc.dsigOffset=") run optional(TTCHeader.dsigOffset(&header))
+        run text("ttc.dsigTag=")
+        run optional(TTCHeader.dsigTag(&header))
+        run text("ttc.dsigLength=")
+        run optional(TTCHeader.dsigLength(&header))
+        run text("ttc.dsigOffset=")
+        run optional(TTCHeader.dsigOffset(&header))
       }
     }
   }
   let mut i: u32 = 0
   while i < FileRef.len(&file) {
     match move FileRef<'a>.get(&file, i) {
-      Result<FontRef<'a>, ReadError>.Success { value } => run font(i, value,data)
+      Result<FontRef<'a>, ReadError>.Success { value } => run font(i, value, data)
       Result<FontRef<'a>, ReadError>.Failure { error: err } => {
         run Format.format("font[{i}].error=", &.{ i: i })
         run error(err)

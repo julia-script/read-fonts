@@ -3,10 +3,33 @@
 import silk.ownership { Copy }
 import silk.option { Option }
 import silk.result { Result }
-pub union Maybe<T> { None,Some { pub value:T }, }
-impl<T:Copy> Copy for Maybe<T> {}
+
+pub union Maybe<T> {
+  None,
+  Some { pub value: T },
+}
+
+impl<T: Copy> Copy for Maybe<T> {}
+
 impl<T> Maybe<T> {
-  pub fn fromOption(value:Option<T>) -> Self { return match move value { Option<T>.Some { value:present }=>Maybe<T>.Some { value:move present } _=>Maybe<T>.None } }
-  pub fn fromResult<E>(value:Result<T,E>) -> Self { return match move value { Result<T,E>.Success { value:present }=>Maybe<T>.Some { value:move present } _=>Maybe<T>.None } }
-  pub fn present(self:&Self) -> bool { return match &self.* { Maybe<T>.Some { value }=>true _=>false } }
+  pub fn fromOption(value: Option<T>) -> Self {
+    return match move value {
+      Option<T>.Some { value: present } => Maybe<T>.Some { value: move present }
+      _ => Maybe<T>.None
+    }
+  }
+
+  pub fn fromResult<E>(value: Result<T, E>) -> Self {
+    return match move value {
+      Result<T, E>.Success { value: present } => Maybe<T>.Some { value: move present }
+      _ => Maybe<T>.None
+    }
+  }
+
+  pub fn present(self: &Self) -> bool {
+    return match &self.* {
+      Maybe<T>.Some { value } => true
+      _ => false
+    }
+  }
 }
