@@ -1,4 +1,4 @@
-//! Allocation-free paths for the finite table graph in milestone 2.
+//! Allocation-free paths for the bounded table graph traversal.
 import silk.ownership { Copy }
 import silk.writer { Writer, WriterError }
 import silk.format { Format, Display }
@@ -9,17 +9,57 @@ import dump
 
 struct Segment { name: string<'static>, index: usize, indexed: bool, }
 impl Copy for Segment {}
-pub struct DumpPath { segments: [Segment; 32], depth: usize, }
+struct NodeKey { typ: u32, remaining: usize, args: [u64; 3], }
+impl Copy for NodeKey {}
+struct Node { key: NodeKey, id: usize, }
+impl Copy for Node {}
+fn nodeHash(key: NodeKey) -> usize {
+  let mut hash = u64.wrappingMultiply(u32.toU64(key.typ), 1099511628211) ^ usize.toU64(key.remaining)
+  let mut i: usize = 0
+  while i < 3 { hash = u64.wrappingMultiply(hash, 1099511628211) ^ key.args[i] i = i + 1 }
+  return u64.toUsize(hash & 16383)
+}
+fn nodeEqual(a: NodeKey, b: NodeKey) -> bool { return a.typ == b.typ && a.remaining == b.remaining && a.args[0] == b.args[0] && a.args[1] == b.args[1] && a.args[2] == b.args[2] }
+pub struct DumpPath { segments: [Segment; 128], depth: usize, visits: usize, args: [u64; 3], nodes: [Node; 16384], nextNode: usize, }
 impl DumpPath {
   pub fn new(index: usize) -> Self {
-    let mut value = Self { segments: [Segment { name: "", index: 0, indexed: false }; 32], depth: 1 }
+    let mut value = Self { segments: [Segment { name: "", index: 0, indexed: false }; 128], depth: 1, visits: 0, args: [0; 3], nodes: [Node { key: NodeKey { typ: 0, remaining: 0, args: [0; 3] }, id: 0 }; 16384], nextNode: 1 }
     value.segments[0] = Segment { name: "font", index: index, indexed: true }
     return move value
   }
+  pub fn arguments(self: &Self) -> [u64; 3] { return self.args }
+  pub fn setArguments(self: &mut Self, args: [u64; 3]) -> () { self.args = args }
+  pub fn beginTable(self: &mut Self) -> () { let mut i: usize = 0 while i < 16384 { self.nodes[i].id = 0 i = i + 1 } self.args = [0; 3] }
+  pub effect fn visit(self: &mut Self, typ: u32, remaining: usize, args: [u64; 3]) -> bool ! WriterError ? &mut Writer {
+    if !DumpPath.enter(&mut self) { run scalar(&self, "traversal-limit") return false }
+    let key = NodeKey { typ: typ, remaining: remaining, args: args }
+    let first = nodeHash(key)
+    let mut slot = first
+    let mut probes: usize = 0
+    while probes < 16384 && self.nodes[slot].id != 0 {
+      if nodeEqual(self.nodes[slot].key, key) {
+        let id = self.nodes[slot].id
+        DumpPath.push(&mut self, "ref") run scalar(&self, id) DumpPath.pop(&mut self)
+        return false
+      }
+      slot = (slot + 1) & 16383 probes = probes + 1
+    }
+    // Eviction only causes a later view to be printed again; no fields are omitted.
+    if probes == 16384 { slot = first }
+    let id = self.nextNode
+    self.nextNode = self.nextNode + 1
+    self.nodes[slot] = Node { key: key, id: id }
+    DumpPath.push(&mut self, "node") run scalar(&self, id) DumpPath.pop(&mut self)
+    return true
+  }
+  pub fn enter(self: &mut Self) -> bool {
+    if self.depth >= 64 || self.visits >= 10000000 { return false }
+    self.visits = self.visits + 1
+    return true
+  }
   pub fn push(self: &mut Self, name: string<'static>) -> () {
-    // The generated milestone-2 graph is acyclic and has at most eight segments.
-    // This bound depends on the grammar, never on lengths or offsets in a font.
-    if self.depth >= 32 { return Intrinsic.trap("generated dump path exceeds its static bound") }
+    // Each generated node stops before depth 64, leaving room for field paths.
+    if self.depth >= 128 { return Intrinsic.trap("generated dump path exceeds its static bound") }
     self.segments[self.depth] = Segment { name: name, index: 0, indexed: false }
     self.depth = self.depth + 1
   }
@@ -55,3 +95,9 @@ pub effect fn readError(path: &DumpPath, value: ReadError) -> () ! WriterError ?
   run Writer.writeString("\n")
 }
 pub fn versionBits(value: Version16Dot16) -> u32 { let bytes = Version16Dot16.toBeBytes(&value) return readScalar<u32>(&bytes) |> Option<u32>.unwrapOr(0) }
+
+pub import generated_dump_traits { DumpTable }
+
+import silk.usize
+import silk.u32
+import silk.u64

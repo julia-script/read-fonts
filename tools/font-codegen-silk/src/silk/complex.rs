@@ -21,7 +21,7 @@ impl Context<'_> {
             "layout" => out.push_str("pub import tables.lookup_flag { LookupFlag }\n"),
             "gdef" => out.push_str("import generated_layout { CoverageTable, ClassDef, DeviceOrVariationIndex, HeaderOffset, LayoutOffsetArray }\nimport generated_variations { ItemVariationStore }\n"),
             "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
-            "variations" => out.push_str("import tables.tuple_index { TupleIndex }\n"),
+            "variations" => out.push_str("pub import tables.tuple_index { TupleIndex }\n"),
             _ => (),
         }
     }

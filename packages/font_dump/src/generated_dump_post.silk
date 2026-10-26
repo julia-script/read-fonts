@@ -3,14 +3,20 @@
 import extensions_post
 import read_fonts.tables.post { PString }
 import read_fonts.tables.post { Post }
-import read_fonts.lib { FontData, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter }
+import read_fonts.lib { FontData, FontRead, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter, ReadArgs2, ReadArgs3, ArrayOfOffsets, ArrayOfNullableOffsets }
 import font_types.lib { Fixed, F2Dot14, FWord, UfWord, Tag, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId16, GlyphId24, GlyphId, NameId, Nullable, Offset16, Offset24, Offset32 }
-import dump_support { DumpPath, scalar, absent, readError, versionBits, bytes }
+import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
 import silk.option { Option }
 import silk.result { Result }
 import silk.writer { Writer, WriterError }
+import silk.u8
+import silk.u16
+import silk.u32
+import silk.u64
 
 pub effect fn dumpPost<'a>(path: &mut DumpPath, value: Post<'a>) -> () ! WriterError ? &mut Writer {
+  let dumpArgs = DumpPath.arguments(&path)
+  if !run DumpPath.visit(&mut path, 3382406505, FontData.len(&Post<'a>.offsetData(&value)), dumpArgs) { return }
   let base = Post<'a>.offsetData(&value)
   if true {
   DumpPath.push(&mut path, "version")
@@ -122,6 +128,7 @@ pub effect fn dumpPost<'a>(path: &mut DumpPath, value: Post<'a>) -> () ! WriterE
 import read_fonts.lib { FontRef }
 pub effect fn dumpTables<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> () ! WriterError ? &mut Writer {
   if true {
+  DumpPath.beginTable(&mut path)
   DumpPath.push(&mut path, "post")
   match move FontRef<'a>.tableData(font, Tag.fromU32(1886352244)) {
     Option<FontData<'a>>.None => run readError(&path, ReadError.TableIsMissing { tag: Tag.fromU32(1886352244) })

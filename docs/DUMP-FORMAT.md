@@ -121,3 +121,23 @@ upstream format-specific semantics; all encoded groups and records are still
 fully dumped. Format 14/15 limits are aggregate budgets, not value filters.
 The expanded debug gate allows 120 seconds per process for full-repertoire fonts;
 FDArrayTest257 produces 2.49 million lines. Output buffering changes no bytes.
+
+## Version 3: layout and shared table graphs
+
+The active header is `font-dump.version=3` and `dump.scope=layout-tables`. It adds
+all grammar fields and resolved offset arrays for GDEF, GSUB, GPOS, shared layout
+structures, and their ItemVariationStore dependency. ValueRecord scalar/device
+fields and raw bytes are included. Write-only compiler sentinels are excluded.
+
+Each table view emits `.node=N` on first visit. A repeated view emits `.ref=N`,
+referring to its complete preceding field dump. IDs are monotonic within a face.
+The cache resets between top-level tables; identity includes grammar type, byte
+suffix length, and the three-slot read-argument product. Parameterized records
+forward their arguments to nested views. Cache eviction repeats the fields with
+a new ID. No source byte is changed or canonicalized by the traversal.
+
+Traversal stops at 64 path components or ten million node/record visits. It emits
+`=traversal-limit`; the comparison harness rejects such output as incomplete.
+The harness also rejects missing references, reused node IDs, process failures,
+truncation, invalid UTF-8, and missing final newlines. All successful reports
+include hashes of the complete streamed dumps.

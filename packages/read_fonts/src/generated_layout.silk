@@ -4216,6 +4216,15 @@ impl<'a> DeviceIter<'a> {
   }
 }
 
+// Upstream layout::tests::bit_storage_tests; kept beside the private helper.
+import silk.testing { Testing, AssertionError }
+test effect fn bitStorageTests() -> () ! AssertionError<'static> {
+  let values: [u32; 9] = [0, 1, 2, 4, 9, 291, 4660, 65535, 4294967295]
+  let expected: [u32; 9] = [0, 1, 2, 3, 4, 9, 13, 16, 32]
+  let mut i: usize = 0
+  while i < 9 { run Testing.expect(bitStorage(values[i]) == expected[i], "bits required") i = i + 1 }
+}
+
 // Handwritten extension from packages/read_fonts/src/tables/layout_scripts.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import silk.slice { Slice }

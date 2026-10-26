@@ -27,7 +27,7 @@ import silk.u64
 import silk.i16
 import silk.i32
 
-import tables.tuple_index { TupleIndex }
+pub import tables.tuple_index { TupleIndex }
 /// [TupleVariationHeader](https://learn.microsoft.com/en-us/typography/opentype/spec/otvarcommonformats#tuplevariationheader)
 pub struct TupleVariationHeader<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 5], _axisCount: u16, }
 impl<'a> Copy for TupleVariationHeader<'a> {}

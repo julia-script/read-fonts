@@ -159,3 +159,57 @@ source = "upstream/resources/codegen_inputs/variations.rs"
 target = "packages/read_fonts/src/generated_variations.silk"
 facade = "packages/read_fonts/src/tables/variations.silk"
 extensions = ["packages/read_fonts/src/tables/variations_impl.silk"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/layout.rs"
+target = "packages/font_dump/src/generated_dump_layout.silk"
+extensions = ["packages/font_dump/src/extensions_dump_layout.silk"]
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/layout.rs"
+target = "scripts/rust-font-dump/src/generated_dump_layout.rs"
+extensions = ["scripts/rust-font-dump/src/extensions_dump_layout.rs"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/gdef.rs"
+target = "packages/font_dump/src/generated_dump_gdef.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/gdef.rs"
+target = "scripts/rust-font-dump/src/generated_dump_gdef.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/gsub.rs"
+target = "packages/font_dump/src/generated_dump_gsub.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/gsub.rs"
+target = "scripts/rust-font-dump/src/generated_dump_gsub.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/gpos.rs"
+target = "packages/font_dump/src/generated_dump_gpos.silk"
+extensions = ["packages/font_dump/src/extensions_dump_gpos.silk"]
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/gpos.rs"
+target = "scripts/rust-font-dump/src/generated_dump_gpos.rs"
+extensions = ["scripts/rust-font-dump/src/extensions_dump_gpos.rs"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/variations.rs"
+target = "packages/font_dump/src/generated_dump_variations.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/variations.rs"
+target = "scripts/rust-font-dump/src/generated_dump_variations.rs"

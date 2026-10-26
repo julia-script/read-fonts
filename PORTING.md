@@ -173,3 +173,20 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - ValueRecord's zero-bit field-offset probe uses wrapping subtraction, matching
   Rust release behavior. Layout test fixtures retain complete original GSUB
   payloads from the four upstream script/feature-test fonts.
+
+- Dump format 3 records table graphs: a view's first visit emits a `.node` ID and
+  all its fields; later visits emit `.ref`. The per-top-level identity includes
+  the grammar type, the remaining suffix length, and all read arguments. Every
+  generated offset resolves a suffix of the same top-level payload, so length
+  identifies its start without pointer casts. The fixed cache evicts by printing
+  a later visit again; eviction cannot suppress a field. Type-ID collisions fail
+  generation. Both parsers construct views independently.
+- Traversal implementations live with the DumpTable interface, as required by
+  Silk's conformance ownership rule. The generation script builds that module
+  from emitted declarations. Traversal limits produce an explicit marker that
+  the corpus harness rejects, never a successful parity claim.
+- The initial expanded traversal repeated a 55 KiB malformed regression font
+  into gigabytes of output and was terminated. With graph references it produces
+  5,704,912 lines / 698,627,724 bytes and matches exactly. The harness now streams
+  process output through temporary files, comparing every line and hashing every
+  byte without retaining whole dumps in memory.

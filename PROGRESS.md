@@ -229,3 +229,43 @@ remain. Variation-store-dependent condition/selection helpers and tests need the
 shared variation evaluation dependency; IntSet intersections remain with M7.
 The active dump protocol still covers M2, and no layout parity is claimed.
 Milestones 4–9 remain pending.
+
+## Session 8 — 2026-10-26 — milestone 3 local gate complete
+
+The layout field gate passes in **debug and release: 566 / 566 corpus files match**,
+with no differences, process failures or traversal limits. The generated traversal
+includes every layout/GDEF/GSUB/GPOS grammar field, typed offset array and nested
+record, plus the ItemVariationStore dependency and ValueRecord scalar/device data.
+
+| Check | Result |
+| --- | --- |
+| font_types Silk tests | **64 passed** (60 upstream, 4 additional) |
+| read_fonts Silk tests | **159 passed** (149 upstream, 10 additional) |
+| Total upstream tests ported | **209** |
+| Full corpus, debug and release | **566 matches each** |
+| Layout fixtures, debug and release | **2,650 matches each** |
+| Core-table fixtures, debug and release | **500 matches each** |
+| Container fixtures | **426 matches** |
+| Generator / reference / Python tests | **10 / 6 / 15 passed** |
+| Generated drift, Rust formatting, Clippy with warnings denied | Passed |
+| Root/libraries/CLI debug and release | Passed |
+| Remote CI / merge | Pending PR |
+
+The layout fixtures include every prefix of the original GSUB/GPOS specimens,
+extension lookups, GDEF and script/feature examples, extended-header precedence,
+shared feature data read with different tags, and lookup variations.
+
+Dump format 3 represents repeated table views with explicit node references. This
+keeps malformed alias graphs finite without discarding fields. The harness now
+streams output and rejects limit markers, dangling references and duplicate node
+IDs; exact comparison includes every byte and final newline.
+
+Evidence: [debug corpus](reports/milestone-3-layout.json),
+[release corpus](reports/milestone-3-release-layout.json),
+[debug layout fixtures](reports/milestone-3-layout-fixtures.json), and
+[release layout fixtures](reports/milestone-3-release-layout-fixtures.json).
+
+Dependency follow-ups remain explicit: variation-store delta callbacks and the
+font-level SelectedFeatureVariations helper/tests are with M4; set intersection
+methods/tests are with IntSet in M7. They are not counted as ported. Milestone 3
+is ready for CI; milestones 4–9 remain pending.

@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_ROOTS = (
@@ -21,7 +22,7 @@ CORPUS_ROOTS = (
 # Unsupported containers are still oracle inputs: their upstream errors are observations.
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc", ".dfont", ".woff", ".woff2"}
 FONT_MAGIC = {b"\0\1\0\0", b"OTTO", b"true", b"ttcf"}
-HEADER = b"font-dump.version=2\ndump.scope=core-tables\n"
+HEADER = b"font-dump.version=3\ndump.scope=layout-tables\n"
 REFERENCE = ROOT / "build/rust/debug/rust-font-dump"
 
 
@@ -86,12 +87,61 @@ def run_dumper(executable: Path, font: Path, timeout: float) -> subprocess.Compl
 
 def validate_dump(output: bytes) -> None:
     if not output.startswith(HEADER) or not output.endswith(b"\n"):
-        raise ValueError("dumper did not emit a complete format-2 table dump")
+        raise ValueError("dumper did not emit a complete format-3 table dump")
     lines = output.splitlines()
     if len(lines) < 4 or not lines[2].startswith(b"file.length="):
         raise ValueError("dump has no file length (a skeleton is not a passing dump)")
     if not (lines[3].startswith(b"file.error=") or lines[3] in (b"file.kind=sfnt", b"file.kind=ttc")):
         raise ValueError("dump has neither a file kind nor an upstream parse error")
+
+
+def run_dump_file(executable: Path, font: Path, timeout: float, output):
+    return subprocess.run([str(executable.resolve()), str(font)], stdout=output,
+                          stderr=subprocess.PIPE, timeout=timeout)
+
+
+def inspect_dump_file(output) -> dict:
+    output.seek(0)
+    prefix = b"".join(output.readline() for _ in range(4))
+    validate_dump(prefix)
+    output.seek(0)
+    digest = hashlib.sha256()
+    count = faces = missing = 0
+    errors = []
+    nodes = set()
+    for line in output:
+        if not line.endswith(b"\n"):
+            raise ValueError("dumper did not emit a complete format-3 table dump")
+        if line.endswith(b"=traversal-limit\n"):
+            raise ValueError("dump exceeded its traversal bound; not a complete field comparison")
+        # Check UTF-8 without retaining the complete dump.
+        text = line.decode("utf-8").rstrip("\n")
+        if b".node=" in line or b".ref=" in line:
+            path, number = line.rstrip(b"\n").rsplit(b"=", 1)
+            key = (path.split(b".", 1)[0], int(number))
+            if path.endswith(b".ref") and key not in nodes:
+                raise ValueError("dump reference has no preceding node")
+            if path.endswith(b".node"):
+                if key in nodes:
+                    raise ValueError("dump reuses a node identifier")
+                nodes.add(key)
+        digest.update(line)
+        count += 1
+        faces += line.startswith(b"font[") and b".sfntVersion=" in line
+        missing += line.endswith(b".lookup=missing\n")
+        if b".error=" in line:
+            errors.append(text)
+    return {"dump_sha256": digest.hexdigest(), "lines": count, "faces_ok": faces,
+            "missing_table_lookups": missing, "parse_errors": errors}
+
+
+def first_difference_files(left, right):
+    left.seek(0)
+    right.seek(0)
+    for number, (a, b) in enumerate(itertools.zip_longest(left, right), 1):
+        if a != b:
+            return number, a, b
+    return None
 
 
 def first_difference(left: bytes, right: bytes) -> tuple[int, bytes | None, bytes | None] | None:
@@ -130,7 +180,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             report.parent.mkdir(parents=True, exist_ok=True)
             report.write_text(json.dumps({
                 "summary": {
-                    "format_version": 2, "scope": "core-tables", "fonts_total": len(fonts),
+                    "format_version": 3, "scope": "layout-tables", "fonts_total": len(fonts),
                     "completed": sum(item["status"] in ("match", "difference") for item in observations),
                     "matched": sum(item["status"] == "match" for item in observations),
                     "differences": sum(item["status"] == "difference" for item in observations),
@@ -147,22 +197,23 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
         observation = {"font": display(font), "input_sha256": hashlib.sha256(font.read_bytes()).hexdigest()}
         observations.append(observation)
         try:
-            rust = run_dumper(reference, font, timeout)
-            port = run_dumper(silk, font, timeout)
-            difference = first_difference(rust.stdout, port.stdout)
-            if difference is not None:
-                number, left, right = difference
-                print(f"{display(font)}: first difference at line {number}")
-                print(f"  Rust: {show_line(left)}")
-                print(f"  Silk: {show_line(right)}")
-                observation["first_difference"] = {"line": number, "rust": show_line(left), "silk": show_line(right)}
-            if rust.returncode != 0 or port.returncode != 0:
-                report_process("Rust", rust)
-                report_process("Silk", port)
-                observation.update(status="failure", rust_exit=rust.returncode, silk_exit=port.returncode)
-                return finish(2)
-            validate_dump(rust.stdout)
-            validate_dump(port.stdout)
+            with tempfile.TemporaryFile() as rust_output, tempfile.TemporaryFile() as silk_output:
+                rust = run_dump_file(reference, font, timeout, rust_output)
+                port = run_dump_file(silk, font, timeout, silk_output)
+                difference = first_difference_files(rust_output, silk_output)
+                if difference is not None:
+                    number, left, right = difference
+                    print(f"{display(font)}: first difference at line {number}")
+                    print(f"  Rust: {show_line(left)}")
+                    print(f"  Silk: {show_line(right)}")
+                    observation["first_difference"] = {"line": number, "rust": show_line(left), "silk": show_line(right)}
+                if rust.returncode != 0 or port.returncode != 0:
+                    report_process("Rust", rust)
+                    report_process("Silk", port)
+                    observation.update(status="failure", rust_exit=rust.returncode, silk_exit=port.returncode)
+                    return finish(2)
+                rust_info = inspect_dump_file(rust_output)
+                port_info = inspect_dump_file(silk_output)
         except (OSError, subprocess.TimeoutExpired, ValueError) as error:
             observation.update(status="failure", error=str(error))
             if report is not None:
@@ -170,14 +221,14 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             raise
         observation.update(
             status="match" if difference is None else "difference",
-            rust_dump_sha256=hashlib.sha256(rust.stdout).hexdigest(),
-            silk_dump_sha256=hashlib.sha256(port.stdout).hexdigest(),
-            lines=len(rust.stdout.splitlines()),
-            parse_errors=[line for line in rust.stdout.decode("utf-8").splitlines() if ".error=" in line],
+            rust_dump_sha256=rust_info["dump_sha256"],
+            silk_dump_sha256=port_info["dump_sha256"],
+            lines=rust_info["lines"],
+            parse_errors=rust_info["parse_errors"],
         )
         if difference is not None:
             return finish(1)
-    print(f"MATCH: {len(fonts)} fonts; format 2, core table scope")
+    print(f"MATCH: {len(fonts)} fonts; format 3, layout table scope")
     return finish(0)
 
 
@@ -189,28 +240,21 @@ def verify(fonts: list[Path], inventory: list[dict], reference: Path,
     for font in fonts:
         name = display(font)
         try:
-            result = run_dumper(reference, font, timeout)
-            if result.returncode != 0:
-                report_process(name, result)
-                raise ValueError(f"exit {result.returncode}")
-            validate_dump(result.stdout)
-            lines = result.stdout.decode("utf-8").splitlines()
-            errors = [line for line in lines if ".error=" in line]
-            faces = sum(line.startswith("font[") and ".sfntVersion=" in line for line in lines)
-            missing = sum(line.endswith(".lookup=missing") for line in lines)
-            totals["faces_ok"] += faces
-            totals["parse_error_records"] += len(errors)
-            totals["missing_table_lookups"] += missing
-            results.append({
-                "font": name, "input_sha256": hashlib.sha256(font.read_bytes()).hexdigest(),
-                "dump_sha256": hashlib.sha256(result.stdout).hexdigest(), "lines": len(lines),
-                "faces_ok": faces, "missing_table_lookups": missing, "parse_errors": errors,
-            })
+            with tempfile.TemporaryFile() as output:
+                result = run_dump_file(reference, font, timeout, output)
+                if result.returncode != 0:
+                    report_process(name, result)
+                    raise ValueError(f"exit {result.returncode}")
+                info = inspect_dump_file(output)
+            totals["faces_ok"] += info["faces_ok"]
+            totals["parse_error_records"] += len(info["parse_errors"])
+            totals["missing_table_lookups"] += info["missing_table_lookups"]
+            results.append({"font": name, "input_sha256": hashlib.sha256(font.read_bytes()).hexdigest(), **info})
         except (OSError, subprocess.TimeoutExpired, ValueError) as error:
             failures.append({"font": name, "error": str(error)})
             print(f"FAIL: {name}: {error}", file=sys.stderr)
     summary = {
-        "format_version": 2, "scope": "core-tables", "fonts_total": len(fonts),
+        "format_version": 3, "scope": "layout-tables", "fonts_total": len(fonts),
         "completed": len(results), "process_failures": len(failures),
         "faces_ok": totals["faces_ok"], "parse_error_records": totals["parse_error_records"],
         "missing_table_lookups": totals["missing_table_lookups"],

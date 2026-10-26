@@ -1,6 +1,7 @@
 //! Dump emitters call each language's public accessors. Only traversal and
 //! serialization are shared; parsing and parsed values remain independent.
 use super::*;
+mod complex;
 
 pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
     let module = items
@@ -29,13 +30,15 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
         }
         let names = items
             .iter()
+            .filter(|i| !matches!(i, Item::Table(t) if t.attrs.write_only.is_some()))
             .map(|i| i.name().to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        writeln!(out,"import read_fonts.tables.{module} {{ {names} }}\nimport read_fonts.lib {{ FontData, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter }}\nimport font_types.lib {{ Fixed, F2Dot14, FWord, UfWord, Tag, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId16, GlyphId24, GlyphId, NameId, Nullable, Offset16, Offset24, Offset32 }}\nimport dump_support {{ DumpPath, scalar, absent, readError, versionBits, bytes }}\nimport silk.option {{ Option }}\nimport silk.result {{ Result }}\nimport silk.writer {{ Writer, WriterError }}\n").unwrap();
+        writeln!(out,"import read_fonts.tables.{module} {{ {names} }}\nimport read_fonts.lib {{ FontData, FontRead, ReadError, ScalarArray, ComputedArray, VarLenArray, VarLenIter, ReadArgs2, ReadArgs3, ArrayOfOffsets, ArrayOfNullableOffsets }}\nimport font_types.lib {{ Fixed, F2Dot14, FWord, UfWord, Tag, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId16, GlyphId24, GlyphId, NameId, Nullable, Offset16, Offset24, Offset32 }}\nimport dump_support {{ DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }}\nimport silk.option {{ Option }}\nimport silk.result {{ Result }}\nimport silk.writer {{ Writer, WriterError }}\nimport silk.u8\nimport silk.u16\nimport silk.u32\nimport silk.u64\n").unwrap();
     } else {
-        writeln!(out,"#![allow(unused_imports, unused_variables, dead_code, non_snake_case)]\nuse read_fonts::{{tables::{module}::*, types::*, FontData, ReadError}};\nuse std::io::{{self, Write}};\n").unwrap();
+        writeln!(out,"#![allow(unused_imports, unused_variables, dead_code, non_snake_case)]\nuse read_fonts::{{tables::{module}::*, types::*, FontData, ReadError, FontRead}};\nuse std::io::{{self, Write}};\n").unwrap();
     }
+    complex::imports(&mut out, &module, silk);
     let dc = DumpContext {
         cx: Context { items },
         silk,
@@ -47,8 +50,12 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
             }
             Item::Record(r) => dc.fields(&mut out, &r.name.to_string(), &r.fields, true)?,
             Item::Format(f) => dc.format(&mut out, f)?,
+            Item::GenericGroup(g) => dc.group(&mut out, g)?,
             _ => (),
         }
+    }
+    if module == "layout" {
+        dc.trait_impl(&mut out, "FeatureParams");
     }
     dc.top_levels(&mut out, items)?;
     Ok(out)
@@ -86,27 +93,23 @@ impl DumpContext<'_> {
                     }
                 };
                 if self.silk {
-                    writeln!(out, "  if true {{\n  DumpPath.push(&mut path, \"{tag}\")\n  match move FontRef<'a>.{method}(font) {{ Result<{name}<'a>, ReadError>.Success {{ value: table }} => run dump{name}(&mut path, table) Result<{name}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n  DumpPath.pop(&mut path)\n  }}").unwrap();
+                    writeln!(out, "  if true {{\n  DumpPath.beginTable(&mut path)\n  DumpPath.push(&mut path, \"{tag}\")\n  match move FontRef<'a>.{method}(font) {{ Result<{name}<'a>, ReadError>.Success {{ value: table }} => run dump{name}(&mut path, table) Result<{name}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n  DumpPath.pop(&mut path)\n  }}").unwrap();
                 } else {
-                    writeln!(out, "  {{ use read_fonts::TableProvider; let path=&format!(\"{{path}}.{tag}\"); match font.{rust_method}() {{ Ok(table) => dump_{name}(out, path, &table)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
+                    writeln!(out, "  {{ crate::dump_support::begin_table(); use read_fonts::TableProvider; let path=&format!(\"{{path}}.{tag}\"); match font.{rust_method}() {{ Ok(table) => dump_{name}(out, path, &table)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }} }}").unwrap();
                 }
                 continue;
             }
             if self.silk {
-                writeln!(out, "  if true {{\n  DumpPath.push(&mut path, \"{tag}\")\n  match move FontRef<'a>.tableData(font, Tag.fromU32({tag_value})) {{\n    Option<FontData<'a>>.None => run readError(&path, ReadError.TableIsMissing {{ tag: Tag.fromU32({tag_value}) }})\n    Option<FontData<'a>>.Some {{ value: data }} => {{\n      match move {name}<'a>.read(data) {{ Result<{name}<'a>, ReadError>.Success {{ value: table }} => run dump{name}(&mut path, table) Result<{name}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    }}\n  }}\n  DumpPath.pop(&mut path)\n  }}").unwrap();
+                writeln!(out, "  if true {{\n  DumpPath.beginTable(&mut path)\n  DumpPath.push(&mut path, \"{tag}\")\n  match move FontRef<'a>.tableData(font, Tag.fromU32({tag_value})) {{\n    Option<FontData<'a>>.None => run readError(&path, ReadError.TableIsMissing {{ tag: Tag.fromU32({tag_value}) }})\n    Option<FontData<'a>>.Some {{ value: data }} => {{\n      match move {name}<'a>.read(data) {{ Result<{name}<'a>, ReadError>.Success {{ value: table }} => run dump{name}(&mut path, table) Result<{name}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    }}\n  }}\n  DumpPath.pop(&mut path)\n  }}").unwrap();
             } else {
-                writeln!(out,"  {{\n  let path=&format!(\"{{path}}.{tag}\");\n  let tag=Tag::new(b\"{tag}\");\n  match font.table_data(tag).ok_or(ReadError::TableIsMissing(tag)).and_then({name}::read) {{ Ok(table) => dump_{name}(out, path, &table)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }}\n  }}").unwrap();
+                writeln!(out,"  {{\n  crate::dump_support::begin_table();\n  let path=&format!(\"{{path}}.{tag}\");\n  let tag=Tag::new(b\"{tag}\");\n  match font.table_data(tag).ok_or(ReadError::TableIsMissing(tag)).and_then({name}::read) {{ Ok(table) => dump_{name}(out, path, &table)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }}\n  }}").unwrap();
             }
         }
         self.end(out);
         Ok(())
     }
     fn start(&self, out: &mut String, name: &str, record: bool) {
-        if self.silk {
-            writeln!(out,"pub effect fn dump{name}<'a>(path: &mut DumpPath, value: {name}<'a>{}) -> () ! WriterError ? &mut Writer {{",if record {", base: FontData<'a>"} else {""}).unwrap();
-        } else {
-            writeln!(out,"pub fn dump_{name}(out: &mut impl Write, path: &str, value: &{name}{}{}) -> io::Result<()> {{",if record {""}else{"<'_>"},if record{", base: FontData<'_>"}else{""}).unwrap();
-        }
+        self.start_extended(out, name, record);
     }
     fn end(&self, out: &mut String) {
         if !self.silk {
@@ -132,6 +135,8 @@ impl DumpContext<'_> {
         let expr = if self.silk {
             match typ {
                 "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" => value.into(),
+                "LookupFlag" => format!("LookupFlag.toBits({value})"),
+                "TupleIndex" => format!("TupleIndex.bits({value})"),
                 "Fixed" | "F2Dot14" | "F4Dot12" | "F6Dot10" => format!("{typ}.toBits({value})"),
                 "Version16Dot16" => format!("versionBits({value})"),
                 "FWord" => format!("FWord.toI16({value})"),
@@ -154,6 +159,8 @@ impl DumpContext<'_> {
             }
         } else {
             match typ {
+                "LookupFlag" => format!("{value}.to_bits()"),
+                "TupleIndex" => format!("{value}.bits()"),
                 "Fixed" | "F2Dot14" | "F4Dot12" | "F6Dot10" => format!("{value}.to_bits()"),
                 "Version16Dot16" => format!("u32::from_be_bytes({value}.to_be_bytes())"),
                 "FWord" => format!("i16::from({value})"),
@@ -211,17 +218,50 @@ impl DumpContext<'_> {
                 }
                 self.scalar(out, &typ.to_string(), &value)?;
             }
+            FieldType::Struct { typ } => {
+                self.dump_args(out, &self.owner_name(field), field, false)?;
+                if self.silk {
+                    writeln!(out, "  DumpPath.setArguments(&mut path, targetArgs)").unwrap();
+                } else {
+                    writeln!(out, "  crate::dump_support::set_arguments(target_args);").unwrap();
+                }
+                if self.silk {
+                    writeln!(out, "  run dump{typ}(&mut path, fieldValue, base)").unwrap();
+                } else {
+                    let borrow =
+                        if matches!(self.cx.find(&self.owner_name(field)), Some(Item::Record(_))) {
+                            ""
+                        } else {
+                            "&"
+                        };
+                    writeln!(out, "  dump_{typ}(out, path, {borrow}fieldValue, base)?;").unwrap();
+                }
+            }
+            FieldType::ComputedArray(array) => {
+                self.computed_array(out, field, &array.raw_inner_type().to_string())?
+            }
             FieldType::Array { inner_typ } => {
                 let array_type = self.cx.field_type(field)?;
                 if self.silk {
                     writeln!(out,"  DumpPath.push(&mut path, \"length\")\n  run scalar(&path, {array_type}.len(&fieldValue))\n  DumpPath.pop(&mut path)\n  let mut index: usize = 0\n  while index < {array_type}.len(&fieldValue) {{\n    DumpPath.setIndex(&mut path, index)").unwrap();
                     match inner_typ.as_ref() {
                         FieldType::Scalar { typ } | FieldType::Offset { typ, .. } => {
-                            writeln!(out,"    if let Option<{typ}>.Some {{ value: item }} = move {array_type}.get(&fieldValue, index) {{").unwrap();
-                            self.scalar(out, &typ.to_string(), "item")?;
+                            let scalar_type = if field.attrs.nullable.is_some() {
+                                format!("Nullable<{typ}>")
+                            } else {
+                                typ.to_string()
+                            };
+                            writeln!(out,"    if let Option<{scalar_type}>.Some {{ value: item }} = move {array_type}.get(&fieldValue, index) {{").unwrap();
+                            let item = if field.attrs.nullable.is_some() {
+                                format!("Nullable<{typ}>.offset(&item).*")
+                            } else {
+                                "item".into()
+                            };
+                            self.scalar(out, &typ.to_string(), &item)?;
                             writeln!(out, "    }}").unwrap();
                         }
                         FieldType::Struct { typ } => {
+                            writeln!(out, "    DumpPath.setArguments(&mut path, [0; 3])").unwrap();
                             writeln!(out,"    match move {array_type}.get(&fieldValue, index) {{ Result<{typ}<'a>, ReadError>.Success {{ value: item }} => run dump{typ}(&mut path, item, base) Result<{typ}<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}").unwrap();
                         }
                         _ => {
@@ -250,10 +290,15 @@ impl DumpContext<'_> {
                                 }
                             )
                             .unwrap();
-                            self.scalar(out, &typ.to_string(), "item")?;
+                            let item = if field.attrs.nullable.is_some() {
+                                "item.offset()"
+                            } else {
+                                "item"
+                            };
+                            self.scalar(out, &typ.to_string(), item)?;
                         }
                         FieldType::Struct { typ } => {
-                            writeln!(out, "    dump_{typ}(out, path, item, base)?;").unwrap();
+                            writeln!(out, "    crate::dump_support::set_arguments([0; 3]); dump_{typ}(out, path, item, base)?;").unwrap();
                         }
                         _ => {
                             return Err(syn::Error::new(
@@ -277,9 +322,10 @@ impl DumpContext<'_> {
         record: bool,
     ) -> syn::Result<()> {
         self.start(out, name, record);
+        let owner = self.cx.applied(name);
         if !record {
             if self.silk {
-                writeln!(out, "  let base = {name}<'a>.offsetData(&value)").unwrap();
+                writeln!(out, "  let base = {owner}.offsetData(&value)").unwrap();
             } else {
                 writeln!(out, "  let base = value.offset_data();").unwrap();
             }
@@ -300,20 +346,14 @@ impl DumpContext<'_> {
                 )
                 .unwrap();
             }
-            let expression = if field.attrs.skip_getter.is_some() {
-                if self.silk {
-                    format!("FontData<'a>.readAt<{typ}>(&base, {name}<'a>.{field_name}ByteRange(&value).start) |> Result<{typ}, ReadError>.unwrapOr({})",self.cx.fallback(field)?)
+            let expression =
+                if field.attrs.skip_getter.is_some() && field.name != "lookup_variation_records" {
+                    self.skipped_getter(name, field, &typ)?
+                } else if self.silk {
+                    format!("{owner}.{field_name}(&value)")
                 } else {
-                    format!(
-                        "base.read_at::<{typ}>(value.{}_byte_range().start).unwrap_or_default()",
-                        field.name
-                    )
-                }
-            } else if self.silk {
-                format!("{name}<'a>.{field_name}(&value)")
-            } else {
-                format!("value.{}()", field.name)
-            };
+                    format!("value.{}()", field.name)
+                };
             if field.is_conditional() {
                 if self.silk {
                     writeln!(out,"  match move {expression} {{ Option<{typ}>.Some {{ value: fieldValue }} => {{").unwrap();
@@ -339,67 +379,7 @@ impl DumpContext<'_> {
                 writeln!(out, "  DumpPath.pop(&mut path)").unwrap();
             }
             writeln!(out, "  }}").unwrap();
-            if let FieldType::Offset {
-                target: OffsetTarget::Table(target),
-                ..
-            } = &field.typ
-            {
-                if field.attrs.offset_getter.is_some() {
-                    continue;
-                }
-                let raw = field.name.to_string();
-                let getter = raw.strip_suffix("_offset").unwrap_or(&raw);
-                let silk_getter = camel(getter);
-                if self.silk {
-                    writeln!(
-                        out,
-                        "  if true {{\n  DumpPath.push(&mut path, \"{silk_getter}\")"
-                    )
-                    .unwrap();
-                } else {
-                    writeln!(
-                        out,
-                        "  {{\n  let path = &format!(\"{{path}}.{silk_getter}\");"
-                    )
-                    .unwrap();
-                }
-                let expr = if self.silk {
-                    format!(
-                        "{name}<'a>.{silk_getter}(&value{})",
-                        if record { ", base" } else { "" }
-                    )
-                } else {
-                    format!("value.{getter}({})", if record { "base" } else { "" })
-                };
-                let nullable = field.attrs.nullable.is_some() || field.is_conditional();
-                let ret = format!("Result<{target}<'a>, ReadError>");
-                if nullable {
-                    if self.silk {
-                        writeln!(out,"  match move {expr} {{ Option<{ret}>.None => run absent(&path) Option<{ret}>.Some {{ value: resolved }} => {{").unwrap();
-                    } else {
-                        writeln!(out,"  match {expr} {{ None => writeln!(out, \"{{path}}=none\")?, Some(resolved) => {{").unwrap();
-                    }
-                } else {
-                    writeln!(
-                        out,
-                        "  let resolved = {expr}{}",
-                        if self.silk { "" } else { ";" }
-                    )
-                    .unwrap();
-                }
-                if self.silk {
-                    writeln!(out,"  match move resolved {{ {ret}.Success {{ value: table }} => run dump{target}(&mut path, table) {ret}.Failure {{ error }} => run readError(&path, error) }}").unwrap();
-                } else {
-                    writeln!(out,"  match resolved {{ Ok(table) => dump_{target}(out, path, &table)?, Err(error) => writeln!(out, \"{{path}}.error={{}}\", crate::error(error))?, }}").unwrap();
-                }
-                if nullable {
-                    writeln!(out, "  }} }}").unwrap();
-                }
-                if self.silk {
-                    writeln!(out, "  DumpPath.pop(&mut path)").unwrap();
-                }
-                writeln!(out, "  }}").unwrap();
-            }
+            self.resolved_field(out, name, field, record)?;
         }
         if name == "Cmap" || name == "Dmap" {
             let silk_value = if name == "Dmap" {
@@ -453,6 +433,9 @@ impl DumpContext<'_> {
             }
         }
         self.end(out);
+        if !record {
+            self.trait_impl(out, name);
+        }
         Ok(())
     }
     fn format(&self, out: &mut String, format: &TableFormat) -> syn::Result<()> {
@@ -460,6 +443,10 @@ impl DumpContext<'_> {
         self.start(out, &name, false);
         writeln!(out, "  match value {{").unwrap();
         for v in &format.variants {
+            if matches!(self.cx.find(&v.type_name().to_string()), Some(Item::Table(t)) if t.attrs.write_only.is_some())
+            {
+                continue;
+            }
             let variant = &v.name;
             let typ = v.type_name();
             if self.silk {
@@ -481,6 +468,7 @@ impl DumpContext<'_> {
             }
         }
         self.end(out);
+        self.trait_impl(out, &name);
         Ok(())
     }
 }
