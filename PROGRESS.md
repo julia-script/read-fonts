@@ -765,3 +765,32 @@ tests). The full suite passes **720 read_fonts tests**, with unchanged
 Python suite passes **20 tests**, now also proving binary snapshot isolation.
 The initial campaign was stopped to rebuild and rerun every mutation against
 the corrected binary; no final M8 gate is claimed yet.
+
+The repaired font now matches in both debug and release. All **2,894 variation
+fixtures** pass in debug, including the twelve new reversed/equal-range cases.
+The generator drift check passes for all 102 outputs and 33 model fixtures.
+The corrected whole-corpus campaign is still running with no further difference
+observed at this checkpoint.
+
+## Session 42 — 2026-10-26 — milestone 8 local gate complete
+
+The corrected release campaign matches **23,188 / 23,188 corrupted inputs** from
+all **566 corpus files**: **18,660 truncations** (31–33 lengths per font) and
+**4,528 byte-flip variants**. There are **0 differing dumps**, **0 process/harness
+failures**, and **0 Silk traps** in this campaign. The complete matching dumps
+include **2,311,472 table/container error observations**. Every recipe, source
+hash, mutated-input hash and binary hash was revalidated before publishing the
+compressed report; no partial initial-run observation was reused after the fix.
+
+All **720 read_fonts tests**, **20 Python harness tests**, generation drift checks
+and **2,894 focused debug variation fixtures** pass. The previously failing
+whole-font mutation also matches in debug. font_types remains at **64 tests**,
+and the upstream-port count remains **765**; the new range test is a regression.
+Evidence: reports/milestone-8-malformed.json.gz and
+reports/milestone-8-variation-fixtures.json.gz.
+
+M7 CI run **40341358973**, job **121636615554**, passed all debug/release corpus
+and focused gates, and PR #8 is merged. PR #9 contains M8, with the corruption
+campaign required in CI. Its final CI gate remains before merging. M9 Phase 2
+tables, their dependent model tests, and the speed ratio are next; the complete
+port is not yet finished.

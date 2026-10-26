@@ -468,7 +468,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   short-lived allocator is local to the dump adapter; allocation failure becomes
   a dumper failure through WriterError. Public parser/IntSet effects are unchanged.
 
-## Milestone 8 (in progress)
+## Milestone 8
 
 - The whole-corpus corruption campaign found a reversed gvar glyph-data range
   that the port rejected. Rust's Range::is_empty includes start greater than end,

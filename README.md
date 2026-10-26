@@ -1,10 +1,11 @@
 # read-fonts for Silk
 
 A port of Google's [read-fonts and font-types](https://github.com/googlefonts/fontations)
-to Silk, intended to support a later HarfRust port. **Milestones 0–7 implement
+to Silk, intended to support a later HarfRust port. **Milestones 0–8 implement
 scalar types, borrowed sfnt/TTC parsing, core/layout/variation tables, vertical
 metrics, TrueType glyph and variation data, AAT tables/helpers, and CFF/CFF2
-names, charstrings, widths and bounds; integer sets and the requested font model APIs.**
+names, charstrings, widths and bounds; integer sets and the requested font model APIs,
+with a reproducible malformed-input gate.**
 The full port remains in progress. See [PROGRESS.md](PROGRESS.md) and the original
 [porting plan](docs/PORTING-PLAN.md).
 
@@ -61,7 +62,7 @@ scripts/compare --timeout 600 --fonts build/fonts.txt
 variation, AAT, CFF, model and set-intersection dumps match on all **566 corpus
 files**, plus **9,146 CFF fixtures** and **154 model fixtures**, in debug and release. The expanded debug protocol also passes
 **426 container edge cases**, **500 core-table fixtures**, **2,650 layout fixtures**,
-**2,882 variation fixtures** and **8,551 AAT fixtures**. CFF and model metrics, names and bounds are compared at four normalized locations.
+**2,894 variation fixtures** and **8,551 AAT fixtures**. CFF and model metrics, names and bounds are compared at four normalized locations.
 The model gate also compares character maps and exact scaled-metric bits. Complete CFF fixture reports in
 `reports/` are gzip-compressed; corpus reports remain plain JSON.
 Repeated table views use explicit references to their preceding complete field dumps.
@@ -97,6 +98,9 @@ scripts/check-malformed --reference build/rust/release/rust-font-dump \
   --report build/malformed-report.json.gz
 ```
 
+All **23,188 corruptions** of the **566 corpus files** match in release: **18,660
+truncations** (31–33 lengths per font) and **4,528 byte-flip variants**. The checked-in
+[report](reports/milestone-8-malformed.json.gz) records the complete campaign.
 Every discovered font receives header-edge, 1/16-length and final-byte
 truncations, plus eight seeded mutations with one to eight nonzero byte XORs.
 Mutation recipes and input/output hashes are recorded. Full dump equality also
