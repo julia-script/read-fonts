@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Compare model selection, fallback and ownership edge cases against upstream."""
+import argparse
+import ast
+from pathlib import Path
+import re
+import struct
+import tempfile
+import harness
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def tables(data):
+    count = int.from_bytes(data[4:6], 'big')
+    result = {}
+    for i in range(count):
+        tag, _, offset, length = struct.unpack_from('>4sIII', data, 12 + i * 16)
+        result[tag] = data[offset:offset + length]
+    return result
+
+
+def sfnt(records):
+    out = bytearray(struct.pack('>IHHHH', 0x10000, len(records), 0, 0, 0)
+                    + bytes(16 * len(records)))
+    for i, (tag, value) in enumerate(sorted(records.items())):
+        struct.pack_into('>4sIII', out, 12 + i * 16, tag, 0, len(out), len(value))
+        out.extend(value)
+        out.extend(bytes(-len(out) % 4))
+    return bytes(out)
+
+
+def fixtures():
+    source = (ROOT / 'packages/read_fonts/src/generated_model_fixtures.silk').read_text()
+    seeds = {}
+    for name, literal in re.findall(r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source):
+        data = ast.literal_eval(literal)
+        if name.endswith('DrawnBounds'):
+            continue
+        if name == 'postSimple':
+            data = sfnt({b'post': data, b'maxp': struct.pack('>IH', 0x5000, 7)})
+        seeds[name] = data
+        yield name, data
+    # Withholding a whole table forces the next real model source to answer.
+    for name in ('tinos', 'vazirmatn', 'mplusVertical', 'negativeVarAdvances', 'verticalCff2'):
+        records = tables(seeds[name])
+        for hidden in [(b'HVAR',), (b'VVAR',), (b'HVAR', b'VVAR'),
+                       (b'hmtx',), (b'vmtx',), (b'hhea', b'OS/2'),
+                       (b'glyf', b'loca'), (b'post',)]:
+            if not any(tag in records for tag in hidden):
+                continue
+            yield name + '-without-' + '-'.join(t.decode().replace('/', '_') for t in hidden), sfnt(
+                {tag: value for tag, value in records.items() if tag not in hidden})
+        for tag in (b'hmtx', b'vmtx', b'HVAR', b'VVAR', b'MVAR', b'gvar', b'VORG'):
+            if tag not in records:
+                continue
+            value = records[tag]
+            for cut in sorted({0, min(2, len(value)), min(4, len(value)), len(value) - 1}):
+                yield f'{name}-{tag.decode()}-prefix-{cut}', sfnt({**records, tag: value[:cut]})
+    # The stored em and line signs are normalized by the global model.
+    records = tables(seeds['tinos'])
+    for em in (0, 15, 16, 1000, 16384, 16385, 65535):
+        head = bytearray(records[b'head'])
+        struct.pack_into('>H', head, 18, em)
+        yield f'tinos-em-{em}', sfnt({**records, b'head': head})
+    for ascender, descender in ((1600, -400), (1600, 400), (-1600, 400), (-1600, -400)):
+        hhea = bytearray(records[b'hhea'])
+        struct.pack_into('>hh', hhea, 4, ascender, descender)
+        yield f'tinos-line-{ascender}-{descender}', sfnt(
+            {tag: hhea if tag == b'hhea' else value for tag, value in records.items() if tag != b'OS/2'})
+    variable = tables(seeds['verticalCff2'])
+    variable[b'VORG'] = tables(seeds['vorgFont'])[b'VORG']
+    yield 'combined-VORG-VVAR', sfnt(variable)
+    # Empty, invalid UTF-8 and overlong post names exercise both inline names and
+    # exact full-name reverse lookup, including duplicate first-glyph selection.
+    for label, names in [('duplicate', [b'alpha', b'alpha']),
+                         ('long', [b'x' * 80, b'x' * 63]),
+                         ('utf8', [b'\xc3\xa9' * 40, b'\xff']),
+                         ('empty', [b'', b'valid'])]:
+        post = struct.pack('>I', 0x20000) + bytes(28) + struct.pack('>HHH', 2, 258, 259)
+        post += b''.join(bytes([len(name)]) + name for name in names)
+        yield 'post-' + label, sfnt({b'post': post, b'maxp': struct.pack('>IH', 0x5000, 2)})
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--reference', type=Path, default=harness.REFERENCE)
+    parser.add_argument('--silk-dumper', type=Path)
+    parser.add_argument('--report', type=Path)
+    args = parser.parse_args()
+    with tempfile.TemporaryDirectory(prefix='font-model-fixtures-') as temporary:
+        paths = []
+        for name, data in fixtures():
+            path = Path(temporary) / f'{name}.ttf'
+            path.write_bytes(data)
+            paths.append(path)
+        assert len(paths) == len(set(paths)), 'fixture names must be unique'
+        return harness.compare(paths, args.reference, args.silk_dumper or harness.silk_binary(), 120, args.report)
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

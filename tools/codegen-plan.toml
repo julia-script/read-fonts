@@ -151,7 +151,7 @@ mode = "silk-parse"
 source = "upstream/resources/codegen_inputs/layout.rs"
 target = "packages/read_fonts/src/generated_layout.silk"
 facade = "packages/read_fonts/src/tables/layout.silk"
-extensions = ["packages/read_fonts/src/tables/layout_impl.silk", "packages/read_fonts/src/tables/layout_algorithms.silk", "packages/read_fonts/src/tables/layout_scripts.silk", "packages/read_fonts/src/tables/layout_conditions.silk", "packages/read_fonts/src/tables/layout_feature_variations.silk"]
+extensions = ["packages/read_fonts/src/tables/layout_impl.silk", "packages/read_fonts/src/tables/layout_algorithms.silk", "packages/read_fonts/src/tables/layout_intersections.silk", "packages/read_fonts/src/tables/layout_scripts.silk", "packages/read_fonts/src/tables/layout_conditions.silk", "packages/read_fonts/src/tables/layout_feature_variations.silk"]
 
 [[generate]]
 mode = "silk-parse"

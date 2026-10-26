@@ -20,10 +20,12 @@ mod extensions_kern;
 mod extensions_kerx;
 mod extensions_metric_variations;
 mod extensions_metrics;
+mod extensions_model;
 mod extensions_mort;
 mod extensions_morx;
 mod extensions_name;
 mod extensions_post;
+mod extensions_sets;
 mod generated_dump_aat;
 mod generated_dump_ankr;
 mod generated_dump_cff;
@@ -95,6 +97,7 @@ fn dump_font(
     index: usize,
     font: FontRef<'_>,
     include_tables: bool,
+    data: &[u8],
 ) -> io::Result<()> {
     dump_support::reset();
     let prefix = format!("font[{index}]");
@@ -167,6 +170,7 @@ fn dump_font(
         extensions_aat_misc::dump(out, &prefix, &font)?;
         extensions_metric_variations::dump(out, &prefix, &font)?;
         extensions_cff::dump(out, &prefix, &font)?;
+        extensions_model::dump(out, &prefix, data, index as u32)?;
     }
     Ok(())
 }
@@ -177,7 +181,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=6\ndump.scope=cff-tables"
+        "font-dump.version=7\ndump.scope=model-apis"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -211,7 +215,7 @@ fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> 
     }
     for (index, font) in file.fonts().enumerate() {
         match font {
-            Ok(font) => dump_font(out, index, font, include_tables)?,
+            Ok(font) => dump_font(out, index, font, include_tables, data)?,
             Err(err) => writeln!(out, "font[{index}].error={}", error(err))?,
         }
     }
@@ -226,12 +230,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 6: core, layout, variation, AAT and CFF tables, glyph data and evaluated helpers."
+            "usage: rust-font-dump FONT\nDump format 7: core, layout, variation, AAT and CFF tables plus model APIs."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 6; cff-tables scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 7; model-apis scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

@@ -584,3 +584,154 @@ Complete per-font observations and matching binary hashes are saved in
 Compressed reports retain every observation, including malformed dictionary errors.
 Milestones **0–6 pass**; **7 is next**, followed by malformed-input parity and
 Phase 2/speed comparison. The full port remains in progress.
+
+## Session 29 — 2026-10-26 — sparse-set bit pages
+
+All **27 upstream BitPage tests** pass, including bit scans, forward/reverse
+iteration, insertion/removal across word boundaries, range coalescing, set
+operations, hashing and cached lengths. Totals are **473 read_fonts tests**, **64
+font_types tests**, and **521 upstream ports**. Stdlib gap 004 records the missing
+integer bit counts and local workaround. U32Set, invertible IntSet and the model
+subset remain in progress; the M7 gate has not been claimed. M6's final CI is
+running on PR #7 while this work proceeds from its passing local gate.
+
+## Session 30 — 2026-10-26 — U32Set
+
+All **36 upstream U32Set tests** pass. The complete suite passes **509 read_fonts
+tests**, with **64 font_types tests** and **557 upstream ports**. The library
+build passes. Tests cover ordered and mixed-direction iteration, coalesced ranges,
+full-u32 boundaries, set operations, emptied pages, insertion order, lookup order,
+hashing, subset checks and intersection counts. Invertible IntSet, sparse encoding,
+deferred layout intersections and model APIs remain pending for M7.
+
+## Session 31 — 2026-10-26 — invertible integer sets
+
+All **45 IntSet tests** independent of sparse decoding pass, including normal and
+inverted membership, domain boundaries, mixed-direction iteration, ranges, set
+operations, subset checks, ordering, equality and hashing. Totals are **554
+read_fonts tests**, **64 font_types tests**, and **602 upstream ports**. The last
+IntSet test awaits sparse decoding. Compiler bug 007 has a minimal reproducer;
+putting the domain bound on cursor methods avoids the unsupported interface
+result without modifying the compiler. M6 PR #7 is merged after successful CI.
+The M7 sparse encoding, deferred layout intersections and model gate remain.
+
+## Session 32 — 2026-10-26 — complete integer-set serialization
+
+All **10 input-stream**, **6 output-stream**, **22 sparse-set**, and the final
+**1 IntSet sparse-decoding** tests pass. Totals are **593 read_fonts tests**,
+**64 font_types tests**, and **641 upstream ports**. The entire integer-set test
+suite is ported, including exact encoded bytes, all four branch factors, filled
+nodes, bias, bounds, remaining input, size limits and values beyond u32. The M7
+layout intersections and model unit/differential gate remain pending.
+
+## Session 33 — 2026-10-26 — deferred layout intersections
+
+All **7 IntSet-dependent layout tests** deferred from M3 pass. Coverage and class
+intersections are generated with the handwritten extensions, including narrow
+and wide formats, empty tables and truncated class arrays. Totals are **600
+read_fonts tests**, **64 font_types tests**, and **648 upstream ports**. Library
+build and 102-file regeneration pass. M7's model subset and differential gate
+are next; this is not yet a completed M7 gate.
+
+## Session 34 — 2026-10-26 — model byte ownership and table access
+
+Blob, TableFunction, Tables and Variation build with **604 read_fonts tests** and
+**64 font_types tests** passing. Two complete upstream model table tests cover
+unsorted directories and callback byte parity, bringing the upstream-port count
+to **650**. Two additional checks cover raw missing tables and repeated validation
+errors. The upstream missing-tables test's CBDT/DSIG typed assertions remain for
+Phase 2; its CFF assertion already passes. Model table forwarding covers all
+**64 catalog tags** and the **48 currently supported typed methods**.
+
+PR #8 is a draft. Charmap, glyph names, glyph/scaled metrics and the M7 differential
+gate remain in progress. Eager callback snapshots, copied owned blobs and repeated
+validation are documented ownership adaptations; no compiler change was needed.
+
+## Session 35 — 2026-10-26 — model glyph names
+
+All **10 in-scope upstream glyph-name tests** pass. Totals are **614 read_fonts
+tests**, **64 font_types tests**, and **660 upstream ports**. Tests cover post/CFF
+lookup and iteration, partial/bad post entries, CID synthesis, character-boundary
+truncation, full-name reverse lookup and absent name tables. The separate Type 1
+test and Type 1 branch of a mixed test are outside scope. A fixture generator bug
+that skipped a one-digit hex literal was fixed in the generator; no parser change
+was needed. Library build passes. Charmap and glyph/scaled metrics remain for M7.
+
+## Session 36 — 2026-10-26 — model charmap
+
+All **16 in-scope charmap tests** pass, including the callback-cache test adapted
+to the documented eager snapshot ownership model. Totals are **630 read_fonts
+tests**, **64 font_types tests**, and **676 upstream ports**. Tests cover scalar
+and cached batches, large forward/reverse inputs, individual encoding identity,
+DMAP overrides, format 14/15 variants, symbol fallback, Mac Roman conversion,
+format-0 iteration and standalone/CID CFF without AGL. The two Type 1-only tests
+are excluded. Compiler bug 008 records a minimal rejected generic unsafe drop;
+an intermediate binding works. Glyph/scaled metrics and the differential model
+gate remain for M7; M8–M9 have not started.
+
+## Session 37 — 2026-10-26 — glyph metrics and scaling foundation
+
+The complete suite passes **650 read_fonts tests** and **64 font_types tests**.
+The new tests comprise all **16 in-scope global-metrics tests**, **2 glyph-metrics
+tests**, and **2 scaled-metrics tests**, bringing the upstream-port count to
+**696**. Global tests cover line choice, signs, missing tables, em normalization
+and MVAR precision; initial glyph checks cover out-of-range advances, moving
+variable ink, scaled advances and halving. The Type 1 global test is excluded.
+
+Glyph/scaled metrics, explicit static conversion callbacks and an unhinted glyf
+loader now build. The loader reuses gvar interpolation, preserves composite
+metrics/transforms and bounds its traversal. Floating-point interpolation no
+longer incorrectly requires a total ordering. Data and coordinate lifetimes are
+separate. Generator drift passes. Remaining glyph/scaled unit tests, the M7
+model/intersection dump protocol and differential corpus gate are still pending;
+bitmap/color/VARC model coverage follows their Phase 2 parsers. M8–M9 have not
+started, and no completion of M7 is claimed.
+
+## Session 38 — 2026-10-26 — Phase 1 model metrics unit gate
+
+The complete suite passes **719 read_fonts tests** and **64 font_types tests**,
+with **765 upstream ports**. This checkpoint adds **39 glyph-metrics tests**,
+**25 scaled-metrics tests** and **5 glyph-source-order tests**. The totals for
+those areas are now 41 glyph tests and 27 scaled tests. All in-scope Phase 1
+model unit tests are ported; the six lazy-cache tests assert the corresponding
+eager-snapshot behavior documented in PORTING.md.
+
+Tests cover extended glyph IDs, long-metric tails, missing metrics, HVAR/VVAR
+versus gvar phantom deltas, negative/fractional advances, altered/truncated side
+bearings, empty and absent ink, all outline-source batches, custom scales and
+extents providers, VORG precedence, vertical phantoms and line centering. The
+public metric constructor now collapses all-zero coordinates to the default
+location. Three generated expectation blobs run the pinned Rust drawing paths
+for the varied-glyf and CFF/CFF2 bounds tests; every fixture glyph is compared.
+Generator drift and Rust all-target clippy pass; 33 model fixtures are generated.
+
+Five Type 1 glyph tests and two tests of the unrequested ScaledMetrics/style
+facade are outside scope. Ten bitmap/color/VARC glyph tests, one bitmap-scale
+test and one narrow-source conversion test follow their Phase 2 dependencies.
+The M7 format-7 model/intersection dump and corpus comparisons remain pending;
+PR 8 stays a draft. M8–M9 have not started, and the overall port is not complete.
+
+## Session 39 — 2026-10-26 — milestone 7 local gate complete
+
+Format 7 compares public Tables, Charmap, glyph names and reverse lookup, global
+and glyph metrics, F32/26.6 scales, extents at four normalized locations, and
+Coverage/ClassDef integer-set intersections. Debug and release both match all
+**566 corpus fonts** and **154 focused model fixtures**, with no differing lines.
+The complete unit suite remains **719 read_fonts tests**, **64 font_types tests**,
+and **765 upstream ports**.
+
+All prior focused debug gates pass: 426 containers, 500 core tables, 2,650 layout,
+2,882 variations, 8,551 AAT and 9,146 CFF fixtures. Release AAT and CFF gates also
+pass. Generation drift (102 outputs and 33 model fixtures), Rust formatting,
+10 generator tests, 7 reference tests, all-target Clippy and 15 Python tests pass.
+
+The initial debug corpus run matched 429 fonts before the 65,535-glyph FDArray
+font exceeded its 120-second process limit. The remaining 137 matched with a
+600-second limit. The combined debug report verifies every input/binary hash and
+records that provenance; the release run completed all 566 uninterrupted. CI
+will rerun the full corpus from the beginning with the longer timeout.
+
+Evidence: reports/milestone-7-model.json, milestone-7-release-model.json,
+milestone-7-model-fixtures.json and milestone-7-release-model-fixtures.json.
+PR #8 is ready for CI review. M8 malformed-input campaigns and M9 Phase 2 tables
+and performance remain; the overall port is not yet complete.

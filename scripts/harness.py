@@ -22,7 +22,7 @@ CORPUS_ROOTS = (
 # Unsupported containers are still oracle inputs: their upstream errors are observations.
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc", ".dfont", ".woff", ".woff2"}
 FONT_MAGIC = {b"\0\1\0\0", b"OTTO", b"true", b"ttcf"}
-HEADER = b"font-dump.version=6\ndump.scope=cff-tables\n"
+HEADER = b"font-dump.version=7\ndump.scope=model-apis\n"
 REFERENCE = ROOT / "build/rust/debug/rust-font-dump"
 
 
@@ -180,7 +180,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             report.parent.mkdir(parents=True, exist_ok=True)
             report.write_text(json.dumps({
                 "summary": {
-                    "format_version": 6, "scope": "cff-tables", "fonts_total": len(fonts),
+                    "format_version": 7, "scope": "model-apis", "fonts_total": len(fonts),
                     "completed": sum(item["status"] in ("match", "difference") for item in observations),
                     "matched": sum(item["status"] == "match" for item in observations),
                     "differences": sum(item["status"] == "difference" for item in observations),
@@ -228,7 +228,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
         )
         if difference is not None:
             return finish(1)
-    print(f"MATCH: {len(fonts)} fonts; format 6, CFF table scope")
+    print(f"MATCH: {len(fonts)} fonts; format 7, model API scope")
     return finish(0)
 
 
@@ -254,7 +254,7 @@ def verify(fonts: list[Path], inventory: list[dict], reference: Path,
             failures.append({"font": name, "error": str(error)})
             print(f"FAIL: {name}: {error}", file=sys.stderr)
     summary = {
-        "format_version": 6, "scope": "cff-tables", "fonts_total": len(fonts),
+        "format_version": 7, "scope": "model-apis", "fonts_total": len(fonts),
         "completed": len(results), "process_failures": len(failures),
         "faces_ok": totals["faces_ok"], "parse_error_records": totals["parse_error_records"],
         "missing_table_lookups": totals["missing_table_lookups"],

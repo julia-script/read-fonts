@@ -334,3 +334,136 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   CFF fixture evidence is gzip-compressed because malformed top-DICT counts can
   produce JSON reports larger than GitHub's per-file limit; no observations are
   removed from those reports.
+
+## Milestone 7
+
+- Integer-set pages retain eight u64 words, cached membership counts, modulo-512
+  indexing and ordered bidirectional iteration. Iterator structs expose `next`
+  and `nextBack`; inclusive ranges use `U32Range { first, last }`. Local bit-count
+  helpers fill stdlib gap 004. The reserved method name `union` is `unionValue`,
+  consistent with the earlier flag types. Silk HashKey hashing preserves equality
+  and ignores cached counts; its hash bytes are specific to Silk's hasher.
+- U32Set retains separate page storage and its sorted page map. Shared lookups
+  binary-search the map instead of updating Rust's atomic last-page hint; bulk
+  insertion retains a local last-page cache. Set operations merge into fresh
+  storage, then replace the receiver, rather than compacting it in place. This
+  preserves membership, ordering and empty-page behavior while leaving the old
+  set intact if allocation fails. Allocation is an explicit effect. Slice-based
+  `fromValues`/`extend` and named cursors replace Rust's iterator/collect contracts.
+- IntSet keeps inclusive/exclusive membership and exposes concrete cursors for
+  domain values, members and ranges. Domain adds inclusive `nextFrom` and
+  `previousFrom` operations to implement Rust's opaque iterators without scanning
+  gaps in discontinuous domains. `Bound<T>` and `IntRange<T>` name range arguments
+  and results. Equal mixed-membership sets hash their logical ranges identically.
+  DomainValues carries no storage bound because compiler bug 007 rejects a
+  bounded `Self` result in an interface; its consuming methods enforce Domain.
+- Sparse bit streams use a validated BranchFactor enum instead of const-generic
+  numeric branch factors. `toSparseBitSetWithBf` takes that enum, and
+  `DecodedSparseSet { set, remaining }` names the bounded decoder's pair result.
+  Decode errors remain Result values; allocation failures are a separate effect.
+  A List with a front cursor replaces VecDeque; decoding preserves breadth-first
+  order, early-bound skipping, exact remaining bytes, size limits and encoding
+  tie order. Wide intermediate arithmetic avoids malformed-count overflow.
+- Coverage and class intersections retain upstream search heuristics, overlap
+  stopping rules, short-array handling and class-zero behavior, including the
+  distinctions between `intersectedClassGlyphs` and `intersectsClassGlyphs`.
+  Allocating intersections use effects; the general ClassDef boolean query also
+  needs the allocator because upstream computes a set for wide class formats.
+  The coverage heuristic uses explicit wrapping arithmetic for Rust's u32 cast
+  and product. Range iteration and absent-class decisions preserve full glyph IDs.
+- Blob provides static and owned byte storage. Owned clones copy their bytes:
+  Silk Shared only lends data inside callbacks, so it cannot back escaping
+  zero-copy table views. TableFunction uses a static TableCallback interface and
+  snapshots the upstream tag catalog eagerly, once per tag. Tables owns blobs
+  and checked byte ranges; TablesView supplies the borrowed TableProvider.
+- Typed model table access reparses immutable bytes and maps parse failures to
+  ValidationError, preserving missing-table errors. It has no interior-mutability
+  validation flag. Raw named accessors preserve table bytes, while the generic
+  TableProvider dataForTag remains absent as upstream. The model forwarding
+  generator derives methods from the current provider and raw tags from the
+  pinned upstream catalog; Phase 2 adds typed accessors with its parsers.
+- Tables.new takes a Blob; fromTableFunction accepts an already resolved
+  snapshot. These explicit constructors replace Rust's Into<Source> conversion.
+  Variation.fromString replaces the string/tag pair conversion and keeps the
+  upstream invalid-tag fallback. Allocation in model ownership is an effect.
+- GlyphName keeps 63 inline UTF-8 bytes and its source. GlyphNameMap is an
+  explicit provider-backed view for lookup and iteration, with a fromCff
+  constructor for standalone CFF; it replaces the omitted full Font facade's
+  name cache. GlyphNameIndex owns packed full names and byte ranges, so it has
+  no self-reference. Construction sorts temporary borrowed entries before
+  packing them; reverse lookup still chooses the first glyph with an exact
+  stored name and never indexes synthesized names. Type 1 name tests remain
+  outside the requested SFNT/CFF scope.
+- Charmap is an explicit provider-backed view with a standalone-CFF constructor.
+  It eagerly selects Unicode/variation subtables and retains borrowed raw views
+  for individual encoding records. Those records and DMAP matches are resolved
+  on request instead of storing a second allocated cache. Copied cursors borrow
+  the font bytes, not the temporary facade. Eager TableFunction snapshots replace
+  the upstream callback-cache test's lazy timing and full Font instances.
+- Batched Unicode lookup accepts input/output slices and processes their shorter
+  length, matching the upstream zipped iterator. Format 4/12 batches retain the
+  preceding segment/group; all outputs after a miss are still written. Encoding
+  keys preserve the 12-byte representation and distinct record identities.
+- Unicode lookup and individual encoding lookup retain their different DMAP,
+  symbol, Mac Roman and variation-selector rules. The pinned upstream individual
+  format-0 encoding cursor appends a second scan after its generic iterator;
+  the port preserves those repeated codes. Unicode iteration lists them once.
+  Standalone CFF retains native encodings; glyph-name Unicode mapping is absent
+  because AGL is explicitly excluded. Type 1-only tests remain out of scope.
+- Metrics, GlyphMetrics and scaled metrics use explicit provider/coordinate
+  constructors. Immutable table views are captured once per GlyphMetrics value;
+  this replaces the full Font model's lazy caches. The base horizontal line is
+  read without variation deltas for phantom-point setup, while the instance line
+  retains MVAR fractions. Font-data, coordinate and supplied-extents borrows have
+  separate lifetimes, including MvarInstance's data and coordinate lifetimes.
+- The unhinted glyph loader ports the outline survey, floating-point simple and
+  composite loading, phantom points, component transforms and point anchors used
+  by metrics. It retains upstream recursion, point and component-edge limits.
+  Owned Lists replace the packed scratch allocation; allocation is an explicit
+  effect, and malformed outlines leave extents unavailable. No TrueType hinter
+  or full public drawing facade is added by this dependency subset.
+- PointCoord now supplies comparisons for variation interpolation. Requiring
+  Silk's total Order interface excluded f32; concrete comparisons preserve Rust's
+  floating-point behavior without adding an invalid total-order conformance.
+  Composite offset magnitudes use the platform hypotf, as Rust's f32::hypot does.
+- Scale takes an explicit numeric result parameter instead of an associated type.
+  ScaledGlyphMetrics carries its static scale and extents-provider types;
+  withGlyphExtents can borrow a provider for one query. MetricConverter replaces
+  closure arguments in batches, with IdentityConverter for unchanged values.
+  Batches process the shorter glyph/output slice. GlyphExtents.fromBounds uses a
+  static ExtentsCoord contract so float and fixed coordinates retain their own
+  comparison and subtraction behavior.
+- Bitmap/COLR/VARC extents and their dependent model tests remain scheduled with
+  their Phase 2 parsers. Their source-order entries already retain upstream
+  ordering; the current implementation resolves the Phase 1 outline sources.
+  The Phase 1 glyph/scaled unit tests are complete; the differential gate is
+  recorded separately in PROGRESS.md.
+- Public GlyphMetrics constructors collapse an all-zero coordinate slice to an
+  empty borrowed view, matching the model instance builder's default-instance
+  semantics. Callers still supply normalized coordinates explicitly; this subset
+  does not introduce the full Font/InstanceBuilder or style-metrics facade.
+- Six metrics cache tests are adapted to eager views: construction captures the
+  needed views, default locations request no variation tables, and copied or
+  repeatedly queried metrics do not call the provider again. Nondefault views
+  may read gvar/glyf/loca even when HVAR/VVAR answers the subsequent query.
+  The callback-backed Tables test verifies each extended raw table is supplied
+  once; the eager raw-tag catalog also queries legacy tags, unlike upstream's
+  demand-driven cache. Parsed values and extended-table precedence are unchanged.
+- The two drawing-based glyph-metrics tests use generated expectations from the
+  pinned Rust drawing paths. This independently checks every fixture glyph's
+  box without adding the full glyf path-drawing API. The generator rebuilds and
+  reruns the reference fixture binary, so --check detects expectation drift.
+  The CFF/CFF2 drawing implementation itself retains its existing Silk tests.
+- The scaled global/style facade is outside the requested GlyphMetrics/
+  ScaledGlyphMetrics subset. Its all-fields and clipping-line tests are excluded;
+  global line-end scaling is tested directly with a custom rounding Scale, and
+  agrees with the vertical advance chosen by ScaledGlyphMetrics.
+
+- Format 7 appends public model observations and layout IntSet intersections to
+  the complete existing table dump. Glyph helpers retain the explicit sfnt-domain
+  bound and also probe the last declared glyph and invalid IDs; mapping cursors
+  have a stated Unicode-domain count bound. Fixed and floating-point values use
+  raw bits. Both models read the same whole font/collection through Tables.
+- Layout intersection observations run once per concrete graph node. Their
+  short-lived allocator is local to the dump adapter; allocation failure becomes
+  a dumper failure through WriterError. Public parser/IntSet effects are unchanged.

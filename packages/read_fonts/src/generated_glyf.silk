@@ -500,26 +500,41 @@ pub interface PointCoord {
   fn fromI32(value: i32) -> Self
   fn toF32(value: Self) -> f32
   fn midpoint(value: Self, other: Self) -> Self
+  fn lessEqual(left:Self,right:Self) -> bool
+  fn greaterEqual(left:Self,right:Self) -> bool
+  fn greater(left:Self,right:Self) -> bool
 }
 impl PointCoord for Fixed {
+  fn lessEqual(left:Self,right:Self) -> bool { return &left<= &right }
+  fn greaterEqual(left:Self,right:Self) -> bool { return &left>= &right }
+  fn greater(left:Self,right:Self) -> bool { return &left> &right }
   fn fromFixed(value: Fixed) -> Self { return value }
   fn fromI32(value: i32) -> Self { return Fixed.fromI32(value) }
   fn toF32(value: Self) -> f32 { return Fixed.toF32(value) }
   fn midpoint(value: Self, other: Self) -> Self { return Fixed.fromBits(i32.wrappingAdd(Fixed.toBits(value), Fixed.toBits(other)) / 2) }
 }
 impl PointCoord for F26Dot6 {
+  fn lessEqual(left:Self,right:Self) -> bool { return &left<= &right }
+  fn greaterEqual(left:Self,right:Self) -> bool { return &left>= &right }
+  fn greater(left:Self,right:Self) -> bool { return &left> &right }
   fn fromFixed(value: Fixed) -> Self { return Fixed.toF26dot6(value) }
   fn fromI32(value: i32) -> Self { return F26Dot6.fromI32(value) }
   fn toF32(value: Self) -> f32 { return F26Dot6.toF32(value) }
   fn midpoint(value: Self, other: Self) -> Self { return F26Dot6.fromBits(i32.wrappingAdd(F26Dot6.toBits(value), F26Dot6.toBits(other)) / 2) }
 }
 impl PointCoord for i32 {
+  fn lessEqual(left:Self,right:Self) -> bool { return left<=right }
+  fn greaterEqual(left:Self,right:Self) -> bool { return left>=right }
+  fn greater(left:Self,right:Self) -> bool { return left>right }
   fn fromFixed(value: Fixed) -> Self { return Fixed.toI32(value) }
   fn fromI32(value: i32) -> Self { return value }
   fn toF32(value: Self) -> f32 { return i32.toF32(value) }
   fn midpoint(value: Self, other: Self) -> Self { return i32.wrappingAdd(value, other) / 2 }
 }
 impl PointCoord for f32 {
+  fn lessEqual(left:Self,right:Self) -> bool { return left<=right }
+  fn greaterEqual(left:Self,right:Self) -> bool { return left>=right }
+  fn greater(left:Self,right:Self) -> bool { return left>right }
   fn fromFixed(value: Fixed) -> Self { return Fixed.toF32(value) }
   fn fromI32(value: i32) -> Self { return i32.toF32(value) }
   fn toF32(value: Self) -> f32 { return value }
@@ -759,3 +774,7 @@ impl PointFrom<F26Dot6> for F26Dot6 { fn fromCoordinate(value: F26Dot6) -> Self 
 impl PointFrom<f32> for f32 { fn fromCoordinate(value: f32) -> Self { return value } }
 impl PointFrom<i32> for Fixed { fn fromCoordinate(value: i32) -> Self { return Fixed.fromI32(value) } }
 pub fn convertPointCoord<C, D: PointFrom<C>>(value: C) -> D { return PointFrom<C>.fromCoordinate(move value) }
+
+pub fn coordLessEqual<C:PointCoord>(left:C,right:C) -> bool { return PointCoord.lessEqual(move left,move right) }
+pub fn coordGreaterEqual<C:PointCoord>(left:C,right:C) -> bool { return PointCoord.greaterEqual(move left,move right) }
+pub fn coordGreater<C:PointCoord>(left:C,right:C) -> bool { return PointCoord.greater(move left,move right) }

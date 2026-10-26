@@ -343,3 +343,27 @@ import cff_dict_tests
 import cff_font_tests
 
 import ps.charstring
+
+import collections.int_set.bitpage_tests
+
+import collections.int_set.bitset_tests
+
+import collections.int_set.intset_tests
+
+import collections.int_set.stream_tests
+
+import collections.int_set.sparse_tests
+
+import layout_set_tests
+
+import model_tables_tests
+
+import model_glyph_name_tests
+
+import model_charmap_tests
+import model_global_metrics_tests
+import model_metrics_tests
+
+import model_scaled_metrics_tests
+
+import model_glyph_source_tests
