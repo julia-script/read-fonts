@@ -54,7 +54,7 @@ pub fn expertCharset(subset: bool, index: usize) -> Option<u16> {
   return readScalar<u16>(Slice.view<u8>(data, index * 2, 2))
 }
 '''
-target = ROOT / 'packages/read_fonts/src/generated_ps_data.silk'
+target = ROOT / 'read_fonts/src/generated_ps_data.silk'
 if args.check:
     if not target.exists() or target.read_text() != out:
         parser.exit(1, 'Generated PostScript data differs\n')

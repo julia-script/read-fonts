@@ -15,7 +15,7 @@ sfnt, tables = helpers['sfnt'], helpers['tables']
 
 
 def fixtures():
-    source = (ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk').read_text()
+    source = (ROOT / 'read_fonts/src/generated_phase2_fixtures.silk').read_text()
     packed = {name: ast.literal_eval(literal) for name, literal in re.findall(
         r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source)}
     seeds = {b'MATH': packed['mathTable'], b'BASE': packed['baseTable'], b'meta': packed['simpleMeta'],

@@ -10,9 +10,9 @@ Silk packages `font_types` and `read_fonts` that parse the same fonts the same w
 
 Create a new repo (working name `fontations-silk`) as a Silk workspace (`silk init --workspace`, then `silk init packages/<name> --lib`):
 
-- `packages/font_types`: port of `font-types` (GlyphId, GlyphId16, Tag, Fixed, F2Dot14, F26Dot6, Uint24, Offset16/24/32, MajorMinor, LongDateTime, BigEndian reads, BoundingBox, Point, etc.).
-- `packages/read_fonts`: the parser.
-- `packages/font_dump`: a binary that prints every field of every supported table of a font in a stable text format.
+- `font_types`: port of `font-types` (GlyphId, GlyphId16, Tag, Fixed, F2Dot14, F26Dot6, Uint24, Offset16/24/32, MajorMinor, LongDateTime, BigEndian reads, BoundingBox, Point, etc.).
+- `read_fonts`: the parser.
+- `font_dump`: a binary that prints every field of every supported table of a font in a stable text format.
 - `tools/font-codegen-silk/`: fontations' `font-codegen` crate, copied, with a new mode that emits Silk (see below).
 - `upstream/`: fontations vendored at a fixed commit, read only.
 - `scripts/`: harness tools, including a small Rust dumper built against upstream read-fonts that prints the same format as `font_dump`.
@@ -38,7 +38,7 @@ Clone https://github.com/silk-lang/silk read only. Read `reference/index.md`, th
 About 62,000 lines of read-fonts are generated (`read-fonts/generated/*.rs`) by `font-codegen` from compact table descriptions in `resources/codegen_inputs/*.rs`, driven by `resources/codegen_plan.toml`. Port the generator, not its output:
 
 1. Copy `font-codegen` into `tools/font-codegen-silk/` and add a `silk-parse` mode next to the existing `parse` mode. It reuses the existing input parser and emits Silk: one table struct per table holding the borrowed bytes plus precomputed offsets of variable-length fields, accessor functions per field, offset resolution returning typed tables, format groups as nominal unions, flags and enums as Silk equivalents, records and arrays as zero-copy views.
-2. Generate `packages/read_fonts/src/generated_*.silk` with it. Never edit generated files; fix the generator.
+2. Generate `read_fonts/src/generated_*.silk` with it. Never edit generated files; fix the generator.
 3. Hand-port the hand-written parts of read-fonts: `font_data.rs`, `read.rs`, `offset.rs`, `array.rs`, `table_provider.rs`, `table_ref.rs`, the extension code in `src/tables/*.rs`, `collections/int_set`, and (later) `model/` and `ps/`.
 
 Settle the generated shape on three tables first (head, maxp, cmap), review it against the reference, then generate the rest.

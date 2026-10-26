@@ -29,7 +29,7 @@ def name_table(records, storage):
 def fixtures():
     # Original cmap fixtures retained in the Silk test port, including format 15,
     # overlapping groups, invalid offsets and default/non-default UVS budgets.
-    source = (ROOT / 'packages/read_fonts/src/cmap_tests.silk').read_text()
+    source = (ROOT / 'read_fonts/src/cmap_tests.silk').read_text()
     containers = {'vazirmatn', 'simple', 'font6', 'font10', 'font12', 'font14',
                   'vorg', 'symbol', 'format0', 'format6Small', 'prefer15a', 'prefer15b'}
     for name, literal in re.findall(r"fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source):

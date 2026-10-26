@@ -22,7 +22,7 @@ for symbol,name,filename in [('NOTO_SERIF_DISPLAY_TRIMMED','notoSerif','lib.rs')
         tag,_,offset,length=struct.unpack_from('>4sIII',data,12+i*16)
         if tag in (b'CFF ',b'CFF2'):
             add(name+'Table',data[offset:offset+length])
-path=ROOT/'packages/read_fonts/src/generated_cff_fixtures.silk'
+path=ROOT/'read_fonts/src/generated_cff_fixtures.silk'
 if '--check' in sys.argv:
     if not path.exists() or path.read_text()!=out:
         raise SystemExit('CFF fixtures differ')

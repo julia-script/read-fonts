@@ -31,7 +31,7 @@ def sfnt(records):
 
 
 def fixtures():
-    source = (ROOT / 'packages/read_fonts/src/generated_model_fixtures.silk').read_text()
+    source = (ROOT / 'read_fonts/src/generated_model_fixtures.silk').read_text()
     seeds = {}
     for name, literal in re.findall(r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source):
         data = ast.literal_eval(literal)
@@ -83,7 +83,7 @@ def fixtures():
 
     # Full source selection needs real outlines underneath color, bitmap and
     # variable-composite tables, including missing-table fallbacks.
-    phase_source = (ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk').read_text()
+    phase_source = (ROOT / 'read_fonts/src/generated_phase2_fixtures.silk').read_text()
     phase = {name: ast.literal_eval(literal) for name, literal in re.findall(
         r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", phase_source)}
     for name in ('colrInvalidCubicFont', 'colrValidCubicFont'):

@@ -25,7 +25,7 @@ for name in ('notoserifhebrew_autohint_metrics', 'cantarell_vf_trimmed', 'materi
     function = 'font' + ''.join(part.title() for part in name.split('_')) + 'Gsub'
     packed = ''.join(f'\\x{v:02x}' for v in payload)
     out += f'pub fn {function}() -> &\'static [u8] {{ return b"{packed}" }}\n'
-target = root / 'packages/read_fonts/src/generated_layout_fixtures.silk'
+target = root / 'read_fonts/src/generated_layout_fixtures.silk'
 if '--check' in sys.argv:
     if not target.exists() or target.read_text() != out:
         raise SystemExit('Layout fixtures differ')

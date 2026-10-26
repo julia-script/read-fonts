@@ -6,8 +6,8 @@ kind = "library"
 exports = []
 
 [dependencies]
-font_types = { path = "packages/font_types" }
-read_fonts = { path = "packages/read_fonts" }
+font_types = { path = "font_types" }
+read_fonts = { path = "read_fonts" }
 
 [workspace]
-members = ["packages/font_types", "packages/read_fonts", "packages/font_dump"]
+members = ["font_types", "read_fonts", "font_dump"]
