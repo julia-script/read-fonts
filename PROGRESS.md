@@ -559,3 +559,28 @@ The public PostScript facades and fixture runner are added, and CI now includes
 CFF fixtures in debug and release. Unit counts remain **446 read_fonts**, **64
 font_types**, and **494 upstream ports**. Full expanded corpus, mutation and
 release checks are running; M6 remains in progress until those finish.
+
+## Session 28 — 2026-10-26 — milestone 6 gate complete
+
+CFF/CFF2 names, widths, transformed bounds and table fields match Rust byte for
+byte on **566 / 566 corpus fonts** and **9,146 / 9,146 CFF fixtures** in both debug
+and release. There are **0 differences and 0 process failures**. The final
+format-6 debug protocol also passes **426 container**, **500 core-table**, **2,650
+layout**, **2,882 variation** and **8,551 AAT** fixtures. The largest FDArray fixture
+now emits **8,136,793 lines**, all compared without suppressing fields.
+
+All **130 upstream tests** in this milestone are ported. Totals remain **446
+read_fonts tests**, **64 font_types tests**, and **494 upstream ports**. The
+**102-file generation drift**, **10 generator tests**, **7 reference tests**, **15
+harness tests**, library/debug/release builds, CLI checks, Rust formatting and
+Clippy with warnings denied pass. No new compiler bug or toolchain patch was
+needed. CI and merge status are tracked on PR #7 separately from these local gates.
+
+Complete per-font observations and matching binary hashes are saved in
+[debug corpus](reports/milestone-6-cff.json),
+[release corpus](reports/milestone-6-release-cff.json),
+[debug fixtures](reports/milestone-6-cff-fixtures.json.gz) and
+[release fixtures](reports/milestone-6-release-cff-fixtures.json.gz).
+Compressed reports retain every observation, including malformed dictionary errors.
+Milestones **0–6 pass**; **7 is next**, followed by malformed-input parity and
+Phase 2/speed comparison. The full port remains in progress.
