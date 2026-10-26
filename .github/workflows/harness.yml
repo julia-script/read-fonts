@@ -78,6 +78,8 @@ jobs:
         run: scripts/check-cff-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-cff-fixtures-report.json
       - name: Compare release model fixtures
         run: scripts/check-model-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-model-fixtures-report.json
+      - name: Compare deterministic malformed corpus
+        run: scripts/check-malformed --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/malformed-report.json.gz
       - name: Compress CFF observations
         if: always()
         run: gzip -f build/*cff-fixtures-report.json
@@ -85,7 +87,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-7-model-apis
+          name: milestone-8-malformed-input
           path: |
             build/fonts.txt
             build/corpus-inventory.json
@@ -99,5 +101,7 @@ jobs:
             build/release-aat-fixtures-report.json
             build/model-fixtures-report.json
             build/release-model-fixtures-report.json
+            build/malformed-report.json.gz
+            build/malformed-failures/
             build/cff-fixtures-report.json.gz
             build/release-cff-fixtures-report.json.gz

@@ -760,8 +760,8 @@ bounds inside/outside the table, and equal out-of-bounds offsets. Twelve focused
 differential fixtures cover the same cases.
 
 The focused gvar root passes **50 tests** (including its 34 imported PostScript
-tests). The expected full-suite count is **720 read_fonts tests**, unchanged
-**64 font_types** and **765 upstream ports**; the full rerun is pending. The
+tests). The full suite passes **720 read_fonts tests**, with unchanged
+**64 font_types** and **765 upstream ports**. The
 Python suite passes **20 tests**, now also proving binary snapshot isolation.
 The initial campaign was stopped to rebuild and rerun every mutation against
 the corrected binary; no final M8 gate is claimed yet.
