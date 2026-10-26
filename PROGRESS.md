@@ -529,3 +529,19 @@ range arithmetic and nested font matrices. The complete suite passes **407
 read_fonts tests**, with **64 font_types tests** and **455 upstream ports**.
 The library build passes. Seven font tests that require charstring evaluation
 remain pending along with the evaluator and M6 differential gate.
+
+## Session 26 — 2026-10-26 — CFF charstrings and glyph measurements
+
+All **32 charstring tests** and the remaining **7 CFF font tests** pass. The full
+suite passes **446 read_fonts tests**, with **64 font_types tests** and **494
+upstream ports**. The interpreter covers path construction, hint callbacks,
+subroutines, accent components, CFF2 blends, legacy shared arithmetic and flex,
+transient storage, multiple-master operators and the one-million-operation limit.
+The BuildChar test also exercises the transition beyond its 32 inline entries.
+
+CFF glyph APIs now provide full and quick widths, scaled advances, drawing and
+control-point bounds. Tests compare every glyph in the original Noto and icon
+fixtures, prove that a sheared outline is tighter than its transformed box, and
+check moving CFF2 bounds at three variation locations. Library builds pass.
+The M6 names/bounds differential dump and corpus/fixture gates are next; M6 is
+not complete and milestones 7–9 have not started.

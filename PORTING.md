@@ -308,3 +308,17 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   private cursor retains upstream filtering; private offsets use checked addition
   before the same low-32-bit conversion. The SID private-range accessor supports
   the upstream malformed-dictionary tests.
+- Charstring evaluation uses static context/sink interfaces and explicit recursive
+  calls with unchanged type parameters. Recursion, stack capacity, instruction
+  limits, reserved operators, hint callbacks and legacy shared operators follow
+  upstream. A context's optional weight-vector slice replaces an empty default
+  borrowed slice; None and an empty slice both mean no multiple-master blend.
+- CFF evaluation allocates no parser storage. The shared Type 1 BuildChar operator
+  keeps 32 inline entries and uses a Silk List only for larger arrays, matching
+  upstream's lazy SmallVec allocation; allocation failure becomes InsufficientMemory.
+  This does not add a Type 1 font parser. Subroutine index addition uses a wider
+  intermediate to reject malformed signed overflow without trapping.
+- `PathSinkAdapter` replaces Rust's blanket CommandSink implementation. The small
+  shared PathSink contract is included as a CFF drawing dependency. Transform and
+  degenerate-path adapters preserve FreeType's operation order and rounding; bounds
+  are measured while transforming control points, before any bounding-box reduction.

@@ -238,3 +238,55 @@ impl<'a> Metadata<'a> {
   pub fn underlineThickness(self:&Self) -> Fixed { return self._underlineThickness }
 }
 fn utf8<'a>(bytes:Option<&'a [u8]>) -> Option<string<'a>> { return match move bytes { Option<&'a [u8]>.Some { value } => ok(String.fromUtf8(value)) _ => Option<string<'a>>.None } }
+import ps.charstring { CffContext, CommandSink, NullSink, ControlBoundsSink, NopFilterSink, TransformSink, PathSinkAdapter, evaluate, evaluateWidth as readCharstringWidth }
+import model.glyph.outline { PathSink }
+struct EvaluationData<'a> { context:CffContext<'a>,charstring:&'a [u8], }
+effect fn prepareEvaluation<'a>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId) -> EvaluationData<'a> ! Error {
+  let mut subrs:Index<'a> = Index<'a>.Empty
+  if subfont._subrsOffset!=0 { let bytes=run require(tail(font._data,u32.toUsize(subfont._subrsOffset)),Error.Malformed) subrs=run take(Index.new(bytes,font.isCff2)) }
+  let charstring=run require(Index.get(&font.topDict.charstrings,u32.toUsize(GlyphId.toU32(gid))),Error.Malformed)
+  return EvaluationData<'a> { context:CffContext<'a> { data:font._data,charstrings:font.topDict.charstrings,globalSubrs:font._globalSubrs,subrs:subrs },charstring:charstring }
+}
+fn resolveWidth(subfont:&Subfont,width:Option<Fixed>) -> Option<Fixed> { return match move width { Option<Fixed>.Some { value } => Option<Fixed>.some(value+subfont._nominalWidth) _ => copyOption(&subfont._defaultWidth) } }
+effect fn readWidth<'a,'c>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14]) -> Option<Fixed> ! Error {
+  let data=run prepareEvaluation(font,subfont,gid)
+  let width=run take(readCharstringWidth(&data.context,CffFontRef.blendState(font,subfont._vsIndex,coords),data.charstring))
+  return resolveWidth(subfont,move width)
+}
+effect fn evalCharstring<'a,'c,S:CommandSink>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],sink:&mut S) -> Option<Fixed> ! Error {
+  let data=run prepareEvaluation(font,subfont,gid)
+  let width=run take(evaluate(&data.context,CffFontRef.blendState(font,subfont._vsIndex,coords),data.charstring,&mut sink))
+  return resolveWidth(subfont,move width)
+}
+effect fn measure<'a,'c>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>) -> Option<BoundingBox<Fixed>> ! Error {
+  let mut bounds=ControlBoundsSink.new() let mut filter=NopFilterSink.new(&mut bounds) let mut transformer=TransformSink.new(&mut filter,CffFontRef.transform(font,subfont,move ppem))
+  drop run evalCharstring(font,subfont,gid,coords,&mut transformer)
+  drop move transformer drop move filter return ControlBoundsSink.boundingBox(&bounds)
+}
+fn transformWidth(transform:&Transform,width:Option<Fixed>) -> Option<f32> { return match move width { Option<Fixed>.Some { value } => { let mut result=Fixed.toF32(Transform.transformHMetric(transform,value)) if result<0.0 { result=0.0 } return Option<f32>.some(result) } _ => Option<f32>.None } }
+effect fn advanceWidth<'a,'c>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>) -> Option<f32> ! Error { let transform=CffFontRef.transform(font,subfont,move ppem) return transformWidth(&transform,run readWidth(font,subfont,gid,coords)) }
+effect fn drawGlyph<'a,'c,P:PathSink>(font:&CffFontRef<'a>,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>,sink:&mut P) -> Option<f32> ! Error {
+  let transform=CffFontRef.transform(font,subfont,move ppem) let mut adapter=PathSinkAdapter { inner:move sink } let mut filter=NopFilterSink.new(&mut adapter) let mut transformer=TransformSink.fromMatrixScale(&mut filter,transform.matrix,copyOption(&transform.scale))
+  let width=run evalCharstring(font,subfont,gid,coords,&mut transformer) return transformWidth(&transform,move width)
+}
+impl<'a> CffFontRef<'a> {
+  pub fn evaluateCharstring<'c,S:CommandSink>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],sink:&mut S) -> Result<Option<Fixed>,Error> { return run Effect.result(evalCharstring(self,subfont,gid,coords,&mut sink)) }
+  pub fn evaluateWidth<'c>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14]) -> Result<Option<Fixed>,Error> {
+    let transform=CffFontRef.transform(self,subfont,Option<f32>.None)
+    return match move run Effect.result(readWidth(self,subfont,gid,coords)) {
+      Result<Option<Fixed>,Error>.Success { value:Option<Fixed>.Some { value } } => Result<Option<Fixed>,Error>.succeed(Option<Fixed>.some(Transform.transformHMetric(&transform,value)))
+      Result<Option<Fixed>,Error>.Success { value:Option<Fixed>.None } => Result<Option<Fixed>,Error>.succeed(Option<Fixed>.None)
+      Result<Option<Fixed>,Error>.Failure { error } => Result<Option<Fixed>,Error>.failResult(error)
+    }
+  }
+  pub fn advance<'c>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>) -> Result<Option<f32>,Error> { return run Effect.result(advanceWidth(self,subfont,gid,coords,move ppem)) }
+  pub fn evaluateExtents<'c>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14]) -> Result<Option<BoundingBox<Fixed>>,Error> { return run Effect.result(measure(self,subfont,gid,coords,Option<f32>.None)) }
+  pub fn extents<'c>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>) -> Result<Option<BoundingBox<f32>>,Error> {
+    return match move run Effect.result(measure(self,subfont,gid,coords,move ppem)) {
+      Result<Option<BoundingBox<Fixed>>,Error>.Success { value:Option<BoundingBox<Fixed>>.Some { value } } => Result<Option<BoundingBox<f32>>,Error>.succeed(Option<BoundingBox<f32>>.some(BoundingBox<f32> { xMin:Fixed.toF32(value.xMin),yMin:Fixed.toF32(value.yMin),xMax:Fixed.toF32(value.xMax),yMax:Fixed.toF32(value.yMax) }))
+      Result<Option<BoundingBox<Fixed>>,Error>.Success { value:Option<BoundingBox<Fixed>>.None } => Result<Option<BoundingBox<f32>>,Error>.succeed(Option<BoundingBox<f32>>.None)
+      Result<Option<BoundingBox<Fixed>>,Error>.Failure { error } => Result<Option<BoundingBox<f32>>,Error>.failResult(error)
+    }
+  }
+  pub fn draw<'c,P:PathSink>(self:&Self,subfont:&Subfont,gid:GlyphId,coords:&'c [F2Dot14],ppem:Option<f32>,sink:&mut P) -> Result<Option<f32>,Error> { return run Effect.result(drawGlyph(self,subfont,gid,coords,move ppem,&mut sink)) }
+}
