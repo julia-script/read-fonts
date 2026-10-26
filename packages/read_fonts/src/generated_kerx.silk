@@ -265,15 +265,17 @@ pub fn pairKerning<'a>(pairs: ComputedArray<'a, (), Subtable0Pair<'a>>, left: Gl
   let l = GlyphId.toU32(left) let r = GlyphId.toU32(right)
   if l > 65535 || r > 65535 { return Option<i32>.None }
   let key = u32.shiftLeft(l, 16) | r
-  let mut low: usize = 0 let mut high = ComputedArray<'a, (), Subtable0Pair<'a>>.len(&pairs)
-  while low < high {
-    let mid = low + (high - low) / 2
+  let mut low: usize = 0 let mut size = ComputedArray<'a, (), Subtable0Pair<'a>>.len(&pairs)
+  if size == 0 { return Option<i32>.None }
+  // Match Rust slice::binary_search, including malformed unsorted records.
+  while size > 1 {
+    let half = size / 2 let mid = low + half
     let pair = match move ComputedArray<'a, (), Subtable0Pair<'a>>.get(&pairs, mid) { Result<Subtable0Pair<'a>, ReadError>.Success { value } => value _ => { return Option<i32>.None } }
     let candidate = u32.shiftLeft(GlyphId16.toU32(Subtable0Pair.left(&pair)), 16) | GlyphId16.toU32(Subtable0Pair.right(&pair))
-    if candidate <= key { low = mid + 1 } else { high = mid }
+    if candidate <= key { low = mid }
+    size = size - half
   }
-  if low == 0 { return Option<i32>.None }
-  let pair = match move ComputedArray<'a, (), Subtable0Pair<'a>>.get(&pairs, low - 1) { Result<Subtable0Pair<'a>, ReadError>.Success { value } => value _ => { return Option<i32>.None } }
+  let pair = match move ComputedArray<'a, (), Subtable0Pair<'a>>.get(&pairs, low) { Result<Subtable0Pair<'a>, ReadError>.Success { value } => value _ => { return Option<i32>.None } }
   if GlyphId16.toU32(Subtable0Pair.left(&pair)) != l || GlyphId16.toU32(Subtable0Pair.right(&pair)) != r { return Option<i32>.None }
   return Option<i32>.some(i16.toI32(Subtable0Pair.value(&pair)))
 }

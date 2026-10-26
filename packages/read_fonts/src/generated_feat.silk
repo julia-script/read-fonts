@@ -186,14 +186,16 @@ impl<'a> FontReadAt<'a, ()> for SettingName<'a> { fn readAt(data: FontData<'a>, 
 impl<'a> Feat<'a> {
   pub fn find(self: &Self, feature: u16) -> Option<FeatureName<'a>> {
     let names = Feat.names(self)
-    let mut low: usize = 0 let mut high = ComputedArray<'a, (), FeatureName<'a>>.len(&names)
-    while low < high {
-      let mid = low + (high - low) / 2
+    let mut low: usize = 0 let mut size = ComputedArray<'a, (), FeatureName<'a>>.len(&names)
+    if size == 0 { return Option<FeatureName<'a>>.None }
+    // Match Rust slice::binary_search, including malformed unsorted records.
+    while size > 1 {
+      let half = size / 2 let mid = low + half
       let item = match move ComputedArray<'a, (), FeatureName<'a>>.get(&names, mid) { Result<FeatureName<'a>, ReadError>.Success { value } => value _ => { return Option<FeatureName<'a>>.None } }
-      if FeatureName.feature(&item) <= feature { low = mid + 1 } else { high = mid }
+      if FeatureName.feature(&item) <= feature { low = mid }
+      size = size - half
     }
-    if low == 0 { return Option<FeatureName<'a>>.None }
-    let item = match move ComputedArray<'a, (), FeatureName<'a>>.get(&names, low - 1) { Result<FeatureName<'a>, ReadError>.Success { value } => value _ => { return Option<FeatureName<'a>>.None } }
+    let item = match move ComputedArray<'a, (), FeatureName<'a>>.get(&names, low) { Result<FeatureName<'a>, ReadError>.Success { value } => value _ => { return Option<FeatureName<'a>>.None } }
     if FeatureName.feature(&item) == feature { return Option<FeatureName<'a>>.some(item) }
     return Option<FeatureName<'a>>.None
   }

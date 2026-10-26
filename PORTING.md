@@ -266,4 +266,6 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - `Kern.subtables` returns the named `Subtables` cursor. It preserves the OpenType
   last-subtable length exception and AAT's explicit lengths. `TagIndices` yields
   named index/tag pairs; malformed ranges and invalid UTF-8 are skipped as upstream.
-  Kerning and language-tag searches preserve Rust's rightmost matching entry.
+  Kerning, feature-name and AAT lookup searches preserve Rust's exact candidate
+  sequence, including malformed unsorted input; sorted duplicate keys select
+  the rightmost matching entry.

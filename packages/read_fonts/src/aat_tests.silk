@@ -79,3 +79,22 @@ test effect fn stateTable() -> () ! AssertionError<'static> {
   let entry = run must(StateTable<'static, NoPayload>.entry(&rebuilt, 0, 4))
   run Testing.expect(entry.newState == 2 && entry.flags == 33042, "legacy cached parts")
 }
+
+// Regression from the differential malformed-kern fixture: an upper-bound
+// search agrees on sorted keys but chooses a different unsorted candidate.
+import tables.kerx { Subtable0 as KerningPairs }
+import tables.feat { Feat, FeatureName }
+import font_types.lib { NameId }
+import silk.option { Option }
+test effect fn unsortedSearchesMatchRust() -> () ! AssertionError<'static> {
+  let lookup2 = run must(TypedLookup<'static, u16>.read(FontData.new(b"\x00\x02\x00\x06\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02\x00\x01\x00\x01\x00\x03\x00\x00\x00\x00\x00\x04")))
+  run Testing.expect((run must(TypedLookup<'static, u16>.value(&lookup2, 0))) == 2, "Rust search candidate")
+  let lookup4 = run must(TypedLookup<'static, u16>.read(FontData.new(b"\x00\x04\x00\x06\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x2a\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x00\x2e\x00\x01\x00\x01\x00\x30\x00\x00\x00\x00\x00\x32\x00\x00\x00\x01\x00\x02\x00\x03\x00\x04")))
+  run Testing.expect((run must(TypedLookup<'static, u16>.value(&lookup4, 0))) == 2, "Rust search candidate")
+  let lookup6 = run must(TypedLookup<'static, u16>.read(FontData.new(b"\x00\x06\x00\x04\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x01\x00\x03\x00\x00\x00\x04")))
+  run Testing.expect((run must(TypedLookup<'static, u16>.value(&lookup6, 0))) == 2, "Rust search candidate")
+  let pairs = run must(KerningPairs.read(FontData.new(b"\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02\x00\x00\x00\x01\x00\x03\x00\x00\x00\x00\x00\x04")))
+  run Testing.expect((KerningPairs.kerning(&pairs, GlyphId.new(0), GlyphId.new(0)) |> Option<i32>.unwrapOr(-1)) == 2, "unsorted kerning search")
+  let feat = run must(Feat.read(FontData.new(b"\x00\x01\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x64\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x65\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x66\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x67\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x68")))
+  match move Feat.find(&feat, 0) { Option<FeatureName<'static>>.Some { value } => { run Testing.expect(NameId.toU16(FeatureName.nameIndex(&value)) == 102, "unsorted feature search") } _ => { run Testing.expect(false, "feature search candidate") } }
+}

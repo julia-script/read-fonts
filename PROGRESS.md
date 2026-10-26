@@ -430,3 +430,21 @@ extended metamorphosis state machines, cached parts, kerning format dispatch and
 pair/class/vector lookups, tracking arrays, anchor points, feature settings and
 language tags. Parser builds pass. The differential dumper still has M4 scope;
 **M5 parity, debug/release corpus gates, CI and merge remain pending**.
+
+## Session 20 — 2026-10-26 — AAT differential traversal and malformed searches
+
+The suites pass **316 read_fonts tests**, **64 font_types tests**, and **364
+upstream ports**. The additional regression checks Rust's binary-search candidate
+on unsorted kerning pairs, features and all three searched AAT lookup formats.
+The focused differential run exposed this distinction: an upper-bound search
+agreed on sorted inputs but returned a different candidate on malformed records.
+The parser now follows Rust's exact search steps.
+
+Both dumpers implement format 5, covering all AAT grammar fields, decoded kinds,
+state/lookup/action data and documented helper probes. The five original MORX
+fonts and 42 seed fixtures match. The initial full debug corpus passed **566/566**,
+and the previous **426/500/2,650/2,882** focused fixtures passed the expanded
+protocol. The corrected search implementation still needs its complete AAT
+fixture and final debug/release corpus gates. Generator/reference/harness tests
+(**10/7/15**), Clippy, formatting, the **96-file** drift check and debug CLI build
+pass. M5 is still in progress; no final parity report or merge is claimed yet.
