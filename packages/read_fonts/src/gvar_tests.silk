@@ -197,6 +197,33 @@ test effect fn followUseMyMetrics() -> () ! AssertionError<'static> {
 }
 import test_font_builder as Builder
 import tables.gvar { GvarFlags, U16Or32 }
+test effect fn reversedGlyphDataRangesAreEmpty() -> () ! AssertionError<'static> {
+  let mut bytes: [u8; 128] = [0; 128]
+  let mut variant: usize = 0
+  while variant < 4 {
+    let extended = (variant & 2) != 0
+    let longOffsets = (variant & 1) != 0
+    let size = Builder.gvar(&mut bytes, 3, extended, longOffsets, false)
+    let mut header: usize = 20 if extended { header = 21 }
+    let mut sample: usize = 0
+    while sample < 3 {
+      let mut first: u32 = 8 let mut last: u32 = 4
+      if sample == 1 { first = 65530 last = 65528 }
+      if sample == 2 { first = 65530 last = 65530 }
+      if longOffsets { Builder.put32(&mut bytes, header, first) Builder.put32(&mut bytes, header + 4, last) }
+      else { Builder.put16(&mut bytes, header, u32.toU16(first)) Builder.put16(&mut bytes, header + 2, u32.toU16(last)) }
+      if extended {
+        let table = run must(GvarExtended.read(FontData.new(Slice.view<u8>(&bytes, 0, size))))
+        run Testing.expect(none(run must(GvarExtended.dataForGid(&table, GlyphId.new(0)))), "reversed or equal range has no data")
+      } else {
+        let table = run must(Gvar.read(FontData.new(Slice.view<u8>(&bytes, 0, size))))
+        run Testing.expect(none(run must(Gvar.dataForGid(&table, GlyphId.new(0)))), "reversed or equal range has no data")
+      }
+      sample = sample + 1
+    }
+    variant = variant + 1
+  }
+}
 test effect fn extendedGvarGlyphCountsAndDataOffsets() -> () ! AssertionError<'static> {
   let mut bytes: [u8; 330000] = [0; 330000] let mut variant: usize = 0
   while variant < 4 {

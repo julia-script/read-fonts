@@ -21,6 +21,20 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def freeze_binary(binary: Path, directory: Path) -> dict:
+    """A concurrent build must not change the executable halfway through a run."""
+    data = binary.read_bytes()
+    digest = sha(data)
+    snapshot = directory / digest / binary.name
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
+    if not snapshot.exists() or sha(snapshot.read_bytes()) != digest:
+        temporary = snapshot.with_suffix(".tmp")
+        temporary.write_bytes(data)
+        temporary.chmod(0o755)
+        temporary.replace(snapshot)
+    return {"path": str(binary), "sha256": digest, "run_path": str(snapshot.resolve())}
+
+
 def mutations(data: bytes, seed: int):
     """Header edges, 1/16 length intervals, final byte, and eight seeded flips."""
     size = len(data)
@@ -118,8 +132,8 @@ def check_font(font: Path, configuration: dict, cache: Path, failures: Path) -> 
         key = json.dumps(recipe, sort_keys=True)
         result = previous.get(key)
         if result is None or result["input_sha256"] != sha(changed):
-            result = check_case(changed, recipe, Path(configuration["reference"]["path"]),
-                                Path(configuration["silk"]["path"]), configuration["timeout"], failures)
+            result = check_case(changed, recipe, Path(configuration["reference"]["run_path"]),
+                                Path(configuration["silk"]["run_path"]), configuration["timeout"], failures)
         record["results"].append(result)
         temporary = receipt.with_suffix(".tmp")
         temporary.write_text(json.dumps(record) + "\n")
@@ -152,8 +166,8 @@ def main() -> int:
     configuration = {
         "campaign_version": CAMPAIGN_VERSION, "seed": args.seed, "timeout": args.timeout,
         "dump_header": harness.HEADER.decode(),
-        "reference": {"path": str(reference), "sha256": sha(reference.read_bytes())},
-        "silk": {"path": str(silk), "sha256": sha(silk.read_bytes())},
+        "reference": freeze_binary(reference, args.cache / "binaries"),
+        "silk": freeze_binary(silk, args.cache / "binaries"),
     }
     args.cache.mkdir(parents=True, exist_ok=True)
     records = []

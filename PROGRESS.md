@@ -749,3 +749,19 @@ The Python suite now passes **19 tests**, including crash/timeout rejection and
 resume invalidation. Library counts remain **719 read_fonts**, **64 font_types**,
 **765 upstream ports**. The full release campaign is running; M8 is not yet
 complete, and M9 has not started.
+
+## Session 41 — 2026-10-26 — malformed gvar range parity
+
+The initial corruption run found a raw gvar-data difference on a mutated HarfRust
+font: Rust treats a reversed range as empty, while Silk returned OutOfBounds. The
+shared narrow/extended implementation now matches Rust's Range::is_empty. One
+new regression test covers both table formats, both offset widths, reversed
+bounds inside/outside the table, and equal out-of-bounds offsets. Twelve focused
+differential fixtures cover the same cases.
+
+The focused gvar root passes **50 tests** (including its 34 imported PostScript
+tests). The expected full-suite count is **720 read_fonts tests**, unchanged
+**64 font_types** and **765 upstream ports**; the full rerun is pending. The
+Python suite passes **20 tests**, now also proving binary snapshot isolation.
+The initial campaign was stopped to rebuild and rerun every mutation against
+the corrected binary; no final M8 gate is claimed yet.

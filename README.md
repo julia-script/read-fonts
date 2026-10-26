@@ -106,7 +106,8 @@ limits fail the gate, even when both processes fail the same way.
 Three worker processes run by default (`--jobs` overrides this). `--seed` defaults
 to 20261026 and `--timeout` to 600 seconds per process. Completed matches can resume
 from `build/malformed-cache`; source hashes, binary hashes and campaign settings
-must match. A failure stops that source's remaining mutations, keeps testing other
+must match. Each run executes immutable binary snapshots so concurrent rebuilds
+cannot mix results. A failure stops that source's remaining mutations, keeps testing other
 fonts, and is retried on the next run. A passing report requires every expected
 mutation. Failing bytes, both dumps and the observation are retained under
 `build/malformed-failures/<input-sha256>/`. Reports ending in `.gz` are compressed

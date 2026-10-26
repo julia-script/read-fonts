@@ -38,8 +38,9 @@ class MalformedTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             dumper = root / "dumper"
+            output = harness.HEADER + b"file.length=0\nfile.error=OutOfBounds\n"
             dumper.write_text(f"#!{sys.executable}\nimport sys\n"
-                              f"sys.stdout.buffer.write({harness.HEADER + b'file.length=0\nfile.error=OutOfBounds\n'!r})\n"
+                              f"sys.stdout.buffer.write({output!r})\n"
                               "sys.exit(1)\n")
             dumper.chmod(0o755)
             result = malformed.check_case(b"x", {"kind": "test"}, dumper, dumper, 2, root / "failures")
@@ -53,8 +54,8 @@ class MalformedTests(unittest.TestCase):
             root = Path(temporary)
             font = root / "font.ttf"
             font.write_bytes(b"a")
-            configuration = {"seed": 1, "reference": {"path": "rust", "sha256": "old"},
-                             "silk": {"path": "silk", "sha256": "old"}, "timeout": 1}
+            configuration = {"seed": 1, "reference": {"run_path": "rust", "sha256": "old"},
+                             "silk": {"run_path": "silk", "sha256": "old"}, "timeout": 1}
             calls = []
 
             def check(data, recipe, *args):
@@ -85,6 +86,18 @@ class MalformedTests(unittest.TestCase):
             self.assertEqual(result["status"], "failure")
             self.assertEqual(result["processes"]["rust"], {"timeout_seconds": .05})
             self.assertEqual(result["processes"]["silk"], {"timeout_seconds": .05})
+
+    def test_binary_snapshot_survives_concurrent_rebuild(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "dumper"
+            binary.write_bytes(b"first binary")
+            snapshot = malformed.freeze_binary(binary, root / "snapshots")
+            binary.write_bytes(b"rebuilt binary")
+            self.assertEqual(Path(snapshot["run_path"]).read_bytes(), b"first binary")
+            self.assertEqual(snapshot["sha256"], malformed.sha(b"first binary"))
+            rebuilt = malformed.freeze_binary(binary, root / "snapshots")
+            self.assertNotEqual(snapshot["run_path"], rebuilt["run_path"])
 
 
 if __name__ == "__main__":
