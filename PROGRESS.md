@@ -72,7 +72,7 @@ its remote status is tracked on the pull request, separately from these local ch
 Silk observations and upstream changes that affect the next gate are recorded in
 [PORTING.md](PORTING.md). No new compiler bug was found in this session.
 
-## Session 2 — 2026-10-26 — milestone 1 local gate complete
+## Session 2 — 2026-10-26 — milestone 1 complete
 
 The Silk scalar library and borrowed parser core are implemented. Directory dumps
 match Rust byte for byte on **566 / 566 corpus files** in debug and release, with
@@ -91,7 +91,7 @@ records, unsorted/duplicate tags, and legacy/extended TTC directory lists.
 | Root/libraries/CLI debug and release builds | Passed |
 | Corpus directory parity, debug and release | 566 matches each |
 | Synthetic container parity | 426 matches |
-| Remote CI | Pending PR run; required before merging |
+| Remote CI | Passed: run 40268463073, job 121395891939 |
 
 The 60 font-types ports comprise fixed arithmetic (24), fixed formatting (11),
 integer types (6), versions (2), tags (3), geometry (10), FWord (1), and borrowed
@@ -107,6 +107,6 @@ Three standalone compiler reproducers and source-level workarounds are recorded 
 [COMPILER-BUGS.md](COMPILER-BUGS.md). The pinned compiler and stdlib are unchanged.
 API adaptations are recorded in [PORTING.md](PORTING.md).
 
-Milestone 0 is merged as PR #1. Milestone 1's local gate passes; its PR/CI and merge
-remain before starting milestone 2. Milestones 2–9 are pending. Directory parity
-does not yet establish table payload or model parity.
+Milestones 0 and 1 are merged as PRs #1 and #2. Milestone 2 is in progress;
+milestones 3–9 are pending. Directory parity does not yet establish table payload
+or model parity.
