@@ -302,3 +302,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   consumption, stack clearing and variable-operand state changes. Hinting values
   use fixed-capacity Blues and StemSnaps arrays with borrowed active slices.
   Cff/Cff2 accessors return Copy table views in place of shared references.
+- `CffFontRef` and `Subfont` use affine Option fields and expose copied optional
+  views. `HintedSubfont { subfont, hinting }` names the returned pair. Metadata
+  strings remain borrowed UTF-8 views, with invalid strings absent. The unhinted
+  private cursor retains upstream filtering; private offsets use checked addition
+  before the same low-32-bit conversion. The SID private-range accessor supports
+  the upstream malformed-dictionary tests.

@@ -519,3 +519,13 @@ The library build and **98-file** generation drift check pass.
 Top-level Cff/Cff2 types and table-provider methods now expose parsed indexes and
 metadata inputs. Unified CFF font/subfont access, charstring evaluation and the
 names/bounds differential gate remain in progress; no M6 parity is claimed.
+
+## Session 25 — 2026-10-26 — unified CFF font access
+
+The unified font layer passes **18 additional upstream tests**, covering CFF
+version selection, metadata, charsets, encodings, subfont selection, private
+widths and hinting values, empty private dictionaries, checked variation/subr
+range arithmetic and nested font matrices. The complete suite passes **407
+read_fonts tests**, with **64 font_types tests** and **455 upstream ports**.
+The library build passes. Seven font tests that require charstring evaluation
+remain pending along with the evaluator and M6 differential gate.
