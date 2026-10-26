@@ -1,0 +1,19 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import font_data { FontData }
+import font { FontRef }
+import read { FontRead, ReadError, readWithArgs }
+import font_types.lib { Tag }
+import silk.option { Option }
+import silk.result { Result }
+pub interface TableProvider<'a> {
+  fn dataForTag(self: &Self, tag: Tag) -> Option<FontData<'a>>
+}
+impl<'a> TableProvider<'a> for FontRef<'a> {
+  fn dataForTag(self: &Self, tag: Tag) -> Option<FontData<'a>> { return FontRef<'a>.tableData(self, tag) }
+}
+pub fn readTable<'a, T: FontRead<'a, ()>, P: TableProvider<'a>>(provider: &P, tag: Tag) -> Result<T, ReadError> {
+  return match move TableProvider.dataForTag(provider, tag) {
+    Option<FontData<'a>>.Some { value } => readWithArgs<(), T>(value, ())
+    Option<FontData<'a>>.None => Result<T, ReadError>.failResult(ReadError.TableIsMissing { tag: tag })
+  }
+}

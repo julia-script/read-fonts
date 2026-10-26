@@ -1,3 +1,13 @@
-//! Borrowed OpenType parsing. Implementation starts at milestone 1.
+//! Borrowed OpenType parsing with checked reads, arrays and sfnt/TTC directories.
 
 import font_types.lib as FontTypes
+pub import read { ReadError, FontRead, FontReadAt, ComputeSize, readWithArgs, readAtWithArgs, computeSize }
+pub import font_data { FontData, Cursor }
+pub import array { ScalarArray, ScalarIter }
+pub import font { FileRef, FontRef, CollectionRef, TableDirectory, TableRecord, TableRecords, TTCHeader }
+pub import offset { nonNull, resolve, resolveWithArgs, resolveNullableWithArgs, CheckedOffset }
+pub import array { ComputedArray, ComputedIter, VarLenArray, VarLenIter }
+pub import read { VarSize, readLenAt, totalLenForCount }
+pub import font { FontIter }
+pub import table_provider { TableProvider, readTable }
+pub import table_ref { ByteRange, MinByteRange }
