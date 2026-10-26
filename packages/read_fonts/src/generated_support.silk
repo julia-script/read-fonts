@@ -5,6 +5,9 @@ import read { ReadError, FontReadAt, ComputeSize }
 import array { ComputedArray }
 import font_types.lib { Scalar, FixedSize, fixedByteLen }
 import silk.result { Result }
+import silk.option { Option }
+import array { VarLenArray }
+import read { FontRead, VarSize, totalLenForCount }
 
 pub fn scalarOr<'a, T: Scalar>(data: FontData<'a>, position: usize, fallback: T) -> T {
   return match move FontData<'a>.readAt<T>(&data, position) {
@@ -18,4 +21,15 @@ pub fn recordArray<'a, T: FixedSize + FontReadAt<'a, ()> + ComputeSize<()>>(data
   let width = fixedByteLen<T>()
   if width == 0 || (end - start) % width != 0 { return Result<ComputedArray<'a, (), T>, ReadError>.failResult(ReadError.InvalidArrayLen) }
   return ComputedArray<'a, (), T>.new(data, start, end, ())
+}
+
+pub fn varLenArray<'a, T: FontRead<'a, ()> + VarSize>(data: FontData<'a>, start: usize, end: usize) -> Result<VarLenArray<'a, T>, ReadError> {
+  return match move FontData.slice(&data, start, end) {
+    Option<FontData<'a>>.Some { value } => VarLenArray<'a, T>.read(value)
+    Option<FontData<'a>>.None => Result<VarLenArray<'a, T>, ReadError>.failResult(ReadError.OutOfBounds)
+  }
+}
+pub fn varLenBytes<'a, T: VarSize>(data: FontData<'a>, start: usize, count: usize) -> usize {
+  let suffix = FontData.splitOff(&data, start) |> Option<FontData<'a>>.unwrapOr(FontData.new(b""))
+  return totalLenForCount<T>(suffix, count) |> Result<usize, ReadError>.unwrapOr(0)
 }

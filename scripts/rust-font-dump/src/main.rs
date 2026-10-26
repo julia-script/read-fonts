@@ -10,9 +10,18 @@ use std::{
     process::ExitCode,
 };
 
+mod extensions_metrics;
+mod extensions_name;
+mod extensions_post;
 mod generated_dump_cmap;
 mod generated_dump_head;
 mod generated_dump_maxp;
+
+mod generated_dump_hhea;
+mod generated_dump_hmtx;
+mod generated_dump_name;
+mod generated_dump_os2;
+mod generated_dump_post;
 
 fn tag(value: Tag) -> String {
     value
@@ -87,6 +96,11 @@ fn dump_font(
         generated_dump_head::dump_tables(out, &prefix, &font)?;
         generated_dump_maxp::dump_tables(out, &prefix, &font)?;
         generated_dump_cmap::dump_tables(out, &prefix, &font)?;
+        generated_dump_hhea::dump_tables(out, &prefix, &font)?;
+        generated_dump_hmtx::dump_tables(out, &prefix, &font)?;
+        generated_dump_name::dump_tables(out, &prefix, &font)?;
+        generated_dump_os2::dump_tables(out, &prefix, &font)?;
+        generated_dump_post::dump_tables(out, &prefix, &font)?;
     }
     Ok(())
 }
@@ -97,7 +111,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=2\ndump.scope=head-maxp-cmap"
+        "font-dump.version=2\ndump.scope=core-tables"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -145,7 +159,9 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     if args[0] == OsStr::new("--help") {
-        println!("usage: rust-font-dump FONT\nDump format 2: directories, head, maxp and cmap fields.");
+        println!(
+            "usage: rust-font-dump FONT\nDump format 2: directories, head, maxp and cmap fields."
+        );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {

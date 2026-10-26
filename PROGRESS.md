@@ -132,3 +132,19 @@ Rust tests, and the harness's 12 Python tests also pass.
 The prototype shapes are settled. Milestone 2 remains **in progress**: generate
 hhea/hmtx/post/name/OS2, port handwritten extensions and their tests, then complete
 the full milestone gate before merging. Milestones 3–9 remain pending.
+
+## Session 4 — 2026-10-26 — milestone 2 core tables and name/metric extensions
+
+All eight milestone tables now have generated borrowed views and concrete Rust/Silk
+field traversal. The handwritten name, metrics, and post-name APIs are ported,
+including UTF-16/Mac Roman decoding, language tags, extended-table selection, and
+the bounded checkpoint cache for Pascal strings.
+
+**566 / 566 dumps match**, including decoded names, post iterator results and direct
+lookup probes, and horizontal metric lookups. The suites pass **64 font_types** and
+**40 read_fonts tests**; **91 upstream tests** are ported in total. The ten post
+ports include all three 2,000-name orders, checkpoint overflow, unreadable names,
+and 65,535 glyphs referring mostly beyond the string data (68 ms in the debug run).
+
+Milestone 2 is still **in progress**: cmap mapping/iteration and their upstream tests
+remain, followed by the complete debug/release gate. Milestones 3–9 remain pending.

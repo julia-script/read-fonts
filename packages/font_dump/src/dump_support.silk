@@ -41,6 +41,13 @@ pub effect fn scalar<T: Display>(path: &DumpPath, value: T) -> () ! WriterError 
   run Format.format("={value}\n", &.{ value: move value })
 }
 pub effect fn absent(path: &DumpPath) -> () ! WriterError ? &mut Writer { run scalar(path, "none") }
+pub effect fn bytes(path: &DumpPath, data: &[u8]) -> () ! WriterError ? &mut Writer {
+  run DumpPath.write(path)
+  run Writer.writeString("=")
+  let mut i: usize = 0
+  while i < data.length { run Format.format("{value:02x}", &.{ value: data[i] }) i = i + 1 }
+  run Writer.writeString("\n")
+}
 pub effect fn readError(path: &DumpPath, value: ReadError) -> () ! WriterError ? &mut Writer {
   run DumpPath.write(path)
   run Writer.writeString(".error=")

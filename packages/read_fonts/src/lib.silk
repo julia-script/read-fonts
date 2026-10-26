@@ -14,3 +14,8 @@ pub import table_ref { ByteRange, MinByteRange }
 pub import tables.head { Head }
 pub import tables.maxp { Maxp, MaxpExtended }
 pub import tables.cmap { Cmap, CmapSubtable }
+pub import tables.hhea { Hhea, HheaExtended }
+pub import tables.hmtx { Hmtx, HmtxExtended, LongMetric }
+pub import tables.name { Name, LangTagRecord, NameRecord }
+pub import tables.os2 { Os2, SelectionFlags }
+pub import tables.post { Post }

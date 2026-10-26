@@ -1,1 +1,2 @@
 pub import generated_maxp { Maxp, MaxpExtended }
+pub import tables.maxp_selected { SelectedMaxp }

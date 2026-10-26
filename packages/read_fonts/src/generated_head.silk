@@ -3,10 +3,10 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
 import read { ReadError, FontRead, FontReadAt, ComputeSize }
-import array { ScalarArray, ComputedArray }
+import array { ScalarArray, ComputedArray, VarLenArray }
 import offset { resolve, resolveNullableWithArgs }
 import table_ref { ByteRange, MinByteRange }
-import generated_support { scalarOr, recordArray }
+import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
 import silk.option { Option }
 import silk.result { Result }

@@ -88,6 +88,7 @@ impl<'a, Args, T> ComputedIter<'a, Args, T> {
 pub struct VarLenArray<'a, T: FontRead<'a, ()> + VarSize> { data: FontData<'a>, }
 impl<'a, T: FontRead<'a, ()> + VarSize> Copy for VarLenArray<'a, T> {}
 impl<'a, T> VarLenArray<'a, T> {
+  pub fn empty() -> Self { return Self { data: FontData.new(b"") } }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> { return Result<Self, ReadError>.succeed(Self { data: data }) }
   pub fn get(self: &Self, index: usize) -> Option<Result<T, ReadError>> {
     if FontData.isEmpty(&self.data) { return Option<Result<T, ReadError>>.None }

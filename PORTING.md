@@ -107,3 +107,19 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Prototype dump paths use a fixed stack of 32 segments. The current generated
   table graph is acyclic and requires at most eight; font bytes cannot increase
   the depth. Recursive grammar groups will need explicit traversal handling.
+
+- Silk inherent impls must share their nominal type's module. Handwritten
+  `tables/*_impl.silk` extension templates are therefore appended by `scripts/generate`
+  to the relevant generated module, like upstream's `include!` arrangement. Edit
+  the template, never the generated copy. Selected-table wrappers are ordinary
+  separate modules.
+- `scripts/generate-static` packs post names, Mac Roman, and language-ID strings
+  directly from the immutable upstream sources, and retains the OS/2 range data.
+  The language map contains duplicate IDs; rightmost-equal binary search preserves
+  the pinned Rust library's choice. Packed byte slices are returned by functions,
+  as in Silk's Unicode tables, because slice-valued constants are unsupported.
+- Iterator tuples use named records (`GlyphNameEntry` with `glyph` and `name`).
+  The post iterator keeps upstream's 16 checkpoints, monotonic fast path, and
+  first-unreachable-string bound. Tests use fixed stack buffers instead of Vec.
+- The metrics fixture tests retain the original CBDT table and the four tested
+  Vazirmatn long metrics. Full original fonts are covered by corpus comparison.

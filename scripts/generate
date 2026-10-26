@@ -18,6 +18,9 @@ different = []
 for operation in plan["generate"]:
     generated = subprocess.check_output([str(ROOT / "build/codegen/debug/codegen"), "file",
                                          operation["mode"], str(ROOT / operation["source"])])
+    for extension in operation.get("extensions", []):
+        generated += (f"\n// Handwritten extension from {extension}\n".encode()
+                      + (ROOT / extension).read_bytes())
     target = ROOT / operation["target"]
     if args.check:
         if not target.exists() or target.read_bytes() != generated:
@@ -27,3 +30,5 @@ for operation in plan["generate"]:
 if different:
     parser.exit(1, "Generated output differs: " + ", ".join(different) + "\n")
 print(f"{'Checked' if args.check else 'Generated'} {len(plan['generate'])} files")
+
+subprocess.run([str(ROOT / "scripts/generate-static")] + (["--check"] if args.check else []), check=True)

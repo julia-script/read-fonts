@@ -44,3 +44,81 @@ target = "packages/font_dump/src/generated_dump_cmap.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/cmap.rs"
 target = "scripts/rust-font-dump/src/generated_dump_cmap.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/hhea.rs"
+target = "packages/read_fonts/src/generated_hhea.silk"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/hmtx.rs"
+target = "packages/read_fonts/src/generated_hmtx.silk"
+extensions = ["packages/read_fonts/src/tables/hmtx_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/name.rs"
+target = "packages/read_fonts/src/generated_name.silk"
+extensions = ["packages/read_fonts/src/tables/name_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/os2.rs"
+target = "packages/read_fonts/src/generated_os2.silk"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/post.rs"
+target = "packages/read_fonts/src/generated_post.silk"
+extensions = ["packages/read_fonts/src/tables/post_impl.silk"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/hhea.rs"
+target = "packages/font_dump/src/generated_dump_hhea.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/hhea.rs"
+target = "scripts/rust-font-dump/src/generated_dump_hhea.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/hmtx.rs"
+target = "packages/font_dump/src/generated_dump_hmtx.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/hmtx.rs"
+target = "scripts/rust-font-dump/src/generated_dump_hmtx.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/name.rs"
+target = "packages/font_dump/src/generated_dump_name.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/name.rs"
+target = "scripts/rust-font-dump/src/generated_dump_name.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/os2.rs"
+target = "packages/font_dump/src/generated_dump_os2.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/os2.rs"
+target = "scripts/rust-font-dump/src/generated_dump_os2.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/post.rs"
+target = "packages/font_dump/src/generated_dump_post.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/post.rs"
+target = "scripts/rust-font-dump/src/generated_dump_post.rs"
