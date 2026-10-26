@@ -353,3 +353,5 @@ import collections.int_set.intset_tests
 import collections.int_set.stream_tests
 
 import collections.int_set.sparse_tests
+
+import layout_set_tests

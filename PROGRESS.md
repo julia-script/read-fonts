@@ -623,3 +623,12 @@ All **10 input-stream**, **6 output-stream**, **22 sparse-set**, and the final
 suite is ported, including exact encoded bytes, all four branch factors, filled
 nodes, bias, bounds, remaining input, size limits and values beyond u32. The M7
 layout intersections and model unit/differential gate remain pending.
+
+## Session 33 — 2026-10-26 — deferred layout intersections
+
+All **7 IntSet-dependent layout tests** deferred from M3 pass. Coverage and class
+intersections are generated with the handwritten extensions, including narrow
+and wide formats, empty tables and truncated class arrays. Totals are **600
+read_fonts tests**, **64 font_types tests**, and **648 upstream ports**. Library
+build and 102-file regeneration pass. M7's model subset and differential gate
+are next; this is not yet a completed M7 gate.

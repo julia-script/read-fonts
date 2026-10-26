@@ -364,3 +364,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   A List with a front cursor replaces VecDeque; decoding preserves breadth-first
   order, early-bound skipping, exact remaining bytes, size limits and encoding
   tie order. Wide intermediate arithmetic avoids malformed-count overflow.
+- Coverage and class intersections retain upstream search heuristics, overlap
+  stopping rules, short-array handling and class-zero behavior, including the
+  distinctions between `intersectedClassGlyphs` and `intersectsClassGlyphs`.
+  Allocating intersections use effects; the general ClassDef boolean query also
+  needs the allocator because upstream computes a set for wide class formats.
+  The coverage heuristic uses explicit wrapping arithmetic for Rust's u32 cast
+  and product. Range iteration and absent-class decisions preserve full glyph IDs.
