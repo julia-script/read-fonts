@@ -556,4 +556,24 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   unrequested drawing facade. Fourteen other VARC model tests are ported, with
   additional repeated-axis, deep-graph and hidden-malformed-component regressions.
   Every transformed control point is accumulated before the resulting extents
-  are converted to F48Dot16. These bounds are also available for the pending COLR clip support.
+  are converted to F48Dot16. These bounds also supply COLR outline clips.
+
+- COLR metric bounds resolve every paint format but retain only values affecting
+  bounds. Palette colors and opacity do not affect upstream's BoundsSink. Gradient
+  stop ranges and degenerate linear/sweep cases still decide whether a fill
+  exists. Glyph clips use drawn outline control boxes, including VARC when its
+  source precedes the selected base; a color-only order uses the default outlines.
+- COLR transform and clip state is passed by value through the bounded traversal,
+  instead of maintaining PaintSink stacks. The 64-level, 16,384-node and paint-ID
+  cycle limits are retained, as is transform peeling beneath PaintGlyph. Stack
+  unwinding and cached-scalar tests for the unrequested drawing/cache facade have
+  no corresponding mutable state here. Variation deltas retain implicit outer
+  indices and stop before u32::MAX; metric clip-box deltas round to whole units.
+- Rust's f32 min/max ignore a single NaN, while Silk's propagate it. The control
+  and clip bound helpers explicitly implement Rust's behavior. This matters for
+  overflowed transforms on malformed graphs, even though parsed fields are finite.
+- The source-order optimization test uses independent upstream metric records for
+  every glyph, seven orders and seven font/instance cases because this port has
+  one dispatch path. Provider-probe tests check the established eager snapshot
+  contract: queries and order changes never recall the provider or use excluded
+  sources. Unrequested Type 1 cases remain excluded.

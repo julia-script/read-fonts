@@ -2,6 +2,7 @@
 //! Per-glyph measurements at one normalized variation location.
 import model.metrics.bitmap { BitmapSources }
 import model.metrics.varc { VarcOutlines }
+import model.metrics.color { ColorSources }
 import model.metrics.base_outline { BaseOutlines }
 import model.metrics.global { Metrics,LineBox,LineExtents }
 import model.metrics.extents { GlyphExtents,zeroExtents,narrowExtents,fixedBounds,exactExtents }
@@ -36,7 +37,7 @@ import silk.f32
 import silk.f64
 
 pub struct GlyphMetrics<'a,'c> {
-  varc:Maybe<VarcOutlines<'a>>,bitmaps:BitmapSources<'a>,hMetrics:GlyphMetricRecords<'a>,vMetrics:GlyphMetricRecords<'a>,outlines:Maybe<GlyfLoca<'a>>,gvar:Maybe<SelectedGvar<'a>>,hvar:Maybe<Hvar<'a>>,vvar:Maybe<Vvar<'a>>,vorg:Maybe<Vorg<'a>>,
+  colors:Maybe<ColorSources<'a>>,varc:Maybe<VarcOutlines<'a>>,bitmaps:BitmapSources<'a>,hMetrics:GlyphMetricRecords<'a>,vMetrics:GlyphMetricRecords<'a>,outlines:Maybe<GlyfLoca<'a>>,gvar:Maybe<SelectedGvar<'a>>,hvar:Maybe<Hvar<'a>>,vvar:Maybe<Vvar<'a>>,vorg:Maybe<Vorg<'a>>,
   cff:Maybe<FontData<'a>>,cff2:Maybe<FontData<'a>>,standalone:Maybe<&'a CffFontRef<'a>>,coords:&'c [F2Dot14],count:u32,upem:u16,line:Maybe<LineExtents<F48Dot16>>,baseLine:Maybe<LineExtents<F48Dot16>>,order:GlyphSourceOrder,bitmapPpem:Maybe<f32>,
 }
 impl<'a,'c> Copy for GlyphMetrics<'a,'c> {}
@@ -51,12 +52,12 @@ impl<'a,'c> GlyphMetrics<'a,'c> {
     let mut gvar=Maybe<SelectedGvar<'a>>.None let mut hvar=Maybe<Hvar<'a>>.None let mut vvar=Maybe<Vvar<'a>>.None
     if coords.length!=0 { gvar=Maybe<SelectedGvar<'a>>.fromResult(TableProvider.selectedGvar(provider)) hvar=Maybe<Hvar<'a>>.fromResult(TableProvider.hvar(provider)) vvar=Maybe<Vvar<'a>>.fromResult(TableProvider.vvar(provider)) }
     if let Maybe<VarcOutlines<'a>>.Some { value }=varc { if coords.length==0 { gvar=Maybe<SelectedGvar<'a>>.fromResult(TableProvider.selectedGvar(provider)) } }
-    return Self { varc:varc,bitmaps:BitmapSources.new(provider),hMetrics:TableProvider.hGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),vMetrics:TableProvider.vGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),outlines:Maybe<GlyfLoca<'a>>.fromResult(TableProvider.selectedGlyfLoca(provider,Option<bool>.None)),gvar:gvar,hvar:hvar,vvar:vvar,vorg:Maybe<Vorg<'a>>.fromResult(TableProvider.vorg(provider)),cff:cff,cff2:cff2,standalone:Maybe<&'a CffFontRef<'a>>.None,coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&baseGlobal),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
+    return Self { colors:ColorSources.read(provider),varc:varc,bitmaps:BitmapSources.new(provider),hMetrics:TableProvider.hGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),vMetrics:TableProvider.vGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),outlines:Maybe<GlyfLoca<'a>>.fromResult(TableProvider.selectedGlyfLoca(provider,Option<bool>.None)),gvar:gvar,hvar:hvar,vvar:vvar,vorg:Maybe<Vorg<'a>>.fromResult(TableProvider.vorg(provider)),cff:cff,cff2:cff2,standalone:Maybe<&'a CffFontRef<'a>>.None,coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&baseGlobal),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
   }
   pub fn fromCff(font:&'a CffFontRef<'a>,location:&'c [F2Dot14]) -> Self {
     let coords=nonDefaultCoords(location)
     let global=Metrics.fromCff(font)
-    return Self { varc:Maybe<VarcOutlines<'a>>.None,bitmaps:BitmapSources.empty(),hMetrics:GlyphMetricRecords.default(),vMetrics:GlyphMetricRecords.default(),outlines:Maybe<GlyfLoca<'a>>.None,gvar:Maybe<SelectedGvar<'a>>.None,hvar:Maybe<Hvar<'a>>.None,vvar:Maybe<Vvar<'a>>.None,vorg:Maybe<Vorg<'a>>.None,cff:Maybe<FontData<'a>>.None,cff2:Maybe<FontData<'a>>.None,standalone:Maybe<&'a CffFontRef<'a>>.Some { value:font },coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&global),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
+    return Self { colors:Maybe<ColorSources<'a>>.None,varc:Maybe<VarcOutlines<'a>>.None,bitmaps:BitmapSources.empty(),hMetrics:GlyphMetricRecords.default(),vMetrics:GlyphMetricRecords.default(),outlines:Maybe<GlyfLoca<'a>>.None,gvar:Maybe<SelectedGvar<'a>>.None,hvar:Maybe<Hvar<'a>>.None,vvar:Maybe<Vvar<'a>>.None,vorg:Maybe<Vorg<'a>>.None,cff:Maybe<FontData<'a>>.None,cff2:Maybe<FontData<'a>>.None,standalone:Maybe<&'a CffFontRef<'a>>.Some { value:font },coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&global),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
   }
   pub fn numGlyphs(self:&Self) -> u32 { return self.count }
   pub fn unitsPerEm(self:&Self) -> u16 { return self.upem }
@@ -120,6 +121,7 @@ impl<'a,'c> GlyphMetrics<'a,'c> {
     let mut sources=GlyphSourceOrder.iter(self.order)
     while let Option<GlyphSource>.Some { value:source }=GlyphSources.next(&mut sources) {
       if source==GlyphSource.Sbix || source==GlyphSource.Cbdt || source==GlyphSource.Ebdt { if let Option<GlyphExtents<F48Dot16>>.Some { value }=BitmapSources.extents(&self.bitmaps,source,self.bitmapPpem,glyph,self.upem) { return Option<GlyphExtents<F48Dot16>>.some(value) } }
+      if source==GlyphSource.Colr { if let Maybe<ColorSources<'a>>.Some { value }=self.colors { if let Option<GlyphExtents<F48Dot16>>.Some { value:extents }=run ColorSources.extents(&value,GlyphMetrics.baseOutlines(self),self.varc,glyph,self.coords) { return Option<GlyphExtents<F48Dot16>>.some(extents) } } }
       if source==GlyphSource.Varc { if let Maybe<VarcOutlines<'a>>.Some { value }=self.varc { if GlyphId.toU32(glyph)<self.count && BaseOutlines.available(&GlyphMetrics.baseOutlines(self)) && VarcOutlines.covers(&value,glyph) {
         let result=run Effect.result(VarcOutlines.controlBox(&value,&GlyphMetrics.baseOutlines(self),glyph,self.coords))
         match move result { Result<BoundingBox<f32>,Error | OutOfMemoryError>.Success { value:bounds }=>{return Option<GlyphExtents<F48Dot16>>.some(exactExtents(GlyphExtents<f32>.fromBounds(bounds)))} Result<BoundingBox<f32>,Error | OutOfMemoryError>.Failure { error }=>match move error { Error problem=>{} OutOfMemoryError problem=>{fail move problem} } }

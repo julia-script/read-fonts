@@ -81,6 +81,36 @@ def fixtures():
         post += b''.join(bytes([len(name)]) + name for name in names)
         yield 'post-' + label, sfnt({b'post': post, b'maxp': struct.pack('>IH', 0x5000, 2)})
 
+    # Full source selection needs real outlines underneath color, bitmap and
+    # variable-composite tables, including missing-table fallbacks.
+    phase_source = (ROOT / 'packages/read_fonts/src/generated_phase2_fixtures.silk').read_text()
+    phase = {name: ast.literal_eval(literal) for name, literal in re.findall(
+        r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", phase_source)}
+    names = ('cbdtFont', 'cbdtMissingGlyph2At16', 'colrFont', 'colrV0Font',
+             'variableColrFont', 'unclippedColrFont', 'gradientFont',
+             'varcCjkFont', 'varcConditionalsFont', 'varcStaticFont',
+             'varcDeltaPrecisionFont', 'colrEmptyColorLineFont')
+    for name in names:
+        yield 'phase2-' + name, phase[name]
+        records = tables(phase[name])
+        for hidden in ((b'COLR',), (b'VARC',), (b'CBDT',), (b'CBLC',),
+                       (b'glyf', b'loca'), (b'gvar',), (b'fvar',)):
+            if any(tag in records for tag in hidden):
+                yield 'phase2-' + name + '-without-' + '-'.join(tag.decode() for tag in hidden), sfnt(
+                    {tag: value for tag, value in records.items() if tag not in hidden})
+    base = tables(seeds['materialSymbols'])
+    for name, data in phase.items():
+        if name.startswith('varc') and name not in names:
+            yield 'model-' + name, sfnt({**base, b'VARC': data})
+            for cut in sorted({0, 4, 24, len(data)//2, len(data)-1}):
+                yield f'model-{name}-prefix-{cut}', sfnt({**base, b'VARC': data[:cut]})
+    # A mixed bitmap/outline font must fall through when its selected strike
+    # lacks the glyph, while a larger strike still answers.
+    for name in ('cbdtFont', 'cbdtMissingGlyph2At16'):
+        bitmap = {tag: value for tag, value in tables(phase[name]).items()
+                  if tag in (b'CBDT', b'CBLC')}
+        yield 'mixed-' + name, sfnt({**base, **bitmap})
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

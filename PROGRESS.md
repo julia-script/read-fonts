@@ -955,3 +955,27 @@ COLR model bounds and seven deferred glyph tests, the full-source model dump,
 final debug/release and malformed comparisons, and the speed ratio remain before
 M9 is complete. The allocator-backed traversal's scratch/cache adaptations are
 recorded in PORTING.md.
+
+
+## Session 50 — 2026-10-26 — COLR bounds and complete model observations
+
+COLR model bounds now cover every paint format, variable clip boxes, v0 layers,
+outline clips, transform peeling, gradients, compositing and bounded graph walks.
+All seven remaining deferred glyph-metrics tests pass, including source orders,
+color-only clips and mixed sources. Fourteen upstream COLR dependency tests and
+three bounds tests are also ported, with two additional regression tests.
+The complete suite passes **860 read_fonts tests**, with **897 upstream ports**
+overall; font_types remains at 64 tests. No requested Phase 2 model tests remain
+deferred. Scratch/cache and drawing-only adaptations are documented in PORTING.md.
+
+Dump format 9 measures the complete default bitmap/COLR/VARC/base-outline chain,
+with six explicit source orders and bitmap strike selection at 12 and 64 ppem.
+Independent Rust expectations now cover seven source orders and the real color
+fixtures. The focused model corpus expands from 154 to **356 cases**; the Phase 2
+corpus remains 3,550. All 156 generated outputs, 54 model fixtures and 47 Phase 2
+fixtures pass regeneration checks. Rust formatting and all-target Clippy pass,
+as do all 20 Python harness tests. The updated debug CLI builds successfully.
+
+Full-source debug/release parity, the final malformed-input campaign and speed
+comparison are in progress. These gates must pass before M9 can be completed.
+A temporary workspace connection outage recovered with the changes intact.

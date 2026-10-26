@@ -100,9 +100,9 @@ for name,data in synthetic.items():
 subprocess.run([os.environ.get('CARGO', 'cargo'), 'build', '--quiet', '--locked',
                 '--manifest-path', str(ROOT / 'scripts/rust-font-dump/Cargo.toml'),
                 '--target-dir', str(ROOT / 'build/rust'), '--bin', 'model-fixtures'], check=True)
-for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64', 'varc-cjk', 'varc-static', 'varc-conditionals', 'varc-precision'):
+for kind in ('glyf', 'cff', 'cff2', 'bitmap-largest', 'bitmap-12', 'bitmap-64', 'varc-cjk', 'varc-static', 'varc-conditionals', 'varc-precision', 'color-variable', 'color-half', 'color-moved', 'color-static', 'color-v0', 'color-no-clip', 'color-gradient', 'orders-tinos', 'orders-cff', 'orders-cbdt', 'orders-colr', 'orders-varc', 'orders-cantarell', 'orders-cantarell650'):
     data = subprocess.check_output([str(ROOT / 'build/rust/debug/model-fixtures'), kind])
-    assert data and len(data) % 36 == 0
+    assert data and len(data) % (40 if kind.startswith("orders-") else 36) == 0
     literal = ''.join(f'\\x{byte:02x}' for byte in data)
     parts = kind.split('-')
     name = parts[0] + ''.join(part.title() for part in parts[1:])

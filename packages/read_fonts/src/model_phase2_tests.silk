@@ -88,3 +88,97 @@ effect fn varcBounds(bytes:&'static [u8],expectedBytes:&'static [u8]) -> () ! As
   run Testing.expect(count>0,"fixture covers composites")
 }
 fn sameOptional(a:Option<GlyphExtents<F48Dot16>>,b:Option<GlyphExtents<F48Dot16>>) -> bool { return match move a { Option<GlyphExtents<F48Dot16>>.Some { value:left }=>match move b { Option<GlyphExtents<F48Dot16>>.Some { value:right }=>same(left,right) _=>false } _=>none(move b) } }
+
+import model.charmap { Charmap }
+import table_provider { TableProvider }
+import tables.colr { Colr,ClipBox }
+import tables.fvar { Fvar,UserCoordinate }
+import tables.avar { Avar }
+import font_types.lib { Tag,Fixed }
+fn readExpectedAt<'a>(data:&FontData<'a>,at:usize) -> GlyphExtents<F48Dot16> { return GlyphExtents<F48Dot16> { xBearing:F48Dot16.fromBits(FontData<'a>.readAt<i64>(data,at+4) |> Result<i64,ReadError>.unwrapOr(0)),yBearing:F48Dot16.fromBits(FontData<'a>.readAt<i64>(data,at+12) |> Result<i64,ReadError>.unwrapOr(0)),width:F48Dot16.fromBits(FontData<'a>.readAt<i64>(data,at+20) |> Result<i64,ReadError>.unwrapOr(0)),height:F48Dot16.fromBits(FontData<'a>.readAt<i64>(data,at+28) |> Result<i64,ReadError>.unwrapOr(0)) } }
+effect fn colorExpected(bytes:&'static [u8],glyph:GlyphId) -> GlyphExtents<F48Dot16> ! AssertionError<'static> { let data=FontData.new(bytes) let mut at:usize=0 while at<bytes.length { let gid=run must(FontData<'static>.readAt<u32>(&data,at)) if gid==GlyphId.toU32(glyph) { return readExpectedAt(&data,at) } at=at+36 } run Testing.expect(false,"reference color glyph exists") return Intrinsic.trap("assertion") }
+effect fn mapped(font:&FontRef,ch:u32) -> GlyphId ! AssertionError<'static> { return run some(Charmap.mapUnicode(&Charmap.new(font),ch)) }
+test effect fn aColorGlyphMeasuresByItsClipBoxOrItsPaint() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run colorClipAndPaint() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn colorClipAndPaint() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(Fixtures.variableColrFont())) let base=metrics(&font,&[]) let clipped=run mapped(&font,986112) let painted=run mapped(&font,986624) let colr=run must(TableProvider.colr(&font))
+  run Testing.expect(!none(Colr.v1ClipBox(&colr,clipped)) && none(Colr.v1ClipBox(&colr,painted)),"clipped and unclipped test glyphs")
+  let clip=run some(run GlyphMetrics.extentsExact(&base,clipped)) run Testing.expect(same(clip,run colorExpected(Expected.colorVariableDrawnBounds(),clipped)),"clip measures color glyph")
+  let layers=run some(run GlyphMetrics.extentsExact(&base,painted)) run Testing.expect(same(layers,run colorExpected(Expected.colorVariableDrawnBounds(),painted)),"paint measures color glyph")
+  let outlines=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.outlines()) run Testing.expect(!sameOptional(run GlyphMetrics.extentsExact(&outlines,clipped),Option<GlyphExtents<F48Dot16>>.some(clip)),"base outline differs from color clip")
+  run Testing.expect(sameOptional(run GlyphMetrics.extentsExact(&base,GlyphId.new(1)),run GlyphMetrics.extentsExact(&outlines,GlyphId.new(1))),"plain glyph falls through")
+}
+test effect fn aColorOnlyOrderKeepsTheClips() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run compareColor(Fixtures.variableColrFont(),Expected.colorVariableDrawnBounds(),&[],true) |> Effect.provideMut<Allocator>(&mut allocator) }
+test effect fn aVersion0ColorGlyphMeasuresByItsLayers() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run colorV0() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn colorV0() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(Fixtures.colrV0Font())) let base=metrics(&font,&[]) let outlines=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.outlines()) let glyph=run mapped(&font,986624)
+  run Testing.expect(Colr.version(&run must(TableProvider.colr(&font)))==0,"actual v0 table") let layers=run colorExpected(Expected.colorV0DrawnBounds(),glyph)
+  run Testing.expect(same(run some(run GlyphMetrics.extentsExact(&base,glyph)),layers),"v0 layers determine bounds") run Testing.expect(!sameOptional(run GlyphMetrics.extentsExact(&outlines,glyph),Option<GlyphExtents<F48Dot16>>.some(layers)),"v0 differs from empty base")
+  run Testing.expect(sameOptional(run GlyphMetrics.extentsExact(&base,GlyphId.new(1)),run GlyphMetrics.extentsExact(&outlines,GlyphId.new(1))),"v0 plain fallback")
+}
+test effect fn aColorGlyphAtALocationMovesItsClipBox() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run movedColorClip() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn movedColorClip() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(Fixtures.variableColrFont())) let fvar=run must(TableProvider.fvar(&font)) let mut coords=[F2Dot14.zero();64]
+  let user=[UserCoordinate { tag:Tag.fromU32(1129076809),value:Fixed.fromI32(200) }]
+  run Fvar.userToNormalized(&fvar,Option<Avar<'static>>.None,&user,&mut coords)
+  let glyph=run mapped(&font,986112) let base=metrics(&font,&[]) let moved=metrics(&font,&coords)
+  let original=run some(run GlyphMetrics.extentsExact(&base,glyph)) let changed=run some(run GlyphMetrics.extentsExact(&moved,glyph))
+  run Testing.expect(&original.xBearing!= &changed.xBearing,"location moves clip") run Testing.expect(same(changed,run colorExpected(Expected.colorMovedDrawnBounds(),glyph)),"clip deltas round before extents")
+}
+test effect fn colorModelMatchesAllIndependentPaintFixtures() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run colorFixtureSet() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn colorFixtureSet() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  run compareColor(Fixtures.colrFont(),Expected.colorStaticDrawnBounds(),&[],false)
+  run compareColor(Fixtures.variableColrFont(),Expected.colorHalfDrawnBounds(),&[F2Dot14.fromF32(0.5);64],false)
+  run compareColor(Fixtures.colrV0Font(),Expected.colorV0DrawnBounds(),&[],false)
+  run compareColor(Fixtures.unclippedColrFont(),Expected.colorNoClipDrawnBounds(),&[],false)
+  run compareColor(Fixtures.gradientFont(),Expected.colorGradientDrawnBounds(),&[],false)
+}
+effect fn compareColor(bytes:&'static [u8],expected:&'static [u8],coords:&[F2Dot14],colorOnly:bool) -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(bytes)) let mut base=metrics(&font,coords) if colorOnly { base=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.color()) }
+  let data=FontData.new(expected) let mut at:usize=0 let mut tested:usize=0
+  while at<expected.length { let glyph=GlyphId.new(run must(FontData<'static>.readAt<u32>(&data,at))) let wanted=readExpectedAt(&data,at) let actual=run some(run GlyphMetrics.extentsExact(&base,glyph)) run Testing.expect(same(actual,wanted),"color extents match upstream paint/clip bounds") at=at+36 tested=tested+1 }
+  run Testing.expect(tested>0,"color glyphs measured")
+}
+
+import silk.list { List }
+import model.metrics { IdentityConverter }
+import model.glyph { GlyphSource }
+import generated_cff_fixtures as CffFixtures
+import silk.atomic { Atomic,MemoryOrder }
+import silk.pointer { Pointer }
+fn equalOptional(a:&Option<GlyphExtents<F48Dot16>>,b:&Option<GlyphExtents<F48Dot16>>) -> bool { return match &a.* { Option<GlyphExtents<F48Dot16>>.Some { value:left }=>match &b.* { Option<GlyphExtents<F48Dot16>>.Some { value:right }=>same(left,right) _=>false } _=>match &b.* { Option<GlyphExtents<F48Dot16>>.None=>true _=>false } } }
+test effect fn mixedSourcesMeasureARunAsTheyMeasureOne() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run mixedSourceBatches() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn mixedSourceBatches() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let fonts=[Fixtures.cbdtFont(),Fixtures.variableColrFont(),Fixtures.varcCjkFont()] let mut f:usize=0
+  while f<3 { let font=run must(FontRef.new(fonts[f])) let base=metrics(&font,&[]) let mut glyphs=List<GlyphId>.make() let mut outputs=List<Option<GlyphExtents<F48Dot16>>>.make() let mut gid:u32=0
+    while gid<GlyphMetrics.numGlyphs(&base) { run List<GlyphId>.append(&mut glyphs,GlyphId.new(gid)) run List<Option<GlyphExtents<F48Dot16>>>.append(&mut outputs,Option<GlyphExtents<F48Dot16>>.None) gid=gid+1 }
+    run GlyphMetrics.extentsBatched(&base,&IdentityConverter {},List<GlyphId>.asSlice(&glyphs),List<Option<GlyphExtents<F48Dot16>>>.asMutSlice(&mut outputs)) let results=List<Option<GlyphExtents<F48Dot16>>>.asSlice(&outputs) gid=0
+    while gid<GlyphMetrics.numGlyphs(&base) { let direct=run GlyphMetrics.extentsExact(&base,GlyphId.new(gid)) run Testing.expect(equalOptional(&results[u32.toUsize(gid)],&direct),"mixed source batch agrees per glyph") gid=gid+1 } f=f+1
+  }
+}
+// This port has one source-dispatch path. Independent Rust expectations exercise
+// the upstream shortcut/general-path test's fonts, orders and out-of-range glyph.
+test effect fn theBaseOutlineShortcutMatchesEverySource() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run sourceOrders() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn sourceOrders() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let fonts=[Expected.tinos(),CffFixtures.notoSerifFont(),Fixtures.cbdtFont(),Fixtures.variableColrFont(),Fixtures.varcCjkFont(),CffFixtures.cantarellFont(),CffFixtures.cantarellFont()]
+  let references=[Expected.ordersTinosDrawnBounds(),Expected.ordersCffDrawnBounds(),Expected.ordersCbdtDrawnBounds(),Expected.ordersColrDrawnBounds(),Expected.ordersVarcDrawnBounds(),Expected.ordersCantarellDrawnBounds(),Expected.ordersCantarell650DrawnBounds()]
+  let orders=[GlyphSourceOrder.default(),GlyphSourceOrder.outlines(),GlyphSourceOrder.baseOutlines(),GlyphSourceOrder.bitmaps(),GlyphSourceOrder.color(),GlyphSourceOrder.new(&[GlyphSource.Cff,GlyphSource.Glyf,GlyphSource.Colr]),GlyphSourceOrder.empty()] let mut f:usize=0
+  while f<7 { let font=run must(FontRef.new(fonts[f])) let mut coords=[F2Dot14.zero();64]
+    if f==6 { let fvar=run must(TableProvider.fvar(&font)) let mut avar=Option<Avar<'static>>.None if let Result<Avar<'static>,ReadError>.Success { value }=TableProvider.avar(&font) { avar=Option<Avar<'static>>.some(value) } run Fvar.userToNormalized(&fvar,move avar,&[UserCoordinate { tag:Tag.fromU32(2003265652),value:Fixed.fromI32(650) }],&mut coords) }
+    let base=metrics(&font,&coords) let data=FontData.new(references[f]) let mut at:usize=0
+    while at<references[f].length { let order=run must(FontData<'static>.readAt<u16>(&data,at)) let present=run must(FontData<'static>.readAt<u16>(&data,at+2)) let glyph=GlyphId.new(run must(FontData<'static>.readAt<u32>(&data,at+4))) let selected=GlyphMetrics.withExtentsSourceOrder(base,orders[u16.toUsize(order)]) let actual=run GlyphMetrics.extentsExact(&selected,glyph)
+      if present==0 { run Testing.expect(none(move actual),"reference order has no source for glyph") } else { run Testing.expect(same(run some(move actual),readExpectedAt(&data,at+4)),"all source orders match upstream") } at=at+40
+    } f=f+1
+  }
+}
+import silk.u16
+struct SourceProbe<'a> { font:FontRef<'a>,calls:*mut u32, }
+impl<'a> TableProvider<'a> for SourceProbe<'a> { fn dataForTag(self:&Self,tag:Tag) -> Option<FontData<'a>> { let old=unsafe Atomic.fetchAdd<u32>(self.calls,1,MemoryOrder.Relaxed) drop old return FontRef.tableData(&self.font,tag) } }
+fn probeMetrics<'a,'c>(provider:&SourceProbe<'a>,coords:&'c [F2Dot14]) -> GlyphMetrics<'a,'c> { return GlyphMetrics<'a,'c>.new(provider,coords) }
+// Eager metric snapshots capture views at construction; subsequent source-order
+// queries neither recall providers nor accidentally measure excluded sources.
+test effect fn anOutlineOrderProbesNoOtherTables() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run outlineSourceProbe() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn outlineSourceProbe() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let mut calls:u32=0 let counter=Pointer.fromMutRef(&mut calls) let provider=SourceProbe { font:run must(FontRef.new(Fixtures.cbdtFont())),calls:counter } let base=probeMetrics(&provider,&[]) let captured=unsafe Atomic.load<u32>(counter,MemoryOrder.Relaxed)
+  let outlines=GlyphMetrics.withExtentsSourceOrder(base,GlyphSourceOrder.baseOutlines()) run Testing.expect(none(run GlyphMetrics.extentsExact(&outlines,GlyphId.new(2))),"outline order excludes bitmaps")
+  run Testing.expect(!none(run GlyphMetrics.extentsExact(&base,GlyphId.new(2))),"default order uses captured bitmap") run Testing.expect(captured>0 && unsafe Atomic.load<u32>(counter,MemoryOrder.Relaxed)==captured,"queries perform no provider reads")
+}

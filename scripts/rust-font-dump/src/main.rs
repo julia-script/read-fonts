@@ -222,7 +222,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=8\ndump.scope=phase2-tables"
+        "font-dump.version=9\ndump.scope=phase2-model"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -271,12 +271,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 8: Phase 1 and Phase 2 tables plus model APIs."
+            "usage: rust-font-dump FONT\nDump format 9: Phase 1 and Phase 2 tables plus model APIs."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 8; phase2-tables scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 9; phase2-model scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

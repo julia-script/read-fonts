@@ -183,7 +183,7 @@ All earlier format bounds, reference validation and error rules still apply.
 
 ## Version 5: AAT tables and decoded helpers
 
-The active header is `font-dump.version=5` and `dump.scope=aat-tables`.
+The version 5 header is `font-dump.version=5` and `dump.scope=aat-tables`.
 After the VORG grammar fields, generated traversal emits morx, mort, kerx, trak,
 ankr, feat and ltag. This covers all their grammar fields, arrays and resolved
 references, including AAT lookup/state headers. The kern wrapper selects the
@@ -281,12 +281,28 @@ outside the port). Phase 2 adds observations for the complete bitmap/color/VARC
 chain. Unavailable ink is `none`; a present empty glyph has four zero fields.
 Allocation failure aborts the dump rather than emitting a successful observation.
 
-## Version 8 — Phase 2 (in progress)
+## Version 8 — Phase 2 tables
 
 Version `8`, scope `phase2-tables`, retains version 7 observations and adds the
-Phase 2 table families as their ports land. Generated array offsets traverse each
+Phase 2 table families. Generated array offsets traverse each
 resolved element in order, including optional palette flag/name-ID arrays.
 `hdmx` device records include pixel size, maximum width and all width bytes.
 Metadata includes its variant, every language/script entry as UTF-8 byte hex or
 its read error, and opaque bytes for other tags. DSIG follows the public resolver:
 unknown signature formats and inconsistent lengths produce `none`.
+
+## Version 9 — complete model source selection
+
+The active header is `font-dump.version=9` with `dump.scope=phase2-model`.
+It retains version 8's complete Phase 1/Phase 2 table observations and changes
+model measurements to `extentsSourceOrder=default`. All glyphs and existing
+boundary probes now use bitmap, COLR, VARC and base-outline sources in upstream
+order at each normalized location. The 16 ppem floating-point and 26.6 views also
+select the bitmap strike requested by their scale.
+
+At each location, `sourceOrders[0..5].glyphs[G]` records exact extents for outlines,
+base outlines, bitmaps, color, empty, and the custom CFF/glyf/COLR order. The fixed
+probe sequence is 0, 1, 2, 31, the last glyph (saturating), the glyph count, and
+`u32::MAX`; repeated IDs are intentionally retained. `bitmapSizes[0..1]` records
+12 and 64 ppem, encoded as f32 bits, followed by scaled f32 extents at those same
+IDs. These probes supplement the exhaustive default-order glyph measurements.

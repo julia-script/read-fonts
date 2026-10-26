@@ -3,7 +3,7 @@
 use read_fonts::{
     model::{
         charmap::Charmap,
-        glyph::GlyphSourceOrder,
+        glyph::{GlyphSource, GlyphSourceOrder},
         metrics::{GlyphExtents, LineBox, LineExtents, Metrics, Scale26Dot6, ScaleF32},
         name::{GlyphName, GlyphNameSource},
         Font, NormalizedCoord,
@@ -113,11 +113,8 @@ pub fn dump(out: &mut impl Write, prefix: &str, data: &[u8], index: u32) -> io::
             instance.normalized_coords().len(),
         )?;
         global(out, &format!("{loc}.metrics"), instance.metrics())?;
-        // Phase 1 measures the outline sources. Phase 2 adds the complete source chain.
-        let metrics = instance
-            .glyph_metrics()
-            .with_extents_source_order(GlyphSourceOrder::BASE_OUTLINES);
-        scalar(out, &format!("{loc}.extentsSourceOrder"), "base-outlines")?;
+        let metrics = instance.glyph_metrics();
+        scalar(out, &format!("{loc}.extentsSourceOrder"), "default")?;
         let fine = metrics.scaled(ScaleF32::from_ppem(16.0, font.units_per_em()));
         let coarse = metrics.scaled(Scale26Dot6::from_ppem(16.0, font.units_per_em()));
         for id in &ids {
@@ -186,6 +183,43 @@ pub fn dump(out: &mut impl Write, prefix: &str, data: &[u8], index: u32) -> io::
                 coarse.extents(gid),
                 |v| v.to_bits(),
             )?;
+        }
+        let count = font.num_glyphs();
+        let probes = [0, 1, 2, 31, count.saturating_sub(1), count, u32::MAX];
+        let orders = [
+            GlyphSourceOrder::OUTLINES,
+            GlyphSourceOrder::BASE_OUTLINES,
+            GlyphSourceOrder::BITMAPS,
+            GlyphSourceOrder::COLOR,
+            GlyphSourceOrder::EMPTY,
+            GlyphSourceOrder::new(&[GlyphSource::Cff, GlyphSource::Glyf, GlyphSource::Colr]),
+        ];
+        for (order_index, order) in orders.into_iter().enumerate() {
+            let selected = metrics.with_extents_source_order(order);
+            for gid in probes {
+                extents(
+                    out,
+                    &format!("{loc}.sourceOrders[{order_index}].glyphs[{gid}]"),
+                    selected.extents_exact(GlyphId::new(gid)),
+                    F48Dot16::to_bits,
+                )?;
+            }
+        }
+        for (size_index, ppem) in [12.0f32, 64.0].into_iter().enumerate() {
+            let selected = metrics.scaled(ScaleF32::from_ppem(ppem, font.units_per_em()));
+            scalar(
+                out,
+                &format!("{loc}.bitmapSizes[{size_index}].ppem"),
+                ppem.to_bits(),
+            )?;
+            for gid in probes {
+                extents(
+                    out,
+                    &format!("{loc}.bitmapSizes[{size_index}].glyphs[{gid}]"),
+                    selected.extents(GlyphId::new(gid)),
+                    f32::to_bits,
+                )?;
+            }
         }
     }
     Ok(())
