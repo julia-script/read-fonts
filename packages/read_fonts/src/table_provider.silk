@@ -16,6 +16,9 @@ import tables.post { Post }
 import tables.gdef { Gdef }
 import tables.fvar { Fvar }
 import tables.avar { Avar }
+import tables.mvar { Mvar }
+import tables.vvar { Vvar }
+import tables.hvar { Hvar }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
@@ -35,6 +38,9 @@ pub interface TableProvider<'a> {
   fn name(self: &Self) -> Result<Name<'a>, ReadError> { return readTable<Name<'a>, Self>(self, Name.tag()) }
   fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return readTable<Os2<'a>, Self>(self, Os2.tag()) }
   fn post(self: &Self) -> Result<Post<'a>, ReadError> { return readTable<Post<'a>, Self>(self, Post.tag()) }
+  fn hvar(self: &Self) -> Result<Hvar<'a>, ReadError> { return readTable<Hvar<'a>, Self>(self, Hvar.tag()) }
+  fn vvar(self: &Self) -> Result<Vvar<'a>, ReadError> { return readTable<Vvar<'a>, Self>(self, Vvar.tag()) }
+  fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return readTable<Mvar<'a>, Self>(self, Mvar.tag()) }
   fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return readTable<Fvar<'a>, Self>(self, Fvar.tag()) }
   fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return readTable<Avar<'a>, Self>(self, Avar.tag()) }
   fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return readTable<Gdef<'a>, Self>(self, Gdef.tag()) }

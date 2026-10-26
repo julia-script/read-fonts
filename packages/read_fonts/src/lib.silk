@@ -29,3 +29,6 @@ pub import tables.gpos { Gpos }
 
 pub import tables.fvar { Fvar }
 pub import tables.avar { Avar }
+pub import tables.hvar { Hvar }
+pub import tables.vvar { Vvar }
+pub import tables.mvar { Mvar }

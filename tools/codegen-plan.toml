@@ -227,3 +227,24 @@ target = "packages/font_dump/src/generated_dump_variations.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/variations.rs"
 target = "scripts/rust-font-dump/src/generated_dump_variations.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/hvar.rs"
+target = "packages/read_fonts/src/generated_hvar.silk"
+facade = "packages/read_fonts/src/tables/hvar.silk"
+extensions = ["packages/read_fonts/src/tables/hvar_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/vvar.rs"
+target = "packages/read_fonts/src/generated_vvar.silk"
+facade = "packages/read_fonts/src/tables/vvar.silk"
+extensions = ["packages/read_fonts/src/tables/vvar_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/mvar.rs"
+target = "packages/read_fonts/src/generated_mvar.silk"
+facade = "packages/read_fonts/src/tables/mvar.silk"
+extensions = ["packages/read_fonts/src/tables/mvar_impl.silk"]

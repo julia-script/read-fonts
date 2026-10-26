@@ -294,3 +294,16 @@ prefix. fvar instances retain optional PostScript IDs; axis normalization keeps
 the upstream indexed search and 16.16 avar2 precision. Feature selection resolves
 GDEF deltas when needed. M4 remains incomplete: metric/glyph variation parsing,
 outlines, and differential dumps are next. Milestones 5–9 remain pending.
+
+## Session 11 — 2026-10-26 — metric variation evaluation
+
+The suites pass **64 font_types** and **201 read_fonts tests** (**251 upstream
+ports**). The 16 new ports cover all seven HVAR, three VVAR, and four MVAR tests,
+plus variation-region contents and the fixed/float delta test over all rows of
+the original variable COLR fixture at 21 locations. HVAR/VVAR preserve fractional
+advances and partial scalar caches; MVAR preserves both rounded metric lookups
+and exact instance values. The generated readers and provider methods compile.
+
+Milestone 4 remains in progress: packed tuple/glyph variations, glyph outlines,
+vertical metrics, and the full differential gate remain. These unit results do
+not claim M4 corpus parity. Milestones 5–9 remain pending.

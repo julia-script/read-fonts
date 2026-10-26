@@ -23,7 +23,7 @@ impl Context<'_> {
             "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
             "variations" => out.push_str("pub import tables.tuple_index { TupleIndex }\n"),
             "fvar" => out.push_str("pub import tables.instance_record { InstanceRecord }\n"),
-            "avar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
+            "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             _ => (),
         }
     }
