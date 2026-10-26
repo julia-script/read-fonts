@@ -13,6 +13,7 @@ use std::{
 mod dump_support;
 mod extensions_aat_common;
 mod extensions_aat_misc;
+mod extensions_cff;
 mod extensions_cmap;
 mod extensions_glyphs;
 mod extensions_kern;
@@ -25,6 +26,8 @@ mod extensions_name;
 mod extensions_post;
 mod generated_dump_aat;
 mod generated_dump_ankr;
+mod generated_dump_cff;
+mod generated_dump_cff2;
 mod generated_dump_cmap;
 mod generated_dump_feat;
 mod generated_dump_head;
@@ -163,6 +166,7 @@ fn dump_font(
         extensions_kern::dump(out, &prefix, &font)?;
         extensions_aat_misc::dump(out, &prefix, &font)?;
         extensions_metric_variations::dump(out, &prefix, &font)?;
+        extensions_cff::dump(out, &prefix, &font)?;
     }
     Ok(())
 }
@@ -173,7 +177,7 @@ fn dump(out: &mut impl Write, data: &[u8]) -> io::Result<()> {
 
 fn dump_with_tables(out: &mut impl Write, data: &[u8], include_tables: bool) -> io::Result<()> {
     let header = if include_tables {
-        "font-dump.version=5\ndump.scope=aat-tables"
+        "font-dump.version=6\ndump.scope=cff-tables"
     } else {
         "font-dump.version=1\ndump.scope=directory"
     };
@@ -222,12 +226,12 @@ fn main() -> ExitCode {
     }
     if args[0] == OsStr::new("--help") {
         println!(
-            "usage: rust-font-dump FONT\nDump format 5: core, layout, variation and AAT tables, glyph data and evaluated helpers."
+            "usage: rust-font-dump FONT\nDump format 6: core, layout, variation, AAT and CFF tables, glyph data and evaluated helpers."
         );
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {
-        println!("rust-font-dump 0.1.0 (font-dump format 5; aat-tables scope)");
+        println!("rust-font-dump 0.1.0 (font-dump format 6; cff-tables scope)");
         return ExitCode::SUCCESS;
     }
     let data = match fs::read(&args[0]) {

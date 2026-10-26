@@ -68,6 +68,10 @@ import read_fonts.tables.feat as FeatTables
 import generated_dump_feat
 import read_fonts.tables.ltag as LtagTables
 import generated_dump_ltag
+import read_fonts.ps.cff.v1 as CffTables
+import generated_dump_cff
+import read_fonts.ps.cff.v2 as Cff2Tables
+import generated_dump_cff2
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -302,3 +306,15 @@ impl<'a> DumpTable<'a> for AnkrTables.GlyphDataEntry<'a> { effect fn dump(self: 
 impl<'a> DumpTable<'a> for FeatTables.Feat<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_feat.dumpFeat(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for FeatTables.SettingNameArray<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_feat.dumpSettingNameArray(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for LtagTables.Ltag<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ltag.dumpLtag(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.CffHeader<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCffHeader(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.Index<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpIndex(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.FdSelect<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpFdSelect(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.FdSelectFormat0<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpFdSelectFormat0(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.FdSelectFormat3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpFdSelectFormat3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.FdSelectFormat4<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpFdSelectFormat4(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.CustomCharset<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCustomCharset(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.CharsetFormat0<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCharsetFormat0(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.CharsetFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCharsetFormat1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for CffTables.CharsetFormat2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff.dumpCharsetFormat2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for Cff2Tables.Cff2Header<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff2.dumpCff2Header(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for Cff2Tables.Index<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cff2.dumpIndex(&mut path, self.*) } }

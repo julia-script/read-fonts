@@ -556,3 +556,23 @@ source = "upstream/resources/codegen_inputs/cff2.rs"
 target = "packages/read_fonts/src/generated_cff2.silk"
 facade = "packages/read_fonts/src/ps/cff/v2.silk"
 extensions = ["packages/read_fonts/src/ps/cff/cff2_index_impl.silk", "packages/read_fonts/src/ps/cff/cff2_impl.silk"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/cff.rs"
+target = "packages/font_dump/src/generated_dump_cff.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/cff.rs"
+target = "scripts/rust-font-dump/src/generated_dump_cff.rs"
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/cff2.rs"
+target = "packages/font_dump/src/generated_dump_cff2.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/cff2.rs"
+target = "scripts/rust-font-dump/src/generated_dump_cff2.rs"

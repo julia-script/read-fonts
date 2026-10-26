@@ -322,3 +322,15 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   shared PathSink contract is included as a CFF drawing dependency. Transform and
   degenerate-path adapters preserve FreeType's operation order and rounding; bounds
   are measured while transforming control points, before any bounding-box reduction.
+
+- Public `ps` and `ps.cff` facades re-export the shared PostScript and unified font
+  types. Generated dump imports preserve the CFF namespace instead of assuming
+  every grammar lives under `tables`. Both dumpers use the public parsed views.
+- Dump format 6 follows the top/font/private dictionary hierarchy, including
+  malformed links, without letting arbitrary offsets create recursive traversal.
+  Decoded operands are observed without blending; subfont and glyph measurements
+  separately use four variation locations. Raw INDEX fields remain complete,
+  while extra object/glyph probes explicitly stop at the 65,536-item sfnt domain.
+  CFF fixture evidence is gzip-compressed because malformed top-DICT counts can
+  produce JSON reports larger than GitHub's per-file limit; no observations are
+  removed from those reports.

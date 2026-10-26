@@ -545,3 +545,17 @@ fixtures, prove that a sheared outline is tighter than its transformed box, and
 check moving CFF2 bounds at three variation locations. Library builds pass.
 The M6 names/bounds differential dump and corpus/fixture gates are next; M6 is
 not complete and milestones 7–9 have not started.
+
+## Session 27 — 2026-10-26 — CFF differential traversal
+
+Format 6 adds generated CFF/CFF2 field dumps, complete decoded DICT operands,
+FDArray/FDSelect and private/local-subroutine links, custom encoding records,
+font metadata, names, widths and bounds at four normalized locations. All **78
+focused seed fixtures** match after this expansion. The earlier measurement-only
+protocol passed 253 CFF corpus fonts and 9,146 CFF fixtures; those observations
+are preliminary and do not substitute for the expanded protocol's final gate.
+
+The public PostScript facades and fixture runner are added, and CI now includes
+CFF fixtures in debug and release. Unit counts remain **446 read_fonts**, **64
+font_types**, and **494 upstream ports**. Full expanded corpus, mutation and
+release checks are running; M6 remains in progress until those finish.

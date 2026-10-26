@@ -1,3 +1,4 @@
+import extensions_cff
 import extensions_morx
 import extensions_mort
 import extensions_kerx
@@ -130,9 +131,10 @@ effect fn font<'a>(index: u32, font: FontRef<'a>) -> () ! WriterError ? &mut Wri
   run extensions_kern.dump(&mut path, &font)
   run extensions_aat_misc.dump(&mut path, &font)
   run extensions_metric_variations.dump(&mut path, &font)
+  run extensions_cff.dump(&mut path, &font)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
-  run Format.format("font-dump.version=5\ndump.scope=aat-tables\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=6\ndump.scope=cff-tables\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value
