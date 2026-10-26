@@ -821,3 +821,11 @@ run Testing.expect(IntSet<u16>.compare(&a,&b)==Ordering.Less,"upstream IntSet ex
 }
 
 }
+
+import collections.int_set { DecodingError }
+import silk.result { Result }
+test effect fn fromSparseSet() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run fromSparseSetBody() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn fromSparseSetBody() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+ let set=match move run IntSet<u32>.fromSparseBitSet(&[13,3,49]) { Result<IntSet<u32>,DecodingError>.Success { value }=>move value _=>{run Testing.expect(false,"upstream sparse set decodes") return} }
+ let mut expected=IntSet<u32>.empty() run IntSet<u32>.insertRange(&mut expected,0,17) run Testing.expect(IntSet<u32>.equals(&set,&expected),"sparse set membership")
+}

@@ -357,3 +357,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   and results. Equal mixed-membership sets hash their logical ranges identically.
   DomainValues carries no storage bound because compiler bug 007 rejects a
   bounded `Self` result in an interface; its consuming methods enforce Domain.
+- Sparse bit streams use a validated BranchFactor enum instead of const-generic
+  numeric branch factors. `toSparseBitSetWithBf` takes that enum, and
+  `DecodedSparseSet { set, remaining }` names the bounded decoder's pair result.
+  Decode errors remain Result values; allocation failures are a separate effect.
+  A List with a front cursor replaces VecDeque; decoding preserves breadth-first
+  order, early-bound skipping, exact remaining bytes, size limits and encoding
+  tie order. Wide intermediate arithmetic avoids malformed-count overflow.

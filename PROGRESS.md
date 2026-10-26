@@ -614,3 +614,12 @@ IntSet test awaits sparse decoding. Compiler bug 007 has a minimal reproducer;
 putting the domain bound on cursor methods avoids the unsupported interface
 result without modifying the compiler. M6 PR #7 is merged after successful CI.
 The M7 sparse encoding, deferred layout intersections and model gate remain.
+
+## Session 32 — 2026-10-26 — complete integer-set serialization
+
+All **10 input-stream**, **6 output-stream**, **22 sparse-set**, and the final
+**1 IntSet sparse-decoding** tests pass. Totals are **593 read_fonts tests**,
+**64 font_types tests**, and **641 upstream ports**. The entire integer-set test
+suite is ported, including exact encoded bytes, all four branch factors, filled
+nodes, bias, bounds, remaining input, size limits and values beyond u32. The M7
+layout intersections and model unit/differential gate remain pending.

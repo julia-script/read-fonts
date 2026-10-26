@@ -316,3 +316,19 @@ impl<T:Domain+Copy+Display> Display for IntSet<T> {
     run Writer.writeString("}")
   }
 }
+
+pub import collections.int_set.sparse_bit_set { DecodingError,DecodedSparseSet,BranchFactor,toSparseBitSetWithBf }
+import collections.int_set.sparse_bit_set
+import silk.list { List }
+import silk.result { Result }
+impl<T> IntSet<T> {
+  pub effect fn fromSparseBitSet<'a>(data:&'a [u8]) -> Result<IntSet<u32>,DecodingError> ! OutOfMemoryError ? &mut Allocator {
+    match move run sparse_bit_set.decode(data,0,u32.MAX,u32.MAX) {
+      Result<DecodedSparseSet<'a>,DecodingError>.Success { value } => { return Result<IntSet<u32>,DecodingError>.succeed(move value.set) }
+      Result<DecodedSparseSet<'a>,DecodingError>.Failure { error } => { return Result<IntSet<u32>,DecodingError>.failResult(error) }
+    }
+  }
+  pub effect fn fromSparseBitSetBounded<'a>(data:&'a [u8],bias:u32,maxValue:u32) -> Result<DecodedSparseSet<'a>,DecodingError> ! OutOfMemoryError ? &mut Allocator { return run sparse_bit_set.decode(data,bias,maxValue,u32.MAX) }
+  pub effect fn fromSparseBitSetBoundedWithMaxSetSize<'a>(data:&'a [u8],bias:u32,maxValue:u32,maxSetSize:u32) -> Result<DecodedSparseSet<'a>,DecodingError> ! OutOfMemoryError ? &mut Allocator { return run sparse_bit_set.decode(data,bias,maxValue,maxSetSize) }
+  pub effect fn toSparseBitSet(self:&IntSet<u32>) -> List<u8> ! OutOfMemoryError ? &mut Allocator { return run sparse_bit_set.encode(self) }
+}
