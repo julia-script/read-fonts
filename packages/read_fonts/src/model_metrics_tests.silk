@@ -1,0 +1,30 @@
+// Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import model.metrics { Metrics,GlyphMetrics,GlyphExtents,Scale,ScaleF32,Scale26Dot6,ScaledGlyphMetrics,IdentityConverter,MetricConverter,NoExtents,LineExtents,LineBox }
+import model.glyph { GlyphSource,GlyphSourceOrder }
+import generated_model_fixtures { tinos,vazirmatn,vorgFont }
+import lib { FontRef,ReadError }
+import tables.hmtx { Hmtx }
+import font_types.lib { GlyphId,F48Dot16,F2Dot14,F26Dot6 }
+import silk.testing { Testing,AssertionError }
+import silk.allocator { Allocator,OutOfMemoryError }
+import silk.effect { Effect }
+import silk.result { Result }
+import silk.option { Option }
+effect fn must<T>(value:Result<T,ReadError>) -> T ! AssertionError<'static> { return match move value { Result<T,ReadError>.Success { value:found }=>move found _=>{run Testing.expect(false,"metric fixture parses") return Intrinsic.trap("test assertion")} } }
+effect fn some<T>(value:Option<T>) -> T ! AssertionError<'static> { return match move value { Option<T>.Some { value:found }=>move found _=>{run Testing.expect(false,"metric exists") return Intrinsic.trap("test assertion")} } }
+test effect fn aGlyphPastTheEndAdvancesByNothing() -> () ! AssertionError<'static> { let font=run must(FontRef.new(tinos())) let metrics=metricView(&font,&[]) run Testing.expect(F48Dot16.toBits(GlyphMetrics.hAdvanceExact(&metrics,GlyphId.new(GlyphMetrics.numGlyphs(&metrics))))==0 && F48Dot16.toBits(GlyphMetrics.hAdvanceExact(&metrics,GlyphId.new(60000)))==0,"out of range glyphs have zero advance") let hmtx=run must(FontRef.hmtx(&font)) let last=run some(Hmtx.advance(&hmtx,GlyphId.new(GlyphMetrics.numGlyphs(&metrics)))) run Testing.expect(last>0,"raw hmtx clamps while model rejects") }
+test effect fn aLocationMovesTheBox() -> () ! AssertionError<'static> | OutOfMemoryError { let mut allocator=Allocator.systemAllocatorProvider() run movesBox() |> Effect.provideMut<Allocator>(&mut allocator) }
+effect fn movesBox() -> () ! AssertionError<'static> | OutOfMemoryError ? &mut Allocator {
+  let font=run must(FontRef.new(vazirmatn())) let coords=[F2Dot14.fromBits(-16384)] let base=metricView(&font,&[]) let varied=metricView(&font,&coords) let mut moved=false let mut i:u32=0
+  while i<GlyphMetrics.numGlyphs(&base) { let glyph=GlyphId.new(i) let a=run GlyphMetrics.extentsExact(&base,glyph) let b=run GlyphMetrics.extentsExact(&varied,glyph) if let Option<GlyphExtents<F48Dot16>>.Some { value:x }=move a { if let Option<GlyphExtents<F48Dot16>>.Some { value:y }=move b { if &x.xBearing!= &y.xBearing || &x.yBearing!= &y.yBearing || &x.width!= &y.width || &x.height!= &y.height { moved=true } } } i=i+1 } run Testing.expect(moved,"variation moves ink")
+}
+
+test effect fn halvingRoundsTowardNegativeInfinityIn26dot6() -> () ! AssertionError<'static> { run Testing.expect(F26Dot6.toBits(halfFixed(F26Dot6.fromBits(-3)))== -2 && F26Dot6.toBits(halfFixed(F26Dot6.fromBits(3)))==1,"fixed halves round downward") run Testing.expect(half<ScaleF32,f32>(-3.0)== -1.5,"float half retains fraction") }
+fn halfFixed(value:F26Dot6) -> F26Dot6 { return half<Scale26Dot6,F26Dot6>(value) }
+fn half<S:Scale<V>,V>(value:V) -> V { return Scale<V>.half(move value) }
+test effect fn aScaledAdvanceIsTheDesignUnitOneThroughTheScale() -> () ! AssertionError<'static> {
+  let font=run must(FontRef.new(tinos())) let metrics=metricView(&font,&[]) let scale=ScaleF32.fromPpem(16.0,GlyphMetrics.unitsPerEm(&metrics)) let scaled=GlyphMetrics.scaledF32(metrics,16.0) let mut i:u32=0
+  while i<GlyphMetrics.numGlyphs(&metrics) { let glyph=GlyphId.new(i) run Testing.expect(ScaledGlyphMetrics.hAdvance(&scaled,glyph)==Scale.scaleX(&scale,GlyphMetrics.hAdvanceExact(&metrics,glyph)),"scaled advance") i=i+1 }
+}
+
+fn metricView<'a,'c>(font:&FontRef<'a>,coords:&'c [F2Dot14]) -> GlyphMetrics<'a,'c> { return GlyphMetrics<'a,'c>.new(font,coords) }

@@ -668,3 +668,21 @@ format-0 iteration and standalone/CID CFF without AGL. The two Type 1-only tests
 are excluded. Compiler bug 008 records a minimal rejected generic unsafe drop;
 an intermediate binding works. Glyph/scaled metrics and the differential model
 gate remain for M7; M8–M9 have not started.
+
+## Session 37 — 2026-10-26 — glyph metrics and scaling foundation
+
+The complete suite passes **650 read_fonts tests** and **64 font_types tests**.
+The new tests comprise all **16 in-scope global-metrics tests**, **2 glyph-metrics
+tests**, and **2 scaled-metrics tests**, bringing the upstream-port count to
+**696**. Global tests cover line choice, signs, missing tables, em normalization
+and MVAR precision; initial glyph checks cover out-of-range advances, moving
+variable ink, scaled advances and halving. The Type 1 global test is excluded.
+
+Glyph/scaled metrics, explicit static conversion callbacks and an unhinted glyf
+loader now build. The loader reuses gvar interpolation, preserves composite
+metrics/transforms and bounds its traversal. Floating-point interpolation no
+longer incorrectly requires a total ordering. Data and coordinate lifetimes are
+separate. Generator drift passes. Remaining glyph/scaled unit tests, the M7
+model/intersection dump protocol and differential corpus gate are still pending;
+bitmap/color/VARC model coverage follows their Phase 2 parsers. M8–M9 have not
+started, and no completion of M7 is claimed.

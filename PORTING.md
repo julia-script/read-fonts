@@ -410,3 +410,30 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   the port preserves those repeated codes. Unicode iteration lists them once.
   Standalone CFF retains native encodings; glyph-name Unicode mapping is absent
   because AGL is explicitly excluded. Type 1-only tests remain out of scope.
+- Metrics, GlyphMetrics and scaled metrics use explicit provider/coordinate
+  constructors. Immutable table views are captured once per GlyphMetrics value;
+  this replaces the full Font model's lazy caches. The base horizontal line is
+  read without variation deltas for phantom-point setup, while the instance line
+  retains MVAR fractions. Font-data, coordinate and supplied-extents borrows have
+  separate lifetimes, including MvarInstance's data and coordinate lifetimes.
+- The unhinted glyph loader ports the outline survey, floating-point simple and
+  composite loading, phantom points, component transforms and point anchors used
+  by metrics. It retains upstream recursion, point and component-edge limits.
+  Owned Lists replace the packed scratch allocation; allocation is an explicit
+  effect, and malformed outlines leave extents unavailable. No TrueType hinter
+  or full public drawing facade is added by this dependency subset.
+- PointCoord now supplies comparisons for variation interpolation. Requiring
+  Silk's total Order interface excluded f32; concrete comparisons preserve Rust's
+  floating-point behavior without adding an invalid total-order conformance.
+  Composite offset magnitudes use the platform hypotf, as Rust's f32::hypot does.
+- Scale takes an explicit numeric result parameter instead of an associated type.
+  ScaledGlyphMetrics carries its static scale and extents-provider types;
+  withGlyphExtents can borrow a provider for one query. MetricConverter replaces
+  closure arguments in batches, with IdentityConverter for unchanged values.
+  Batches process the shorter glyph/output slice. GlyphExtents.fromBounds uses a
+  static ExtentsCoord contract so float and fixed coordinates retain their own
+  comparison and subtraction behavior.
+- Bitmap/COLR/VARC extents and their dependent model tests remain scheduled with
+  their Phase 2 parsers. Their source-order entries already retain upstream
+  ordering; the current implementation resolves the Phase 1 outline sources.
+  The full M7 differential gate and remaining glyph/scaled unit tests are pending.

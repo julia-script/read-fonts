@@ -9,6 +9,7 @@ import tables.head { Head }
 import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
 import tables.cmap { Cmap, Dmap }
 import tables.hhea { Hhea, HheaExtended, SelectedHhea }
+import silk.ownership { Copy }
 import tables.hmtx { Hmtx, HmtxExtended, GlyphMetricRecords }
 import tables.name { Name }
 import tables.os2 { Os2 }
@@ -190,3 +191,5 @@ import tables.kern { Kern }
 import tables.cff { Cff }
 
 import tables.cff2 { Cff2 }
+
+impl<'a> Copy for GlyfLoca<'a> {}
