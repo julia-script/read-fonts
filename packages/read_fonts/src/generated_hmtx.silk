@@ -9,7 +9,7 @@ import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
 import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
 import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
-import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
+import generated_support { scalarOr, recordArray, varLenArray, varLenBytes, signedCount }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
 import silk.option { Option }
 import silk.result { Result }
@@ -165,4 +165,10 @@ impl<'a> GlyphMetricRecords<'a> {
   pub fn sideBearings(self: &Self) -> ScalarArray<'a, i16> { return self.bearings }
   pub fn advance(self: &Self, glyph: GlyphId) -> Option<u16> { return advance(self.metrics, glyph) }
   pub fn sideBearing(self: &Self, glyph: GlyphId) -> Option<i16> { return sideBearing(self.metrics, self.bearings, glyph) }
+}
+
+import tables.vmtx { Vmtx, VmtxExtended }
+impl<'a> GlyphMetricRecords<'a> {
+  pub fn fromVmtx(table: Vmtx<'a>) -> Self { return GlyphMetricRecords.new(Vmtx.vMetrics(&table), Vmtx.topSideBearings(&table)) }
+  pub fn fromVmtxExtended(table: VmtxExtended<'a>) -> Self { return GlyphMetricRecords.new(VmtxExtended.vMetrics(&table), VmtxExtended.topSideBearings(&table)) }
 }

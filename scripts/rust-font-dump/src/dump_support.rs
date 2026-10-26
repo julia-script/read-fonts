@@ -22,6 +22,7 @@ struct State {
     args: [u64; 3],
     nodes: Vec<Node>,
     next_node: usize,
+    scope_start: usize,
 }
 impl State {
     fn new() -> Self {
@@ -30,6 +31,7 @@ impl State {
             args: [0; 3],
             nodes: vec![Node::default(); 16384],
             next_node: 1,
+            scope_start: 1,
         }
     }
 }
@@ -40,9 +42,7 @@ pub fn reset() {
 pub fn begin_table() {
     STATE.with(|state| {
         let mut s = state.borrow_mut();
-        for n in &mut s.nodes {
-            n.id = 0;
-        }
+        s.scope_start = s.next_node;
         s.args = [0; 3];
     });
 }
@@ -90,7 +90,7 @@ pub fn visit(
         let first = (hash & 16383) as usize;
         let mut slot = first;
         let mut probes = 0;
-        while probes < 16384 && s.nodes[slot].id != 0 {
+        while probes < 16384 && s.nodes[slot].id >= s.scope_start {
             if s.nodes[slot].key == key {
                 return (s.nodes[slot].id, true);
             }
@@ -107,4 +107,24 @@ pub fn visit(
     });
     writeln!(out, "{path}.{}={id}", if repeated { "ref" } else { "node" })?;
     Ok(!repeated)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn distinct_glyph_scopes_do_not_alias_equal_sized_views() {
+        reset();
+        let mut out = Vec::new();
+        assert!(visit(&mut out, "glyph[0]", 9, 12, [0; 3]).unwrap());
+        assert!(!visit(&mut out, "glyph[0].alias", 9, 12, [0; 3]).unwrap());
+        begin_table();
+        begin_table(); // An empty scope must also preserve monotonic node IDs.
+        assert!(visit(&mut out, "glyph[1]", 9, 12, [0; 3]).unwrap());
+        assert!(!visit(&mut out, "glyph[1].alias", 9, 12, [0; 3]).unwrap());
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "glyph[0].node=1\nglyph[0].alias.ref=1\nglyph[1].node=2\nglyph[1].alias.ref=2\n"
+        );
+    }
 }

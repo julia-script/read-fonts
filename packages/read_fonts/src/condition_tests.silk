@@ -1,4 +1,4 @@
-// Ports of upstream tables/layout/condition_tests.rs (variation-store test follows in milestone 4).
+// Ports of upstream tables/layout/condition_tests.rs.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
 import read { ReadError, FontReadAt }
@@ -10,6 +10,20 @@ import silk.option { Option }
 import silk.testing { Testing, AssertionError }
 import silk.slice { Slice }
 import silk.usize
+import generated_layout { storeDeltas }
+import generated_variations { ItemVariationStore }
+test effect fn variableValuesKeepFractionalDeltasAndUseStrictPositiveTest() -> () ! AssertionError<'static> {
+  let bytes = b"\x00\x01\x00\x00\x00\x0c\x00\x01\x00\x00\x00\x16\x00\x01\x00\x01\x00\x00\x40\x00\x40\x00\x00\x01\x00\x01\x00\x01\x00\x00\x00\x01"
+  let store = run must(ItemVariationStore.read(FontData.new(bytes)))
+  let condition = run must(Condition.read(FontData.new(b"\x00\x02\x00\x00\x00\x00\x00\x00")))
+  let inputs: [i16; 4] = [-16384, 0, 8192, 16384]
+  let matches: [bool; 4] = [false, false, true, true]
+  let mut i: usize = 0
+  while i < 4 { let coords = [F2Dot14.fromBits(inputs[i])] run expected(Condition.evaluate(&condition, &coords, storeDeltas(Option<ItemVariationStore<'static>>.some(store), &coords)), matches[i]) i = i + 1 }
+  run expected(evaluate(b"\x00\x02\xff\xff\xff\xff\xff\xff", &[]), false)
+  run expected(evaluate(b"\x00\x02\x00\x00\xff\xff\xff\xff", &[]), false)
+  run expected(evaluate(b"\x00\x02\x00\x01\xff\xff\xff\xff", &[]), true)
+}
 
 effect fn must<T>(result: Result<T, ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T, ReadError>.Success { value } => move value Result<T, ReadError>.Failure { error } => { run Testing.expect(false, "fixture parses") return Intrinsic.trap("test assertion") } } }
 fn noDelta(index: u32) -> Result<f64, Error> { return Result<f64, Error>.succeed(0.0) }

@@ -318,3 +318,14 @@ import layout_spec_tests
 import condition_tests
 
 import lookup_variation_tests
+import variation_tests
+import axis_tests
+import selected_variation_tests
+import metric_variation_tests
+import packed_variation_tests
+import gvar_tests
+import glyf_tests
+
+import glyph_delta_tests
+
+import extended_provider_tests

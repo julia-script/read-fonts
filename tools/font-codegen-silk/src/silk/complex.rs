@@ -21,7 +21,11 @@ impl Context<'_> {
             "layout" => out.push_str("pub import tables.lookup_flag { LookupFlag }\n"),
             "gdef" => out.push_str("import generated_layout { CoverageTable, ClassDef, DeviceOrVariationIndex, HeaderOffset, LayoutOffsetArray }\nimport generated_variations { ItemVariationStore }\n"),
             "gsub" | "gpos" => out.push_str("import generated_layout { Lookup, LookupList, LookupList2, ScriptList, FeatureList, FeatureVariations, CoverageTable, ClassDef, DeviceOrVariationIndex, SequenceContext, ChainedSequenceContext, HeaderOffset, SelectedLookupList, ExtensionLookup, Subtables }\nimport tables.lookup_flag { LookupFlag }\n"),
-            "variations" => out.push_str("pub import tables.tuple_index { TupleIndex }\n"),
+            "variations" => out.push_str("pub import tables.tuple_index { TupleIndex, TupleVariationCount }\n"),
+            "fvar" => out.push_str("pub import tables.instance_record { InstanceRecord }\n"),
+            "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
+            "vmtx" => out.push_str("pub import generated_hmtx { LongMetric }\n"),
+            "gvar" => out.push_str("import generated_variations { Tuple, TupleVariationHeader, TupleVariationCount }\n"),
             _ => (),
         }
     }
@@ -164,12 +168,22 @@ impl Context<'_> {
             typ.into()
         }
     }
+    pub(super) fn array_element_type(&self, array: &CustomArray) -> String {
+        let name = array.raw_inner_type().to_string();
+        if array.type_with_lifetime().to_string().contains('<')
+            || matches!(self.find(&name), Some(Item::Record(_) | Item::Table(_)))
+        {
+            format!("{name}<'a>")
+        } else {
+            name
+        }
+    }
     pub(super) fn field_length(&self, field: &Field, fields: &Fields) -> syn::Result<String> {
         let (width, variable) = match &field.typ {
             FieldType::ComputedArray(array) | FieldType::VarLenArray(array) => {
-                let target = array.raw_inner_type();
+                let target = self.array_element_type(array);
                 let (args, value) = self.field_args(field, false, false)?;
-                (format!("(computeSize<{args}, {target}<'a>>({value}) |> Result<usize, ReadError>.unwrapOr(0))"), true)
+                (format!("(computeSize<{args}, {target}>({value}) |> Result<usize, ReadError>.unwrapOr(0))"), true)
             }
             FieldType::Struct { typ } if field.attrs.read_with_args.is_some() => {
                 let (args, value) = self.field_args(field, false, false)?;
@@ -192,8 +206,8 @@ impl Context<'_> {
                 "usize.saturatingSubtract(FontData.len(&data), end)".into()
             } else {
                 format!(
-                    "varLenBytes<{}<'a>>(data, end, {})",
-                    array.raw_inner_type(),
+                    "varLenBytes<{}>(data, end, {})",
+                    self.array_element_type(array),
                     self.count(count, fields)?
                 )
             });
@@ -337,6 +351,17 @@ impl Context<'_> {
         Ok(())
     }
     pub(super) fn custom_format(&self, out: &mut String, format: &TableFormat) -> syn::Result<()> {
+        if format.name == "Glyph" {
+            writeln!(out, "pub union Glyph<'a> {{ Simple {{ pub value: SimpleGlyph<'a> }}, Composite {{ pub value: CompositeGlyph<'a> }}, }}\nimpl<'a> Copy for Glyph<'a> {{}}\nimpl<'a> Glyph<'a> {{\n  pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {{\n    let format = match move FontData<'a>.readAt<i16>(&data, 0) {{ Result<i16, ReadError>.Success {{ value }} => value Result<i16, ReadError>.Failure {{ error }} => {{ return Result<Self, ReadError>.failResult(error) }} }}").unwrap();
+            for (test, variant, target) in [
+                ("format >= 0", "Simple", "SimpleGlyph"),
+                ("true", "Composite", "CompositeGlyph"),
+            ] {
+                writeln!(out, "    if {test} {{ return match move {target}<'a>.read(data) {{ Result<{target}<'a>, ReadError>.Success {{ value }} => Result<Self, ReadError>.succeed(Glyph<'a>.{variant} {{ value: value }}) Result<{target}<'a>, ReadError>.Failure {{ error }} => Result<Self, ReadError>.failResult(error) }} }}").unwrap();
+            }
+            writeln!(out, "    return Result<Self, ReadError>.failResult(ReadError.OutOfBounds)\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match self.* {{ Glyph<'a>.Simple {{ value }} => SimpleGlyph.offsetData(&value) Glyph<'a>.Composite {{ value }} => CompositeGlyph.offsetData(&value) }} }}\n}}\nimpl<'a> FontRead<'a, ()> for Glyph<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return Glyph<'a>.read(data) }} }}").unwrap();
+            return Ok(());
+        }
         if format.name != "DeviceOrVariationIndex" {
             return Err(syn::Error::new(
                 format.name.span(),
@@ -423,6 +448,46 @@ impl Context<'_> {
             writeln!(out,"    end = match move usize.checkedAdd(end, {len}) {{ Option<usize>.Some {{ value }} => value Option<usize>.None => {{ return Result<usize, ReadError>.failResult(ReadError.OutOfBounds) }} }}").unwrap();
         }
         writeln!(out,"    return Result<usize, ReadError>.succeed(end)\n}} }}\nimpl<'a> FontReadAt<'a, {arg_type}> for {name}<'a> {{ fn readAt(data: FontData<'a>, position: usize, args: {arg_type}) -> Result<Self, ReadError> {{ return {name}<'a>.readAt(data, position, args) }} }}\nimpl<'a> FontRead<'a, {arg_type}> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: {arg_type}) -> Result<Self, ReadError> {{ return {name}<'a>.readAt(data, 0, args) }} }}").unwrap();
+        Ok(())
+    }
+
+    /// A record whose byte length is encoded in its own prefix (e.g. avar maps).
+    /// Unlike a parameterized record, its size cannot be computed from read args.
+    pub(super) fn variable_record(&self, out: &mut String, record: &Record) -> syn::Result<()> {
+        let name = &record.name;
+        let fields = &record.fields;
+        let count = fields.iter().count();
+        docs(out, &record.attrs.docs);
+        writeln!(out, "pub struct {name}<'a> {{ _fontData: FontData<'a>, _fieldRanges: [ByteRange; {count}], }}\nimpl<'a> Copy for {name}<'a> {{}}\nimpl<'a> {name}<'a> {{\n  pub fn read(data: FontData<'a>) -> Result<Self, ReadError> {{\n    let mut ranges = [ByteRange {{ start: 0, end: 0 }}; {count}]\n    let mut end: usize = 0").unwrap();
+        for (i, f) in fields.iter().enumerate() {
+            let len = self.field_length(f, fields)?;
+            writeln!(out, "    ranges[{i}].start = end\n    end = usize.saturatingAdd(end, {len})\n    ranges[{i}].end = end").unwrap();
+            if matches!(f.typ, FieldType::Scalar { .. }) {
+                let typ = self.field_type(f)?;
+                writeln!(out, "    let {}Value = match move FontData<'a>.readAt<{typ}>(&data, ranges[{i}].start) {{ Result<{typ}, ReadError>.Success {{ value }} => value Result<{typ}, ReadError>.Failure {{ error }} => {{ return Result<Self, ReadError>.failResult(error) }} }}", camel(&f.name.to_string())).unwrap();
+            }
+        }
+        writeln!(out, "    if end > FontData.len(&data) {{ return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }}\n    return Result<Self, ReadError>.succeed(Self {{ _fontData: data, _fieldRanges: ranges }})\n  }}").unwrap();
+        for (i, f) in fields.iter().enumerate() {
+            self.getter(
+                out,
+                &name.to_string(),
+                f,
+                &format!("self._fieldRanges[{i}].start"),
+                &format!("self._fieldRanges[{i}].end"),
+                true,
+            )?;
+        }
+        writeln!(out, "}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\nimport read {{ VarSize }}\nimpl<'a> VarSize for {name}<'a> {{ fn readLenAt<'b>(data: FontData<'b>, position: usize) -> Option<usize> {{\n    let mut end = position").unwrap();
+        for f in fields.iter() {
+            if matches!(f.typ, FieldType::Scalar { .. }) {
+                let typ = self.field_type(f)?;
+                writeln!(out, "    let {}Value = match move FontData<'b>.readAt<{typ}>(&data, end) {{ Result<{typ}, ReadError>.Success {{ value }} => value _ => {{ return Option<usize>.None }} }}", camel(&f.name.to_string())).unwrap();
+            }
+            let len = self.field_length(f, fields)?;
+            writeln!(out, "    end = match move usize.checkedAdd(end, {len}) {{ Option<usize>.Some {{ value }} => value Option<usize>.None => {{ return Option<usize>.None }} }}").unwrap();
+        }
+        writeln!(out, "    return Option<usize>.some(end - position)\n}} }}").unwrap();
         Ok(())
     }
 }

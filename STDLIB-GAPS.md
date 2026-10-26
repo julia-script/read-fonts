@@ -27,3 +27,11 @@ library has no generic buffered writer. Field-by-field differential output can
 make millions of small writes. The CLI's `buffered_stdout.silk` implements Writer
 with a fixed 64 KiB buffer and explicit fallible flush. The standard library is
 unchanged; output bytes and parse behavior are unchanged.
+
+## 003 — mutable slice subviews
+
+The pinned `silk.slice.Slice` exposes only `view(&[T], offset, length) -> &[T]`.
+It cannot supply a mutable subrange of an existing `&mut [T]` (and has no
+`viewMut` operation). Axis normalization passes checked lengths alongside whole
+scratch slices to private helpers, avoiding pointer conversions or an allocation
+for each subview. Shared snapshots still use `Slice.view`. The stdlib is unchanged.

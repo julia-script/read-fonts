@@ -9,7 +9,7 @@ import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
 import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
 import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
-import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
+import generated_support { scalarOr, recordArray, varLenArray, varLenBytes, signedCount }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
 import silk.option { Option }
 import silk.result { Result }
@@ -165,7 +165,7 @@ impl<'a> Post<'a> {
 /// Storage for the string data.
   pub fn stringData(self: &Self) -> Option<VarLenArray<'a, PString<'a>>> {
     if self._fieldRanges[11].start == self._fieldRanges[11].end { return Option<VarLenArray<'a, PString<'a>>>.None }
-    return match move varLenArray<PString<'a>>(self._fontData, self._fieldRanges[11].start, self._fieldRanges[11].end) { Result<VarLenArray<'a, PString<'a>>, ReadError>.Success { value } => Option<VarLenArray<'a, PString<'a>>>.some(value) Result<VarLenArray<'a, PString<'a>>, ReadError>.Failure { error } => Option<VarLenArray<'a, PString<'a>>>.None }
+    return match move varLenArray<PString<'a>>(self._fontData, self._fieldRanges[11].start, FontData.len(&self._fontData)) { Result<VarLenArray<'a, PString<'a>>, ReadError>.Success { value } => Option<VarLenArray<'a, PString<'a>>>.some(value) Result<VarLenArray<'a, PString<'a>>, ReadError>.Failure { error } => Option<VarLenArray<'a, PString<'a>>>.None }
   }
   pub fn stringDataByteRange(self: &Self) -> ByteRange { return self._fieldRanges[11] }
 }

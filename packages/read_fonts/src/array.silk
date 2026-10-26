@@ -85,12 +85,12 @@ impl<'a, Args, T> ComputedIter<'a, Args, T> {
   }
 }
 
-pub struct VarLenArray<'a, T: FontRead<'a, ()> + VarSize> { data: FontData<'a>, }
-impl<'a, T: FontRead<'a, ()> + VarSize> Copy for VarLenArray<'a, T> {}
+pub struct VarLenArray<'a, T> { data: FontData<'a>, }
+impl<'a, T> Copy for VarLenArray<'a, T> {}
 impl<'a, T> VarLenArray<'a, T> {
   pub fn empty() -> Self { return Self { data: FontData.new(b"") } }
   pub fn read(data: FontData<'a>) -> Result<Self, ReadError> { return Result<Self, ReadError>.succeed(Self { data: data }) }
-  pub fn get(self: &Self, index: usize) -> Option<Result<T, ReadError>> {
+  pub fn get<T: FontRead<'a, ()> + VarSize>(self: &Self, index: usize) -> Option<Result<T, ReadError>> {
     if FontData.isEmpty(&self.data) { return Option<Result<T, ReadError>>.None }
     let mut position: usize = 0
     let mut i: usize = 0
@@ -109,7 +109,7 @@ impl<'a, T> VarLenArray<'a, T> {
       Option<FontData<'a>>.None => Option<Result<T, ReadError>>.None
     }
   }
-  pub fn iter(self: &Self) -> VarLenIter<'a, T> { return VarLenIter<'a, T> { data: self.data, done: false } }
+  pub fn iter<T: FontRead<'a, ()> + VarSize>(self: &Self) -> VarLenIter<'a, T> { return VarLenIter<'a, T> { data: self.data, done: false } }
 }
 pub struct VarLenIter<'a, T: FontRead<'a, ()> + VarSize> { data: FontData<'a>, done: bool, }
 impl<'a, T> VarLenIter<'a, T> {
@@ -135,6 +135,6 @@ impl<'a, T: Scalar> FontRead<'a, u16> for ScalarArray<'a, T> {
     return FontData<'a>.readArray<T>(&data, 0, end)
   }
 }
-impl<'a, T: FontRead<'a, ()> + VarSize> FontRead<'a, ()> for VarLenArray<'a, T> {
+impl<'a, T> FontRead<'a, ()> for VarLenArray<'a, T> {
   fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return VarLenArray<'a, T>.read(data) }
 }

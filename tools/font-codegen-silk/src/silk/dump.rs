@@ -22,7 +22,7 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
         if module == "post" {
             out.push_str("import extensions_post\n");
         }
-        if module == "hmtx" {
+        if module == "hmtx" || module == "vmtx" {
             out.push_str("import extensions_metrics\n");
         }
         if module == "post" {
@@ -31,6 +31,13 @@ pub(super) fn generate(items: &Items, silk: bool) -> syn::Result<String> {
         let names = items
             .iter()
             .filter(|i| !matches!(i, Item::Table(t) if t.attrs.write_only.is_some()))
+            .filter(|i| {
+                module != "gvar"
+                    || !matches!(
+                        i.name().to_string().as_str(),
+                        "TupleVariationCount" | "TupleVariationHeader"
+                    )
+            })
             .map(|i| i.name().to_string())
             .collect::<Vec<_>>()
             .join(", ");
@@ -85,6 +92,8 @@ impl DumpContext<'_> {
                 let (method, rust_method) = match name.to_string().as_str() {
                     "Hmtx" => ("hmtx", "hmtx"),
                     "HmtxExtended" => ("hmtxExtended", "hmtx_extended"),
+                    "Vmtx" => ("vmtx", "vmtx"),
+                    "VmtxExtended" => ("vmtxExtended", "vmtx_extended"),
                     _ => {
                         return Err(syn::Error::new(
                             name.span(),
@@ -136,7 +145,7 @@ impl DumpContext<'_> {
             match typ {
                 "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" => value.into(),
                 "LookupFlag" => format!("LookupFlag.toBits({value})"),
-                "TupleIndex" => format!("TupleIndex.bits({value})"),
+                "TupleIndex" | "TupleVariationCount" => format!("{typ}.bits({value})"),
                 "Fixed" | "F2Dot14" | "F4Dot12" | "F6Dot10" => format!("{typ}.toBits({value})"),
                 "Version16Dot16" => format!("versionBits({value})"),
                 "FWord" => format!("FWord.toI16({value})"),
@@ -160,7 +169,7 @@ impl DumpContext<'_> {
         } else {
             match typ {
                 "LookupFlag" => format!("{value}.to_bits()"),
-                "TupleIndex" => format!("{value}.bits()"),
+                "TupleIndex" | "TupleVariationCount" => format!("{value}.bits()"),
                 "Fixed" | "F2Dot14" | "F4Dot12" | "F6Dot10" => format!("{value}.to_bits()"),
                 "Version16Dot16" => format!("u32::from_be_bytes({value}.to_be_bytes())"),
                 "FWord" => format!("i16::from({value})"),
@@ -191,10 +200,7 @@ impl DumpContext<'_> {
             FieldType::VarLenArray(array) => {
                 let typ = array.raw_inner_type();
                 if typ != "PString" {
-                    return Err(syn::Error::new(
-                        field.name.span(),
-                        "variable record dump needs a binding",
-                    ));
+                    return self.variable_array(out, field, &typ.to_string());
                 }
                 if self.silk {
                     writeln!(out, "  let mut counter = VarLenArray<'a, PString<'a>>.iter(&fieldValue)\n  let mut count: usize = 0\n  while true {{\n    if let Option<Result<PString<'a>, ReadError>>.None = move VarLenIter<'a, PString<'a>>.next(&mut counter) {{ break }}\n    count = count + 1\n  }}\n  DumpPath.push(&mut path, \"length\")\n  run scalar(&path, count)\n  DumpPath.pop(&mut path)\n  let mut iter = VarLenArray<'a, PString<'a>>.iter(&fieldValue)\n  let mut index: usize = 0\n  while index < count {{\n    DumpPath.setIndex(&mut path, index)\n    if let Option<Result<PString<'a>, ReadError>>.Some {{ value: result }} = move VarLenIter<'a, PString<'a>>.next(&mut iter) {{\n      match move result {{ Result<PString<'a>, ReadError>.Success {{ value: item }} => run bytes(&path, PString<'a>.asBytes(&item)) Result<PString<'a>, ReadError>.Failure {{ error }} => run readError(&path, error) }}\n    }}\n    index = index + 1\n  }}\n  DumpPath.clearIndex(&mut path)").unwrap();
@@ -346,14 +352,27 @@ impl DumpContext<'_> {
                 )
                 .unwrap();
             }
-            let expression =
-                if field.attrs.skip_getter.is_some() && field.name != "lookup_variation_records" {
-                    self.skipped_getter(name, field, &typ)?
-                } else if self.silk {
-                    format!("{owner}.{field_name}(&value)")
-                } else {
-                    format!("value.{}()", field.name)
-                };
+            if let FieldType::VarLenArray(array) = &field.typ {
+                if array.raw_inner_type() == "TupleVariationHeader" {
+                    if self.silk {
+                        writeln!(out, "  let range = {owner}.{field_name}ByteRange(&value)\n  let raw = FontData.slice(&base, range.start, range.end) |> Option<FontData<'a>>.unwrapOr(FontData.new(&[]))\n  run bytes(&path, FontData.asBytes(&raw))\n  DumpPath.pop(&mut path)\n  }}").unwrap();
+                    } else {
+                        writeln!(out, "  let raw = base.slice(value.{}_byte_range()).unwrap_or_default();\n  write!(out, \"{{path}}=\")?; for byte in raw.as_bytes() {{ write!(out, \"{{byte:02x}}\")?; }} writeln!(out)?;\n  }}", field.name).unwrap();
+                    }
+                    continue;
+                }
+            }
+            let expression = if field.attrs.skip_getter.is_some()
+                && !matches!(
+                    field.name.to_string().as_str(),
+                    "lookup_variation_records" | "shared_tuples_offset"
+                ) {
+                self.skipped_getter(name, field, &typ)?
+            } else if self.silk {
+                format!("{owner}.{field_name}(&value)")
+            } else {
+                format!("value.{}()", field.name)
+            };
             if field.is_conditional() {
                 if self.silk {
                     writeln!(out,"  match move {expression} {{ Option<{typ}>.Some {{ value: fieldValue }} => {{").unwrap();
@@ -413,7 +432,7 @@ impl DumpContext<'_> {
                 writeln!(out, "  crate::extensions_post::dump(out, path, value)?;").unwrap();
             }
         }
-        if name == "Hmtx" || name == "HmtxExtended" {
+        if matches!(name, "Hmtx" | "HmtxExtended" | "Vmtx" | "VmtxExtended") {
             if self.silk {
                 writeln!(out, "  run extensions_metrics.dump{name}(&mut path, value)").unwrap();
             } else {
@@ -423,6 +442,13 @@ impl DumpContext<'_> {
                     camel(name)
                 )
                 .unwrap();
+            }
+        }
+        if name == "ItemVariationStore" {
+            if self.silk {
+                writeln!(out, "  run dumpStoreEvaluation(&mut path, value)").unwrap();
+            } else {
+                writeln!(out, "  dump_store_evaluation(out, path, value)?;").unwrap();
             }
         }
         if name == "Name" {

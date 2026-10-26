@@ -190,3 +190,57 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   5,704,912 lines / 698,627,724 bytes and matches exactly. The harness now streams
   process output through temporary files, comparing every line and hashing every
   byte without retaining whole dumps in memory.
+
+## Milestone 4 (in progress)
+
+- `storeDeltas` accepts an optional borrowed table view by value, instead of an
+  optional reference to that view. Its reusable callable snapshots the Copy view
+  and retains the font and coordinate lifetimes. Missing or unreadable deltas are
+  zero, and condition evaluation preserves fractional 48.16 contributions.
+- `Fvar.userToNormalized` accepts a slice of `UserCoordinate { tag, value }` in
+  place of a Rust pair iterator. It is an allocation effect: stack scratch covers
+  up to 64 coordinates and 128 axis indices, then Silk Lists provide larger
+  scratch buffers. The indexed path uses heap sort and binary search, preserving
+  duplicate tags and last-user-value precedence without quadratic large-font
+  behavior. Version 2 avar arithmetic retains 16.16 values until final conversion.
+- `SelectedFeatureVariations` retains the two public Option fields. Silk Option
+  is affine, so the containing record is not Copy; its equality and selection
+  behavior are preserved.
+- Packed stream structs store optional counters as private `bounded`/`limit`
+  fields so their cursor snapshots remain Copy. Public optional counts are
+  reconstructed; `PackedPointSplit` names the returned points/remainder pair.
+- `VarLenArray` now accepts any element type, matching upstream's lazy container.
+  Only `get` and `iter` require `FontRead` and `VarSize`; this permits gvar's raw
+  header-array view, whose elements require separate axis-count arguments.
+- Tuple variation iterators return `ActiveTupleVariation { variation, scalar }`
+  instead of a Rust pair. Shared optional views use private presence flags so
+  snapshots remain Copy; coordinate/cache borrows remain explicit. `TupleDelta`
+  and `PointCoord` operation contracts are separate from the arithmetic/Copy
+  bounds required by individual generic methods, since interfaces do not inherit
+  other interfaces in this Silk release.
+- `GlyphVariationData` is a transparent alias; its format-aware byte constructor
+  is `glyphVariationDataWithFormat`, while `TupleVariationData.new` constructs the
+  shared representation. Silk does not allow an inherent impl on an alias or a
+  specialized generic family. Glyph-only accumulation methods declare their
+  concrete receiver within the whole `TupleVariation` family impl.
+- Direct tuple-header getters return None for truncated coordinate data instead
+  of upstream's internal unwrap panic. Header iteration still checks the entire
+  header extent before yielding a value. Signed grammar counts preserve Rust's
+  cast to usize before saturating range arithmetic and checked field reads.
+- `CurvePoint.onCurvePoint` is the on-curve constructor; `onCurve` remains the
+  public boolean field because Silk forbids a field and method sharing a name.
+  `GlyfLoca` and `ComponentCountAndInstructions` name Rust pair results. Glyph
+  flags, component selection, read-error precedence and coordinate wrapping are
+  preserved.
+- `PointFrom<C>` expresses the coordinate conversion bound used by glyph delta
+  interpolation (identity conversions plus i32 to Fixed). `DeltaBuffers` keeps
+  caller-owned mutable slices. Contour interpolation passes checked index ranges
+  over those slices because this stdlib lacks mutable slice subviews; the contour
+  bounds, arithmetic order, zeroing behavior and error results match upstream.
+
+- Generated variable-record accessors expose the complete suffix, matching
+  upstream even when their declared count only positions a subsequent field.
+  The M4 corpus smoke test found this distinction in avar2; declared byte ranges
+  remain unchanged. The variation dumper resets its graph scope per glyph so
+  equal-sized payloads cannot alias. A monotonic node-ID threshold invalidates
+  old cache entries without a full per-glyph cache clear.

@@ -9,7 +9,7 @@ import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
 import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
 import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
-import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
+import generated_support { scalarOr, recordArray, varLenArray, varLenBytes, signedCount }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
 import silk.option { Option }
 import silk.result { Result }
@@ -4461,6 +4461,19 @@ impl<'a> FeatureTableSubstitutionRecord<'a> {
   pub fn alternateFeature<'b>(self: &Self, data: FontData<'b>) -> Result<Feature<'b>, ReadError> { return FeatureTableSubstitutionRecord<'a>.alternateFeatureWithTag(self, data, Tag.fromU32(1314212940)) }
   pub fn alternateFeatureWithTag<'b>(self: &Self, data: FontData<'b>, featureTag: Tag) -> Result<Feature<'b>, ReadError> { return resolveWithArgs<Tag, Feature<'b>, Offset32>(FeatureTableSubstitutionRecord<'a>.alternateFeatureOffset(self), data, featureTag) }
 }
+import generated_variations { ItemVariationStore, DeltaSetIndex }
+import font_types.lib { F48Dot16 }
+pub fn storeDeltas<'a>(store: Option<ItemVariationStore<'a>>, coords: &'a [F2Dot14]) -> fn<'a>(u32) -> Result<f64, Error> {
+  let mut present = false
+  let mut selected = ItemVariationStore<'a>.default()
+  match move store { Option<ItemVariationStore<'a>>.Some { value } => { selected = value present = true } _ => {} }
+  return fn(index: u32) -> Result<f64, Error> {
+    let mut delta = F48Dot16.zero()
+    let value = selected
+    if present { delta = ItemVariationStore.computeDelta(&value, DeltaSetIndex.fromU32(index), coords) |> Option<F48Dot16>.unwrapOr(F48Dot16.zero()) }
+    return Result<f64, Error>.succeed(F48Dot16.toF64(delta))
+  }
+}
 
 // Handwritten extension from packages/read_fonts/src/tables/layout_feature_variations.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
@@ -4468,6 +4481,52 @@ import silk.list { List }
 import silk.hash_set { HashSet }
 import silk.hash { Hash, Word }
 import silk.allocator { Allocator, OutOfMemoryError }
+import table_provider { TableProvider }
+import generated_gsub { Gsub }
+import generated_gpos { Gpos }
+import generated_gdef { Gdef }
+pub struct SelectedFeatureVariations { pub gsub: Option<u32>, pub gpos: Option<u32>, pub hasLookupVariations: bool, }
+impl SelectedFeatureVariations {
+  pub fn default() -> Self { return Self { gsub: Option<u32>.None, gpos: Option<u32>.None, hasLookupVariations: false } }
+  pub fn new<'a, P: TableProvider<'a>>(tables: &P, coords: &[F2Dot14]) -> Self {
+    let sub = match move TableProvider.gsub(tables) { Result<Gsub<'a>, ReadError>.Success { value } => featureVars(Gsub.featureVariations(&value)) _ => Option<FeatureVariations<'a>>.None }
+    let pos = match move TableProvider.gpos(tables) { Result<Gpos<'a>, ReadError>.Success { value } => featureVars(Gpos.featureVariations(&value)) _ => Option<FeatureVariations<'a>>.None }
+    let mut store = Option<ItemVariationStore<'a>>.None
+    let hasSub = match &sub { Option<FeatureVariations<'a>>.Some { value } => true _ => false }
+    let hasPos = match &pos { Option<FeatureVariations<'a>>.Some { value } => true _ => false }
+    if hasSub || hasPos {
+      match move TableProvider.gdef(tables) {
+        Result<Gdef<'a>, ReadError>.Success { value } => {
+          match move Gdef.itemVarStore(&value) {
+            Option<Result<ItemVariationStore<'a>, ReadError>>.Some { value: Result<ItemVariationStore<'a>, ReadError>.Success { value: found } } => { store = Option<ItemVariationStore<'a>>.some(found) }
+            _ => {}
+          }
+        }
+        _ => {}
+      }
+    }
+    let hasLookups = containsLookupVariations(&sub) || containsLookupVariations(&pos)
+    let gsub = selectFeatureIndex(move sub, &store, coords)
+    let gpos = selectFeatureIndex(move pos, &store, coords)
+    return Self { gsub: move gsub, gpos: move gpos, hasLookupVariations: hasLookups }
+  }
+}
+fn featureVars<'a>(value: Option<Result<FeatureVariations<'a>, ReadError>>) -> Option<FeatureVariations<'a>> { return match move value { Option<Result<FeatureVariations<'a>, ReadError>>.Some { value: Result<FeatureVariations<'a>, ReadError>.Success { value: table } } => Option<FeatureVariations<'a>>.some(table) _ => Option<FeatureVariations<'a>>.None } }
+fn containsLookupVariations<'a>(value: &Option<FeatureVariations<'a>>) -> bool { return match &value.* { Option<FeatureVariations<'a>>.Some { value: table } => match move FeatureVariations.lookupVariations(&table) { Option<LookupVariations<'a>>.Some { value: found } => true _ => false } _ => false } }
+fn selectFeatureIndex<'a>(value: Option<FeatureVariations<'a>>, store: &Option<ItemVariationStore<'a>>, coords: &[F2Dot14]) -> Option<u32> {
+  let table = match move value { Option<FeatureVariations<'a>>.Some { value: table } => table _ => { return Option<u32>.None } }
+  let copy = match &store.* { Option<ItemVariationStore<'a>>.Some { value: foundStore } => Option<ItemVariationStore<'a>>.some(foundStore) _ => Option<ItemVariationStore<'a>>.None }
+  return FeatureVariations<'a>.indexForCoordsWithDelta<Error>(&table, coords, storeDeltas(move copy, coords))
+}
+impl Equal for SelectedFeatureVariations {
+  fn equals(left: &Self, right: &Self) -> bool {
+    let leftSub = match &left.gsub { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let rightSub = match &right.gsub { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let leftPos = match &left.gpos { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    let rightPos = match &right.gpos { Option<u32>.Some { value } => u64.toI64(u32.toU64(value)) _ => -1 }
+    return leftSub == rightSub && leftPos == rightPos && left.hasLookupVariations == right.hasLookupVariations
+  }
+}
 impl<'a> FeatureVariations<'a> {
   pub fn lookupVariationRecords(self: &Self) -> Option<ComputedArray<'a, (), LookupVariationRecord<'a>>> {
     if !MajorMinor.compatible(&FeatureVariations<'a>.version(self), MajorMinor.new(1, 1)) { return Option<ComputedArray<'a, (), LookupVariationRecord<'a>>>.None }

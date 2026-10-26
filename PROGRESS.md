@@ -269,3 +269,136 @@ Dependency follow-ups remain explicit: variation-store delta callbacks and the
 font-level SelectedFeatureVariations helper/tests are with M4; set intersection
 methods/tests are with IntSet in M7. They are not counted as ported. Milestone 3
 is ready for CI; milestones 4–9 remain pending.
+
+## Session 9 — 2026-10-26 — milestone 3 merged; variation evaluation underway
+
+Milestone 3 passed remote CI (run **40280884968**, job **121433687333**), including
+the complete debug and release corpus gates. PR #4 is merged at **ccd61be**.
+Milestones 0–3 are complete. Milestone 4 starts with shared variation-store
+evaluation; milestones 5–9 remain pending. Test counts remain **64 font_types**
+and **165 read_fonts**, including **215 upstream ports**, after five variation-store
+tests and the fractional layout-condition test. Shared index mapping, region scalar
+evaluation, cached scalars, and exact 48.16 deltas pass those tests. The M4 corpus
+gate is pending.
+
+## Session 10 — 2026-10-26 — axis normalization and feature selection
+
+The suites now pass **64 font_types** and **185 read_fonts tests**, including
+**235 upstream ports** in total. The 20 added ports cover all eleven fvar tests,
+all six avar tests, and the three deferred coordinate-dependent layout selection
+tests. Original font payloads cover Vazirmatn, the avar2 checker, Amstelvar, Material
+Symbols, and the names-only font. Large-axis tests also exercise heap scratch.
+
+The generator now handles records whose variable length is encoded in their own
+prefix. fvar instances retain optional PostScript IDs; axis normalization keeps
+the upstream indexed search and 16.16 avar2 precision. Feature selection resolves
+GDEF deltas when needed. M4 remains incomplete: metric/glyph variation parsing,
+outlines, and differential dumps are next. Milestones 5–9 remain pending.
+
+## Session 11 — 2026-10-26 — metric variation evaluation
+
+The suites pass **64 font_types** and **201 read_fonts tests** (**251 upstream
+ports**). The 16 new ports cover all seven HVAR, three VVAR, and four MVAR tests,
+plus variation-region contents and the fixed/float delta test over all rows of
+the original variable COLR fixture at 21 locations. HVAR/VVAR preserve fractional
+advances and partial scalar caches; MVAR preserves both rounded metric lookups
+and exact instance values. The generated readers and provider methods compile.
+
+Milestone 4 remains in progress: packed tuple/glyph variations, glyph outlines,
+vertical metrics, and the full differential gate remain. These unit results do
+not claim M4 corpus parity. Milestones 5–9 remain pending.
+
+## Session 12 — 2026-10-26 — packed variation streams
+
+The suites pass **64 font_types** and **218 read_fonts tests**, including **268
+upstream ports**. Seventeen new ports cover packed point numbers, all four delta
+run widths, bounded and unbounded iteration, fast skipping, scaled fetches,
+coordinate-boundary splits, generated streams, and overflow regression cases.
+Both scalar precisions preserve the upstream arithmetic, including the f64
+residual test. M4's tuple/glyph variation layer and differential gate remain.
+
+## Session 13 — 2026-10-26 — tuple variations and TrueType outlines
+
+The read_fonts suite passes **248 tests**; font_types remains at **64**, for **298
+upstream ports**. The 30 new ports cover the invalid intermediate-region scalar
+case, all thirteen gvar tests, dense/sparse tuple accumulation, all thirteen glyf
+tests, and loca ordering. Extended gvar cases exercise 65,537 glyphs, both offset
+widths, 24-bit serialized-data offsets, malformed headers, and selection precedence.
+
+Tuple iteration, fixed/float interpolation, shared scalar caches, phantom-point
+deltas, simple point decoding, composite components/instructions, and loca lookup
+are implemented. Original Skia, Vazirmatn, cubic outline and metric-inheritance
+fixtures are preserved. The generator now handles gvar's computed offset entries,
+glyf's signed format dispatch, and signed counts without trapping.
+
+The generator's ten tests, Clippy with warnings denied, generated-file drift, and
+library build pass. M4 remains incomplete: full glyph-delta interpolation helpers,
+vertical metric dependencies, and differential traversal/gates remain. The active
+corpus protocol still covers M3; these unit results do not claim M4 corpus parity.
+
+## Session 14 — 2026-10-26 — complete glyph delta interpolation
+
+The full read_fonts suite passes **271 tests**; with the unchanged **64 font_types**
+tests this includes **321 upstream ports**. All 23 gvar/deltas tests pass: contour
+interpolation and wraparound, equal-coordinate references, malformed contour ends,
+real-font variation, output clearing between calls, short-buffer validation, and
+agreement between table-level and glyph-data entry points.
+
+`DeltaBuffers`, simple/composite delta evaluation, cached-scalar variants, and
+inferred deltas for unreferenced points are implemented without parser allocation.
+The generated-file drift check and library build pass. Milestone 4 still needs the
+vertical metrics dependencies and the full differential dump gate; later milestones
+remain pending.
+
+## Session 15 — 2026-10-26 — vertical metrics and extended provider completion
+
+The full suite passes **276 read_fonts tests**, with **64 font_types tests** and
+**326 upstream ports** in total. The five new ports cover VORG origins and all four
+provider tests deferred from M2: independent horizontal/vertical metric selection,
+truncated/extreme metric counts, paired GLYF/LOCA selection, and rejection of missing
+or malformed LOCA without using legacy offsets.
+
+vhea/VHEA, vmtx/VMTX and VORG are generated, with their provider, selected-header,
+metric lookup and origin helpers. Extended fixtures retain 70,002-glyph metric
+counts and 65,537-glyph outline counts. The generator's ten tests, Clippy, library
+build and drift check pass (**49 generated files**). M4's implementation tests are
+ready; its expanded differential dumper, fixtures, corpus comparison and CI remain.
+
+## Session 16 — 2026-10-26 — variation differential traversal
+
+The full suite passes **277 read_fonts tests**, with the unchanged **64 font_types**
+tests and **326 upstream ports**. The additional regression covers avar's suffix
+accessor: its declared map count positions following fields, while the public
+variable-record array retains the full suffix. The Amstelvar avar2 differential
+smoke test exposed and verified this generator correction.
+
+Both dumpers now cover all M4 grammar tables, original/extended vertical metrics,
+loca/glyph payloads, tuple deltas, exact item-store/metric deltas, and four fixed
+coordinate locations. Glyph graph scopes prevent equal-sized payload aliases.
+The **12-font smoke gate** and **2,882 focused variation fixtures** pass. Rust's
+**7 reference tests**, **15 harness tests**, generator's **10 tests**, Clippy and
+**69-file generation drift** checks pass. The full debug/release corpus gates,
+remaining fixture checks and CI are still running or pending; M4 is not yet complete.
+
+## Session 17 — 2026-10-26 — milestone 4 local gate complete
+
+The expanded format 4 dumps match **566 / 566 corpus files in both debug and
+release**, with **0 differences and 0 process failures**. All **2,882 variation
+fixtures** also match in both profiles. The new protocol additionally passes the
+previous **426 container**, **500 core-table**, and **2,650 layout fixtures**.
+
+The M4 implementation and upstream test ports are complete: axis normalization,
+item/tuple variations, metric and glyph deltas including contour interpolation,
+glyf/loca views, and vertical metrics/extended selection. The suites pass **64
+font_types** and **277 read_fonts** tests (**326 upstream ports**). Seven Rust
+reference tests, fifteen Python tests, ten generator tests, formatting, Clippy,
+69-file generation drift, and both CLI builds pass.
+
+Evidence: [debug corpus](reports/milestone-4-variations.json),
+[release corpus](reports/milestone-4-release-variations.json),
+[debug variation fixtures](reports/milestone-4-variation-fixtures.json), and
+[release variation fixtures](reports/milestone-4-release-variation-fixtures.json).
+The full outputs are compared byte for byte and hashed; tuple-delta evaluation
+and glyph scope semantics are specified in `docs/DUMP-FORMAT.md`.
+
+PR #5 is ready for CI and merge. Milestones 5–9 remain pending.

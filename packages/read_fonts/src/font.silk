@@ -273,6 +273,17 @@ import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
 import tables.gdef { Gdef }
+import tables.fvar { Fvar }
+import tables.avar { Avar }
+import tables.mvar { Mvar }
+import tables.gvar { Gvar, GvarExtended, SelectedGvar }
+import tables.glyf { Glyf }
+import tables.loca { Loca }
+import tables.vvar { Vvar }
+import tables.hvar { Hvar }
+import tables.vhea { Vhea, VheaExtended, SelectedVhea }
+import tables.vmtx { Vmtx, VmtxExtended }
+import tables.vorg { Vorg }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 impl<'a> FontRef<'a> {
@@ -287,6 +298,26 @@ impl<'a> FontRef<'a> {
   pub fn name(self: &Self) -> Result<Name<'a>, ReadError> { return TableProvider.name(self) }
   pub fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return TableProvider.os2(self) }
   pub fn post(self: &Self) -> Result<Post<'a>, ReadError> { return TableProvider.post(self) }
+  pub fn hvar(self: &Self) -> Result<Hvar<'a>, ReadError> { return TableProvider.hvar(self) }
+  pub fn vvar(self: &Self) -> Result<Vvar<'a>, ReadError> { return TableProvider.vvar(self) }
+  pub fn glyf(self: &Self) -> Result<Glyf<'a>, ReadError> { return TableProvider.glyf(self) }
+  pub fn glyfExtended(self: &Self) -> Result<Glyf<'a>, ReadError> { return TableProvider.glyfExtended(self) }
+  pub fn loca(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> { return TableProvider.loca(self, move isLong) }
+  pub fn locaExtended(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> { return TableProvider.locaExtended(self, move isLong) }
+  pub fn selectedGlyfLoca(self: &Self, isLong: Option<bool>) -> Result<GlyfLoca<'a>, ReadError> { return TableProvider.selectedGlyfLoca(self, move isLong) }
+  pub fn gvar(self: &Self) -> Result<Gvar<'a>, ReadError> { return TableProvider.gvar(self) }
+  pub fn gvarExtended(self: &Self) -> Result<GvarExtended<'a>, ReadError> { return TableProvider.gvarExtended(self) }
+  pub fn selectedGvar(self: &Self) -> Result<SelectedGvar<'a>, ReadError> { return TableProvider.selectedGvar(self) }
+  pub fn vhea(self: &Self) -> Result<Vhea<'a>, ReadError> { return TableProvider.vhea(self) }
+  pub fn vheaExtended(self: &Self) -> Result<VheaExtended<'a>, ReadError> { return TableProvider.vheaExtended(self) }
+  pub fn selectedVhea(self: &Self) -> Result<SelectedVhea<'a>, ReadError> { return TableProvider.selectedVhea(self) }
+  pub fn vmtx(self: &Self) -> Result<Vmtx<'a>, ReadError> { return TableProvider.vmtx(self) }
+  pub fn vmtxExtended(self: &Self) -> Result<VmtxExtended<'a>, ReadError> { return TableProvider.vmtxExtended(self) }
+  pub fn vGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> { return TableProvider.vGlyphMetricRecords(self) }
+  pub fn vorg(self: &Self) -> Result<Vorg<'a>, ReadError> { return TableProvider.vorg(self) }
+  pub fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return TableProvider.mvar(self) }
+  pub fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return TableProvider.fvar(self) }
+  pub fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return TableProvider.avar(self) }
   pub fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return TableProvider.gdef(self) }
   pub fn gsub(self: &Self) -> Result<Gsub<'a>, ReadError> { return TableProvider.gsub(self) }
   pub fn gpos(self: &Self) -> Result<Gpos<'a>, ReadError> { return TableProvider.gpos(self) }
@@ -299,3 +330,5 @@ impl<'a> FontRef<'a> {
 
 // compiler-bugs/004: keep this generic operation on the concrete owner.
 impl<'a> FontRef<'a> { pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> { return readTable<T, FontRef<'a>>(self, tableTag<T>()) } }
+
+import table_provider { GlyfLoca }

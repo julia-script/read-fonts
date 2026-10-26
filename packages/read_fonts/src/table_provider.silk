@@ -14,6 +14,17 @@ import tables.name { Name }
 import tables.os2 { Os2 }
 import tables.post { Post }
 import tables.gdef { Gdef }
+import tables.fvar { Fvar }
+import tables.avar { Avar }
+import tables.mvar { Mvar }
+import tables.gvar { Gvar, GvarExtended, SelectedGvar }
+import tables.glyf { Glyf }
+import tables.loca { Loca }
+import tables.vvar { Vvar }
+import tables.hvar { Hvar }
+import tables.vhea { Vhea, VheaExtended, SelectedVhea }
+import tables.vmtx { Vmtx, VmtxExtended }
+import tables.vorg { Vorg }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
@@ -33,6 +44,69 @@ pub interface TableProvider<'a> {
   fn name(self: &Self) -> Result<Name<'a>, ReadError> { return readTable<Name<'a>, Self>(self, Name.tag()) }
   fn os2(self: &Self) -> Result<Os2<'a>, ReadError> { return readTable<Os2<'a>, Self>(self, Os2.tag()) }
   fn post(self: &Self) -> Result<Post<'a>, ReadError> { return readTable<Post<'a>, Self>(self, Post.tag()) }
+  fn hvar(self: &Self) -> Result<Hvar<'a>, ReadError> { return readTable<Hvar<'a>, Self>(self, Hvar.tag()) }
+  fn vvar(self: &Self) -> Result<Vvar<'a>, ReadError> { return readTable<Vvar<'a>, Self>(self, Vvar.tag()) }
+  fn glyf(self: &Self) -> Result<Glyf<'a>, ReadError> { return readTable<Glyf<'a>, Self>(self, Glyf.tag()) }
+  fn glyfExtended(self: &Self) -> Result<Glyf<'a>, ReadError> { return readTable<Glyf<'a>, Self>(self, Tag.fromU32(1196185926)) }
+  fn loca(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> {
+    let mut length = false
+    match move isLong { Option<bool>.Some { value } => { length = value } Option<bool>.None => { let header = match move TableProvider.head(self) { Result<Head<'a>, ReadError>.Success { value } => value Result<Head<'a>, ReadError>.Failure { error } => { return Result<Loca<'a>, ReadError>.failResult(error) } } length = Head.indexToLocFormat(&header) == 1 } }
+    let data = match move TableProvider.expectDataForTag(self, Loca.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Loca<'a>, ReadError>.failResult(error) } }
+    return Loca.read(data, length)
+  }
+  fn locaExtended(self: &Self, isLong: Option<bool>) -> Result<Loca<'a>, ReadError> {
+    let data = match move TableProvider.expectDataForTag(self, Tag.fromU32(1280262977)) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Loca<'a>, ReadError>.failResult(error) } }
+    let mut length = false
+    match move isLong { Option<bool>.Some { value } => { length = value } Option<bool>.None => { let header = match move TableProvider.head(self) { Result<Head<'a>, ReadError>.Success { value } => value Result<Head<'a>, ReadError>.Failure { error } => { return Result<Loca<'a>, ReadError>.failResult(error) } } length = Head.indexToLocFormat(&header) == 1 } }
+    return Loca.read(data, length)
+  }
+  fn selectedGlyfLoca(self: &Self, isLong: Option<bool>) -> Result<GlyfLoca<'a>, ReadError> {
+    match move TableProvider.glyfExtended(self) {
+      Result<Glyf<'a>, ReadError>.Success { value: glyf } => { return match move TableProvider.locaExtended(self, move isLong) { Result<Loca<'a>, ReadError>.Success { value: loca } => Result<GlyfLoca<'a>, ReadError>.succeed(GlyfLoca<'a> { glyf: glyf, loca: loca }) Result<Loca<'a>, ReadError>.Failure { error } => Result<GlyfLoca<'a>, ReadError>.failResult(error) } }
+      Result<Glyf<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, Tag.fromU32(1196185926)) { return Result<GlyfLoca<'a>, ReadError>.failResult(error) } }
+    }
+    let glyf = match move TableProvider.glyf(self) { Result<Glyf<'a>, ReadError>.Success { value } => value Result<Glyf<'a>, ReadError>.Failure { error } => { return Result<GlyfLoca<'a>, ReadError>.failResult(error) } }
+    return match move TableProvider.loca(self, move isLong) { Result<Loca<'a>, ReadError>.Success { value } => Result<GlyfLoca<'a>, ReadError>.succeed(GlyfLoca<'a> { glyf: glyf, loca: value }) Result<Loca<'a>, ReadError>.Failure { error } => Result<GlyfLoca<'a>, ReadError>.failResult(error) }
+  }
+  fn gvar(self: &Self) -> Result<Gvar<'a>, ReadError> { return readTable<Gvar<'a>, Self>(self, Gvar.tag()) }
+  fn gvarExtended(self: &Self) -> Result<GvarExtended<'a>, ReadError> { return readTable<GvarExtended<'a>, Self>(self, GvarExtended.tag()) }
+  fn selectedGvar(self: &Self) -> Result<SelectedGvar<'a>, ReadError> {
+    match move TableProvider.gvarExtended(self) {
+      Result<GvarExtended<'a>, ReadError>.Success { value } => { return Result<SelectedGvar<'a>, ReadError>.succeed(SelectedGvar<'a>.Extended { table: value }) }
+      Result<GvarExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, GvarExtended.tag()) { return Result<SelectedGvar<'a>, ReadError>.failResult(error) } }
+    }
+    return match move TableProvider.gvar(self) { Result<Gvar<'a>, ReadError>.Success { value } => Result<SelectedGvar<'a>, ReadError>.succeed(SelectedGvar<'a>.Original { table: value }) Result<Gvar<'a>, ReadError>.Failure { error } => Result<SelectedGvar<'a>, ReadError>.failResult(error) }
+  }
+  fn vmtx(self: &Self) -> Result<Vmtx<'a>, ReadError> {
+    let header = match move TableProvider.vhea(self) { Result<Vhea<'a>, ReadError>.Success { value } => value Result<Vhea<'a>, ReadError>.Failure { error } => { return Result<Vmtx<'a>, ReadError>.failResult(error) } }
+    let data = match move TableProvider.expectDataForTag(self, Vmtx.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Vmtx<'a>, ReadError>.failResult(error) } }
+    return Vmtx<'a>.read(data, Vhea<'a>.numberOfLongVerMetrics(&header))
+  }
+  fn vmtxExtended(self: &Self) -> Result<VmtxExtended<'a>, ReadError> {
+    let data = match move TableProvider.expectDataForTag(self, VmtxExtended.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<VmtxExtended<'a>, ReadError>.failResult(error) } }
+    let header = match move TableProvider.vheaExtended(self) { Result<VheaExtended<'a>, ReadError>.Success { value } => value Result<VheaExtended<'a>, ReadError>.Failure { error } => { return Result<VmtxExtended<'a>, ReadError>.failResult(error) } }
+    return VmtxExtended<'a>.read(data, VheaExtended<'a>.numberOfLongVerMetrics(&header))
+  }
+  fn selectedVhea(self: &Self) -> Result<SelectedVhea<'a>, ReadError> {
+    match move TableProvider.vheaExtended(self) {
+      Result<VheaExtended<'a>, ReadError>.Success { value } => { return Result<SelectedVhea<'a>, ReadError>.succeed(SelectedVhea<'a>.Extended { table: value }) }
+      Result<VheaExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, VheaExtended.tag()) { return Result<SelectedVhea<'a>, ReadError>.failResult(error) } }
+    }
+    return match move TableProvider.vhea(self) { Result<Vhea<'a>, ReadError>.Success { value } => Result<SelectedVhea<'a>, ReadError>.succeed(SelectedVhea<'a>.Original { table: value }) Result<Vhea<'a>, ReadError>.Failure { error } => Result<SelectedVhea<'a>, ReadError>.failResult(error) }
+  }
+  fn vGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> {
+    match move TableProvider.vmtxExtended(self) {
+      Result<VmtxExtended<'a>, ReadError>.Success { value } => { return Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromVmtxExtended(value)) }
+      Result<VmtxExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, VmtxExtended.tag()) { return Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) } }
+    }
+    return match move TableProvider.vmtx(self) { Result<Vmtx<'a>, ReadError>.Success { value } => Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromVmtx(value)) Result<Vmtx<'a>, ReadError>.Failure { error } => Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) }
+  }
+  fn vhea(self: &Self) -> Result<Vhea<'a>, ReadError> { return readTable<Vhea<'a>, Self>(self, Vhea.tag()) }
+  fn vheaExtended(self: &Self) -> Result<VheaExtended<'a>, ReadError> { return readTable<VheaExtended<'a>, Self>(self, VheaExtended.tag()) }
+  fn vorg(self: &Self) -> Result<Vorg<'a>, ReadError> { return readTable<Vorg<'a>, Self>(self, Vorg.tag()) }
+  fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return readTable<Mvar<'a>, Self>(self, Mvar.tag()) }
+  fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return readTable<Fvar<'a>, Self>(self, Fvar.tag()) }
+  fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return readTable<Avar<'a>, Self>(self, Avar.tag()) }
   fn gdef(self: &Self) -> Result<Gdef<'a>, ReadError> { return readTable<Gdef<'a>, Self>(self, Gdef.tag()) }
   fn gsub(self: &Self) -> Result<Gsub<'a>, ReadError> { return readTable<Gsub<'a>, Self>(self, Gsub.tag()) }
   fn gpos(self: &Self) -> Result<Gpos<'a>, ReadError> { return readTable<Gpos<'a>, Self>(self, Gpos.tag()) }
@@ -84,3 +158,5 @@ fn isMissingTable(error: ReadError, expected: Tag) -> bool { return match error 
 
 // compiler-bugs/004: a free generic helper avoids an unsupported generic default operation.
 pub fn expectTable<'a, T: TopLevelTable + FontRead<'a, ()>, P: TableProvider<'a>>(provider: &P) -> Result<T, ReadError> { return readTable<T, P>(provider, tableTag<T>()) }
+
+pub struct GlyfLoca<'a> { pub glyf: Glyf<'a>, pub loca: Loca<'a>, }

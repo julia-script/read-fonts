@@ -453,7 +453,7 @@ pub effect fn dumpSinglePosFormat2<'a>(path: &mut DumpPath, value: SinglePosForm
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ValueFormat, ValueRecord<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ValueFormat, ValueRecord<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ValueFormat, ValueRecord<'a>>.get(&fieldValue, index) { Result<ValueRecord<'a>, ReadError>.Success { value: item } => run dumpValueRecord(&mut path, item, base) Result<ValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ValueFormat, ValueRecord<'a>>.get(&fieldValue, index) { Result<ValueRecord<'a>, ReadError>.Success { value: item } => run dumpValueRecord(&mut path, move item, base) Result<ValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -583,7 +583,7 @@ pub effect fn dumpPairSet<'a>(path: &mut DumpPath, value: PairSet<'a>) -> () ! W
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.get(&fieldValue, index) { Result<PairValueRecord<'a>, ReadError>.Success { value: item } => run dumpPairValueRecord(&mut path, item, base) Result<PairValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.get(&fieldValue, index) { Result<PairValueRecord<'a>, ReadError>.Success { value: item } => run dumpPairValueRecord(&mut path, move item, base) Result<PairValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -698,7 +698,7 @@ pub effect fn dumpPairPosFormat2<'a>(path: &mut DumpPath, value: PairPosFormat2<
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(&fieldValue, index) { Result<Class1Record<'a>, ReadError>.Success { value: item } => run dumpClass1Record(&mut path, item, base) Result<Class1Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(&fieldValue, index) { Result<Class1Record<'a>, ReadError>.Success { value: item } => run dumpClass1Record(&mut path, move item, base) Result<Class1Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -716,7 +716,7 @@ pub effect fn dumpClass1Record<'a>(path: &mut DumpPath, value: Class1Record<'a>,
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, Class2Record<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, Class2Record<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, Class2Record<'a>>.get(&fieldValue, index) { Result<Class2Record<'a>, ReadError>.Success { value: item } => run dumpClass2Record(&mut path, item, base) Result<Class2Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, Class2Record<'a>>.get(&fieldValue, index) { Result<Class2Record<'a>, ReadError>.Success { value: item } => run dumpClass2Record(&mut path, move item, base) Result<Class2Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -914,7 +914,7 @@ pub effect fn dumpBaseArray<'a>(path: &mut DumpPath, value: BaseArray<'a>) -> ()
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, BaseRecord<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, BaseRecord<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, BaseRecord<'a>>.get(&fieldValue, index) { Result<BaseRecord<'a>, ReadError>.Success { value: item } => run dumpBaseRecord(&mut path, item, base) Result<BaseRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, BaseRecord<'a>>.get(&fieldValue, index) { Result<BaseRecord<'a>, ReadError>.Success { value: item } => run dumpBaseRecord(&mut path, move item, base) Result<BaseRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1089,7 +1089,7 @@ pub effect fn dumpLigatureAttach<'a>(path: &mut DumpPath, value: LigatureAttach<
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, ComponentRecord<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, ComponentRecord<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, ComponentRecord<'a>>.get(&fieldValue, index) { Result<ComponentRecord<'a>, ReadError>.Success { value: item } => run dumpComponentRecord(&mut path, item, base) Result<ComponentRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, ComponentRecord<'a>>.get(&fieldValue, index) { Result<ComponentRecord<'a>, ReadError>.Success { value: item } => run dumpComponentRecord(&mut path, move item, base) Result<ComponentRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1221,7 +1221,7 @@ pub effect fn dumpMark2Array<'a>(path: &mut DumpPath, value: Mark2Array<'a>) -> 
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, Mark2Record<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, Mark2Record<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, Mark2Record<'a>>.get(&fieldValue, index) { Result<Mark2Record<'a>, ReadError>.Success { value: item } => run dumpMark2Record(&mut path, item, base) Result<Mark2Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, Mark2Record<'a>>.get(&fieldValue, index) { Result<Mark2Record<'a>, ReadError>.Success { value: item } => run dumpMark2Record(&mut path, move item, base) Result<Mark2Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1393,7 +1393,7 @@ pub effect fn dumpSinglePosFormat4<'a>(path: &mut DumpPath, value: SinglePosForm
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ValueFormat, ValueRecord<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ValueFormat, ValueRecord<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ValueFormat, ValueRecord<'a>>.get(&fieldValue, index) { Result<ValueRecord<'a>, ReadError>.Success { value: item } => run dumpValueRecord(&mut path, item, base) Result<ValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ValueFormat, ValueRecord<'a>>.get(&fieldValue, index) { Result<ValueRecord<'a>, ReadError>.Success { value: item } => run dumpValueRecord(&mut path, move item, base) Result<ValueRecord<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1492,7 +1492,7 @@ pub effect fn dumpPairSet2<'a>(path: &mut DumpPath, value: PairSet2<'a>) -> () !
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.get(&fieldValue, index) { Result<PairValueRecord2<'a>, ReadError>.Success { value: item } => run dumpPairValueRecord2(&mut path, item, base) Result<PairValueRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.get(&fieldValue, index) { Result<PairValueRecord2<'a>, ReadError>.Success { value: item } => run dumpPairValueRecord2(&mut path, move item, base) Result<PairValueRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1607,7 +1607,7 @@ pub effect fn dumpPairPosFormat4<'a>(path: &mut DumpPath, value: PairPosFormat4<
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(&fieldValue, index) { Result<Class1Record<'a>, ReadError>.Success { value: item } => run dumpClass1Record(&mut path, item, base) Result<Class1Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(&fieldValue, index) { Result<Class1Record<'a>, ReadError>.Success { value: item } => run dumpClass1Record(&mut path, move item, base) Result<Class1Record<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1784,7 +1784,7 @@ pub effect fn dumpBaseArray2<'a>(path: &mut DumpPath, value: BaseArray2<'a>) -> 
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, BaseRecord2<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, BaseRecord2<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, BaseRecord2<'a>>.get(&fieldValue, index) { Result<BaseRecord2<'a>, ReadError>.Success { value: item } => run dumpBaseRecord2(&mut path, item, base) Result<BaseRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, BaseRecord2<'a>>.get(&fieldValue, index) { Result<BaseRecord2<'a>, ReadError>.Success { value: item } => run dumpBaseRecord2(&mut path, move item, base) Result<BaseRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -1959,7 +1959,7 @@ pub effect fn dumpLigatureAttach2<'a>(path: &mut DumpPath, value: LigatureAttach
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, ComponentRecord2<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, ComponentRecord2<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, ComponentRecord2<'a>>.get(&fieldValue, index) { Result<ComponentRecord2<'a>, ReadError>.Success { value: item } => run dumpComponentRecord2(&mut path, item, base) Result<ComponentRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, ComponentRecord2<'a>>.get(&fieldValue, index) { Result<ComponentRecord2<'a>, ReadError>.Success { value: item } => run dumpComponentRecord2(&mut path, move item, base) Result<ComponentRecord2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
@@ -2091,7 +2091,7 @@ pub effect fn dumpMark2Array2<'a>(path: &mut DumpPath, value: Mark2Array2<'a>) -
   DumpPath.push(&mut path, "length") run scalar(&path, ComputedArray<'a, u16, Mark2Record2<'a>>.len(&fieldValue)) DumpPath.pop(&mut path)
   let mut index: usize = 0
   while index < ComputedArray<'a, u16, Mark2Record2<'a>>.len(&fieldValue) { DumpPath.setIndex(&mut path, index) DumpPath.setArguments(&mut path, targetArgs)
-    match move ComputedArray<'a, u16, Mark2Record2<'a>>.get(&fieldValue, index) { Result<Mark2Record2<'a>, ReadError>.Success { value: item } => run dumpMark2Record2(&mut path, item, base) Result<Mark2Record2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
+    match move ComputedArray<'a, u16, Mark2Record2<'a>>.get(&fieldValue, index) { Result<Mark2Record2<'a>, ReadError>.Success { value: item } => run dumpMark2Record2(&mut path, move item, base) Result<Mark2Record2<'a>, ReadError>.Failure { error } => run readError(&path, error) }
     index = index + 1
   }
   DumpPath.clearIndex(&mut path)
