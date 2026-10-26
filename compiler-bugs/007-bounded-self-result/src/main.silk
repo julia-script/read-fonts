@@ -1,0 +1,8 @@
+interface Domain { fn values() -> Values<Self> }
+struct Values<T: Domain> {}
+struct Concrete {}
+impl Domain for Concrete {
+  fn values() -> Values<Self> { return Values<Concrete> {} }
+}
+fn values<T: Domain>() -> Values<T> { return Domain.values() }
+pub fn main() -> i32 { let result = values<Concrete>() return 0 }

@@ -77,9 +77,11 @@ impl BitPage {
       if bits!=0 { return Option<u32>.some(usize.toU32(i)*64+trailingZeros(bits)) } keep=u64.MAX i=i+1
     } return Option<u32>.None
   }
-  pub fn lastFrom(self:&Self,value:u32) -> Option<u32> {
+  pub fn lastFrom(self:&Self,value:u32) -> Option<u32> { return BitPage.lastBitFrom(self,value,false) }
+  pub fn lastAbsentFrom(self:&Self,value:u32) -> Option<u32> { return BitPage.lastBitFrom(self,value,true) }
+  fn lastBitFrom(self:&Self,value:u32,invert:bool) -> Option<u32> {
     let mut i=elementIndex(value)+1 let mut keep=u64.shiftRight(u64.MAX,u32.toU64(63-(value & 63)))
-    while i>0 { i=i-1 let bits=self.storage[i] & keep if bits!=0 { return Option<u32>.some(usize.toU32(i)*64+63-leadingZeros(bits)) } keep=u64.MAX }
+    while i>0 { i=i-1 let mut bits=self.storage[i] if invert { bits=u64.bitNot(bits) } bits=bits & keep if bits!=0 { return Option<u32>.some(usize.toU32(i)*64+63-leadingZeros(bits)) } keep=u64.MAX }
     return Option<u32>.None
   }
   pub fn intersectsSet(self:&Self,other:&Self) -> bool { let mut i:usize=0 while i<8 { if self.storage[i] & other.storage[i]!=0 { return true } i=i+1 } return false }

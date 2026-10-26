@@ -350,3 +350,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   preserves membership, ordering and empty-page behavior while leaving the old
   set intact if allocation fails. Allocation is an explicit effect. Slice-based
   `fromValues`/`extend` and named cursors replace Rust's iterator/collect contracts.
+- IntSet keeps inclusive/exclusive membership and exposes concrete cursors for
+  domain values, members and ranges. Domain adds inclusive `nextFrom` and
+  `previousFrom` operations to implement Rust's opaque iterators without scanning
+  gaps in discontinuous domains. `Bound<T>` and `IntRange<T>` name range arguments
+  and results. Equal mixed-membership sets hash their logical ranges identically.
+  DomainValues carries no storage bound because compiler bug 007 rejects a
+  bounded `Self` result in an interface; its consuming methods enforce Domain.

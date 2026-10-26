@@ -603,3 +603,14 @@ build passes. Tests cover ordered and mixed-direction iteration, coalesced range
 full-u32 boundaries, set operations, emptied pages, insertion order, lookup order,
 hashing, subset checks and intersection counts. Invertible IntSet, sparse encoding,
 deferred layout intersections and model APIs remain pending for M7.
+
+## Session 31 — 2026-10-26 — invertible integer sets
+
+All **45 IntSet tests** independent of sparse decoding pass, including normal and
+inverted membership, domain boundaries, mixed-direction iteration, ranges, set
+operations, subset checks, ordering, equality and hashing. Totals are **554
+read_fonts tests**, **64 font_types tests**, and **602 upstream ports**. The last
+IntSet test awaits sparse decoding. Compiler bug 007 has a minimal reproducer;
+putting the domain bound on cursor methods avoids the unsupported interface
+result without modifying the compiler. M6 PR #7 is merged after successful CI.
+The M7 sparse encoding, deferred layout intersections and model gate remain.

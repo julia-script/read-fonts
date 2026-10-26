@@ -96,6 +96,25 @@ impl U32Set {
       match move BitPage.firstFrom(&page,from) { Option<u32>.Some { value:found } => { return Option<u32>.some(base(info.major)+found) } _ => {} } at=at+1
     } return Option<u32>.None
   }
+  pub fn lastFrom(self:&Self,value:u32) -> Option<u32> {
+    let target=major(value) let mut at=U32Set.lowerBound(self,target)
+    if at<List<PageInfo>.length(&self.pageMap) && List<PageInfo>.get(&self.pageMap,at).major==target { at=at+1 }
+    while at>0 { at=at-1 let info=List<PageInfo>.get(&self.pageMap,at) let page=List<BitPage>.get(&self.pages,info.index)
+      let mut from:u32=511 if info.major==target { from=value }
+      match move BitPage.lastFrom(&page,from) { Option<u32>.Some { value:found } => { return Option<u32>.some(base(info.major)+found) } _ => {} }
+    } return Option<u32>.None
+  }
+  pub fn lastAbsentFrom(self:&Self,value:u32) -> Option<u32> {
+    let mut candidate=value let mut pageMajor=major(value) let mut at=U32Set.lowerBound(self,pageMajor)
+    if at<List<PageInfo>.length(&self.pageMap) && List<PageInfo>.get(&self.pageMap,at).major==pageMajor { at=at+1 }
+    while true {
+      if at==0 { return Option<u32>.some(candidate) } at=at-1
+      let info=List<PageInfo>.get(&self.pageMap,at) if info.major!=pageMajor { return Option<u32>.some(candidate) }
+      let page=List<BitPage>.get(&self.pages,info.index)
+      match move BitPage.lastAbsentFrom(&page,candidate) { Option<u32>.Some { value:found } => { return Option<u32>.some(base(pageMajor)+found) } _ => {} }
+      if pageMajor==0 { return Option<u32>.None } pageMajor=pageMajor-1 candidate=base(pageMajor)+511
+    } return Option<u32>.None
+  }
   pub fn nextAfter(self:&Self,value:u32) -> Option<u32> { if value==u32.MAX { return Option<u32>.None } return U32Set.firstFrom(self,value+1) }
   pub fn firstAbsentFrom(self:&Self,value:u32) -> Option<u32> {
     let mut candidate=value let mut pageMajor=major(value) let mut at=U32Set.lowerBound(self,pageMajor)
