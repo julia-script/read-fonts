@@ -124,3 +124,38 @@ target = "packages/font_dump/src/generated_dump_post.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/post.rs"
 target = "scripts/rust-font-dump/src/generated_dump_post.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/layout.rs"
+target = "packages/read_fonts/src/generated_layout.silk"
+facade = "packages/read_fonts/src/tables/layout.silk"
+extensions = ["packages/read_fonts/src/tables/layout_impl.silk", "packages/read_fonts/src/tables/layout_algorithms.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/gdef.rs"
+target = "packages/read_fonts/src/generated_gdef.silk"
+facade = "packages/read_fonts/src/tables/gdef.silk"
+extensions = ["packages/read_fonts/src/tables/gdef_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/gsub.rs"
+target = "packages/read_fonts/src/generated_gsub.silk"
+facade = "packages/read_fonts/src/tables/gsub.silk"
+extensions = ["packages/read_fonts/src/tables/gsub_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/gpos.rs"
+target = "packages/read_fonts/src/generated_gpos.silk"
+facade = "packages/read_fonts/src/tables/gpos.silk"
+extensions = ["packages/read_fonts/src/tables/gpos_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/variations.rs"
+target = "packages/read_fonts/src/generated_variations.silk"
+facade = "packages/read_fonts/src/tables/variations.silk"
+extensions = ["packages/read_fonts/src/tables/variations_impl.silk"]

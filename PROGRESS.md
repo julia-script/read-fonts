@@ -189,3 +189,24 @@ helper workaround. No compiler/stdlib changes were made. The large-dump deadline
 explicit codepoint conversions, and one malformed cmap10 wrapping case are
 recorded in PORTING.md. Milestones 3–9 are still pending; the local milestone 2
 gate is ready for remote CI and merge.
+
+## Session 6 — 2026-10-26 — milestone 2 merged; layout implementation underway
+
+Milestone 2 passed remote CI (run **40274115950**, job **121413083655**) and PR #3
+is merged at **f425245**. Milestones 0–2 are complete.
+
+Milestone 3 now generates borrowed layout/GDEF/GSUB/GPOS views, parameterized
+records and lookup groups, typed offset arrays, flag-dependent fields, and the
+GDEF ItemVariationStore dependency. Header precedence, value-record reads,
+coverage/class lookup and iteration, and packed device deltas are implemented.
+
+The current suites pass **64 font_types** and **115 read_fonts tests**. The
+**165 upstream ports** include 34 new layout tests: five GDEF specification tests,
+six GSUB tests, three ValueRecord tests, three header selection tests, three
+script/feature specification tests, and fourteen coverage/class/device tests.
+Ten additional read_fonts and four font_types regressions remain separate.
+
+**Milestone 3 is incomplete:** remaining extensions/tests and generated differential
+traversal are pending; no layout corpus-parity claim is made. The active corpus
+protocol still covers milestone 2. Milestones 4–9 remain pending. Compiler report
+005 has a reduced reproducer and a source workaround; the toolchain is unchanged.

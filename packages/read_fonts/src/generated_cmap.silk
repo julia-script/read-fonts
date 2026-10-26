@@ -2,10 +2,12 @@
 // Source: pinned resources/codegen_inputs; generator: tools/font-codegen-silk.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { FontData }
-import read { ReadError, FontRead, FontReadAt, ComputeSize, Format }
+import read { ReadError, FontRead, FontReadAt, ComputeSize, Format, computeSize, readAtWithArgs }
 import table_provider { TopLevelTable }
 import array { ScalarArray, ComputedArray, VarLenArray }
-import offset { resolve, resolveNullableWithArgs }
+import offset { resolve, resolveWithArgs, resolveNullableWithArgs }
+import offset_array { ArrayOfOffsets, ArrayOfNullableOffsets }
+import read_args { ReadArgs2, ReadArgs3 }
 import table_ref { ByteRange, MinByteRange }
 import generated_support { scalarOr, recordArray, varLenArray, varLenBytes }
 import font_types.lib { Scalar, FixedSize, rawByteLen, readScalar, writeScalar, Tag, Fixed, F2Dot14, F4Dot12, F6Dot10, FWord, UfWord, MajorMinor, Version16Dot16, LongDateTime, Uint24, Int24, GlyphId, GlyphId16, GlyphId24, NameId, Offset16, Offset24, Offset32, Nullable }
@@ -38,6 +40,7 @@ impl<'a> Cmap<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let versionValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
@@ -86,6 +89,7 @@ impl<'a> Dmap<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let versionValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
@@ -129,6 +133,7 @@ impl<'a> EncodingRecord<'a> {
     if position > FontData.len(&data) || 8 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Platform ID.
   pub fn platformId(self: &Self) -> PlatformId {
     return match move FontData<'a>.readAt<PlatformId>(&self._fontData, (self.position + 0)) { Result<PlatformId, ReadError>.Success { value } => value Result<PlatformId, ReadError>.Failure { error } => PlatformId.Unicode }
@@ -142,7 +147,10 @@ impl<'a> EncodingRecord<'a> {
   pub fn subtableOffset(self: &Self) -> Offset32 {
     return match move FontData<'a>.readAt<Offset32>(&self._fontData, (self.position + 4)) { Result<Offset32, ReadError>.Success { value } => value Result<Offset32, ReadError>.Failure { error } => Offset32.new(0) }
   }
-  pub fn subtable(self: &Self, data: FontData<'a>) -> Result<CmapSubtable<'a>, ReadError> { return resolve<CmapSubtable<'a>, Offset32>(EncodingRecord<'a>.subtableOffset(self), data) }
+  pub fn subtable(self: &Self, data: FontData<'a>) -> Result<CmapSubtable<'a>, ReadError> {
+    let offset = EncodingRecord<'a>.subtableOffset(self)
+    return resolveWithArgs<(), CmapSubtable<'a>, Offset32>(offset, data, ())
+  }
 }
 impl<'a> FixedSize for EncodingRecord<'a> { fn rawByteLen() -> usize { return 8 } }
 impl<'a> ComputeSize<()> for EncodingRecord<'a> { fn computeSize(args: ()) -> Result<usize, ReadError> { return Result<usize, ReadError>.succeed(8) } }
@@ -237,12 +245,15 @@ impl<'a> Cmap0<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let lengthValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[2].end = end
+    let languageValue = scalarOr<u16>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply(256, 1))
     ranges[3].end = end
@@ -292,12 +303,15 @@ impl<'a> Cmap2<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let lengthValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[2].end = end
+    let languageValue = scalarOr<u16>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply(256, 2))
     ranges[3].end = end
@@ -344,6 +358,7 @@ impl<'a> SubHeader<'a> {
     if position > FontData.len(&data) || 8 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// First valid low byte for this SubHeader.
   pub fn firstCode(self: &Self) -> u16 {
     return match move FontData<'a>.readAt<u16>(&self._fontData, (self.position + 0)) { Result<u16, ReadError>.Success { value } => value Result<u16, ReadError>.Failure { error } => 0 }
@@ -377,12 +392,15 @@ impl<'a> Cmap4<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let lengthValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[2].end = end
+    let languageValue = scalarOr<u16>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[3].end = end
@@ -390,18 +408,22 @@ impl<'a> Cmap4<'a> {
     ranges[4].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[4].end = end
+    let searchRangeValue = scalarOr<u16>(data, ranges[4].start, 0)
     ranges[5].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[5].end = end
+    let entrySelectorValue = scalarOr<u16>(data, ranges[5].start, 0)
     ranges[6].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[6].end = end
+    let rangeShiftValue = scalarOr<u16>(data, ranges[6].start, 0)
     ranges[7].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply((u16.toUsize(segCountX2Value) / 2), 2))
     ranges[7].end = end
     ranges[8].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[8].end = end
+    let reservedPadValue = scalarOr<u16>(data, ranges[8].start, 0)
     ranges[9].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply((u16.toUsize(segCountX2Value) / 2), 2))
     ranges[9].end = end
@@ -505,15 +527,19 @@ impl<'a> Cmap6<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let lengthValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[2].end = end
+    let languageValue = scalarOr<u16>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[3].end = end
+    let firstCodeValue = scalarOr<u16>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[4].end = end
@@ -577,15 +603,19 @@ impl<'a> Cmap8<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let reservedValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[3].end = end
+    let languageValue = scalarOr<u32>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, usize.saturatingMultiply(8192, 1))
     ranges[4].end = end
@@ -651,6 +681,7 @@ impl<'a> SequentialMapGroup<'a> {
     if position > FontData.len(&data) || 12 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// First character code in this group; note that if this group is
 /// for one or more 16-bit character codes (which is determined
 /// from the is32 array), this 32-bit value will have the high
@@ -684,18 +715,23 @@ impl<'a> Cmap10<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let reservedValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[3].end = end
+    let languageValue = scalarOr<u32>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[4].end = end
+    let startCharCodeValue = scalarOr<u32>(data, ranges[4].start, 0)
     ranges[5].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[5].end = end
@@ -760,15 +796,19 @@ impl<'a> Cmap12<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let reservedValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[3].end = end
+    let languageValue = scalarOr<u32>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[4].end = end
@@ -828,15 +868,19 @@ impl<'a> Cmap13<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[1].end = end
+    let reservedValue = scalarOr<u16>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[2].start, 0)
     ranges[3].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[3].end = end
+    let languageValue = scalarOr<u32>(data, ranges[3].start, 0)
     ranges[4].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[4].end = end
@@ -892,6 +936,7 @@ impl<'a> ConstantMapGroup<'a> {
     if position > FontData.len(&data) || 12 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// First character code in this group
   pub fn startCharCode(self: &Self) -> u32 {
     return match move FontData<'a>.readAt<u32>(&self._fontData, (self.position + 0)) { Result<u32, ReadError>.Success { value } => value Result<u32, ReadError>.Failure { error } => 0 }
@@ -922,9 +967,11 @@ impl<'a> Cmap14<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[1].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
@@ -977,9 +1024,11 @@ impl<'a> Cmap15<'a> {
     ranges[0].start = end
     end = usize.saturatingAdd(end, 2)
     ranges[0].end = end
+    let formatValue = scalarOr<u16>(data, ranges[0].start, 0)
     ranges[1].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[1].end = end
+    let lengthValue = scalarOr<u32>(data, ranges[1].start, 0)
     ranges[2].start = end
     end = usize.saturatingAdd(end, 4)
     ranges[2].end = end
@@ -1027,17 +1076,24 @@ impl<'a> VariationSelector15<'a> {
     if position > FontData.len(&data) || 11 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
   pub fn varSelector(self: &Self) -> Uint24 {
     return match move FontData<'a>.readAt<Uint24>(&self._fontData, (self.position + 0)) { Result<Uint24, ReadError>.Success { value } => value Result<Uint24, ReadError>.Failure { error } => Uint24.new(0) }
   }
   pub fn defaultUvsOffset(self: &Self) -> Nullable<Offset32> {
     return match move FontData<'a>.readAt<Nullable<Offset32>>(&self._fontData, (self.position + 3)) { Result<Nullable<Offset32>, ReadError>.Success { value } => value Result<Nullable<Offset32>, ReadError>.Failure { error } => Nullable<Offset32>.default() }
   }
-  pub fn defaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<DefaultUvs<'a>, ReadError>> { return resolveNullableWithArgs<(), DefaultUvs<'a>, Offset32>(&VariationSelector15<'a>.defaultUvsOffset(self), data, ()) }
+  pub fn defaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<DefaultUvs<'a>, ReadError>> {
+    let offset = VariationSelector15<'a>.defaultUvsOffset(self)
+    return resolveNullableWithArgs<(), DefaultUvs<'a>, Offset32>(&offset, data, ())
+  }
   pub fn nonDefaultUvsOffset(self: &Self) -> Nullable<Offset32> {
     return match move FontData<'a>.readAt<Nullable<Offset32>>(&self._fontData, (self.position + 7)) { Result<Nullable<Offset32>, ReadError>.Success { value } => value Result<Nullable<Offset32>, ReadError>.Failure { error } => Nullable<Offset32>.default() }
   }
-  pub fn nonDefaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<NonDefaultUvs24<'a>, ReadError>> { return resolveNullableWithArgs<(), NonDefaultUvs24<'a>, Offset32>(&VariationSelector15<'a>.nonDefaultUvsOffset(self), data, ()) }
+  pub fn nonDefaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<NonDefaultUvs24<'a>, ReadError>> {
+    let offset = VariationSelector15<'a>.nonDefaultUvsOffset(self)
+    return resolveNullableWithArgs<(), NonDefaultUvs24<'a>, Offset32>(&offset, data, ())
+  }
 }
 impl<'a> FixedSize for VariationSelector15<'a> { fn rawByteLen() -> usize { return 11 } }
 impl<'a> ComputeSize<()> for VariationSelector15<'a> { fn computeSize(args: ()) -> Result<usize, ReadError> { return Result<usize, ReadError>.succeed(11) } }
@@ -1051,6 +1107,7 @@ impl<'a> VariationSelector<'a> {
     if position > FontData.len(&data) || 11 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Variation selector
   pub fn varSelector(self: &Self) -> Uint24 {
     return match move FontData<'a>.readAt<Uint24>(&self._fontData, (self.position + 0)) { Result<Uint24, ReadError>.Success { value } => value Result<Uint24, ReadError>.Failure { error } => Uint24.new(0) }
@@ -1060,13 +1117,19 @@ impl<'a> VariationSelector<'a> {
   pub fn defaultUvsOffset(self: &Self) -> Nullable<Offset32> {
     return match move FontData<'a>.readAt<Nullable<Offset32>>(&self._fontData, (self.position + 3)) { Result<Nullable<Offset32>, ReadError>.Success { value } => value Result<Nullable<Offset32>, ReadError>.Failure { error } => Nullable<Offset32>.default() }
   }
-  pub fn defaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<DefaultUvs<'a>, ReadError>> { return resolveNullableWithArgs<(), DefaultUvs<'a>, Offset32>(&VariationSelector<'a>.defaultUvsOffset(self), data, ()) }
+  pub fn defaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<DefaultUvs<'a>, ReadError>> {
+    let offset = VariationSelector<'a>.defaultUvsOffset(self)
+    return resolveNullableWithArgs<(), DefaultUvs<'a>, Offset32>(&offset, data, ())
+  }
 /// Offset from the start of the [`Cmap14`] subtable to Non-Default
 /// UVS Table. May be NULL.
   pub fn nonDefaultUvsOffset(self: &Self) -> Nullable<Offset32> {
     return match move FontData<'a>.readAt<Nullable<Offset32>>(&self._fontData, (self.position + 7)) { Result<Nullable<Offset32>, ReadError>.Success { value } => value Result<Nullable<Offset32>, ReadError>.Failure { error } => Nullable<Offset32>.default() }
   }
-  pub fn nonDefaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<NonDefaultUvs<'a>, ReadError>> { return resolveNullableWithArgs<(), NonDefaultUvs<'a>, Offset32>(&VariationSelector<'a>.nonDefaultUvsOffset(self), data, ()) }
+  pub fn nonDefaultUvs(self: &Self, data: FontData<'a>) -> Option<Result<NonDefaultUvs<'a>, ReadError>> {
+    let offset = VariationSelector<'a>.nonDefaultUvsOffset(self)
+    return resolveNullableWithArgs<(), NonDefaultUvs<'a>, Offset32>(&offset, data, ())
+  }
 }
 impl<'a> FixedSize for VariationSelector<'a> { fn rawByteLen() -> usize { return 11 } }
 impl<'a> ComputeSize<()> for VariationSelector<'a> { fn computeSize(args: ()) -> Result<usize, ReadError> { return Result<usize, ReadError>.succeed(11) } }
@@ -1193,6 +1256,7 @@ impl<'a> UvsMapping24<'a> {
     if position > FontData.len(&data) || 6 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
   pub fn unicodeValue(self: &Self) -> Uint24 {
     return match move FontData<'a>.readAt<Uint24>(&self._fontData, (self.position + 0)) { Result<Uint24, ReadError>.Success { value } => value Result<Uint24, ReadError>.Failure { error } => Uint24.new(0) }
   }
@@ -1212,6 +1276,7 @@ impl<'a> UvsMapping<'a> {
     if position > FontData.len(&data) || 5 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// Base Unicode value of the UVS
   pub fn unicodeValue(self: &Self) -> Uint24 {
     return match move FontData<'a>.readAt<Uint24>(&self._fontData, (self.position + 0)) { Result<Uint24, ReadError>.Success { value } => value Result<Uint24, ReadError>.Failure { error } => Uint24.new(0) }
@@ -1233,6 +1298,7 @@ impl<'a> UnicodeRange<'a> {
     if position > FontData.len(&data) || 4 > FontData.len(&data) - position { return Result<Self, ReadError>.failResult(ReadError.OutOfBounds) }
     return Result<Self, ReadError>.succeed(Self { _fontData: data, position: position })
   }
+  pub fn default() -> Self { return Self { _fontData: FontData.defaultTableData(), position: 0 } }
 /// First value in this range
   pub fn startUnicodeValue(self: &Self) -> Uint24 {
     return match move FontData<'a>.readAt<Uint24>(&self._fontData, (self.position + 0)) { Result<Uint24, ReadError>.Success { value } => value Result<Uint24, ReadError>.Failure { error } => Uint24.new(0) }

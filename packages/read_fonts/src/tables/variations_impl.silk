@@ -1,0 +1,10 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+fn deltaSetIndexData(format: EntryFormat, count: usize) -> usize { return usize.saturatingMultiply(count, u8.toUsize(u8.shiftRight(EntryFormat.bits(&format) & 48, 4)) + 1) }
+fn itemVariationDataLen(count: u16, words: u16, regions: u16) -> usize {
+  let longs = u16.toUsize(words & 32767)
+  let shorts = usize.saturatingSubtract(u16.toUsize(regions), longs)
+  let mut wordSize: usize = 2
+  let mut smallSize: usize = 1
+  if (words & 32768) != 0 { wordSize = 4 smallSize = 2 }
+  return (longs * wordSize + shorts * smallSize) * u16.toUsize(count)
+}

@@ -142,3 +142,22 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   a 120-second per-process limit: FDArrayTest257 emits 2,493,805 lines / 178,689,572
   bytes and took 30.9 seconds locally, exceeding the directory-era 30-second
   limit. No field or semantic observation is suppressed.
+
+## Milestone 3 (in progress)
+
+- Multiple read arguments use `ReadArgs2`/`ReadArgs3` products. Their fields are
+  `first`, `second`, and `third`; public table constructors still take separate
+  named parameters. Compiler report 005 documents why Copy bounds live on the
+  product's conformance instead of its declaration.
+- Positioned GPOS records retain the enclosing FontData and their field ranges.
+  ValueRecord construction remains lazy, including its saturating u32 position;
+  reads of absent or truncated fields preserve Option/Result distinctions.
+- GDEF requires ItemVariationStore, so its generated variations dependency and
+  TupleIndex scalar are included here. Variation evaluation and its full gate
+  remain milestone 4.
+- Core layout glyph lookups take explicit GlyphId values. Iterators use named
+  ClassEntry/ClassEntry16 records in place of Rust pairs. Set intersections and
+  their tests require the IntSet port in milestone 7.
+- New layout facades and packed specification fixtures are emitted by the
+  generation script; edit extension templates or their upstream-derived fixture
+  generator, never generated files.

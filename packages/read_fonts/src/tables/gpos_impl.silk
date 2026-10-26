@@ -1,0 +1,86 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+pub type OriginalPositionLookupList<'a> = LookupList<'a, PositionLookup<'a>>
+pub type PositionLookupList2<'a> = LookupList2<'a, PositionLookup<'a>>
+pub type PositionSequenceContext<'a> = SequenceContext<'a>
+pub type PositionChainContext<'a> = ChainedSequenceContext<'a>
+
+impl ValueFormat {
+  pub fn anyDeviceOrVaridx() -> Self { return ValueFormat.fromBitsTruncate(240) }
+  pub fn recordByteLen(self: Self) -> usize { return countBits16(ValueFormat.bits(&self)) * 2 }
+}
+pub struct ValueRecord<'a> { _data: FontData<'a>, _offset: u32, _format: ValueFormat, }
+impl<'a> Copy for ValueRecord<'a> {}
+impl<'a> ValueRecord<'a> {
+  pub fn new(data: FontData<'a>, offset: usize, format: ValueFormat) -> Self {
+    let mut bounded = offset
+    if bounded > 4294967295 { bounded = 4294967295 }
+    return Self { _data: data, _offset: usize.toU32(bounded), _format: format }
+  }
+  pub fn default() -> Self { return Self { _data: FontData.new(b""), _offset: 0, _format: ValueFormat.empty() } }
+  pub fn format(self: &Self) -> ValueFormat { return self._format }
+  pub fn byteLen(self: &Self) -> usize { return ValueFormat.recordByteLen(self._format) }
+  pub fn isEmpty(self: &Self) -> bool { return ValueFormat.isEmpty(&self._format) }
+  pub fn offsetData(self: &Self) -> FontData<'a> { return self._data }
+  pub fn offset(self: &Self) -> usize { return u32.toUsize(self._offset) }
+  fn fieldOffset(self: &Self, field: ValueFormat) -> Option<usize> {
+    if !ValueFormat.contains(&self._format, field) { return Option<usize>.None }
+    let bits = ValueFormat.bits(&field)
+    // A zero flag is contained; upstream's subtraction wraps in release.
+    let preceding = ValueFormat.bits(&self._format) & u16.wrappingSubtract(bits, 1)
+    return Option<usize>.some(u32.toUsize(self._offset) + countBits16(preceding) * 2)
+  }
+  fn readI16(self: &Self, field: ValueFormat) -> Option<i16> {
+    if let Option<usize>.Some { value } = move ValueRecord<'a>.fieldOffset(self, field) { return match move FontData<'a>.readAt<i16>(&self._data, value) { Result<i16, ReadError>.Success { value: item } => Option<i16>.some(item) Result<i16, ReadError>.Failure { error } => Option<i16>.None } }
+    return Option<i16>.None
+  }
+  pub fn xPlacement(self: &Self) -> Option<i16> { return ValueRecord<'a>.readI16(self, ValueFormat.xPlacement()) }
+  pub fn yPlacement(self: &Self) -> Option<i16> { return ValueRecord<'a>.readI16(self, ValueFormat.yPlacement()) }
+  pub fn xAdvance(self: &Self) -> Option<i16> { return ValueRecord<'a>.readI16(self, ValueFormat.xAdvance()) }
+  pub fn yAdvance(self: &Self) -> Option<i16> { return ValueRecord<'a>.readI16(self, ValueFormat.yAdvance()) }
+  pub fn deviceOffset(self: &Self, field: ValueFormat) -> Option<Nullable<Offset16>> {
+    if let Option<usize>.Some { value } = move ValueRecord<'a>.fieldOffset(self, field) { return match move FontData<'a>.readAt<Nullable<Offset16>>(&self._data, value) { Result<Nullable<Offset16>, ReadError>.Success { value: item } => Option<Nullable<Offset16>>.some(item) Result<Nullable<Offset16>, ReadError>.Failure { error } => Option<Nullable<Offset16>>.None } }
+    return Option<Nullable<Offset16>>.None
+  }
+  fn readDevice(self: &Self, field: ValueFormat) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> {
+    if let Option<usize>.Some { value: pos } = move ValueRecord<'a>.fieldOffset(self, field) {
+      return match move FontData<'a>.readAt<Nullable<Offset16>>(&self._data, pos) {
+        Result<Nullable<Offset16>, ReadError>.Success { value } => resolveNullableWithArgs<(), DeviceOrVariationIndex<'a>, Offset16>(&value, self._data, ())
+        Result<Nullable<Offset16>, ReadError>.Failure { error } => Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.some(Result<DeviceOrVariationIndex<'a>, ReadError>.failResult(error))
+      }
+    }
+    return Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.None
+  }
+  pub fn xPlacementDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return ValueRecord<'a>.readDevice(self, ValueFormat.xPlacementDevice()) }
+  pub fn yPlacementDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return ValueRecord<'a>.readDevice(self, ValueFormat.yPlacementDevice()) }
+  pub fn xAdvanceDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return ValueRecord<'a>.readDevice(self, ValueFormat.xAdvanceDevice()) }
+  pub fn yAdvanceDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> { return ValueRecord<'a>.readDevice(self, ValueFormat.yAdvanceDevice()) }
+  pub fn bytes(self: &Self) -> Option<&'a [u8]> {
+    let start = u32.toUsize(self._offset)
+    return match move FontData.slice(&self._data, start, start + ValueRecord<'a>.byteLen(self)) { Option<FontData<'a>>.Some { value } => Option<&'a [u8]>.some(FontData.asBytes(&value)) Option<FontData<'a>>.None => Option<&'a [u8]>.None }
+  }
+}
+impl<'a> ComputeSize<ValueFormat> for ValueRecord<'a> { fn computeSize(args: ValueFormat) -> Result<usize, ReadError> { return Result<usize, ReadError>.succeed(ValueFormat.recordByteLen(args)) } }
+impl<'a> FontReadAt<'a, ValueFormat> for ValueRecord<'a> { fn readAt(data: FontData<'a>, position: usize, args: ValueFormat) -> Result<Self, ReadError> { return Result<Self, ReadError>.succeed(ValueRecord<'a>.new(data, position, args)) } }
+
+fn countBits16(bits: u16) -> usize { let mut remaining = bits let mut count: usize = 0 while remaining != 0 { remaining = remaining & (remaining - 1) count = count + 1 } return count }
+
+pub type PositionLookupList<'a> = SelectedLookupList<'a, PositionLookup<'a>>
+impl<'a> Gpos<'a> {
+  fn selectOffset(self: &Self, original: Nullable<Offset16>, extended: Option<Nullable<Offset32>>) -> Result<HeaderOffset, ReadError> { return HeaderOffset.select(original, move extended, MajorMinor.compatible(&Gpos<'a>.version(self), MajorMinor.new(1, 2))) }
+  pub fn scriptList(self: &Self) -> Result<ScriptList<'a>, ReadError> {
+    let selected = match move Gpos<'a>.selectOffset(self, Gpos<'a>.scriptListOffset(self), Gpos<'a>.scriptList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<ScriptList<'a>, ReadError>.failResult(error) } }
+    return resolve<ScriptList<'a>, Offset32>(selected.offset, self._fontData)
+  }
+  pub fn originalScriptList(self: &Self) -> Option<Result<ScriptList<'a>, ReadError>> { return resolveNullableWithArgs<(), ScriptList<'a>, Offset16>(&Gpos<'a>.scriptListOffset(self), self._fontData, ()) }
+  pub fn featureList(self: &Self) -> Result<FeatureList<'a>, ReadError> {
+    let selected = match move Gpos<'a>.selectOffset(self, Gpos<'a>.featureListOffset(self), Gpos<'a>.featureList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<FeatureList<'a>, ReadError>.failResult(error) } }
+    return resolve<FeatureList<'a>, Offset32>(selected.offset, self._fontData)
+  }
+  pub fn originalFeatureList(self: &Self) -> Option<Result<FeatureList<'a>, ReadError>> { return resolveNullableWithArgs<(), FeatureList<'a>, Offset16>(&Gpos<'a>.featureListOffset(self), self._fontData, ()) }
+  pub fn originalLookupList(self: &Self) -> Option<Result<OriginalPositionLookupList<'a>, ReadError>> { return resolveNullableWithArgs<(), OriginalPositionLookupList<'a>, Offset16>(&Gpos<'a>.lookupListOffset(self), self._fontData, ()) }
+  pub fn lookupList(self: &Self) -> Result<PositionLookupList<'a>, ReadError> {
+    let selected = match move Gpos<'a>.selectOffset(self, Gpos<'a>.lookupListOffset(self), Gpos<'a>.lookupList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<PositionLookupList<'a>, ReadError>.failResult(error) } }
+    if selected.extended { return match move resolve<PositionLookupList2<'a>, Offset32>(selected.offset, self._fontData) { Result<PositionLookupList2<'a>, ReadError>.Success { value } => Result<PositionLookupList<'a>, ReadError>.succeed(SelectedLookupList<'a, PositionLookup<'a>>.Extended { value: value }) Result<PositionLookupList2<'a>, ReadError>.Failure { error } => Result<PositionLookupList<'a>, ReadError>.failResult(error) } }
+    return match move resolve<OriginalPositionLookupList<'a>, Offset32>(selected.offset, self._fontData) { Result<OriginalPositionLookupList<'a>, ReadError>.Success { value } => Result<PositionLookupList<'a>, ReadError>.succeed(SelectedLookupList<'a, PositionLookup<'a>>.Original { value: value }) Result<OriginalPositionLookupList<'a>, ReadError>.Failure { error } => Result<PositionLookupList<'a>, ReadError>.failResult(error) }
+  }
+}

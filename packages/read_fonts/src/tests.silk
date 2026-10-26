@@ -313,3 +313,4 @@ import metric_tests
 import post_tests
 import cmap_tests
 import provider_tests
+import layout_spec_tests

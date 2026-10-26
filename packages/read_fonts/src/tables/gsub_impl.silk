@@ -1,0 +1,26 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+pub type OriginalSubstitutionLookupList<'a> = LookupList<'a, SubstitutionLookup<'a>>
+pub type SubstitutionLookupList2<'a> = LookupList2<'a, SubstitutionLookup<'a>>
+pub type SubstitutionSequenceContext<'a> = SequenceContext<'a>
+pub type SubstitutionChainContext<'a> = ChainedSequenceContext<'a>
+
+pub type SubstitutionLookupList<'a> = SelectedLookupList<'a, SubstitutionLookup<'a>>
+impl<'a> Gsub<'a> {
+  fn selectOffset(self: &Self, original: Nullable<Offset16>, extended: Option<Nullable<Offset32>>) -> Result<HeaderOffset, ReadError> { return HeaderOffset.select(original, move extended, MajorMinor.compatible(&Gsub<'a>.version(self), MajorMinor.new(1, 2))) }
+  pub fn scriptList(self: &Self) -> Result<ScriptList<'a>, ReadError> {
+    let selected = match move Gsub<'a>.selectOffset(self, Gsub<'a>.scriptListOffset(self), Gsub<'a>.scriptList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<ScriptList<'a>, ReadError>.failResult(error) } }
+    return resolve<ScriptList<'a>, Offset32>(selected.offset, self._fontData)
+  }
+  pub fn originalScriptList(self: &Self) -> Option<Result<ScriptList<'a>, ReadError>> { return resolveNullableWithArgs<(), ScriptList<'a>, Offset16>(&Gsub<'a>.scriptListOffset(self), self._fontData, ()) }
+  pub fn featureList(self: &Self) -> Result<FeatureList<'a>, ReadError> {
+    let selected = match move Gsub<'a>.selectOffset(self, Gsub<'a>.featureListOffset(self), Gsub<'a>.featureList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<FeatureList<'a>, ReadError>.failResult(error) } }
+    return resolve<FeatureList<'a>, Offset32>(selected.offset, self._fontData)
+  }
+  pub fn originalFeatureList(self: &Self) -> Option<Result<FeatureList<'a>, ReadError>> { return resolveNullableWithArgs<(), FeatureList<'a>, Offset16>(&Gsub<'a>.featureListOffset(self), self._fontData, ()) }
+  pub fn originalLookupList(self: &Self) -> Option<Result<OriginalSubstitutionLookupList<'a>, ReadError>> { return resolveNullableWithArgs<(), OriginalSubstitutionLookupList<'a>, Offset16>(&Gsub<'a>.lookupListOffset(self), self._fontData, ()) }
+  pub fn lookupList(self: &Self) -> Result<SubstitutionLookupList<'a>, ReadError> {
+    let selected = match move Gsub<'a>.selectOffset(self, Gsub<'a>.lookupListOffset(self), Gsub<'a>.lookupList2Offset(self)) { Result<HeaderOffset, ReadError>.Success { value } => value Result<HeaderOffset, ReadError>.Failure { error } => { return Result<SubstitutionLookupList<'a>, ReadError>.failResult(error) } }
+    if selected.extended { return match move resolve<SubstitutionLookupList2<'a>, Offset32>(selected.offset, self._fontData) { Result<SubstitutionLookupList2<'a>, ReadError>.Success { value } => Result<SubstitutionLookupList<'a>, ReadError>.succeed(SelectedLookupList<'a, SubstitutionLookup<'a>>.Extended { value: value }) Result<SubstitutionLookupList2<'a>, ReadError>.Failure { error } => Result<SubstitutionLookupList<'a>, ReadError>.failResult(error) } }
+    return match move resolve<OriginalSubstitutionLookupList<'a>, Offset32>(selected.offset, self._fontData) { Result<OriginalSubstitutionLookupList<'a>, ReadError>.Success { value } => Result<SubstitutionLookupList<'a>, ReadError>.succeed(SelectedLookupList<'a, SubstitutionLookup<'a>>.Original { value: value }) Result<OriginalSubstitutionLookupList<'a>, ReadError>.Failure { error } => Result<SubstitutionLookupList<'a>, ReadError>.failResult(error) }
+  }
+}
