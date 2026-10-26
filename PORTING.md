@@ -394,3 +394,19 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   packing them; reverse lookup still chooses the first glyph with an exact
   stored name and never indexes synthesized names. Type 1 name tests remain
   outside the requested SFNT/CFF scope.
+- Charmap is an explicit provider-backed view with a standalone-CFF constructor.
+  It eagerly selects Unicode/variation subtables and retains borrowed raw views
+  for individual encoding records. Those records and DMAP matches are resolved
+  on request instead of storing a second allocated cache. Copied cursors borrow
+  the font bytes, not the temporary facade. Eager TableFunction snapshots replace
+  the upstream callback-cache test's lazy timing and full Font instances.
+- Batched Unicode lookup accepts input/output slices and processes their shorter
+  length, matching the upstream zipped iterator. Format 4/12 batches retain the
+  preceding segment/group; all outputs after a miss are still written. Encoding
+  keys preserve the 12-byte representation and distinct record identities.
+- Unicode lookup and individual encoding lookup retain their different DMAP,
+  symbol, Mac Roman and variation-selector rules. The pinned upstream individual
+  format-0 encoding cursor appends a second scan after its generic iterator;
+  the port preserves those repeated codes. Unicode iteration lists them once.
+  Standalone CFF retains native encodings; glyph-name Unicode mapping is absent
+  because AGL is explicitly excluded. Type 1-only tests remain out of scope.

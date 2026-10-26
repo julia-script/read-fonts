@@ -656,3 +656,15 @@ truncation, full-name reverse lookup and absent name tables. The separate Type 1
 test and Type 1 branch of a mixed test are outside scope. A fixture generator bug
 that skipped a one-digit hex literal was fixed in the generator; no parser change
 was needed. Library build passes. Charmap and glyph/scaled metrics remain for M7.
+
+## Session 36 — 2026-10-26 — model charmap
+
+All **16 in-scope charmap tests** pass, including the callback-cache test adapted
+to the documented eager snapshot ownership model. Totals are **630 read_fonts
+tests**, **64 font_types tests**, and **676 upstream ports**. Tests cover scalar
+and cached batches, large forward/reverse inputs, individual encoding identity,
+DMAP overrides, format 14/15 variants, symbol fallback, Mac Roman conversion,
+format-0 iteration and standalone/CID CFF without AGL. The two Type 1-only tests
+are excluded. Compiler bug 008 records a minimal rejected generic unsafe drop;
+an intermediate binding works. Glyph/scaled metrics and the differential model
+gate remain for M7; M8–M9 have not started.

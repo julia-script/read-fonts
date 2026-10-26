@@ -19,3 +19,4 @@ rediscovered or reported as new bugs.
 - [005 — bounded type application in an impl argument](compiler-bugs/005-bounded-impl-argument/README.md): an acyclic `Read<Args<Flag, Flag>>` conformance reports SEM0223; keep argument-product Copy bounds on its conformance instead of its declaration.
 - [006 — applying an interface with a bounded type parameter](compiler-bugs/006-dependent-interface-bound/README.md): native compilation rejects the dependent bound; keep the target bound on consuming types and functions.
 - [007 — bounded Self in an interface result](compiler-bugs/007-bounded-self-result/README.md): `Values<Self>` is rejected when Values requires the provider's interface; keep the bound on consuming cursor methods.
+- [008 — dropping a generic unsafe operation](compiler-bugs/008-drop-generic-unsafe/README.md): directly dropping Atomic.fetchAdd with its static ordering is rejected; bind the result before dropping it.
