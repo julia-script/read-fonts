@@ -452,7 +452,8 @@ impl<'a> SelectedGvar<'a> {
   }
   pub fn dataForGid(self: &Self, gid: GlyphId) -> Result<Option<FontData<'a>>, ReadError> {
     let range = match move SelectedGvar.dataRangeForGid(self, gid) { Result<ByteRange, ReadError>.Success { value } => value Result<ByteRange, ReadError>.Failure { error } => { return Result<Option<FontData<'a>>, ReadError>.failResult(error) } }
-    if range.start == range.end { return Result<Option<FontData<'a>>, ReadError>.succeed(Option<FontData<'a>>.None) }
+    // Rust Range::is_empty includes reversed ranges, even beyond the table.
+    if range.start >= range.end { return Result<Option<FontData<'a>>, ReadError>.succeed(Option<FontData<'a>>.None) }
     return match move FontData.slice(&SelectedGvar.offsetData(self), range.start, range.end) { Option<FontData<'a>>.Some { value } => Result<Option<FontData<'a>>, ReadError>.succeed(Option<FontData<'a>>.some(value)) _ => Result<Option<FontData<'a>>, ReadError>.failResult(ReadError.OutOfBounds) }
   }
   pub fn glyphVariationDataForRange(self: &Self, range: ByteRange) -> Result<FontData<'a>, ReadError> {

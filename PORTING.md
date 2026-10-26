@@ -467,3 +467,15 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Layout intersection observations run once per concrete graph node. Their
   short-lived allocator is local to the dump adapter; allocation failure becomes
   a dumper failure through WriterError. Public parser/IntSet effects are unchanged.
+
+## Milestone 8
+
+- The whole-corpus corruption campaign found a reversed gvar glyph-data range
+  that the port rejected. Rust's Range::is_empty includes start greater than end,
+  so dataForGid now returns no data for reversed as well as equal ranges. Offset
+  addition remains checked before the emptiness decision. Narrow/extended table
+  variants and both offset widths have regression coverage.
+- Corruption checks compare complete dumps, including table errors. Process
+  failures and traversal limits never count as parity. Resumable receipts bind
+  observations to the source, exact executable bytes and mutation settings.
+  Binary snapshots prevent a concurrent rebuild from changing a running campaign.

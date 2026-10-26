@@ -80,6 +80,13 @@ def fixtures():
                 broken = bytearray(payload)
                 struct.pack_into('>I', broken, 17 if extended else 16, offset)
                 yield f'{tag.decode()}-{long_offsets}-base-{offset}', sfnt({tag: broken})
+            for first, last in ((8, 4), (65530, 65528), (65530, 65530)):
+                broken = bytearray(payload)
+                header_len = 21 if extended else 20
+                width = 4 if long_offsets else 2
+                broken[header_len:header_len + 2 * width] = (
+                    first.to_bytes(width, 'big') + last.to_bytes(width, 'big'))
+                yield f'{tag.decode()}-{long_offsets}-empty-range-{first}-{last}', sfnt({tag: broken})
         if extended:
             yield 'GVAR-wide-data-offset', sfnt({tag: gvar(True, True, True)})
     # Same-sized glyphs must be parsed separately, not deduplicated by length.

@@ -735,3 +735,62 @@ Evidence: reports/milestone-7-model.json, milestone-7-release-model.json,
 milestone-7-model-fixtures.json and milestone-7-release-model-fixtures.json.
 PR #8 is ready for CI review. M8 malformed-input campaigns and M9 Phase 2 tables
 and performance remain; the overall port is not yet complete.
+
+## Session 40 — 2026-10-26 — deterministic malformed-input campaign
+
+M7 PR #8 is in CI. M8 adds a reproducible whole-corpus campaign with dozens of
+truncation boundaries and eight seeded byte-flip variants per font. Each case
+compares the complete dump, validates graph references and records exact hashes
+and error counts. Both crashes and timeouts fail; identical failures never count
+as matches. Per-source receipts only reuse successful observations when source,
+binary and campaign hashes/settings agree. Failure artifacts remain reproducible.
+
+The Python suite now passes **19 tests**, including crash/timeout rejection and
+resume invalidation. Library counts remain **719 read_fonts**, **64 font_types**,
+**765 upstream ports**. The full release campaign is running; M8 is not yet
+complete, and M9 has not started.
+
+## Session 41 — 2026-10-26 — malformed gvar range parity
+
+The initial corruption run found a raw gvar-data difference on a mutated HarfRust
+font: Rust treats a reversed range as empty, while Silk returned OutOfBounds. The
+shared narrow/extended implementation now matches Rust's Range::is_empty. One
+new regression test covers both table formats, both offset widths, reversed
+bounds inside/outside the table, and equal out-of-bounds offsets. Twelve focused
+differential fixtures cover the same cases.
+
+The focused gvar root passes **50 tests** (including its 34 imported PostScript
+tests). The full suite passes **720 read_fonts tests**, with unchanged
+**64 font_types** and **765 upstream ports**. The
+Python suite passes **20 tests**, now also proving binary snapshot isolation.
+The initial campaign was stopped to rebuild and rerun every mutation against
+the corrected binary; no final M8 gate is claimed yet.
+
+The repaired font now matches in both debug and release. All **2,894 variation
+fixtures** pass in debug, including the twelve new reversed/equal-range cases.
+The generator drift check passes for all 102 outputs and 33 model fixtures.
+The corrected whole-corpus campaign is still running with no further difference
+observed at this checkpoint.
+
+## Session 42 — 2026-10-26 — milestone 8 local gate complete
+
+The corrected release campaign matches **23,188 / 23,188 corrupted inputs** from
+all **566 corpus files**: **18,660 truncations** (31–33 lengths per font) and
+**4,528 byte-flip variants**. There are **0 differing dumps**, **0 process/harness
+failures**, and **0 Silk traps** in this campaign. The complete matching dumps
+include **2,311,472 table/container error observations**. Every recipe, source
+hash, mutated-input hash and binary hash was revalidated before publishing the
+compressed report; no partial initial-run observation was reused after the fix.
+
+All **720 read_fonts tests**, **20 Python harness tests**, generation drift checks
+and **2,894 focused debug variation fixtures** pass. The previously failing
+whole-font mutation also matches in debug. font_types remains at **64 tests**,
+and the upstream-port count remains **765**; the new range test is a regression.
+Evidence: reports/milestone-8-malformed.json.gz and
+reports/milestone-8-variation-fixtures.json.gz.
+
+M7 CI run **40341358973**, job **121636615554**, passed all debug/release corpus
+and focused gates, and PR #8 is merged. PR #9 contains M8, with the corruption
+campaign required in CI. Its final CI gate remains before merging. M9 Phase 2
+tables, their dependent model tests, and the speed ratio are next; the complete
+port is not yet finished.
