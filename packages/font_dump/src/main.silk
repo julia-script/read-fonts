@@ -1,0 +1,52 @@
+//! Milestone 0 command-line shell for the differential font dumper.
+
+import read_fonts.lib as ReadFonts
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.bytes { Bytes }
+import silk.effect { Effect }
+import silk.host_input { HostInput, HostInputError }
+import silk.option { Option }
+import silk.os_writer { StdoutWriter, StderrWriter }
+import silk.result { Result }
+import silk.string { InvalidUtf8 }
+import silk.writer { Writer, WriterError }
+
+effect fn stdout(text: string) -> () ! WriterError {
+  let mut writer = StdoutWriter.make()
+  run Writer.writeString(text) |> Effect.provideMut<Writer>(&mut writer)
+}
+
+effect fn stderr(text: string) -> () ! WriterError {
+  let mut writer = StderrWriter.make()
+  run Writer.writeString(text) |> Effect.provideMut<Writer>(&mut writer)
+}
+
+/// Accepts one font path. Parsing remains explicitly unavailable until milestone 1.
+pub effect fn main() -> i32
+  ! HostInputError | OutOfMemoryError | WriterError
+  ? &mut HostInput {
+  let count = run HostInput.argumentCount()
+  if count != 2 {
+    run stderr("usage: font_dump FONT\n       font_dump --help | --version\n")
+    return 2
+  }
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let argument = run HostInput.argument(1) |> Effect.provideMut<Allocator>(&mut allocator)
+  if let Option<Bytes>.Some { value } = move argument {
+    // Decode only for flag recognition. Font paths may contain non-UTF-8 bytes.
+    let flag = HostInput.text(Bytes.asSlice(&value))
+    if let Result<string, InvalidUtf8>.Success { value: text } = move flag {
+      if text == "--help" {
+        run stdout("usage: font_dump FONT\nMilestone 0 skeleton; parsing is not implemented.\n")
+        return 0
+      }
+      if text == "--version" {
+        run stdout("font_dump 0.1.0 (font-dump format 1; milestone 0)\n")
+        return 0
+      }
+    }
+  }
+  run stdout("font-dump.version=1\ndump.scope=directory\ndump.status=unimplemented\n")
+  run stderr("font_dump: directory parsing starts at milestone 1\n")
+  return 3
+}

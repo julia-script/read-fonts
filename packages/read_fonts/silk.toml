@@ -1,0 +1,9 @@
+[package]
+name = "read_fonts"
+version = "0.1.0"
+silk-version = "0.1.0-dev.17+1120049495d3"
+kind = "library"
+exports = ["lib"]
+
+[dependencies]
+font_types = { path = "../font_types" }

@@ -1,2 +1,13 @@
+[package]
+name = "fontations_silk"
+version = "0.1.0"
+silk-version = "0.1.0-dev.17+1120049495d3"
+kind = "library"
+exports = []
+
+[dependencies]
+font_types = { path = "packages/font_types" }
+read_fonts = { path = "packages/read_fonts" }
+
 [workspace]
-members = ["read-fonts"]
+members = ["packages/font_types", "packages/read_fonts", "packages/font_dump"]
