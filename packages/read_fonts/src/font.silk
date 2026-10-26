@@ -406,3 +406,6 @@ impl<'a> FontRef<'a> { pub fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { 
 
 import tables.math { Math }
 impl<'a> FontRef<'a> { pub fn math(self: &Self) -> Result<Math<'a>,ReadError> { return TableProvider.math(self) } }
+
+import tables.varc { Varc }
+impl<'a> FontRef<'a> { pub fn varc(self: &Self) -> Result<Varc<'a>,ReadError> { return TableProvider.varc(self) } }

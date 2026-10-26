@@ -8,7 +8,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 fixtures = {}
 source = (ROOT / 'upstream/font-test-data/src/lib.rs').read_text()
-for symbol, name in [('CVAR', 'cvarFont'), ('COLR_GRADIENT_RECT', 'gradientFont'), ('EMBEDDED_BITMAPS', 'embeddedBitmaps'), ('CBDT', 'cbdtFont'), ('COLRV0V1', 'colrFont'), ('COLRV0V1_VARIABLE', 'variableColrFont'), ('COLRV1_NO_CLIPLIST', 'unclippedColrFont')]:
+for symbol, name in [('CJK_6868', 'varcCjkFont'), ('CONDITIONALS', 'varcConditionalsFont'), ('STATIC_GVAR', 'varcStaticFont'), ('DELTA_PRECISION', 'varcDeltaPrecisionFont'), ('CVAR', 'cvarFont'), ('COLR_GRADIENT_RECT', 'gradientFont'), ('EMBEDDED_BITMAPS', 'embeddedBitmaps'), ('CBDT', 'cbdtFont'), ('COLRV0V1', 'colrFont'), ('COLRV0V1_VARIABLE', 'variableColrFont'), ('COLRV1_NO_CLIPLIST', 'unclippedColrFont')]:
     filename = re.search(r'pub static ' + symbol + r':[^=]*=\s*include_bytes!\("([^"]+)"\)', source).group(1)
     fixtures[name] = (ROOT / 'upstream/font-test-data/src' / filename).read_bytes()
 body = source.split('pub static SIMPLE_META_TABLE:', 1)[1].split('&[', 2)[2].split('];', 1)[0]

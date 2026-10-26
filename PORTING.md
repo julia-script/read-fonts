@@ -525,3 +525,14 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   MathKernEntryIter is an explicit cursor. MathValue keeps design-unit values and
   device pixel deltas separate, and VariationIndex records contribute no device
   adjustment, matching the upstream API.
+
+- VARC glyph/component iterators retain copied borrowed table views, so they do
+  not borrow a temporary facade. Component axisValues() and transform() return
+  copied snapshots instead of references. Parsing borrows the component stream
+  independently of the VARC table, as upstream does. Reserved flag payloads and
+  packed-delta cursor advancement preserve the upstream lazy validation rules.
+- VARC's upstream tests of private component parsing are included beside the
+  implementation by the generator; no private parser is added to the public API.
+  The existing font_types cast helper is now an exported module for the generated
+  random-input test's bit-preserving conversions. Platform trigonometry is
+  recorded in STDLIB-GAPS.md #005.

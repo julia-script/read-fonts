@@ -31,6 +31,7 @@ import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
 pub fn tableTag<T: TopLevelTable>() -> Tag { return TopLevelTable.tag() }
 pub interface TableProvider<'a> {
+  fn varc(self: &Self) -> Result<Varc<'a>,ReadError> { return readTable<Varc<'a>,Self>(self,Varc.tag()) }
   fn math(self: &Self) -> Result<Math<'a>,ReadError> { return readTable<Math<'a>,Self>(self,Math.tag()) }
   fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return readTable<Colr<'a>,Self>(self,Colr.tag()) }
   fn sbix(self: &Self) -> Result<Sbix<'a>, ReadError> {
@@ -247,3 +248,5 @@ import tables.eblc { Eblc }
 import tables.colr { Colr }
 
 import tables.math { Math }
+
+import tables.varc { Varc }

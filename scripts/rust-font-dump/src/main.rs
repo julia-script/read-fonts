@@ -10,17 +10,16 @@ use std::{
     process::ExitCode,
 };
 
-mod generated_dump_math;
 mod dump_support;
 mod extensions_aat_common;
 mod extensions_aat_misc;
-mod extensions_math;
 mod extensions_bitmaps;
 mod extensions_cff;
 mod extensions_cmap;
 mod extensions_glyphs;
 mod extensions_kern;
 mod extensions_kerx;
+mod extensions_math;
 mod extensions_metric_variations;
 mod extensions_metrics;
 mod extensions_model;
@@ -29,6 +28,7 @@ mod extensions_morx;
 mod extensions_name;
 mod extensions_post;
 mod extensions_sets;
+mod extensions_varc;
 mod generated_dump_aat;
 mod generated_dump_ankr;
 mod generated_dump_base;
@@ -51,6 +51,7 @@ mod generated_dump_head;
 mod generated_dump_kern;
 mod generated_dump_kerx;
 mod generated_dump_ltag;
+mod generated_dump_math;
 mod generated_dump_maxp;
 mod generated_dump_meta;
 mod generated_dump_mort;
@@ -59,6 +60,7 @@ mod generated_dump_sbix;
 mod generated_dump_stat;
 mod generated_dump_svg;
 mod generated_dump_trak;
+mod generated_dump_varc;
 
 mod generated_dump_avar;
 mod generated_dump_fvar;
@@ -196,7 +198,9 @@ fn dump_font(
         generated_dump_ebdt::dump_tables(out, &prefix, &font)?;
         generated_dump_eblc::dump_tables(out, &prefix, &font)?;
         generated_dump_colr::dump_tables(out, &prefix, &font)?;
+        generated_dump_varc::dump_tables(out, &prefix, &font)?;
         generated_dump_math::dump_tables(out, &prefix, &font)?;
+        extensions_varc::dump(out, &prefix, &font)?;
         extensions_math::dump(out, &prefix, &font)?;
         extensions_bitmaps::dump(out, &prefix, &font)?;
         extensions_glyphs::dump(out, &prefix, &font)?;

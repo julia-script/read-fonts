@@ -25,10 +25,10 @@ def fixtures():
              b'DSIG': bytes.fromhex('0000000100010001000000010000000c000000140000000000000004deadbeef')}
     words = [0,0,10,0,0,3,1,3,0,38,0,10,6,7,0,48,0,6,9,9,0,38,0,10,1,0,0,0,1,2,0,0]
     seeds[b'SVG '] = struct.pack('>32H', *words)
-    for name in ('cvarFont', 'gradientFont', 'embeddedBitmaps', 'cbdtFont', 'colrFont', 'variableColrFont', 'unclippedColrFont'):
+    for name in ('cvarFont', 'gradientFont', 'embeddedBitmaps', 'cbdtFont', 'colrFont', 'variableColrFont', 'unclippedColrFont', 'varcCjkFont', 'varcConditionalsFont', 'varcStaticFont', 'varcDeltaPrecisionFont'):
         yield name, packed[name]
         seeds.update({tag: value for tag, value in tables(packed[name]).items()
-                      if tag in (b'cvar', b'CPAL', b'STAT')})
+                      if tag in (b'cvar', b'CPAL', b'STAT', b'VARC')})
     # The v1 palette exercises typed flag/name-id array offsets separately.
     seeds[b'CPAL'] = bytes.fromhex('00010001000100010000001a00000000001e0000002200000024010203040000000301010102')
     for tag, data in seeds.items():
@@ -46,6 +46,7 @@ def fixtures():
                 yield f'{tag.hex()}-word-{index}-{value}', sfnt({**required, tag: bytes(changed)})
     yield from bitmap_fixtures()
     yield from colr_fixtures()
+    yield from varc_fixtures()
     for tag, payload in [(b'dlng', b'en-latn, latn'), (b'slng', b'\xff, x'),
                          (b'xxxx', b'\x00\xff\x01'), (b'dlng', b',,,')]:
         meta = struct.pack('>IIII4sII', 1, 0, 0, 1, tag, 28, len(payload)) + payload
@@ -140,6 +141,70 @@ def colr_fixtures():
     assert formats == 33, formats
     for unknown in (0,34,255):
         yield f'colr-paint-unknown-{unknown}', sfnt({b'COLR': header+records+bytes([unknown])+bytes(32)})
+
+def varuint(value):
+    if value < 0x80:
+        return bytes([value])
+    if value < 0x4000:
+        return bytes([0x80 | (value >> 8), value & 255])
+    if value < 0x200000:
+        return bytes([0xc0 | (value >> 16)]) + (value & 0xffff).to_bytes(2, 'big')
+    if value < 0x10000000:
+        return bytes([0xe0 | (value >> 24)]) + (value & 0xffffff).to_bytes(3, 'big')
+    return b'\xf0' + value.to_bytes(4, 'big')
+
+
+def varc_fixtures():
+    def font(payload):
+        # Empty axis list at index 0, five packed indices at index 1.
+        axes = bytes.fromhex('0000000201010107040203040506')
+        coverage = struct.pack('>3H', 1, 1, 1)
+        header = struct.pack('>HH5I', 1, 0, 24, 0, 0, 30, 30+len(axes))
+        glyphs = struct.pack('>IBHH', 1, 2, 1, len(payload)+1) + payload
+        return sfnt({b'VARC': header+coverage+axes+glyphs})
+    cases = []
+    for flags in [0] + [1 << bit for bit in range(32)] + [0x7fff, 0xffffffff]:
+        data = bytearray(varuint(flags))
+        data.extend((0x123456 if flags & 4096 else 1).to_bytes(3 if flags & 4096 else 2, 'big'))
+        if flags & 128:
+            data.extend(varuint(0xfedcba98))
+        if flags & 2:
+            data.extend(b'\x01\x04\x01\xfe\x03\xfc\x05')
+        if flags & 4:
+            data.extend(varuint(0x12345))
+        if flags & 8:
+            data.extend(varuint(0x234567))
+        for flag, value in [(16,7), (32,-8), (64,1024), (256,2048), (512,3072),
+                            (8192,512), (16384,-1024), (1024,17), (2048,-19)]:
+            if flags & flag:
+                data.extend(struct.pack('>h', value))
+        for bit in range(15,32):
+            if flags & (1 << bit):
+                data.extend(varuint(0xffffffff-bit))
+        cases.append((f'flags-{flags}', bytes(data)))
+    for control, payload in [(4,bytes([1,2,3,4,5])), (68,struct.pack('>5h',1,-2,3,-4,5)),
+                             (196,struct.pack('>5i',100000,-200000,300000,-400000,500000)), (132,b'')]:
+        cases.append((f'axes-{control}', bytes([18,0,1,1,control])+payload+bytes([0,7])))
+    cases += [('empty-axes', bytes.fromhex('1600010081230006')),
+              ('bad-axis-index', bytes.fromhex('0200017f'))]
+    for value in [0x7f,0x80,0x3fff,0x4000,0x1fffff,0x200000,0xfffffff,0x10000000,0xffffffff]:
+        cases.append((f'condition-{value}',varuint(128)+bytes([0,1])+varuint(value)))
+    for name, data in cases:
+        for cut in range(len(data)+1):
+            yield f'varc-{name}-prefix-{cut}', font(data[:cut])
+        # Consecutive components exercise exact stream consumption.
+        yield f'varc-{name}-followed', font(data+bytes([0,0,2]))
+    # Malformed/degenerate sparse regions and missing high-numbered axes.
+    for index in [0,7,8,65535]:
+        for start,peak,end in [(0,16384,16384),(-16384,-16384,0),(-16384,0,16384),
+                               (8192,0,-8192),(8192,16384,0),(-16384,8192,16384),
+                               (-32768,-32768,-32768),(32767,32767,32767)]:
+            region = struct.pack('>HIHhhh',1,6,index,start,peak,end)
+            region_list = struct.pack('>II',1,8)+region
+            store = struct.pack('>HIH',1,8,0)+region_list
+            header = struct.pack('>HH5I',1,0,0,24,0,0,0)
+            yield f'varc-region-{index}-{start}-{peak}-{end}', sfnt({b'VARC':header+store})
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

@@ -106,6 +106,8 @@ import read_fonts.tables.colr as ColrTables
 import generated_dump_colr
 import read_fonts.tables.math as MathTables
 import generated_dump_math
+import read_fonts.tables.varc as VarcTables
+import generated_dump_varc
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -449,3 +451,10 @@ impl<'a> DumpTable<'a> for MathTables.MathKern<'a> { effect fn dump(self: &Self,
 impl<'a> DumpTable<'a> for MathTables.MathVariants<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathVariants(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MathTables.MathGlyphConstruction<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpMathGlyphConstruction(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MathTables.GlyphAssembly<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_math.dumpGlyphAssembly(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.Varc<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpVarc(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.MultiItemVariationStore<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpMultiItemVariationStore(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.SparseVariationRegionList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpSparseVariationRegionList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.SparseVariationRegion<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpSparseVariationRegion(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.SparseRegionAxisCoordinates<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpSparseRegionAxisCoordinates(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.MultiItemVariationData<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpMultiItemVariationData(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for VarcTables.ConditionList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_varc.dumpConditionList(&mut path, self.*) } }

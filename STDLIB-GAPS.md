@@ -44,3 +44,12 @@ pages need all three. `collections/int_set/bitpage.silk` supplies bounded SWAR
 population counting and binary-search bit scans, including the zero-input result
 of 64. The 27 original page tests cover full/empty words, bit 63, page boundaries,
 forward/reverse iteration and set counts. The stdlib remains unchanged.
+
+## 005 — platform f32 tangent and trigonometric parity
+
+The pinned f32 module has deterministic sin/cos approximations (documented to
+within four ULP), and no tangent function. VARC transform matrices must agree with
+upstream's platform f32 trigonometry. `tables/varc_impl.silk` calls the platform
+`sinf`, `cosf` and `tanf` through the C ABI, as the glyph loader already does for
+`hypotf`. The stdlib and compiler remain unchanged. The seven upstream matrix
+tests and bitwise differential matrix observations cover this adaptation.

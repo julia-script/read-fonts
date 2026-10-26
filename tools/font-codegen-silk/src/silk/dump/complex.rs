@@ -21,6 +21,7 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "avar" | "hvar" | "vvar" | "mvar" | "colr" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "gvar" => out.push_str("import read_fonts.tables.gvar { U16Or32 }\nimport read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }\nimport generated_dump_variations { dumpTuple }\n"),
             "base" => out.push_str("import read_fonts.tables.layout { DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
+            "varc" => out.push_str("import read_fonts.tables.layout { CoverageTable, Condition }\n"),
             "math" => out.push_str("import read_fonts.tables.layout { CoverageTable, DeviceOrVariationIndex }\n"),
             "cvar" => out.push_str("import read_fonts.tables.variations { TupleVariationHeader, TupleVariationCount }\n"),
             "meta" => out.push_str("import read_fonts.tables.meta { Metadata, ScriptLangTag }\n"),

@@ -883,3 +883,26 @@ Rust Clippy passes with warnings denied, and generator formatting passes.
 
 VARC, the dependent model work, final debug/release corpus comparisons and the
 speed ratio remain pending. M8 CI is still running its malformed-input campaign.
+
+## Session 47 — 2026-10-26 — VARC table gate
+
+VARC is generated and exposed through providers and model Tables. All **45
+upstream VARC tests** pass, covering sparse region offsets/counts/scalars, all
+condition formats, component flags and reserved payloads, 24-bit glyph IDs,
+packed axis values, randomized varints/delta runs, transforms and multivar data.
+The complete suite passes **812 read_fonts tests**; **853 upstream ports** are
+complete overall. font_types remains at 64 tests.
+
+**3,550 / 3,550 focused Phase 2 fixtures match** in debug, including every prefix
+of constructed VARC component streams, all 32 flag bits, subsequent components,
+varint boundaries, packed-run truncations and degenerate sparse regions. Dumps
+include component fields, bitwise transform matrices, decoded delta sets and
+region scalars at four coordinates. Evidence:
+reports/milestone-9-varc-fixtures.json.gz. The 156 generated outputs, 18 Phase 2
+fixtures and 33 model fixtures pass drift checks. All 10 generator tests, Rust
+formatting and Clippy with warnings denied pass; root, library and CLI builds pass.
+
+All requested Phase 2 table families are now implemented. A complete debug
+corpus run is starting against immutable binary copies. Bitmap/COLR/VARC model
+extents and deferred tests, the final debug/release gates and speed comparison
+remain before M9 can be marked complete. M8 CI is still on its malformed campaign.

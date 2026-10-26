@@ -869,3 +869,20 @@ target = "packages/font_dump/src/generated_dump_math.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/math.rs"
 target = "scripts/rust-font-dump/src/generated_dump_math.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/varc.rs"
+target = "packages/read_fonts/src/generated_varc.silk"
+facade = "packages/read_fonts/src/tables/varc.silk"
+extensions = ["packages/read_fonts/src/tables/varc_impl.silk", "packages/read_fonts/src/tables/varc_tests.silk"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/varc.rs"
+target = "packages/font_dump/src/generated_dump_varc.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/varc.rs"
+target = "scripts/rust-font-dump/src/generated_dump_varc.rs"
