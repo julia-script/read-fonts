@@ -269,3 +269,68 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Kerning, feature-name and AAT lookup searches preserve Rust's exact candidate
   sequence, including malformed unsorted input; sorted duplicate keys select
   the rightmost matching entry.
+
+## Milestone 6 (in progress)
+
+- The CFF grammar emits the `ps.cff.v1` and `ps.cff.v2` public facades, matching
+  upstream's ownership of generated types. INDEX offsets stay borrowed and use
+  checked multiplication, subtraction and object ranges. The common `Index.Empty`
+  retains the upstream distinction between an exact empty blob and a parsed
+  zero-count INDEX with a header.
+- `scripts/generate-ps-data` packs all 391 standard strings, predefined encodings
+  and expert charsets from the immutable sources. `Sid.fromI32` explicitly keeps
+  the low 16 bits. Charset iterators yield `CharsetEntry { glyph, sid }` in place
+  of Rust pairs, retain the range cursor, and reject cumulative overflow.
+- Custom encodings expose borrowed scalar/record arrays in named union fields.
+  Supplemental lookup precedence, range saturation, glyph-count boundaries and
+  Rust's exact FDSelect binary-search candidate sequence are preserved.
+
+- Internal PostScript decoders use typed failures through small adapters, while
+  public parsing methods retain Result/Option values. `DynamicFixed { value,
+  scale }` names the dynamically scaled number pair. Decimal counters are checked
+  and final exponent arithmetic uses wider intermediates so extremely long
+  malformed encodings cannot overflow Silk integers.
+- `Transform.scale` remains a public Option, so the containing Silk value is
+  affine. `identity()` replaces the associated constant. Numeric scaling and
+  matrix normalization preserve the upstream fixed-point arithmetic and rounding.
+- `Stack.fixedArray(firstIndex, output)` fills a caller-owned slice because this
+  compiler has no const-generic array lengths. `dropValues` replaces the reserved
+  `drop` identifier. Numeric operands use the `IntoNumber` interface, and cursor
+  types replace fixed-value and scalar iterators. Blend state keeps font and
+  coordinate lifetimes separate and preserves the 16-entry scalar cache.
+- DICT token and entry cursors replace Rust iterators and retain unknown-operator
+  consumption, stack clearing and variable-operand state changes. Hinting values
+  use fixed-capacity Blues and StemSnaps arrays with borrowed active slices.
+  Cff/Cff2 accessors return Copy table views in place of shared references.
+- `CffFontRef` and `Subfont` use affine Option fields and expose copied optional
+  views. `HintedSubfont { subfont, hinting }` names the returned pair. Metadata
+  strings remain borrowed UTF-8 views, with invalid strings absent. The unhinted
+  private cursor retains upstream filtering; private offsets use checked addition
+  before the same low-32-bit conversion. The SID private-range accessor supports
+  the upstream malformed-dictionary tests.
+- Charstring evaluation uses static context/sink interfaces and explicit recursive
+  calls with unchanged type parameters. Recursion, stack capacity, instruction
+  limits, reserved operators, hint callbacks and legacy shared operators follow
+  upstream. A context's optional weight-vector slice replaces an empty default
+  borrowed slice; None and an empty slice both mean no multiple-master blend.
+- CFF evaluation allocates no parser storage. The shared Type 1 BuildChar operator
+  keeps 32 inline entries and uses a Silk List only for larger arrays, matching
+  upstream's lazy SmallVec allocation; allocation failure becomes InsufficientMemory.
+  This does not add a Type 1 font parser. Subroutine index addition uses a wider
+  intermediate to reject malformed signed overflow without trapping.
+- `PathSinkAdapter` replaces Rust's blanket CommandSink implementation. The small
+  shared PathSink contract is included as a CFF drawing dependency. Transform and
+  degenerate-path adapters preserve FreeType's operation order and rounding; bounds
+  are measured while transforming control points, before any bounding-box reduction.
+
+- Public `ps` and `ps.cff` facades re-export the shared PostScript and unified font
+  types. Generated dump imports preserve the CFF namespace instead of assuming
+  every grammar lives under `tables`. Both dumpers use the public parsed views.
+- Dump format 6 follows the top/font/private dictionary hierarchy, including
+  malformed links, without letting arbitrary offsets create recursive traversal.
+  Decoded operands are observed without blending; subfont and glyph measurements
+  separately use four variation locations. Raw INDEX fields remain complete,
+  while extra object/glyph probes explicitly stop at the 65,536-item sfnt domain.
+  CFF fixture evidence is gzip-compressed because malformed top-DICT counts can
+  produce JSON reports larger than GitHub's per-file limit; no observations are
+  removed from those reports.

@@ -215,3 +215,29 @@ flags, default setting indices and feature-name lookup results. ltagStrings
 contains every valid tag's UTF-8 bytes in hexadecimal and its lookup index.
 Missing, null and malformed data retain the previous error/absence syntax.
 The variation and glyph observations remain unchanged after these additions.
+
+## Version 6: CFF and CFF2
+
+Version `6`, scope `cff-tables`, appends CFF and CFF2 observations after the
+version-5 fields. Each table includes its generated header, names/strings/top
+DICT/global-subroutine INDEX fields, decoded DICT operands, and the selected
+font's metadata, matrices, charstrings, charset and encoding. DICT links follow
+the bounded top/font/private hierarchy and expose FDArray, FDSelect, custom
+encoding and local-subroutine fields, including failed offset resolutions.
+DICT operand observations use no blend state; location-dependent private
+values are observed separately through subfont construction.
+
+Each glyph reports its SID, bytes of its name, reverse charset mapping, selected
+subfont, advance width and transformed control-point bounds. Metadata strings are
+UTF-8 bytes encoded as hex; all Fixed values are signed raw 16.16 bits. Subfont
+widths, matrices and hinting values, glyph widths and bounds are evaluated at
+four uniform normalized locations: 0, -8192, 8192 and 16384 in F2Dot14 bits.
+Errors preserve the upstream model error variant. Empty bounds and absent names
+remain `none`.
+
+Raw generated fields include complete arrays and payload bytes. Extra semantic
+INDEX and glyph probes cover up to 65,536 items plus one out-of-range item,
+matching the sfnt glyph-ID domain; `.probeCount` / `.glyphProbeCount` state that
+bound explicitly. Custom charset and encoding fields retain original order.
+Graph scopes restart for independently addressed structures so equal-size data
+cannot share a false reference. The harness still compares every emitted byte.

@@ -334,3 +334,12 @@ import aat_tests
 import aat_misc_tests
 import morx_tests
 import kerning_tests
+
+import cff_basic_tests
+import ps_numeric_tests
+import cff_stack_tests
+import cff_dict_tests
+
+import cff_font_tests
+
+import ps.charstring

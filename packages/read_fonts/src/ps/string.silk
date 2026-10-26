@@ -1,0 +1,21 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import generated_ps_data { standardString }
+import silk.i32
+import silk.ownership { Copy }
+import silk.option { Option }
+import silk.result { Result }
+import silk.equal { Equal }
+import silk.u16
+import silk.u32
+pub struct Sid { raw: u16, }
+impl Copy for Sid {}
+impl Equal for Sid { fn equals(a: &Sid, b: &Sid) -> bool { return a.raw == b.raw } }
+impl Sid {
+  pub fn new(raw: u16) -> Self { return Self { raw: raw } }
+  pub fn fromI32(raw: i32) -> Self { return Sid.new(i32.toU16(raw & 65535)) }
+  pub fn toU16(self: Self) -> u16 { return self.raw }
+  pub fn resolveStandard(self: Self) -> Result<&'static [u8], usize> {
+    let index = u16.toUsize(self.raw)
+    return match move standardString(index) { Option<&'static [u8]>.Some { value } => Result<&'static [u8], usize>.succeed(value) _ => Result<&'static [u8], usize>.failResult(index - 391) }
+  }
+}

@@ -473,3 +473,114 @@ independent equal-sized chains/subtables. Full helper observation rules are in
 `docs/DUMP-FORMAT.md`.
 
 PR #6 is open; remote CI and merge are pending. Milestones 6–9 remain pending.
+
+## Session 22 — 2026-10-26 — milestone 5 merged; CFF foundations
+
+Milestone 5 merged as **PR #6** at `b0d6ac3` after every CI step passed
+([run 40301296730](https://github.com/julia-script/read-fonts/actions/runs/40301296730)).
+Remote validation includes debug/release corpus and AAT fixture comparisons,
+previous focused fixtures, unit tests, generation drift, formatting and Clippy.
+
+The milestone 6 branch generates CFF/CFF2 headers, INDEX objects, charsets and
+FDSelect tables from the pinned grammar. Handwritten code adds both INDEX
+versions, checked object offsets, all charset mappings and iterators, all
+predefined/custom encodings, font-DICT selection and packed standard strings.
+All **31 upstream tests** in these areas pass. The complete suite passes **347
+read_fonts tests**; font_types remains at **64**, for **395 upstream ports**.
+The **98-file** generation drift and library build checks pass.
+
+CFF/CFF2 top-level wrappers, numeric/DICT decoding, charstring evaluation, names
+and bounds differential dumps are still pending. This is an implementation
+checkpoint, not an M6 parity claim. Milestones 7–9 remain pending.
+
+## Session 23 — 2026-10-26 — CFF numeric evaluation and blending
+
+All **16 numeric/transform** and **11 stack/blend** upstream tests pass. The full
+suite passes **374 read_fonts tests**, with **64 font_types tests** and **422
+upstream ports** in total. These cover decimal precision, dynamic matrix scaling,
+exponent-overflow consumption, metric transforms, degenerate matrices, operand
+coercion and permissive stack reads, delta prefix sums, and region blending at
+seven coordinates using the original CFF2 example.
+
+The implementation keeps the 513-operand stack and 16-scalar cache without parser
+allocation. The existing generic-operator compiler workaround is reused; no new
+compiler issue or toolchain modification was needed. Library and **98-file**
+drift checks pass. DICT decoding, top-level CFF/CFF2 access, charstring evaluation
+and the M6 differential gate are still pending.
+
+## Session 24 — 2026-10-26 — CFF DICTs and table access
+
+All **15 DICT and CFF/CFF2 table-access upstream tests** pass. The complete suite
+passes **389 read_fonts tests**, with **64 font_types tests** and **437 upstream
+ports**. Validation covers token errors, variable private dictionaries, matrix
+precision and degeneracy, malformed ranges, font names and glyph-name lookup.
+The library build and **98-file** generation drift check pass.
+
+Top-level Cff/Cff2 types and table-provider methods now expose parsed indexes and
+metadata inputs. Unified CFF font/subfont access, charstring evaluation and the
+names/bounds differential gate remain in progress; no M6 parity is claimed.
+
+## Session 25 — 2026-10-26 — unified CFF font access
+
+The unified font layer passes **18 additional upstream tests**, covering CFF
+version selection, metadata, charsets, encodings, subfont selection, private
+widths and hinting values, empty private dictionaries, checked variation/subr
+range arithmetic and nested font matrices. The complete suite passes **407
+read_fonts tests**, with **64 font_types tests** and **455 upstream ports**.
+The library build passes. Seven font tests that require charstring evaluation
+remain pending along with the evaluator and M6 differential gate.
+
+## Session 26 — 2026-10-26 — CFF charstrings and glyph measurements
+
+All **32 charstring tests** and the remaining **7 CFF font tests** pass. The full
+suite passes **446 read_fonts tests**, with **64 font_types tests** and **494
+upstream ports**. The interpreter covers path construction, hint callbacks,
+subroutines, accent components, CFF2 blends, legacy shared arithmetic and flex,
+transient storage, multiple-master operators and the one-million-operation limit.
+The BuildChar test also exercises the transition beyond its 32 inline entries.
+
+CFF glyph APIs now provide full and quick widths, scaled advances, drawing and
+control-point bounds. Tests compare every glyph in the original Noto and icon
+fixtures, prove that a sheared outline is tighter than its transformed box, and
+check moving CFF2 bounds at three variation locations. Library builds pass.
+The M6 names/bounds differential dump and corpus/fixture gates are next; M6 is
+not complete and milestones 7–9 have not started.
+
+## Session 27 — 2026-10-26 — CFF differential traversal
+
+Format 6 adds generated CFF/CFF2 field dumps, complete decoded DICT operands,
+FDArray/FDSelect and private/local-subroutine links, custom encoding records,
+font metadata, names, widths and bounds at four normalized locations. All **78
+focused seed fixtures** match after this expansion. The earlier measurement-only
+protocol passed 253 CFF corpus fonts and 9,146 CFF fixtures; those observations
+are preliminary and do not substitute for the expanded protocol's final gate.
+
+The public PostScript facades and fixture runner are added, and CI now includes
+CFF fixtures in debug and release. Unit counts remain **446 read_fonts**, **64
+font_types**, and **494 upstream ports**. Full expanded corpus, mutation and
+release checks are running; M6 remains in progress until those finish.
+
+## Session 28 — 2026-10-26 — milestone 6 gate complete
+
+CFF/CFF2 names, widths, transformed bounds and table fields match Rust byte for
+byte on **566 / 566 corpus fonts** and **9,146 / 9,146 CFF fixtures** in both debug
+and release. There are **0 differences and 0 process failures**. The final
+format-6 debug protocol also passes **426 container**, **500 core-table**, **2,650
+layout**, **2,882 variation** and **8,551 AAT** fixtures. The largest FDArray fixture
+now emits **8,136,793 lines**, all compared without suppressing fields.
+
+All **130 upstream tests** in this milestone are ported. Totals remain **446
+read_fonts tests**, **64 font_types tests**, and **494 upstream ports**. The
+**102-file generation drift**, **10 generator tests**, **7 reference tests**, **15
+harness tests**, library/debug/release builds, CLI checks, Rust formatting and
+Clippy with warnings denied pass. No new compiler bug or toolchain patch was
+needed. CI and merge status are tracked on PR #7 separately from these local gates.
+
+Complete per-font observations and matching binary hashes are saved in
+[debug corpus](reports/milestone-6-cff.json),
+[release corpus](reports/milestone-6-release-cff.json),
+[debug fixtures](reports/milestone-6-cff-fixtures.json.gz) and
+[release fixtures](reports/milestone-6-release-cff-fixtures.json.gz).
+Compressed reports retain every observation, including malformed dictionary errors.
+Milestones **0–6 pass**; **7 is next**, followed by malformed-input parity and
+Phase 2/speed comparison. The full port remains in progress.

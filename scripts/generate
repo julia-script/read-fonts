@@ -35,7 +35,8 @@ for operation in plan["generate"]:
         lines = re.findall(rb"^// DUMP_IMPL (.+)$", generated, re.M)
         generated = re.sub(rb"^// DUMP_IMPL .+\n", b"", generated, flags=re.M)
         alias = module.title() + "Tables"
-        trait_imports += [f"import read_fonts.tables.{module} as {alias}\n", f"import generated_dump_{module}\n"]
+        parse_path = {"cff": "ps.cff.v1", "cff2": "ps.cff.v2"}.get(module, f"tables.{module}")
+        trait_imports += [f"import read_fonts.{parse_path} as {alias}\n", f"import generated_dump_{module}\n"]
         for raw in lines:
             line = raw.decode()
             provider = re.search(r" for (\w+)<", line).group(1)
@@ -81,3 +82,5 @@ subprocess.run([str(ROOT / "scripts/generate-static")] + (["--check"] if args.ch
 subprocess.run([str(ROOT / "scripts/generate-layout-fixtures")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-variation-fixtures")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-aat-fixtures")] + (["--check"] if args.check else []), check=True)
+subprocess.run([str(ROOT / "scripts/generate-ps-data")] + (["--check"] if args.check else []), check=True)
+subprocess.run([str(ROOT / "scripts/generate-cff-fixtures")] + (["--check"] if args.check else []), check=True)
