@@ -38,3 +38,7 @@ pub import tables.gvar { Gvar, GvarExtended, SelectedGvar }
 pub import tables.glyf { Glyf, Glyph, SimpleGlyph, CompositeGlyph }
 pub import tables.loca { Loca, LocaGlyph }
 pub import table_provider { GlyfLoca }
+
+pub import tables.vhea { Vhea, VheaExtended, SelectedVhea }
+pub import tables.vmtx { Vmtx, VmtxExtended }
+pub import tables.vorg { Vorg }

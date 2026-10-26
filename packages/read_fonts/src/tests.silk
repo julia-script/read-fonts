@@ -327,3 +327,5 @@ import gvar_tests
 import glyf_tests
 
 import glyph_delta_tests
+
+import extended_provider_tests

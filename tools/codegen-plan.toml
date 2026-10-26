@@ -262,3 +262,24 @@ source = "upstream/resources/codegen_inputs/glyf.rs"
 target = "packages/read_fonts/src/generated_glyf.silk"
 facade = "packages/read_fonts/src/tables/glyf.silk"
 extensions = ["packages/read_fonts/src/tables/glyf_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/vhea.rs"
+target = "packages/read_fonts/src/generated_vhea.silk"
+facade = "packages/read_fonts/src/tables/vhea.silk"
+extensions = ["packages/read_fonts/src/tables/vhea_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/vmtx.rs"
+target = "packages/read_fonts/src/generated_vmtx.silk"
+facade = "packages/read_fonts/src/tables/vmtx.silk"
+extensions = ["packages/read_fonts/src/tables/vmtx_impl.silk"]
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/vorg.rs"
+target = "packages/read_fonts/src/generated_vorg.silk"
+facade = "packages/read_fonts/src/tables/vorg.silk"
+extensions = ["packages/read_fonts/src/tables/vorg_impl.silk"]

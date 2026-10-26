@@ -281,6 +281,9 @@ import tables.glyf { Glyf }
 import tables.loca { Loca }
 import tables.vvar { Vvar }
 import tables.hvar { Hvar }
+import tables.vhea { Vhea, VheaExtended, SelectedVhea }
+import tables.vmtx { Vmtx, VmtxExtended }
+import tables.vorg { Vorg }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 impl<'a> FontRef<'a> {
@@ -305,6 +308,13 @@ impl<'a> FontRef<'a> {
   pub fn gvar(self: &Self) -> Result<Gvar<'a>, ReadError> { return TableProvider.gvar(self) }
   pub fn gvarExtended(self: &Self) -> Result<GvarExtended<'a>, ReadError> { return TableProvider.gvarExtended(self) }
   pub fn selectedGvar(self: &Self) -> Result<SelectedGvar<'a>, ReadError> { return TableProvider.selectedGvar(self) }
+  pub fn vhea(self: &Self) -> Result<Vhea<'a>, ReadError> { return TableProvider.vhea(self) }
+  pub fn vheaExtended(self: &Self) -> Result<VheaExtended<'a>, ReadError> { return TableProvider.vheaExtended(self) }
+  pub fn selectedVhea(self: &Self) -> Result<SelectedVhea<'a>, ReadError> { return TableProvider.selectedVhea(self) }
+  pub fn vmtx(self: &Self) -> Result<Vmtx<'a>, ReadError> { return TableProvider.vmtx(self) }
+  pub fn vmtxExtended(self: &Self) -> Result<VmtxExtended<'a>, ReadError> { return TableProvider.vmtxExtended(self) }
+  pub fn vGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> { return TableProvider.vGlyphMetricRecords(self) }
+  pub fn vorg(self: &Self) -> Result<Vorg<'a>, ReadError> { return TableProvider.vorg(self) }
   pub fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return TableProvider.mvar(self) }
   pub fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return TableProvider.fvar(self) }
   pub fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return TableProvider.avar(self) }

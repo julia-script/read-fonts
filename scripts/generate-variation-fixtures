@@ -28,7 +28,7 @@ for symbol, function in [('SKIA_GVAR_SHARED_TUPLES_DATA', 'skiaSharedTuples'), (
     packed = ''.join(f'\\x{v:02x}' for v in payload)
     out += f'pub fn {function}() -> &\'static [u8] {{ return b"{packed}" }}\n'
 target = root / 'packages/read_fonts/src/generated_variation_fixtures.silk'
-for name in ('material_symbols_subset', 'names_only', 'vazirmatn_var_trimmed', 'linear_gradient_rect_colr_1', 'cubic_glyf', 'gvar_use_my_metrics'):
+for name in ('material_symbols_subset', 'names_only', 'vazirmatn_var_trimmed', 'linear_gradient_rect_colr_1', 'cubic_glyf', 'gvar_use_my_metrics', 'vorg'):
     data = (root / f'upstream/font-test-data/test_data/ttf/{name}.ttf').read_bytes()
     packed = ''.join(f'\\x{v:02x}' for v in data)
     function = 'font' + ''.join(part.title() for part in name.split('_'))

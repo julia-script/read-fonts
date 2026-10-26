@@ -22,6 +22,9 @@ import tables.glyf { Glyf }
 import tables.loca { Loca }
 import tables.vvar { Vvar }
 import tables.hvar { Hvar }
+import tables.vhea { Vhea, VheaExtended, SelectedVhea }
+import tables.vmtx { Vmtx, VmtxExtended }
+import tables.vorg { Vorg }
 import tables.gsub { Gsub }
 import tables.gpos { Gpos }
 pub interface TopLevelTable { fn tag() -> Tag }
@@ -74,6 +77,33 @@ pub interface TableProvider<'a> {
     }
     return match move TableProvider.gvar(self) { Result<Gvar<'a>, ReadError>.Success { value } => Result<SelectedGvar<'a>, ReadError>.succeed(SelectedGvar<'a>.Original { table: value }) Result<Gvar<'a>, ReadError>.Failure { error } => Result<SelectedGvar<'a>, ReadError>.failResult(error) }
   }
+  fn vmtx(self: &Self) -> Result<Vmtx<'a>, ReadError> {
+    let header = match move TableProvider.vhea(self) { Result<Vhea<'a>, ReadError>.Success { value } => value Result<Vhea<'a>, ReadError>.Failure { error } => { return Result<Vmtx<'a>, ReadError>.failResult(error) } }
+    let data = match move TableProvider.expectDataForTag(self, Vmtx.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<Vmtx<'a>, ReadError>.failResult(error) } }
+    return Vmtx<'a>.read(data, Vhea<'a>.numberOfLongVerMetrics(&header))
+  }
+  fn vmtxExtended(self: &Self) -> Result<VmtxExtended<'a>, ReadError> {
+    let data = match move TableProvider.expectDataForTag(self, VmtxExtended.tag()) { Result<FontData<'a>, ReadError>.Success { value } => value Result<FontData<'a>, ReadError>.Failure { error } => { return Result<VmtxExtended<'a>, ReadError>.failResult(error) } }
+    let header = match move TableProvider.vheaExtended(self) { Result<VheaExtended<'a>, ReadError>.Success { value } => value Result<VheaExtended<'a>, ReadError>.Failure { error } => { return Result<VmtxExtended<'a>, ReadError>.failResult(error) } }
+    return VmtxExtended<'a>.read(data, VheaExtended<'a>.numberOfLongVerMetrics(&header))
+  }
+  fn selectedVhea(self: &Self) -> Result<SelectedVhea<'a>, ReadError> {
+    match move TableProvider.vheaExtended(self) {
+      Result<VheaExtended<'a>, ReadError>.Success { value } => { return Result<SelectedVhea<'a>, ReadError>.succeed(SelectedVhea<'a>.Extended { table: value }) }
+      Result<VheaExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, VheaExtended.tag()) { return Result<SelectedVhea<'a>, ReadError>.failResult(error) } }
+    }
+    return match move TableProvider.vhea(self) { Result<Vhea<'a>, ReadError>.Success { value } => Result<SelectedVhea<'a>, ReadError>.succeed(SelectedVhea<'a>.Original { table: value }) Result<Vhea<'a>, ReadError>.Failure { error } => Result<SelectedVhea<'a>, ReadError>.failResult(error) }
+  }
+  fn vGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> {
+    match move TableProvider.vmtxExtended(self) {
+      Result<VmtxExtended<'a>, ReadError>.Success { value } => { return Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromVmtxExtended(value)) }
+      Result<VmtxExtended<'a>, ReadError>.Failure { error } => { if !isMissingTable(error, VmtxExtended.tag()) { return Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) } }
+    }
+    return match move TableProvider.vmtx(self) { Result<Vmtx<'a>, ReadError>.Success { value } => Result<GlyphMetricRecords<'a>, ReadError>.succeed(GlyphMetricRecords<'a>.fromVmtx(value)) Result<Vmtx<'a>, ReadError>.Failure { error } => Result<GlyphMetricRecords<'a>, ReadError>.failResult(error) }
+  }
+  fn vhea(self: &Self) -> Result<Vhea<'a>, ReadError> { return readTable<Vhea<'a>, Self>(self, Vhea.tag()) }
+  fn vheaExtended(self: &Self) -> Result<VheaExtended<'a>, ReadError> { return readTable<VheaExtended<'a>, Self>(self, VheaExtended.tag()) }
+  fn vorg(self: &Self) -> Result<Vorg<'a>, ReadError> { return readTable<Vorg<'a>, Self>(self, Vorg.tag()) }
   fn mvar(self: &Self) -> Result<Mvar<'a>, ReadError> { return readTable<Mvar<'a>, Self>(self, Mvar.tag()) }
   fn fvar(self: &Self) -> Result<Fvar<'a>, ReadError> { return readTable<Fvar<'a>, Self>(self, Fvar.tag()) }
   fn avar(self: &Self) -> Result<Avar<'a>, ReadError> { return readTable<Avar<'a>, Self>(self, Avar.tag()) }

@@ -104,6 +104,7 @@ impl Context<'_> {
             | "LookupFlag"
             | "TupleIndex"
             | "TupleVariationCount" => 2,
+            "LongMetric" => 4,
             "Uint24" | "Int24" | "GlyphId24" | "Offset24" => 3,
             "u32" | "i32" | "Fixed" | "Tag" | "GlyphId" | "MajorMinor" | "Version16Dot16"
             | "Offset32" => 4,

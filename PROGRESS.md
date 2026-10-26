@@ -349,3 +349,17 @@ inferred deltas for unreferenced points are implemented without parser allocatio
 The generated-file drift check and library build pass. Milestone 4 still needs the
 vertical metrics dependencies and the full differential dump gate; later milestones
 remain pending.
+
+## Session 15 — 2026-10-26 — vertical metrics and extended provider completion
+
+The full suite passes **276 read_fonts tests**, with **64 font_types tests** and
+**326 upstream ports** in total. The five new ports cover VORG origins and all four
+provider tests deferred from M2: independent horizontal/vertical metric selection,
+truncated/extreme metric counts, paired GLYF/LOCA selection, and rejection of missing
+or malformed LOCA without using legacy offsets.
+
+vhea/VHEA, vmtx/VMTX and VORG are generated, with their provider, selected-header,
+metric lookup and origin helpers. Extended fixtures retain 70,002-glyph metric
+counts and 65,537-glyph outline counts. The generator's ten tests, Clippy, library
+build and drift check pass (**49 generated files**). M4's implementation tests are
+ready; its expanded differential dumper, fixtures, corpus comparison and CI remain.

@@ -166,3 +166,9 @@ impl<'a> GlyphMetricRecords<'a> {
   pub fn advance(self: &Self, glyph: GlyphId) -> Option<u16> { return advance(self.metrics, glyph) }
   pub fn sideBearing(self: &Self, glyph: GlyphId) -> Option<i16> { return sideBearing(self.metrics, self.bearings, glyph) }
 }
+
+import tables.vmtx { Vmtx, VmtxExtended }
+impl<'a> GlyphMetricRecords<'a> {
+  pub fn fromVmtx(table: Vmtx<'a>) -> Self { return GlyphMetricRecords.new(Vmtx.vMetrics(&table), Vmtx.topSideBearings(&table)) }
+  pub fn fromVmtxExtended(table: VmtxExtended<'a>) -> Self { return GlyphMetricRecords.new(VmtxExtended.vMetrics(&table), VmtxExtended.topSideBearings(&table)) }
+}
