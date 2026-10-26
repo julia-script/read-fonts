@@ -1,0 +1,13 @@
+import silk.option { Option }
+interface Read { fn read(bytes: &[u8]) -> Option<Self> }
+fn readValue<T: Read>(bytes: &[u8]) -> Option<T> { return Read.read(bytes) }
+struct Wrapper<T: Read> { value: T, }
+impl<T: Read> Read for Wrapper<T> {
+  fn read(bytes: &[u8]) -> Option<Wrapper<T>> {
+    return match move readValue<T>(bytes) {
+      Option<T>.Some { value } => Option<Wrapper<T>>.some(Wrapper<T> { value: move value })
+      Option<T>.None => Option<Wrapper<T>>.None
+    }
+  }
+}
+pub fn main() -> i32 { return 0 }

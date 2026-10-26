@@ -55,6 +55,26 @@ class HarnessTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.compare(self.dumper("left", output), self.dumper("right", output))
 
+    def test_compare_report_distinguishes_matches_differences_and_process_failures(self):
+        import json
+        for output, code, status, matched, differences, failures in (
+            (VALID, 0, 0, 1, 0, 0),
+            (VALID.replace(b"=0", b"=1"), 0, 1, 0, 1, 0),
+            (VALID, 1, 2, 0, 0, 1),
+        ):
+            report = self.root / "comparison.json"
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                actual = harness.compare([self.font], self.dumper("left"),
+                                         self.dumper("right", output, code), 2, report)
+            data = json.loads(report.read_text())
+            self.assertEqual(actual, status)
+            self.assertEqual(data["summary"]["matched"], matched)
+            self.assertEqual(data["summary"]["differences"], differences)
+            self.assertEqual(data["summary"]["process_failures"], failures)
+            if matched:
+                self.assertEqual(data["results"][0]["rust_dump_sha256"],
+                                 data["results"][0]["silk_dump_sha256"])
+
     def test_subprocess_timeout_is_failure(self):
         path = self.root / "slow"
         path.write_text(f"#!{sys.executable}\nimport time\ntime.sleep(5)\n")

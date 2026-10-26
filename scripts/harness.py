@@ -121,26 +121,64 @@ def report_process(name: str, result: subprocess.CompletedProcess) -> None:
         print(result.stderr.decode("utf-8", errors="backslashreplace").rstrip(), file=sys.stderr)
 
 
-def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float) -> int:
+def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
+            report: Path | None = None) -> int:
+    observations = []
+
+    def finish(status: int) -> int:
+        if report is not None:
+            report.parent.mkdir(parents=True, exist_ok=True)
+            report.write_text(json.dumps({
+                "summary": {
+                    "format_version": 1, "scope": "directory", "fonts_total": len(fonts),
+                    "completed": sum(item["status"] in ("match", "difference") for item in observations),
+                    "matched": sum(item["status"] == "match" for item in observations),
+                    "differences": sum(item["status"] == "difference" for item in observations),
+                    "process_failures": sum(item["status"] == "failure" for item in observations),
+                    "exit_code": status,
+                },
+                "reference": {"path": display(reference), "sha256": hashlib.sha256(reference.read_bytes()).hexdigest()},
+                "silk": {"path": display(silk), "sha256": hashlib.sha256(silk.read_bytes()).hexdigest()},
+                "results": observations,
+            }, indent=2) + "\n")
+        return status
+
     for font in fonts:
-        rust = run_dumper(reference, font, timeout)
-        port = run_dumper(silk, font, timeout)
-        difference = first_difference(rust.stdout, port.stdout)
+        observation = {"font": display(font), "input_sha256": hashlib.sha256(font.read_bytes()).hexdigest()}
+        observations.append(observation)
+        try:
+            rust = run_dumper(reference, font, timeout)
+            port = run_dumper(silk, font, timeout)
+            difference = first_difference(rust.stdout, port.stdout)
+            if difference is not None:
+                number, left, right = difference
+                print(f"{display(font)}: first difference at line {number}")
+                print(f"  Rust: {show_line(left)}")
+                print(f"  Silk: {show_line(right)}")
+                observation["first_difference"] = {"line": number, "rust": show_line(left), "silk": show_line(right)}
+            if rust.returncode != 0 or port.returncode != 0:
+                report_process("Rust", rust)
+                report_process("Silk", port)
+                observation.update(status="failure", rust_exit=rust.returncode, silk_exit=port.returncode)
+                return finish(2)
+            validate_dump(rust.stdout)
+            validate_dump(port.stdout)
+        except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+            observation.update(status="failure", error=str(error))
+            if report is not None:
+                finish(2)
+            raise
+        observation.update(
+            status="match" if difference is None else "difference",
+            rust_dump_sha256=hashlib.sha256(rust.stdout).hexdigest(),
+            silk_dump_sha256=hashlib.sha256(port.stdout).hexdigest(),
+            lines=len(rust.stdout.splitlines()),
+            parse_errors=[line for line in rust.stdout.decode("utf-8").splitlines() if ".error=" in line],
+        )
         if difference is not None:
-            number, left, right = difference
-            print(f"{display(font)}: first difference at line {number}")
-            print(f"  Rust: {show_line(left)}")
-            print(f"  Silk: {show_line(right)}")
-        if rust.returncode != 0 or port.returncode != 0:
-            report_process("Rust", rust)
-            report_process("Silk", port)
-            return 2
-        validate_dump(rust.stdout)
-        validate_dump(port.stdout)
-        if difference is not None:
-            return 1
+            return finish(1)
     print(f"MATCH: {len(fonts)} fonts; format 1, directory scope")
-    return 0
+    return finish(0)
 
 
 def verify(fonts: list[Path], inventory: list[dict], reference: Path,
@@ -194,7 +232,7 @@ def main(mode: str | None = None) -> int:
     parser.add_argument("--reference", type=Path, default=REFERENCE)
     parser.add_argument("--silk-dumper", type=Path)
     parser.add_argument("--timeout", type=float, default=30, help="seconds per dumper per font")
-    parser.add_argument("--report", type=Path, help="write reference results or corpus inventory as JSON")
+    parser.add_argument("--report", type=Path, help="write comparison, reference results, or corpus inventory as JSON")
     parser.add_argument("--output", type=Path, help="write font list here instead of stdout")
     args = parser.parse_args()
     selected = mode or args.mode
@@ -216,7 +254,7 @@ def main(mode: str | None = None) -> int:
                   file=sys.stderr)
             return 0
         if selected == "compare":
-            return compare(fonts, args.reference, args.silk_dumper or silk_binary(), args.timeout)
+            return compare(fonts, args.reference, args.silk_dumper or silk_binary(), args.timeout, args.report)
         return verify(fonts, inventory, args.reference, args.timeout, args.report)
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         print(f"{selected}: {error}", file=sys.stderr)

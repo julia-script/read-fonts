@@ -1,4 +1,4 @@
-name: Milestone 0 harness
+name: Parser parity
 on:
   pull_request:
   push:
@@ -33,11 +33,21 @@ jobs:
           cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
           cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
           python3 -m unittest discover -s scripts/tests -v
+      - name: Test Silk types and parser core
+        env:
+          SILK_CLANG: /usr/bin/clang-18
+        run: |
+          silk test --manifest-path packages/font_types/silk.toml --root src/tests.silk
+          silk test --manifest-path packages/read_fonts/silk.toml --root src/tests.silk
       - name: Run the full reference corpus gate
         run: |
           scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
           scripts/verify-reference --report build/reference-report.json
-      - name: Smoke-test the Silk skeleton
+      - name: Compare directory dumps and container edge cases
+        run: |
+          scripts/compare --report build/parity-report.json
+          scripts/check-core-fixtures
+      - name: Check the CLI and release build
         env:
           SILK_CLANG: /usr/bin/clang-18
         working-directory: packages/font_dump
@@ -45,12 +55,16 @@ jobs:
           silk run -- --help
           silk run -- --version
           silk build --release
-      - name: Upload reference observations
+      - name: Compare release directory dumps
+        run: scripts/compare --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-parity-report.json
+      - name: Upload parity observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-0-reference
+          name: milestone-1-core
           path: |
             build/fonts.txt
             build/corpus-inventory.json
             build/reference-report.json
+            build/parity-report.json
+            build/release-parity-report.json

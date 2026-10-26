@@ -71,3 +71,42 @@ its remote status is tracked on the pull request, separately from these local ch
 
 Silk observations and upstream changes that affect the next gate are recorded in
 [PORTING.md](PORTING.md). No new compiler bug was found in this session.
+
+## Session 2 — 2026-10-26 — milestone 1 local gate complete
+
+The Silk scalar library and borrowed parser core are implemented. Directory dumps
+match Rust byte for byte on **566 / 566 corpus files** in debug and release, with
+**0 process failures or differences**. A separate set of **426 synthetic container
+fixtures** also matches, including truncations, overflowing counts, null/out-of-range
+records, unsorted/duplicate tags, and legacy/extended TTC directory lists.
+
+| Check | Result |
+| --- | --- |
+| font_types Silk tests | **64 passed, 0 failed** (60 upstream ports, 4 additional) |
+| read_fonts core Silk tests | **17 passed, 0 failed** (11 upstream ports, 6 additional) |
+| Total upstream tests ported | **71** |
+| Python harness regression tests | 12 passed, 0 failed |
+| Rust reference regression tests | 6 passed, 0 failed |
+| Rust formatting and Clippy with warnings denied | Passed |
+| Root/libraries/CLI debug and release builds | Passed |
+| Corpus directory parity, debug and release | 566 matches each |
+| Synthetic container parity | 426 matches |
+| Remote CI | Pending PR run; required before merging |
+
+The 60 font-types ports comprise fixed arithmetic (24), fixed formatting (11),
+integer types (6), versions (2), tags (3), geometry (10), FWord (1), and borrowed
+headers (3). Serde-only tests are outside the requested scope. The 11 core ports
+comprise file/container tests (6), FontData (1), arrays (3), and variable reads (1).
+The original variable-array fixture is retained alongside a three-item fixture.
+
+Evidence: [debug report](reports/milestone-1-directory.json) and
+[release report](reports/milestone-1-release-directory.json), including every input
+and output hash. Tests and corpus comparison are now required CI steps.
+
+Three standalone compiler reproducers and source-level workarounds are recorded in
+[COMPILER-BUGS.md](COMPILER-BUGS.md). The pinned compiler and stdlib are unchanged.
+API adaptations are recorded in [PORTING.md](PORTING.md).
+
+Milestone 0 is merged as PR #1. Milestone 1's local gate passes; its PR/CI and merge
+remain before starting milestone 2. Milestones 2–9 are pending. Directory parity
+does not yet establish table payload or model parity.

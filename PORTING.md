@@ -45,3 +45,44 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Keep borrowed table data lifetimes explicit; use finite generic specialization
   (GEN-006), eager offsets, checked arithmetic, and nominal unions for format groups.
   No `mod.silk` barrels are used.
+
+## Milestone 1
+
+- `Scalar` exposes `rawByteLen`, exact-width `read`, and prefix-writing `write`.
+  Associated Rust types become explicit interface parameters (`FontRead<'a, Args>`,
+  `FontReadAt<'a, Args>`, `ComputeSize<Args>`); `ReadArgs::Args` has no separate Silk
+  type projection. `FixedSize` has a `rawByteLen` operation.
+- `BigEndian<T>` owns eight bytes and exposes only the scalar's encoded prefix.
+  Its native layout is not a packed font record. Borrowed scalar/record arrays
+  retain the original byte slice and decode one item at a time, with no allocation
+  or unaligned casts. Rust's `bytemuck` layout and raw reference APIs are represented
+  by these views. The parser never uses `sizeof(BigEndian<T>)` as a disk stride.
+- Associated constants use camelCase factory functions (`Fixed.one()`,
+  `GlyphId.notdef()`, `NameId.familyName()`, etc.). The release admits functions,
+  not associated constant declarations, in inherent impls. Root sfnt constants
+  remain module constants. Struct constructors cannot run in a constant initializer
+  unless declared static; no compiler modification was made to bypass this rule.
+- `FontData.slice(start, end)` uses explicit endpoints instead of Rust RangeBounds.
+  Reads retain Result/Option errors and the checked bounds order. Offsets have
+  generic `resolve`/`resolveWithArgs` helpers; zero and out-of-range remain distinct.
+- Generic geometry operations whose bounds vary by operation use a method type
+  parameter, e.g. `Matrix.identity<f32>()`. `Matrix.transform` returns the nominal
+  `Coordinates<T>` tuple because Silk has no anonymous tuple types in signatures.
+- Compiler reports 001 and 002 document explicit-lifetime and `Self` spelling
+  workarounds. Report 003 requires concrete arithmetic operator conformances for
+  built-in numeric Point/Matrix types; generic named operations remain available
+  for custom coordinate types.
+- `VarLenArray.get` skips repeated iterations after a zero-size item: every later
+  index would otherwise revisit the identical offset. It returns the same read of
+  the empty extent; `iter` terminates on zero length, as upstream does.
+- Core container unit tests use compact synthetic sfnt/TTC data instead of embedding
+  whole AHEM/TTC binaries. Full original files are separately included in the
+  566-file differential directory gate.
+- `TableDataRef` uses `HeaderRead` to construct a borrowed header view instead of
+  casting the buffer to a native packed structure. Unaligned headers are supported.
+  `BigEndian.new` takes an exact-width slice and returns `Option`, replacing Rust's
+  associated fixed-size raw array parameter. `Version16Dot16.toMajorMinor` returns
+  the existing `MajorMinor` record instead of an anonymous tuple.
+- The CLI uses Silk's rooted filesystem provider, which rejects symlink traversal.
+  Corpus paths are ordinary files. This differs from Rust `std::fs::read`, which
+  follows symlinks; parser APIs themselves take byte slices and are unaffected.
