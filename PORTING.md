@@ -437,3 +437,23 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   their Phase 2 parsers. Their source-order entries already retain upstream
   ordering; the current implementation resolves the Phase 1 outline sources.
   The full M7 differential gate and remaining glyph/scaled unit tests are pending.
+- Public GlyphMetrics constructors collapse an all-zero coordinate slice to an
+  empty borrowed view, matching the model instance builder's default-instance
+  semantics. Callers still supply normalized coordinates explicitly; this subset
+  does not introduce the full Font/InstanceBuilder or style-metrics facade.
+- Six metrics cache tests are adapted to eager views: construction captures the
+  needed views, default locations request no variation tables, and copied or
+  repeatedly queried metrics do not call the provider again. Nondefault views
+  may read gvar/glyf/loca even when HVAR/VVAR answers the subsequent query.
+  The callback-backed Tables test verifies each extended raw table is supplied
+  once; the eager raw-tag catalog also queries legacy tags, unlike upstream's
+  demand-driven cache. Parsed values and extended-table precedence are unchanged.
+- The two drawing-based glyph-metrics tests use generated expectations from the
+  pinned Rust drawing paths. This independently checks every fixture glyph's
+  box without adding the full glyf path-drawing API. The generator rebuilds and
+  reruns the reference fixture binary, so --check detects expectation drift.
+  The CFF/CFF2 drawing implementation itself retains its existing Silk tests.
+- The scaled global/style facade is outside the requested GlyphMetrics/
+  ScaledGlyphMetrics subset. Its all-fields and clipping-line tests are excluded;
+  global line-end scaling is tested directly with a custom rounding Scale, and
+  agrees with the vertical advance chosen by ScaledGlyphMetrics.

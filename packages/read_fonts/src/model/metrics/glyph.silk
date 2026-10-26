@@ -40,7 +40,8 @@ impl<'a,'c> Copy for GlyphMetrics<'a,'c> {}
 fn lineOf(metrics:&Metrics) -> Maybe<LineExtents<F48Dot16>> { return match move Metrics.hLine(metrics) { Option<LineBox<F48Dot16>>.Some { value }=>Maybe<LineExtents<F48Dot16>>.Some { value:LineBox<F48Dot16>.extents(&value) } _=>Maybe<LineExtents<F48Dot16>>.None } }
 fn positive(value:F48Dot16) -> F48Dot16 { if F48Dot16.toBits(value)<0 { return F48Dot16.zero() } return value }
 impl<'a,'c> GlyphMetrics<'a,'c> {
-  pub fn new<P:TableProvider<'a>>(provider:&P,coords:&'c [F2Dot14]) -> Self {
+  pub fn new<P:TableProvider<'a>>(provider:&P,location:&'c [F2Dot14]) -> Self {
+    let coords=nonDefaultCoords(location)
     let global=Metrics.fromSfnt(provider,coords) let baseGlobal=Metrics.fromSfntWithVariations(provider,coords,false)
     let mut cff=Maybe<FontData<'a>>.None if let Result<Cff<'a>,ReadError>.Success { value }=TableProvider.cff(provider) { cff=Maybe<FontData<'a>>.Some { value:Cff.offsetData(&value) } }
     let mut cff2=Maybe<FontData<'a>>.None if let Result<Cff2<'a>,ReadError>.Success { value }=TableProvider.cff2(provider) { cff2=Maybe<FontData<'a>>.Some { value:Cff2.offsetData(&value) } }
@@ -48,7 +49,8 @@ impl<'a,'c> GlyphMetrics<'a,'c> {
     if coords.length!=0 { gvar=Maybe<SelectedGvar<'a>>.fromResult(TableProvider.selectedGvar(provider)) hvar=Maybe<Hvar<'a>>.fromResult(TableProvider.hvar(provider)) vvar=Maybe<Vvar<'a>>.fromResult(TableProvider.vvar(provider)) }
     return Self { hMetrics:TableProvider.hGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),vMetrics:TableProvider.vGlyphMetricRecords(provider) |> Result<GlyphMetricRecords<'a>,ReadError>.unwrapOr(GlyphMetricRecords.default()),outlines:Maybe<GlyfLoca<'a>>.fromResult(TableProvider.selectedGlyfLoca(provider,Option<bool>.None)),gvar:gvar,hvar:hvar,vvar:vvar,vorg:Maybe<Vorg<'a>>.fromResult(TableProvider.vorg(provider)),cff:cff,cff2:cff2,standalone:Maybe<&'a CffFontRef<'a>>.None,coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&baseGlobal),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
   }
-  pub fn fromCff(font:&'a CffFontRef<'a>,coords:&'c [F2Dot14]) -> Self {
+  pub fn fromCff(font:&'a CffFontRef<'a>,location:&'c [F2Dot14]) -> Self {
+    let coords=nonDefaultCoords(location)
     let global=Metrics.fromCff(font)
     return Self { hMetrics:GlyphMetricRecords.default(),vMetrics:GlyphMetricRecords.default(),outlines:Maybe<GlyfLoca<'a>>.None,gvar:Maybe<SelectedGvar<'a>>.None,hvar:Maybe<Hvar<'a>>.None,vvar:Maybe<Vvar<'a>>.None,vorg:Maybe<Vorg<'a>>.None,cff:Maybe<FontData<'a>>.None,cff2:Maybe<FontData<'a>>.None,standalone:Maybe<&'a CffFontRef<'a>>.Some { value:font },coords:coords,count:global.numGlyphs,upem:global.unitsPerEm,line:lineOf(&global),baseLine:lineOf(&global),order:GlyphSourceOrder.default(),bitmapPpem:Maybe<f32>.None }
   }
@@ -157,3 +159,7 @@ impl<'a,'c> GlyphMetrics<'a,'c> {
   pub effect fn vOriginYBatched<V,C:MetricConverter<F48Dot16,V>>(self:&Self,convert:&C,glyphs:&[GlyphId],outputs:&mut [V]) -> () ! OutOfMemoryError ? &mut Allocator { let mut count=glyphs.length if outputs.length<count { count=outputs.length } let mut i:usize=0 while i<count { outputs[i]=MetricConverter.convert(convert,run GlyphMetrics.vOriginYExact(self,glyphs[i])) i=i+1 } }
   pub effect fn extentsBatched<V,C:MetricConverter<Option<GlyphExtents<F48Dot16>>,V>>(self:&Self,convert:&C,glyphs:&[GlyphId],outputs:&mut [V]) -> () ! OutOfMemoryError ? &mut Allocator { let mut count=glyphs.length if outputs.length<count { count=outputs.length } let mut i:usize=0 while i<count { outputs[i]=MetricConverter.convert(convert,run GlyphMetrics.extentsExact(self,glyphs[i])) i=i+1 } }
 }
+
+import silk.slice { Slice }
+// A public model instance at an all-zero location is the default instance.
+fn nonDefaultCoords<'c>(coords:&'c [F2Dot14]) -> &'c [F2Dot14] { let mut i:usize=0 while i<coords.length { if F2Dot14.toBits(coords[i])!=0 { return coords } i=i+1 } return Slice.view<F2Dot14>(coords,0,0) }

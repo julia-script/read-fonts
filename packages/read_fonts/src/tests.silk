@@ -363,3 +363,7 @@ import model_glyph_name_tests
 import model_charmap_tests
 import model_global_metrics_tests
 import model_metrics_tests
+
+import model_scaled_metrics_tests
+
+import model_glyph_source_tests

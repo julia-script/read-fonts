@@ -686,3 +686,27 @@ separate. Generator drift passes. Remaining glyph/scaled unit tests, the M7
 model/intersection dump protocol and differential corpus gate are still pending;
 bitmap/color/VARC model coverage follows their Phase 2 parsers. M8–M9 have not
 started, and no completion of M7 is claimed.
+
+## Session 38 — 2026-10-26 — Phase 1 model metrics unit gate
+
+The complete suite passes **719 read_fonts tests** and **64 font_types tests**,
+with **765 upstream ports**. This checkpoint adds **39 glyph-metrics tests**,
+**25 scaled-metrics tests** and **5 glyph-source-order tests**. The totals for
+those areas are now 41 glyph tests and 27 scaled tests. All in-scope Phase 1
+model unit tests are ported; the six lazy-cache tests assert the corresponding
+eager-snapshot behavior documented in PORTING.md.
+
+Tests cover extended glyph IDs, long-metric tails, missing metrics, HVAR/VVAR
+versus gvar phantom deltas, negative/fractional advances, altered/truncated side
+bearings, empty and absent ink, all outline-source batches, custom scales and
+extents providers, VORG precedence, vertical phantoms and line centering. The
+public metric constructor now collapses all-zero coordinates to the default
+location. Three generated expectation blobs run the pinned Rust drawing paths
+for the varied-glyf and CFF/CFF2 bounds tests; every fixture glyph is compared.
+Generator drift and Rust all-target clippy pass; 33 model fixtures are generated.
+
+Five Type 1 glyph tests and two tests of the unrequested ScaledMetrics/style
+facade are outside scope. Ten bitmap/color/VARC glyph tests, one bitmap-scale
+test and one narrow-source conversion test follow their Phase 2 dependencies.
+The M7 format-7 model/intersection dump and corpus comparisons remain pending;
+PR 8 stays a draft. M8–M9 have not started, and the overall port is not complete.
