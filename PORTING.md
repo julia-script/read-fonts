@@ -510,3 +510,12 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   and image APIs, including metrics, packed bytes, PNG bytes and composite records.
   sbix glyph slices start separate traversal scopes because different bounded
   slices can have equal lengths; equal lengths alone do not identify aliases.
+
+- COLR helpers return named ColorLayer and PaintWithId records in place of Rust
+  tuples. PaintId is an offset within the owning COLR table, rather than a raw
+  memory address. It preserves identity across base-glyph and layer lists for
+  cycle detection within that table; it is not a cross-font identifier.
+- The generator now forwards fields shared by every variant of a format group,
+  as the Rust backend does, and provides MinByteRange for those groups. BASE's
+  coordinate and COLR's clip-box accessors now come from that common generation.
+  Resolved offset helpers remain on their concrete variants, as upstream does.

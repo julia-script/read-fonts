@@ -102,6 +102,8 @@ import read_fonts.tables.ebdt as EbdtTables
 import generated_dump_ebdt
 import read_fonts.tables.eblc as EblcTables
 import generated_dump_eblc
+import read_fonts.tables.colr as ColrTables
+import generated_dump_colr
 impl<'a> DumpTable<'a> for HeadTables.Head<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_head.dumpHead(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.Maxp<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxp(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for MaxpTables.MaxpExtended<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_maxp.dumpMaxpExtended(&mut path, self.*) } }
@@ -390,3 +392,48 @@ impl<'a> DumpTable<'a> for CbdtTables.Cbdt<'a> { effect fn dump(self: &Self, pat
 impl<'a> DumpTable<'a> for CblcTables.Cblc<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_cblc.dumpCblc(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for EbdtTables.Ebdt<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_ebdt.dumpEbdt(&mut path, self.*) } }
 impl<'a> DumpTable<'a> for EblcTables.Eblc<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_eblc.dumpEblc(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.Colr<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpColr(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.BaseGlyphList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpBaseGlyphList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.LayerList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpLayerList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.ClipList<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpClipList(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.ClipBox<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpClipBox(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.ClipBoxFormat1<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpClipBoxFormat1(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.ClipBoxFormat2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpClipBoxFormat2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.ColorLine<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpColorLine(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.VarColorLine<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpVarColorLine(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.Paint<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaint(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintColrLayers<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintColrLayers(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintSolid<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintSolid(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarSolid<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarSolid(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintLinearGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintLinearGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarLinearGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarLinearGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintRadialGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintRadialGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarRadialGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarRadialGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintSweepGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintSweepGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarSweepGradient<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarSweepGradient(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintGlyph<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintGlyph(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintGlyph2<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintGlyph2(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintColrGlyph<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintColrGlyph(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintTransform<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintTransform(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarTransform<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarTransform(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.Affine2x3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpAffine2x3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.VarAffine2x3<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpVarAffine2x3(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintTranslate<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintTranslate(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarTranslate<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarTranslate(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintScale<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintScale(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarScale<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarScale(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintScaleAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintScaleAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarScaleAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarScaleAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintScaleUniform<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintScaleUniform(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarScaleUniform<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarScaleUniform(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintScaleUniformAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintScaleUniformAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarScaleUniformAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarScaleUniformAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintRotate<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintRotate(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarRotate<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarRotate(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintRotateAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintRotateAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarRotateAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarRotateAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintSkew<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintSkew(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarSkew<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarSkew(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintSkewAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintSkewAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintVarSkewAroundCenter<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintVarSkewAroundCenter(&mut path, self.*) } }
+impl<'a> DumpTable<'a> for ColrTables.PaintComposite<'a> { effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer { run generated_dump_colr.dumpPaintComposite(&mut path, self.*) } }

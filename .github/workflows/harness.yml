@@ -59,6 +59,7 @@ jobs:
           scripts/check-aat-fixtures --report build/aat-fixtures-report.json
           scripts/check-cff-fixtures --report build/cff-fixtures-report.json
           scripts/check-model-fixtures --report build/model-fixtures-report.json
+          scripts/check-phase2-fixtures --report build/phase2-fixtures-report.json
       - name: Check the CLI and release build
         env:
           SILK_CLANG: /usr/bin/clang-18
@@ -78,6 +79,8 @@ jobs:
         run: scripts/check-cff-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-cff-fixtures-report.json
       - name: Compare release model fixtures
         run: scripts/check-model-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-model-fixtures-report.json
+      - name: Compare release Phase 2 fixtures
+        run: scripts/check-phase2-fixtures --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/release-phase2-fixtures-report.json
       - name: Compare deterministic malformed corpus
         run: scripts/check-malformed --reference build/rust/release/rust-font-dump --silk-dumper build/llvm/x86_64-unknown-linux-gnu/release/font_dump --report build/malformed-report.json.gz
       - name: Compress CFF observations
@@ -87,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: milestone-8-malformed-input
+          name: milestone-9-phase2-tables
           path: |
             build/fonts.txt
             build/corpus-inventory.json
@@ -101,6 +104,8 @@ jobs:
             build/release-aat-fixtures-report.json
             build/model-fixtures-report.json
             build/release-model-fixtures-report.json
+            build/phase2-fixtures-report.json
+            build/release-phase2-fixtures-report.json
             build/malformed-report.json.gz
             build/malformed-failures/
             build/cff-fixtures-report.json.gz

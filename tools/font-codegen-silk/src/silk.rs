@@ -803,7 +803,71 @@ impl Context<'_> {
             )
             .unwrap();
         }
-        writeln!(out,"  }} }}\n}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\n").unwrap();
+        writeln!(out, "  }} }}").unwrap();
+        // Match the upstream format-group forwarding surface: fields with the
+        // same name and type in every variant remain accessible on the group.
+        let tables = format
+            .variants
+            .iter()
+            .map(
+                |variant| match self.find(&variant.type_name().to_string()) {
+                    Some(Item::Table(table)) => table,
+                    _ => unreachable!(),
+                },
+            )
+            .collect::<Vec<_>>();
+        if let Some(first) = tables.first() {
+            for field in first.fields.iter().filter(|field| field.has_getter()) {
+                if !tables.iter().all(|table| {
+                    table
+                        .fields
+                        .find(&field.name)
+                        .is_some_and(|other| other.has_getter() && other.typ == field.typ)
+                }) {
+                    continue;
+                }
+                let method = camel(&field.name.to_string());
+                let mut result = self.field_type(field)?;
+                if field.is_conditional() {
+                    result = format!("Option<{result}>");
+                }
+                docs(out, &field.attrs.docs);
+                writeln!(
+                    out,
+                    "  pub fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+                )
+                .unwrap();
+                for variant in &format.variants {
+                    writeln!(
+                        out,
+                        "    {name}<'a>.{} {{ value }} => {}<'a>.{method}(&value)",
+                        variant.name,
+                        variant.type_name()
+                    )
+                    .unwrap();
+                }
+                writeln!(out, "  }} }}").unwrap();
+            }
+        }
+        writeln!(out,"}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}\n").unwrap();
+        writeln!(out, "impl<'a> MinByteRange<'a> for {name}<'a> {{").unwrap();
+        for (method, result) in [("minByteRange", "ByteRange"), ("minTableBytes", "&'a [u8]")] {
+            writeln!(
+                out,
+                "  fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+            )
+            .unwrap();
+            for variant in &format.variants {
+                writeln!(
+                    out,
+                    "    {name}<'a>.{} {{ value }} => MinByteRange.{method}(&value)",
+                    variant.name
+                )
+                .unwrap();
+            }
+            writeln!(out, "  }} }}").unwrap();
+        }
+        writeln!(out, "}}").unwrap();
         if let Some(v) = format.variants.first() {
             if let Some(Item::Table(table)) = self.find(&v.type_name().to_string()) {
                 if matches!(table.format_value_and_width(), None | Some((0 | 1, _))) {

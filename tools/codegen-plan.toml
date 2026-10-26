@@ -835,3 +835,20 @@ target = "packages/font_dump/src/generated_dump_eblc.silk"
 mode = "rust-dump"
 source = "upstream/resources/codegen_inputs/eblc.rs"
 target = "scripts/rust-font-dump/src/generated_dump_eblc.rs"
+
+[[generate]]
+mode = "silk-parse"
+source = "upstream/resources/codegen_inputs/colr.rs"
+target = "packages/read_fonts/src/generated_colr.silk"
+facade = "packages/read_fonts/src/tables/colr.silk"
+extensions = ["packages/read_fonts/src/tables/colr_impl.silk"]
+
+[[generate]]
+mode = "silk-dump"
+source = "upstream/resources/codegen_inputs/colr.rs"
+target = "packages/font_dump/src/generated_dump_colr.silk"
+
+[[generate]]
+mode = "rust-dump"
+source = "upstream/resources/codegen_inputs/colr.rs"
+target = "scripts/rust-font-dump/src/generated_dump_colr.rs"

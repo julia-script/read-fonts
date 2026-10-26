@@ -228,9 +228,48 @@ impl<'a> CmapSubtable<'a> {
     CmapSubtable<'a>.Format14 { value } => Cmap14<'a>.offsetData(&value)
     CmapSubtable<'a>.Format15 { value } => Cmap15<'a>.offsetData(&value)
   } }
+/// Format number is set to 0.
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    CmapSubtable<'a>.Format0 { value } => Cmap0<'a>.format(&value)
+    CmapSubtable<'a>.Format2 { value } => Cmap2<'a>.format(&value)
+    CmapSubtable<'a>.Format4 { value } => Cmap4<'a>.format(&value)
+    CmapSubtable<'a>.Format6 { value } => Cmap6<'a>.format(&value)
+    CmapSubtable<'a>.Format8 { value } => Cmap8<'a>.format(&value)
+    CmapSubtable<'a>.Format10 { value } => Cmap10<'a>.format(&value)
+    CmapSubtable<'a>.Format12 { value } => Cmap12<'a>.format(&value)
+    CmapSubtable<'a>.Format13 { value } => Cmap13<'a>.format(&value)
+    CmapSubtable<'a>.Format14 { value } => Cmap14<'a>.format(&value)
+    CmapSubtable<'a>.Format15 { value } => Cmap15<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for CmapSubtable<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return CmapSubtable<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for CmapSubtable<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    CmapSubtable<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format6 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format8 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format10 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format12 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format13 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format14 { value } => MinByteRange.minByteRange(&value)
+    CmapSubtable<'a>.Format15 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    CmapSubtable<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format6 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format8 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format10 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format12 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format13 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format14 { value } => MinByteRange.minTableBytes(&value)
+    CmapSubtable<'a>.Format15 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> CmapSubtable<'a> { pub fn default() -> Self { return CmapSubtable<'a>.Format0 { value: Cmap0<'a>.default() } } }
 /// [cmap Format 0](https://docs.microsoft.com/en-us/typography/opentype/spec/cmap#format-0-byte-encoding-table): Byte encoding table
 pub struct Cmap0<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 4], }

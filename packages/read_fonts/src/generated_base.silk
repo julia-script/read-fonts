@@ -530,9 +530,33 @@ impl<'a> BaseCoord<'a> {
     BaseCoord<'a>.Format2 { value } => BaseCoordFormat2<'a>.offsetData(&value)
     BaseCoord<'a>.Format3 { value } => BaseCoordFormat3<'a>.offsetData(&value)
   } }
+/// Format identifier — format = 1
+  pub fn baseCoordFormat(self: &Self) -> u16 { return match self.* {
+    BaseCoord<'a>.Format1 { value } => BaseCoordFormat1<'a>.baseCoordFormat(&value)
+    BaseCoord<'a>.Format2 { value } => BaseCoordFormat2<'a>.baseCoordFormat(&value)
+    BaseCoord<'a>.Format3 { value } => BaseCoordFormat3<'a>.baseCoordFormat(&value)
+  } }
+/// X or Y value, in design units
+  pub fn coordinate(self: &Self) -> i16 { return match self.* {
+    BaseCoord<'a>.Format1 { value } => BaseCoordFormat1<'a>.coordinate(&value)
+    BaseCoord<'a>.Format2 { value } => BaseCoordFormat2<'a>.coordinate(&value)
+    BaseCoord<'a>.Format3 { value } => BaseCoordFormat3<'a>.coordinate(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for BaseCoord<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return BaseCoord<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for BaseCoord<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    BaseCoord<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    BaseCoord<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    BaseCoord<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    BaseCoord<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    BaseCoord<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    BaseCoord<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> BaseCoord<'a> { pub fn default() -> Self { return BaseCoord<'a>.Format1 { value: BaseCoordFormat1<'a>.default() } } }
 /// [BaseCoordFormat1](https://learn.microsoft.com/en-us/typography/opentype/spec/base#basecoord-format-1)
 pub struct BaseCoordFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
@@ -744,7 +768,6 @@ impl<'a> Axis<'a> {
   }
 }
 impl<'a> BaseCoord<'a> {
-  pub fn coordinate(self: &Self) -> i16 { return match self.* { BaseCoord<'a>.Format1 { value } => BaseCoordFormat1.coordinate(&value) BaseCoord<'a>.Format2 { value } => BaseCoordFormat2.coordinate(&value) BaseCoord<'a>.Format3 { value } => BaseCoordFormat3.coordinate(&value) } }
   pub fn device(self: &Self) -> Option<DeviceOrVariationIndex<'a>> { return match self.* { BaseCoord<'a>.Format3 { value } => baseFlatten(BaseCoordFormat3.device(&value)) _ => Option<DeviceOrVariationIndex<'a>>.None } }
 }
 pub struct BaseInstance<'a,'c> { baseValue: Base<'a>, varStore: Option<ItemVariationStore<'a>>, coords: Option<&'c [F2Dot14]>, }

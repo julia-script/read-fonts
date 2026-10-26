@@ -179,9 +179,27 @@ impl<'a> FdSelect<'a> {
     FdSelect<'a>.Format3 { value } => FdSelectFormat3<'a>.offsetData(&value)
     FdSelect<'a>.Format4 { value } => FdSelectFormat4<'a>.offsetData(&value)
   } }
+/// Format = 0.
+  pub fn format(self: &Self) -> u8 { return match self.* {
+    FdSelect<'a>.Format0 { value } => FdSelectFormat0<'a>.format(&value)
+    FdSelect<'a>.Format3 { value } => FdSelectFormat3<'a>.format(&value)
+    FdSelect<'a>.Format4 { value } => FdSelectFormat4<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for FdSelect<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return FdSelect<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for FdSelect<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    FdSelect<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
+    FdSelect<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    FdSelect<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    FdSelect<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
+    FdSelect<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    FdSelect<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> FdSelect<'a> { pub fn default() -> Self { return FdSelect<'a>.Format0 { value: FdSelectFormat0<'a>.default() } } }
 /// FdSelect format 0.
 pub struct FdSelectFormat0<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }
@@ -403,9 +421,27 @@ impl<'a> CustomCharset<'a> {
     CustomCharset<'a>.Format1 { value } => CharsetFormat1<'a>.offsetData(&value)
     CustomCharset<'a>.Format2 { value } => CharsetFormat2<'a>.offsetData(&value)
   } }
+/// Format; =0
+  pub fn format(self: &Self) -> u8 { return match self.* {
+    CustomCharset<'a>.Format0 { value } => CharsetFormat0<'a>.format(&value)
+    CustomCharset<'a>.Format1 { value } => CharsetFormat1<'a>.format(&value)
+    CustomCharset<'a>.Format2 { value } => CharsetFormat2<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for CustomCharset<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return CustomCharset<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for CustomCharset<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    CustomCharset<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
+    CustomCharset<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    CustomCharset<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    CustomCharset<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
+    CustomCharset<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    CustomCharset<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> CustomCharset<'a> { pub fn default() -> Self { return CustomCharset<'a>.Format0 { value: CharsetFormat0<'a>.default() } } }
 /// Charset format 0.
 pub struct CharsetFormat0<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 2], }

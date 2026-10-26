@@ -25,7 +25,7 @@ def fixtures():
              b'DSIG': bytes.fromhex('0000000100010001000000010000000c000000140000000000000004deadbeef')}
     words = [0,0,10,0,0,3,1,3,0,38,0,10,6,7,0,48,0,6,9,9,0,38,0,10,1,0,0,0,1,2,0,0]
     seeds[b'SVG '] = struct.pack('>32H', *words)
-    for name in ('cvarFont', 'gradientFont', 'embeddedBitmaps', 'cbdtFont'):
+    for name in ('cvarFont', 'gradientFont', 'embeddedBitmaps', 'cbdtFont', 'colrFont', 'variableColrFont', 'unclippedColrFont'):
         yield name, packed[name]
         seeds.update({tag: value for tag, value in tables(packed[name]).items()
                       if tag in (b'cvar', b'CPAL', b'STAT')})
@@ -45,6 +45,7 @@ def fixtures():
                 struct.pack_into('>I', changed, index, value)
                 yield f'{tag.hex()}-word-{index}-{value}', sfnt({**required, tag: bytes(changed)})
     yield from bitmap_fixtures()
+    yield from colr_fixtures()
     for tag, payload in [(b'dlng', b'en-latn, latn'), (b'slng', b'\xff, x'),
                          (b'xxxx', b'\x00\xff\x01'), (b'dlng', b',,,')]:
         meta = struct.pack('>IIII4sII', 1, 0, 0, 1, tag, 28, len(payload)) + payload
@@ -105,6 +106,40 @@ def bitmap_fixtures():
         table = struct.pack('>HHII', 1, 3, 1, 12) + changed
         for cut in sorted({0, 8, 12, 16, len(table)-1, len(table)}):
             yield f'sbix-{label}-prefix-{cut}', sfnt({b'sbix': table[:cut], b'maxp': struct.pack('>IH', 0x5000, 2)})
+
+def colr_fixtures():
+    grammar = (ROOT / 'upstream/resources/codegen_inputs/colr.rs').read_text()
+    widths = {'u8': 1, 'u16': 2, 'i16': 2, 'u32': 4, 'FWord': 2, 'F2Dot14': 2,
+              'Fixed': 4, 'UfWord': 2, 'GlyphId16': 2, 'GlyphId24': 3, 'CompositeMode': 1}
+    header = struct.pack('>HHIIHIIIII', 1, 0, 0, 0, 0, 34, 0, 0, 0, 0)
+    records = struct.pack('>IHI', 1, 42, 10)
+    formats = 0
+    for name, body in re.findall(r'table (Paint\w+)\s*\{(.*?)\n\}', grammar, re.S):
+        format_match = re.search(r'#\[format = (\d+)\]', body)
+        if not format_match:
+            continue
+        number = int(format_match.group(1))
+        data = bytearray()
+        for field, typ in re.findall(r'^\s*(\w+):\s*([^,]+),', body, re.M):
+            if field == 'format':
+                data.append(number)
+                continue
+            if typ.startswith('Offset'):
+                width = int(re.match(r'Offset(\d+)', typ).group(1)) // 8
+                data.extend(bytes(width))
+            else:
+                data.extend(bytes([0x81]) * widths[typ])
+        formats += 1
+        for cut in range(len(data)+1):
+            yield f'colr-{name}-prefix-{cut}', sfnt({b'COLR': header+records+data[:cut]})
+        # A child offset to the last byte exercises a resolvable but short child.
+        bad = bytearray(data)
+        if len(bad) >= 4 and re.search(r'paint_offset:\s*Offset24', body):
+            bad[1:4] = (len(bad)-1).to_bytes(3, 'big')
+            yield f'colr-{name}-short-child', sfnt({b'COLR': header+records+bad})
+    assert formats == 33, formats
+    for unknown in (0,34,255):
+        yield f'colr-paint-unknown-{unknown}', sfnt({b'COLR': header+records+bytes([unknown])+bytes(32)})
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

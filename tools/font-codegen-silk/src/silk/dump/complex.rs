@@ -18,7 +18,7 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
                 writeln!(out, "import read_fonts.tables.{module} {{ Original{kind}LookupList, {kind}LookupList2, {aliases} }}").unwrap();
             }
             "gdef" => out.push_str("import read_fonts.tables.layout { CoverageTable, ClassDef, DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
-            "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
+            "avar" | "hvar" | "vvar" | "mvar" | "colr" => out.push_str("import read_fonts.tables.variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "gvar" => out.push_str("import read_fonts.tables.gvar { U16Or32 }\nimport read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }\nimport generated_dump_variations { dumpTuple }\n"),
             "base" => out.push_str("import read_fonts.tables.layout { DeviceOrVariationIndex }\nimport read_fonts.tables.variations { ItemVariationStore }\n"),
             "cvar" => out.push_str("import read_fonts.tables.variations { TupleVariationHeader, TupleVariationCount }\n"),
@@ -40,6 +40,7 @@ pub(super) fn imports(out: &mut String, module: &str, silk: bool) {
             "gvar" => out.push_str("use read_fonts::tables::variations::{Tuple, TupleVariationCount, TupleVariationHeader};\nuse crate::generated_dump_variations::dump_Tuple;\n"),
             "base" => out.push_str("use read_fonts::tables::{layout::DeviceOrVariationIndex, variations::ItemVariationStore};\n"),
             "cvar" => out.push_str("use read_fonts::tables::variations::{TupleVariationHeader, TupleVariationCount};\n"),
+            "colr" => out.push_str("use read_fonts::tables::variations::{DeltaSetIndexMap, ItemVariationStore};\n"),
             "cblc" | "eblc" => out.push_str("use crate::generated_dump_bitmap::dump_BitmapSize;\n"),
             "kern" => out.push_str("use crate::generated_dump_kerx::dump_Subtable0Pair;\n"),
             "vmtx" => out.push_str("use read_fonts::tables::hmtx::LongMetric;\nuse crate::generated_dump_hmtx::dump_LongMetric;\n"),

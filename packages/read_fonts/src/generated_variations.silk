@@ -256,9 +256,35 @@ impl<'a> DeltaSetIndexMap<'a> {
     DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.offsetData(&value)
     DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.offsetData(&value)
   } }
+/// DeltaSetIndexMap format: set to 0.
+  pub fn format(self: &Self) -> u8 { return match self.* {
+    DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.format(&value)
+    DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.format(&value)
+  } }
+/// A packed field that describes the compressed representation of
+/// delta-set indices. See details below.
+  pub fn entryFormat(self: &Self) -> EntryFormat { return match self.* {
+    DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.entryFormat(&value)
+    DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.entryFormat(&value)
+  } }
+/// The delta-set index mapping data. See details below.
+  pub fn mapData(self: &Self) -> ScalarArray<'a, u8> { return match self.* {
+    DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.mapData(&value)
+    DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.mapData(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for DeltaSetIndexMap<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return DeltaSetIndexMap<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for DeltaSetIndexMap<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    DeltaSetIndexMap<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
+    DeltaSetIndexMap<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    DeltaSetIndexMap<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
+    DeltaSetIndexMap<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> DeltaSetIndexMap<'a> { pub fn default() -> Self { return DeltaSetIndexMap<'a>.Format0 { value: DeltaSetIndexMapFormat0<'a>.default() } } }
 /// Entry format for a [DeltaSetIndexMap].
 pub struct EntryFormat { raw: u8, }

@@ -614,9 +614,30 @@ impl<'a> CoverageTable<'a> {
     CoverageTable<'a>.Format3 { value } => CoverageFormat3<'a>.offsetData(&value)
     CoverageTable<'a>.Format4 { value } => CoverageFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier — format = 1
+  pub fn coverageFormat(self: &Self) -> u16 { return match self.* {
+    CoverageTable<'a>.Format1 { value } => CoverageFormat1<'a>.coverageFormat(&value)
+    CoverageTable<'a>.Format2 { value } => CoverageFormat2<'a>.coverageFormat(&value)
+    CoverageTable<'a>.Format3 { value } => CoverageFormat3<'a>.coverageFormat(&value)
+    CoverageTable<'a>.Format4 { value } => CoverageFormat4<'a>.coverageFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for CoverageTable<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return CoverageTable<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for CoverageTable<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    CoverageTable<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    CoverageTable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    CoverageTable<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    CoverageTable<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    CoverageTable<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    CoverageTable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    CoverageTable<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    CoverageTable<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> CoverageTable<'a> { pub fn default() -> Self { return CoverageTable<'a>.Format1 { value: CoverageFormat1<'a>.default() } } }
 /// [Class Definition Table Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#class-definition-table-format-1)
 pub struct ClassDefFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 4], }
@@ -775,9 +796,30 @@ impl<'a> ClassDef<'a> {
     ClassDef<'a>.Format3 { value } => ClassDefFormat3<'a>.offsetData(&value)
     ClassDef<'a>.Format4 { value } => ClassDefFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier — format = 1
+  pub fn classFormat(self: &Self) -> u16 { return match self.* {
+    ClassDef<'a>.Format1 { value } => ClassDefFormat1<'a>.classFormat(&value)
+    ClassDef<'a>.Format2 { value } => ClassDefFormat2<'a>.classFormat(&value)
+    ClassDef<'a>.Format3 { value } => ClassDefFormat3<'a>.classFormat(&value)
+    ClassDef<'a>.Format4 { value } => ClassDefFormat4<'a>.classFormat(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for ClassDef<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return ClassDef<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for ClassDef<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    ClassDef<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    ClassDef<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    ClassDef<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    ClassDef<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    ClassDef<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    ClassDef<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    ClassDef<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    ClassDef<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> ClassDef<'a> { pub fn default() -> Self { return ClassDef<'a>.Format1 { value: ClassDefFormat1<'a>.default() } } }
 /// [Sequence Lookup Record](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#sequence-lookup-record)
 pub struct SequenceLookupRecord<'a> { _fontData: FontData<'a>, position: usize, }
@@ -1236,9 +1278,36 @@ impl<'a> SequenceContext<'a> {
     SequenceContext<'a>.Format5 { value } => SequenceContextFormat5<'a>.offsetData(&value)
     SequenceContext<'a>.Format6 { value } => SequenceContextFormat6<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    SequenceContext<'a>.Format1 { value } => SequenceContextFormat1<'a>.format(&value)
+    SequenceContext<'a>.Format2 { value } => SequenceContextFormat2<'a>.format(&value)
+    SequenceContext<'a>.Format3 { value } => SequenceContextFormat3<'a>.format(&value)
+    SequenceContext<'a>.Format4 { value } => SequenceContextFormat4<'a>.format(&value)
+    SequenceContext<'a>.Format5 { value } => SequenceContextFormat5<'a>.format(&value)
+    SequenceContext<'a>.Format6 { value } => SequenceContextFormat6<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for SequenceContext<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return SequenceContext<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for SequenceContext<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    SequenceContext<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    SequenceContext<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    SequenceContext<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    SequenceContext<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+    SequenceContext<'a>.Format5 { value } => MinByteRange.minByteRange(&value)
+    SequenceContext<'a>.Format6 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    SequenceContext<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    SequenceContext<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    SequenceContext<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    SequenceContext<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+    SequenceContext<'a>.Format5 { value } => MinByteRange.minTableBytes(&value)
+    SequenceContext<'a>.Format6 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> SequenceContext<'a> { pub fn default() -> Self { return SequenceContext<'a>.Format1 { value: SequenceContextFormat1<'a>.default() } } }
 /// [Chained Sequence Context Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#chained-sequence-context-format-1-simple-glyph-contexts)
 pub struct ChainedSequenceContextFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 4], }
@@ -1803,9 +1872,33 @@ impl<'a> ChainedSequenceContext<'a> {
     ChainedSequenceContext<'a>.Format4 { value } => ChainedSequenceContextFormat4<'a>.offsetData(&value)
     ChainedSequenceContext<'a>.Format5 { value } => ChainedSequenceContextFormat5<'a>.offsetData(&value)
   } }
+/// Format identifier: format = 1
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    ChainedSequenceContext<'a>.Format1 { value } => ChainedSequenceContextFormat1<'a>.format(&value)
+    ChainedSequenceContext<'a>.Format2 { value } => ChainedSequenceContextFormat2<'a>.format(&value)
+    ChainedSequenceContext<'a>.Format3 { value } => ChainedSequenceContextFormat3<'a>.format(&value)
+    ChainedSequenceContext<'a>.Format4 { value } => ChainedSequenceContextFormat4<'a>.format(&value)
+    ChainedSequenceContext<'a>.Format5 { value } => ChainedSequenceContextFormat5<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for ChainedSequenceContext<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return ChainedSequenceContext<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for ChainedSequenceContext<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    ChainedSequenceContext<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    ChainedSequenceContext<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    ChainedSequenceContext<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    ChainedSequenceContext<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+    ChainedSequenceContext<'a>.Format5 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    ChainedSequenceContext<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    ChainedSequenceContext<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    ChainedSequenceContext<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    ChainedSequenceContext<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+    ChainedSequenceContext<'a>.Format5 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> ChainedSequenceContext<'a> { pub fn default() -> Self { return ChainedSequenceContext<'a>.Format1 { value: ChainedSequenceContextFormat1<'a>.default() } } }
 /// [Device](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#device-and-variationindex-tables)
 /// delta formats
@@ -2310,9 +2403,33 @@ impl<'a> Condition<'a> {
     Condition<'a>.Format4Or { value } => ConditionFormat4<'a>.offsetData(&value)
     Condition<'a>.Format5Negate { value } => ConditionFormat5<'a>.offsetData(&value)
   } }
+/// Format, = 1
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    Condition<'a>.Format1AxisRange { value } => ConditionFormat1<'a>.format(&value)
+    Condition<'a>.Format2VariableValue { value } => ConditionFormat2<'a>.format(&value)
+    Condition<'a>.Format3And { value } => ConditionFormat3<'a>.format(&value)
+    Condition<'a>.Format4Or { value } => ConditionFormat4<'a>.format(&value)
+    Condition<'a>.Format5Negate { value } => ConditionFormat5<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for Condition<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Condition<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for Condition<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    Condition<'a>.Format1AxisRange { value } => MinByteRange.minByteRange(&value)
+    Condition<'a>.Format2VariableValue { value } => MinByteRange.minByteRange(&value)
+    Condition<'a>.Format3And { value } => MinByteRange.minByteRange(&value)
+    Condition<'a>.Format4Or { value } => MinByteRange.minByteRange(&value)
+    Condition<'a>.Format5Negate { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    Condition<'a>.Format1AxisRange { value } => MinByteRange.minTableBytes(&value)
+    Condition<'a>.Format2VariableValue { value } => MinByteRange.minTableBytes(&value)
+    Condition<'a>.Format3And { value } => MinByteRange.minTableBytes(&value)
+    Condition<'a>.Format4Or { value } => MinByteRange.minTableBytes(&value)
+    Condition<'a>.Format5Negate { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> Condition<'a> { pub fn default() -> Self { return Condition<'a>.Format1AxisRange { value: ConditionFormat1<'a>.default() } } }
 /// [Condition Table Format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/chapter2#condition-table-format-1-font-variation-axis-range): Font Variation Axis Range
 pub struct ConditionFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 4], }

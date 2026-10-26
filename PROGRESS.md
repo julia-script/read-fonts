@@ -838,3 +838,30 @@ behavior/tests, the final parity gate and performance measurement remain pending
 All 147 generated outputs pass the drift check. Rust Clippy passes with warnings
 as errors after the dump generator learned that fixed-size embedded record getters
 already return a reference. This changes borrowing syntax, not dump observations.
+
+## Session 45 — 2026-10-26 — COLR and shared format accessors
+
+All 33 COLR paint formats, clip boxes and color records are generated. Handwritten
+v0/v1 glyph, layer and clip lookups preserve upstream error/absence behavior.
+The two COLR upstream tests plus two helper/paint-identity regressions pass.
+The complete suite passes **754 read_fonts tests**, and the upstream-port count
+is **796**. Generator tests (10) and Rust Clippy with warnings denied pass.
+
+**2,349 / 2,349 focused Phase 2 fixtures match** in debug, including all 33 paint
+headers at every prefix, short/invalid paint targets, unknown formats and real
+static/variable COLR fonts. Evidence: reports/milestone-9-colr-fixtures.json.gz.
+The generator also supplies shared format-group field getters and MinByteRange,
+replacing the handwritten BASE coordinate wrapper and covering the COLR group API.
+
+The earlier foundation binaries completed the full corpus: **566 / 566 matches**,
+zero differences/process failures (reports/milestone-9-foundation-corpus.json.gz).
+That report covers the first nine Phase 2 families, before bitmap/COLR landed.
+The final complete Phase 2 debug/release corpus gate remains pending.
+
+CI now requires focused Phase 2 comparisons in debug and release. MATH, VARC,
+the dependent model implementations/tests and the speed ratio remain. M8 CI has
+passed all debug/release fixture checks and is running the corruption campaign;
+M9 remains draft PR #10.
+
+All 150 generated outputs, 13 Phase 2 packed fixtures and 33 model fixtures pass
+the drift check. The 20 Python harness tests also pass at this checkpoint.

@@ -400,3 +400,6 @@ import tables.ebdt { Ebdt }
 impl<'a> FontRef<'a> { pub fn ebdt(self: &Self) -> Result<Ebdt<'a>,ReadError> { return TableProvider.ebdt(self) } }
 import tables.eblc { Eblc }
 impl<'a> FontRef<'a> { pub fn eblc(self: &Self) -> Result<Eblc<'a>,ReadError> { return TableProvider.eblc(self) } }
+
+import tables.colr { Colr }
+impl<'a> FontRef<'a> { pub fn colr(self: &Self) -> Result<Colr<'a>,ReadError> { return TableProvider.colr(self) } }

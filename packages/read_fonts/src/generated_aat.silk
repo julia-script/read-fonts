@@ -59,9 +59,36 @@ impl<'a> Lookup<'a> {
     Lookup<'a>.Format8 { value } => Lookup8<'a>.offsetData(&value)
     Lookup<'a>.Format10 { value } => Lookup10<'a>.offsetData(&value)
   } }
+/// Format number is set to 0.
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    Lookup<'a>.Format0 { value } => Lookup0<'a>.format(&value)
+    Lookup<'a>.Format2 { value } => Lookup2<'a>.format(&value)
+    Lookup<'a>.Format4 { value } => Lookup4<'a>.format(&value)
+    Lookup<'a>.Format6 { value } => Lookup6<'a>.format(&value)
+    Lookup<'a>.Format8 { value } => Lookup8<'a>.format(&value)
+    Lookup<'a>.Format10 { value } => Lookup10<'a>.format(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for Lookup<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return Lookup<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for Lookup<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    Lookup<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
+    Lookup<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    Lookup<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+    Lookup<'a>.Format6 { value } => MinByteRange.minByteRange(&value)
+    Lookup<'a>.Format8 { value } => MinByteRange.minByteRange(&value)
+    Lookup<'a>.Format10 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    Lookup<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
+    Lookup<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    Lookup<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+    Lookup<'a>.Format6 { value } => MinByteRange.minTableBytes(&value)
+    Lookup<'a>.Format8 { value } => MinByteRange.minTableBytes(&value)
+    Lookup<'a>.Format10 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> Lookup<'a> { pub fn default() -> Self { return Lookup<'a>.Format0 { value: Lookup0<'a>.default() } } }
 /// Simple array format. The lookup data is an array of lookup values, indexed
 /// by glyph index.

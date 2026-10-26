@@ -221,9 +221,45 @@ impl<'a> AxisValue<'a> {
     AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.offsetData(&value)
     AxisValue<'a>.Format4 { value } => AxisValueFormat4<'a>.offsetData(&value)
   } }
+/// Format identifier — set to 1.
+  pub fn format(self: &Self) -> u16 { return match self.* {
+    AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.format(&value)
+    AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.format(&value)
+    AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.format(&value)
+    AxisValue<'a>.Format4 { value } => AxisValueFormat4<'a>.format(&value)
+  } }
+/// Flags — see below for details.
+  pub fn flags(self: &Self) -> AxisValueTableFlags { return match self.* {
+    AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.flags(&value)
+    AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.flags(&value)
+    AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.flags(&value)
+    AxisValue<'a>.Format4 { value } => AxisValueFormat4<'a>.flags(&value)
+  } }
+/// The name ID for entries in the 'name' table that provide a
+/// display string for this attribute value.
+  pub fn valueNameId(self: &Self) -> NameId { return match self.* {
+    AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.valueNameId(&value)
+    AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.valueNameId(&value)
+    AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.valueNameId(&value)
+    AxisValue<'a>.Format4 { value } => AxisValueFormat4<'a>.valueNameId(&value)
+  } }
 }
 impl<'a> FontRead<'a, ()> for AxisValue<'a> { fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> { return AxisValue<'a>.read(data) } }
 
+impl<'a> MinByteRange<'a> for AxisValue<'a> {
+  fn minByteRange(self: &Self) -> ByteRange { return match self.* {
+    AxisValue<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
+    AxisValue<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
+    AxisValue<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
+    AxisValue<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
+  } }
+  fn minTableBytes(self: &Self) -> &'a [u8] { return match self.* {
+    AxisValue<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
+    AxisValue<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
+    AxisValue<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
+    AxisValue<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
+  } }
+}
 impl<'a> AxisValue<'a> { pub fn default() -> Self { return AxisValue<'a>.Format1 { value: AxisValueFormat1<'a>.default() } } }
 /// [Axis value table format 1](https://docs.microsoft.com/en-us/typography/opentype/spec/stat#axis-value-table-format-1)
 pub struct AxisValueFormat1<'a> { _fontData: FontData<'a>, _fieldRanges: [ByteRange; 5], }

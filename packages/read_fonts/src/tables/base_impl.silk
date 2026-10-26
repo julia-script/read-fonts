@@ -52,7 +52,6 @@ impl<'a> Axis<'a> {
   }
 }
 impl<'a> BaseCoord<'a> {
-  pub fn coordinate(self: &Self) -> i16 { return match self.* { BaseCoord<'a>.Format1 { value } => BaseCoordFormat1.coordinate(&value) BaseCoord<'a>.Format2 { value } => BaseCoordFormat2.coordinate(&value) BaseCoord<'a>.Format3 { value } => BaseCoordFormat3.coordinate(&value) } }
   pub fn device(self: &Self) -> Option<DeviceOrVariationIndex<'a>> { return match self.* { BaseCoord<'a>.Format3 { value } => baseFlatten(BaseCoordFormat3.device(&value)) _ => Option<DeviceOrVariationIndex<'a>>.None } }
 }
 pub struct BaseInstance<'a,'c> { baseValue: Base<'a>, varStore: Option<ItemVariationStore<'a>>, coords: Option<&'c [F2Dot14]>, }
