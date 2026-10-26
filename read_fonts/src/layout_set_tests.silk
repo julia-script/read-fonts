@@ -1,5 +1,5 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-// Seven upstream IntSet-dependent layout regressions deferred from milestone 3.
+// Seven upstream IntSet-dependent layout regressions that needed IntSet first.
 import generated_layout { ClassDef,ClassDefFormat1,ClassDefFormat2 }
 import collections.int_set { IntSet,IntSetIter }
 import font_types.lib { GlyphId }

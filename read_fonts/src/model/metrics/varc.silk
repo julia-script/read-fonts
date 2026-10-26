@@ -155,7 +155,7 @@ impl Walk {
 // Upstream model/glyph/outline/varc.rs tests; scratch-layout-only tests do not
 // apply to the allocator-backed metrics traversal.
 import font { FontRef }
-import generated_phase2_fixtures as ModelFixtures
+import generated_misc_table_fixtures as ModelFixtures
 import silk.testing { Testing,AssertionError }
 effect fn vmMust<T>(result:Result<T,Error>) -> T ! AssertionError<'static> { return match move result { Result<T,Error>.Success { value }=>move value _=>{run Testing.expect(false,"VARC model operation succeeds") return Intrinsic.trap("assertion")} } }
 effect fn vmRead<T>(result:Result<T,ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T,ReadError>.Success { value }=>move value _=>{run Testing.expect(false,"VARC model fixture reads") return Intrinsic.trap("assertion")} } }

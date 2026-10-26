@@ -24,7 +24,7 @@ CORPUS_ROOTS = (
 # Unsupported containers are still oracle inputs: their upstream errors are observations.
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc", ".dfont", ".woff", ".woff2"}
 FONT_MAGIC = {b"\0\1\0\0", b"OTTO", b"true", b"ttcf"}
-HEADER = b"font-dump.version=9\ndump.scope=phase2-model\n"
+HEADER = b"font-dump.version=9\ndump.scope=all\n"
 # READ_FONTS_PROFILE=release points every check at the release dumpers.
 PROFILE = os.environ.get("READ_FONTS_PROFILE", "debug")
 REFERENCE = ROOT / f"build/rust/{PROFILE}/rust-font-dump"
@@ -224,7 +224,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             report.parent.mkdir(parents=True, exist_ok=True)
             report.write_text(json.dumps({
                 "summary": {
-                    "format_version": 9, "scope": "phase2-model", "fonts_total": len(fonts),
+                    "format_version": 9, "scope": "all", "fonts_total": len(fonts),
                     "completed": sum(item["status"] in ("match", "difference") for item in observations),
                     "matched": sum(item["status"] == "match" for item in observations),
                     "differences": sum(item["status"] == "difference" for item in observations),
@@ -289,7 +289,7 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
         failed = sum(item["status"] != "match" for item in observations)
         print(f"FAIL: {failed} of {len(fonts)} fonts differ or failed")
         return finish(status)
-    print(f"MATCH: {len(fonts)} fonts; format 9, Phase 2 scope")
+    print(f"MATCH: {len(fonts)} fonts; format 9")
     return finish(0)
 
 
@@ -315,7 +315,7 @@ def verify(fonts: list[Path], inventory: list[dict], reference: Path,
             failures.append({"font": name, "error": str(error)})
             print(f"FAIL: {name}: {error}", file=sys.stderr)
     summary = {
-        "format_version": 9, "scope": "phase2-model", "fonts_total": len(fonts),
+        "format_version": 9, "scope": "all", "fonts_total": len(fonts),
         "completed": len(results), "process_failures": len(failures),
         "faces_ok": totals["faces_ok"], "parse_error_records": totals["parse_error_records"],
         "missing_table_lookups": totals["missing_table_lookups"],

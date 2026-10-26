@@ -372,7 +372,7 @@ import table_provider { GlyfLoca }
 import tables.gvar { SelectedGvar }
 import tables.hmtx { GlyphMetricRecords }
 import ps.cff.font { CffFontRef }
-import generated_phase2_fixtures as ColorFixtures
+import generated_misc_table_fixtures as ColorFixtures
 import generated_model_fixtures as ColorExpected
 import silk.testing { Testing,AssertionError }
 effect fn cmRead<T>(result:Result<T,ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T,ReadError>.Success { value }=>move value _=>{run Testing.expect(false,"color fixture reads") return Intrinsic.trap("assertion")} } }

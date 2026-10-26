@@ -83,27 +83,27 @@ def fixtures():
 
     # Full source selection needs real outlines underneath color, bitmap and
     # variable-composite tables, including missing-table fallbacks.
-    phase_source = (ROOT / 'read_fonts/src/generated_phase2_fixtures.silk').read_text()
-    phase = {name: ast.literal_eval(literal) for name, literal in re.findall(
-        r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", phase_source)}
+    misc_source = (ROOT / 'read_fonts/src/generated_misc_table_fixtures.silk').read_text()
+    misc = {name: ast.literal_eval(literal) for name, literal in re.findall(
+        r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", misc_source)}
     for name in ('colrInvalidCubicFont', 'colrValidCubicFont'):
-        yield name, phase[name]
+        yield name, misc[name]
     names = ('cbdtFont', 'cbdtMissingGlyph2At16', 'colrFont', 'colrV0Font',
              'variableColrFont', 'unclippedColrFont', 'gradientFont',
              'varcCjkFont', 'varcConditionalsFont', 'varcStaticFont',
              'varcDeltaPrecisionFont', 'colrEmptyColorLineFont')
     for name in names:
-        yield 'phase2-' + name, phase[name]
-        records = tables(phase[name])
+        yield 'misc-' + name, misc[name]
+        records = tables(misc[name])
         for hidden in ((b'COLR',), (b'VARC',), (b'CBDT',), (b'CBLC',),
                        (b'glyf', b'loca'), (b'gvar',), (b'fvar',)):
             if any(tag in records for tag in hidden):
-                yield 'phase2-' + name + '-without-' + '-'.join(tag.decode() for tag in hidden), sfnt(
+                yield 'misc-' + name + '-without-' + '-'.join(tag.decode() for tag in hidden), sfnt(
                     {tag: value for tag, value in records.items() if tag not in hidden})
     base = tables(seeds['materialSymbols'])
-    for name, data in phase.items():
+    for name, data in misc.items():
         # The 4,096-deep condition is an implementation-level rejection test,
-        # exercised directly by model_phase2_tests, beyond the field dumper's
+        # exercised directly by model_extent_source_tests, beyond the field dumper's
         # explicit graph-depth limit. Never count an incomplete dump as parity.
         if name.startswith('varc') and name not in names and name != 'varcDeepCondition':
             yield 'model-' + name, sfnt({**base, b'VARC': data})
@@ -112,7 +112,7 @@ def fixtures():
     # A mixed bitmap/outline font must fall through when its selected strike
     # lacks the glyph, while a larger strike still answers.
     for name in ('cbdtFont', 'cbdtMissingGlyph2At16'):
-        bitmap = {tag: value for tag, value in tables(phase[name]).items()
+        bitmap = {tag: value for tag, value in tables(misc[name]).items()
                   if tag in (b'CBDT', b'CBLC')}
         combined = {**base, **bitmap}
         yield 'mixed-' + name, sfnt(combined)
@@ -124,7 +124,7 @@ def fixtures():
     # A failed selected base can fall through to color/bitmap sources, but never
     # chooses a second base outline or activates VARC after its chosen base.
     for name in ('variableColrFont', 'colrFont'):
-        records = tables(phase[name])
+        records = tables(misc[name])
         if b'loca' in records:
             yield name + '-short-loca', sfnt({**records, b'loca': b'\x00\x00'})
 

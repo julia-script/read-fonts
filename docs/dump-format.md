@@ -293,8 +293,8 @@ unknown signature formats and inconsistent lengths produce `none`.
 
 ## Version 9 — complete model source selection
 
-The active header is `font-dump.version=9` with `dump.scope=phase2-model`.
-It retains version 8's complete Phase 1/Phase 2 table observations and changes
+The active header is `font-dump.version=9` with `dump.scope=all`.
+It retains version 8's complete table observations and changes
 model measurements to `extentsSourceOrder=default`. All glyphs and existing
 boundary probes now use bitmap, COLR, VARC and base-outline sources in upstream
 order at each normalized location. The 16 ppem floating-point and 26.6 views also

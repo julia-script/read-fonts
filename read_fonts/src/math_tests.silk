@@ -2,7 +2,7 @@
 import lib { FontData,ReadError,ComputedArray }
 import tables.math { Math,MathConstants,MathConstant,MathValue,MathValueRecord,MathGlyphInfo,MathItalicsCorrectionInfo,MathTopAccentAttachment,MathKernInfo,MathKernCorner,MathKern,MathKernEntry,MathKernEntryIter,MathVariants,StretchAxis,MathGlyphConstruction,MathGlyphVariantRecord,GlyphAssembly,GlyphPartRecord,PartFlags }
 import tables.layout { CoverageTable }
-import generated_phase2_fixtures as Fixtures
+import generated_misc_table_fixtures as Fixtures
 import test_font_builder as Builder
 import font_types.lib { GlyphId,GlyphId16,FWord,UfWord }
 import silk.result { Result }

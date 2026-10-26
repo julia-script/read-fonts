@@ -55,7 +55,7 @@ implementations and report the first differing line:
 scripts/build --release
 export READ_FONTS_PROFILE=release
 scripts/compare
-scripts/check-{core,table,layout,variation,aat,cff,model,phase2}-fixtures
+scripts/check-{core,table,layout,variation,aat,cff,model,misc-table}-fixtures
 scripts/check-malformed --report build/malformed-report.json.gz
 scripts/benchmark --report build/benchmark-report.json
 ```
