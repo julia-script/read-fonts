@@ -25,6 +25,8 @@ impl Context<'_> {
             "fvar" => out.push_str("pub import tables.instance_record { InstanceRecord }\n"),
             "avar" | "hvar" | "vvar" | "mvar" => out.push_str("import generated_variations { DeltaSetIndexMap, ItemVariationStore }\n"),
             "vmtx" => out.push_str("pub import generated_hmtx { LongMetric }\n"),
+            "kern" => out.push_str("pub import generated_kerx { Subtable0Pair }\n"),
+            "ankr" => out.push_str("import generated_aat { LookupU16 }\n"),
             "gvar" => out.push_str("import generated_variations { Tuple, TupleVariationHeader, TupleVariationCount }\n"),
             _ => (),
         }

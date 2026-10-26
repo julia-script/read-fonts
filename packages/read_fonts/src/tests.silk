@@ -331,3 +331,6 @@ import glyph_delta_tests
 import extended_provider_tests
 
 import aat_tests
+import aat_misc_tests
+import morx_tests
+import kerning_tests

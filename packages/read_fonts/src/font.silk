@@ -332,3 +332,27 @@ impl<'a> FontRef<'a> {
 impl<'a> FontRef<'a> { pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> { return readTable<T, FontRef<'a>>(self, tableTag<T>()) } }
 
 import table_provider { GlyfLoca }
+
+import tables.kerx { Kerx }
+impl<'a> FontRef<'a> { pub fn kerx(self: &Self) -> Result<Kerx<'a>, ReadError> { return TableProvider.kerx(self) } }
+
+import tables.morx { Morx }
+impl<'a> FontRef<'a> { pub fn morx(self: &Self) -> Result<Morx<'a>, ReadError> { return TableProvider.morx(self) } }
+
+import tables.mort { Mort }
+impl<'a> FontRef<'a> { pub fn mort(self: &Self) -> Result<Mort<'a>, ReadError> { return TableProvider.mort(self) } }
+
+import tables.trak { Trak }
+impl<'a> FontRef<'a> { pub fn trak(self: &Self) -> Result<Trak<'a>, ReadError> { return TableProvider.trak(self) } }
+
+import tables.ankr { Ankr }
+impl<'a> FontRef<'a> { pub fn ankr(self: &Self) -> Result<Ankr<'a>, ReadError> { return TableProvider.ankr(self) } }
+
+import tables.feat { Feat }
+impl<'a> FontRef<'a> { pub fn feat(self: &Self) -> Result<Feat<'a>, ReadError> { return TableProvider.feat(self) } }
+
+import tables.ltag { Ltag }
+impl<'a> FontRef<'a> { pub fn ltag(self: &Self) -> Result<Ltag<'a>, ReadError> { return TableProvider.ltag(self) } }
+
+import tables.kern { Kern }
+impl<'a> FontRef<'a> { pub fn kern(self: &Self) -> Result<Kern<'a>, ReadError> { return TableProvider.kern(self) } }

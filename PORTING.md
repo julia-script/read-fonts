@@ -259,3 +259,11 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   the associated constant. Legacy reciprocal division, deleted-glyph classes,
   read-error precedence, and the differing null-offset behavior of `read` versus
   `fromParts` are preserved.
+- The morx/mort state payload records remain borrowed generated views and add
+  `FontRead` conformance for entry decoding. Cached parts preserve the upstream
+  distinction between direct reads and pre-resolved offsets. `SubtableParts`
+  stores explicit arrays and `ReadArgs2` carries multi-argument kerning reads.
+- `Kern.subtables` returns the named `Subtables` cursor. It preserves the OpenType
+  last-subtable length exception and AAT's explicit lengths. `TagIndices` yields
+  named index/tag pairs; malformed ranges and invalid UTF-8 are skipped as upstream.
+  Kerning and language-tag searches preserve Rust's rightmost matching entry.

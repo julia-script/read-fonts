@@ -42,3 +42,12 @@ pub import table_provider { GlyfLoca }
 pub import tables.vhea { Vhea, VheaExtended, SelectedVhea }
 pub import tables.vmtx { Vmtx, VmtxExtended }
 pub import tables.vorg { Vorg }
+pub import tables.kerx { Kerx }
+pub import tables.morx { Morx }
+pub import tables.mort { Mort }
+pub import tables.trak { Trak }
+pub import tables.ankr { Ankr }
+pub import tables.feat { Feat }
+pub import tables.ltag { Ltag }
+
+pub import tables.kern { Kern }

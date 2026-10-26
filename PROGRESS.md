@@ -416,3 +416,17 @@ state transitions and typed payloads; cached-parts reconstruction is also checke
 The full suite passes **285 read_fonts tests**, with **64 font_types tests** and
 **334 upstream ports** in total. The **70-file** drift check passes. Remaining
 AAT tables, their extension tests, and the M5 differential gate are pending.
+
+## Session 19 — 2026-10-26 — AAT table extensions and upstream tests
+
+The complete suite passes **315 read_fonts tests**, with **64 font_types tests**
+and **364 upstream ports**. Thirty new ports cover all seven morx tests, nine kerx
+tests, four kern tests, six trak tests, two feat tests, and the ankr/ltag tests.
+The original MORX and legacy kerning payloads are regenerated from the pinned
+snapshot. The **78-file** drift check and generator formatting check pass.
+
+All nine M5 table areas now have generated views and handwritten APIs: legacy and
+extended metamorphosis state machines, cached parts, kerning format dispatch and
+pair/class/vector lookups, tracking arrays, anchor points, feature settings and
+language tags. Parser builds pass. The differential dumper still has M4 scope;
+**M5 parity, debug/release corpus gates, CI and merge remain pending**.

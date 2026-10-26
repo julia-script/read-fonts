@@ -1,0 +1,20 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+impl<'a> Feat<'a> {
+  pub fn find(self: &Self, feature: u16) -> Option<FeatureName<'a>> {
+    let names = Feat.names(self)
+    let mut low: usize = 0 let mut high = ComputedArray<'a, (), FeatureName<'a>>.len(&names)
+    while low < high {
+      let mid = low + (high - low) / 2
+      let item = match move ComputedArray<'a, (), FeatureName<'a>>.get(&names, mid) { Result<FeatureName<'a>, ReadError>.Success { value } => value _ => { return Option<FeatureName<'a>>.None } }
+      if FeatureName.feature(&item) <= feature { low = mid + 1 } else { high = mid }
+    }
+    if low == 0 { return Option<FeatureName<'a>>.None }
+    let item = match move ComputedArray<'a, (), FeatureName<'a>>.get(&names, low - 1) { Result<FeatureName<'a>, ReadError>.Success { value } => value _ => { return Option<FeatureName<'a>>.None } }
+    if FeatureName.feature(&item) == feature { return Option<FeatureName<'a>>.some(item) }
+    return Option<FeatureName<'a>>.None
+  }
+}
+impl<'a> FeatureName<'a> {
+  pub fn isExclusive(self: &Self) -> bool { return FeatureName.featureFlags(self) & 32768 != 0 }
+  pub fn defaultSettingIndex(self: &Self) -> u16 { let flags = FeatureName.featureFlags(self) if flags & 16384 != 0 { return flags & 255 } return 0 }
+}
