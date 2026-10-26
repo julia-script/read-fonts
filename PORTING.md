@@ -190,3 +190,10 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   5,704,912 lines / 698,627,724 bytes and matches exactly. The harness now streams
   process output through temporary files, comparing every line and hashing every
   byte without retaining whole dumps in memory.
+
+## Milestone 4 (in progress)
+
+- `storeDeltas` accepts an optional borrowed table view by value, instead of an
+  optional reference to that view. Its reusable callable snapshots the Copy view
+  and retains the font and coordinate lifetimes. Missing or unreadable deltas are
+  zero, and condition evaluation preserves fractional 48.16 contributions.

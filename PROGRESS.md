@@ -269,3 +269,14 @@ Dependency follow-ups remain explicit: variation-store delta callbacks and the
 font-level SelectedFeatureVariations helper/tests are with M4; set intersection
 methods/tests are with IntSet in M7. They are not counted as ported. Milestone 3
 is ready for CI; milestones 4–9 remain pending.
+
+## Session 9 — 2026-10-26 — milestone 3 merged; variation evaluation underway
+
+Milestone 3 passed remote CI (run **40280884968**, job **121433687333**), including
+the complete debug and release corpus gates. PR #4 is merged at **ccd61be**.
+Milestones 0–3 are complete. Milestone 4 starts with shared variation-store
+evaluation; milestones 5–9 remain pending. Test counts remain **64 font_types**
+and **165 read_fonts**, including **215 upstream ports**, after five variation-store
+tests and the fractional layout-condition test. Shared index mapping, region scalar
+evaluation, cached scalars, and exact 48.16 deltas pass those tests. The M4 corpus
+gate is pending.

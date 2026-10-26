@@ -4461,6 +4461,19 @@ impl<'a> FeatureTableSubstitutionRecord<'a> {
   pub fn alternateFeature<'b>(self: &Self, data: FontData<'b>) -> Result<Feature<'b>, ReadError> { return FeatureTableSubstitutionRecord<'a>.alternateFeatureWithTag(self, data, Tag.fromU32(1314212940)) }
   pub fn alternateFeatureWithTag<'b>(self: &Self, data: FontData<'b>, featureTag: Tag) -> Result<Feature<'b>, ReadError> { return resolveWithArgs<Tag, Feature<'b>, Offset32>(FeatureTableSubstitutionRecord<'a>.alternateFeatureOffset(self), data, featureTag) }
 }
+import generated_variations { ItemVariationStore, DeltaSetIndex }
+import font_types.lib { F48Dot16 }
+pub fn storeDeltas<'a>(store: Option<ItemVariationStore<'a>>, coords: &'a [F2Dot14]) -> fn<'a>(u32) -> Result<f64, Error> {
+  let mut present = false
+  let mut selected = ItemVariationStore<'a>.default()
+  match move store { Option<ItemVariationStore<'a>>.Some { value } => { selected = value present = true } _ => {} }
+  return fn(index: u32) -> Result<f64, Error> {
+    let mut delta = F48Dot16.zero()
+    let value = selected
+    if present { delta = ItemVariationStore.computeDelta(&value, DeltaSetIndex.fromU32(index), coords) |> Option<F48Dot16>.unwrapOr(F48Dot16.zero()) }
+    return Result<f64, Error>.succeed(F48Dot16.toF64(delta))
+  }
+}
 
 // Handwritten extension from packages/read_fonts/src/tables/layout_feature_variations.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
