@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import itertools
 import json
+import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -23,7 +26,10 @@ CORPUS_ROOTS = (
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc", ".dfont", ".woff", ".woff2"}
 FONT_MAGIC = {b"\0\1\0\0", b"OTTO", b"true", b"ttcf"}
 HEADER = b"font-dump.version=9\ndump.scope=phase2-model\n"
-REFERENCE = ROOT / "build/rust/debug/rust-font-dump"
+# READ_FONTS_PROFILE=release points every check at the release dumpers.
+PROFILE = os.environ.get("READ_FONTS_PROFILE", "debug")
+REFERENCE = ROOT / f"build/rust/{PROFILE}/rust-font-dump"
+JOBS = int(os.environ.get("READ_FONTS_JOBS", os.cpu_count() or 1))
 
 
 def display(path: Path) -> str:
@@ -100,24 +106,40 @@ def run_dump_file(executable: Path, font: Path, timeout: float, output):
                           stderr=subprocess.PIPE, timeout=timeout)
 
 
+BLOCK = 1 << 24
+GRAPH_LINE = re.compile(rb"^[^\n]*\.(?:node|ref)=[^\n]*$", re.M)
+FACE_LINE = re.compile(rb"^font\[[^\n]*\.sfntVersion=", re.M)
+ERROR_LINE = re.compile(rb"^[^\n]*\.error=[^\n]*$", re.M)
+
+
+def line_blocks(output):
+    """Yield blocks of whole lines; dumps reach gigabytes, so never go line by line."""
+    output.seek(0)
+    pending = b""
+    while chunk := output.read(BLOCK):
+        chunk = pending + chunk
+        end = chunk.rfind(b"\n") + 1
+        pending = chunk[end:]
+        if end:
+            yield chunk[:end]
+    if pending:
+        raise ValueError("dumper did not emit a complete font dump")
+
+
 def inspect_dump_file(output) -> dict:
     output.seek(0)
     prefix = b"".join(output.readline() for _ in range(4))
     validate_dump(prefix)
-    output.seek(0)
     digest = hashlib.sha256()
     count = faces = missing = 0
     errors = []
     nodes = set()
-    for line in output:
-        if not line.endswith(b"\n"):
-            raise ValueError("dumper did not emit a complete font dump")
-        if line.endswith(b"=traversal-limit\n"):
+    for block in line_blocks(output):
+        if b"=traversal-limit\n" in block:
             raise ValueError("dump exceeded its traversal bound; not a complete field comparison")
-        # Check UTF-8 without retaining the complete dump.
-        text = line.decode("utf-8").rstrip("\n")
-        if b".node=" in line or b".ref=" in line:
-            path, number = line.rstrip(b"\n").rsplit(b"=", 1)
+        block.decode("utf-8")
+        for match in GRAPH_LINE.finditer(block):
+            path, number = match.group().rsplit(b"=", 1)
             key = (path.split(b".", 1)[0], int(number))
             if path.endswith(b".ref") and key not in nodes:
                 raise ValueError("dump reference has no preceding node")
@@ -125,17 +147,24 @@ def inspect_dump_file(output) -> dict:
                 if key in nodes:
                     raise ValueError("dump reuses a node identifier")
                 nodes.add(key)
-        digest.update(line)
-        count += 1
-        faces += line.startswith(b"font[") and b".sfntVersion=" in line
-        missing += line.endswith(b".lookup=missing\n")
-        if b".error=" in line:
-            errors.append(text)
+        digest.update(block)
+        count += block.count(b"\n")
+        faces += len(FACE_LINE.findall(block))
+        missing += block.count(b".lookup=missing\n")
+        errors.extend(match.group().decode("utf-8") for match in ERROR_LINE.finditer(block))
     return {"dump_sha256": digest.hexdigest(), "lines": count, "faces_ok": faces,
             "missing_table_lookups": missing, "parse_errors": errors}
 
 
 def first_difference_files(left, right):
+    left.seek(0)
+    right.seek(0)
+    while True:
+        a, b = left.read(BLOCK), right.read(BLOCK)
+        if a != b:
+            break
+        if not a:
+            return None
     left.seek(0)
     right.seek(0)
     for number, (a, b) in enumerate(itertools.zip_longest(left, right), 1):
@@ -159,10 +188,17 @@ def show_line(line: bytes | None) -> str:
 
 
 def silk_binary() -> Path:
-    candidates = sorted((ROOT / "build/llvm").glob("*/debug/font_dump"))
+    candidates = sorted((ROOT / "build/llvm").glob(f"*/{PROFILE}/font_dump"))
     if len(candidates) != 1:
         raise ValueError("build font_dump first with scripts/build, or pass --silk-dumper PATH")
     return candidates[0]
+
+
+def process_messages(name: str, result: subprocess.CompletedProcess) -> list[str]:
+    messages = [f"{name}: exit {result.returncode}"]
+    if result.stderr:
+        messages.append(result.stderr.decode("utf-8", errors="backslashreplace").rstrip())
+    return messages
 
 
 def report_process(name: str, result: subprocess.CompletedProcess) -> None:
@@ -193,9 +229,10 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             }, indent=2) + "\n")
         return status
 
-    for font in fonts:
+    def check(font: Path) -> tuple[dict, list[str], Exception | None]:
+        # Runs on a worker thread: collect messages and print them in corpus order.
+        messages = []
         observation = {"font": display(font), "input_sha256": hashlib.sha256(font.read_bytes()).hexdigest()}
-        observations.append(observation)
         try:
             with tempfile.TemporaryFile() as rust_output, tempfile.TemporaryFile() as silk_output:
                 rust = run_dump_file(reference, font, timeout, rust_output)
@@ -203,22 +240,18 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
                 difference = first_difference_files(rust_output, silk_output)
                 if difference is not None:
                     number, left, right = difference
-                    print(f"{display(font)}: first difference at line {number}")
-                    print(f"  Rust: {show_line(left)}")
-                    print(f"  Silk: {show_line(right)}")
+                    messages.append(f"{display(font)}: first difference at line {number}\n"
+                                    f"  Rust: {show_line(left)}\n  Silk: {show_line(right)}")
                     observation["first_difference"] = {"line": number, "rust": show_line(left), "silk": show_line(right)}
                 if rust.returncode != 0 or port.returncode != 0:
-                    report_process("Rust", rust)
-                    report_process("Silk", port)
+                    messages.extend(process_messages("Rust", rust) + process_messages("Silk", port))
                     observation.update(status="failure", rust_exit=rust.returncode, silk_exit=port.returncode)
-                    return finish(2)
+                    return observation, messages, None
                 rust_info = inspect_dump_file(rust_output)
-                port_info = inspect_dump_file(silk_output)
+                port_info = rust_info if difference is None else inspect_dump_file(silk_output)
         except (OSError, subprocess.TimeoutExpired, ValueError) as error:
             observation.update(status="failure", error=str(error))
-            if report is not None:
-                finish(2)
-            raise
+            return observation, messages, error
         observation.update(
             status="match" if difference is None else "difference",
             rust_dump_sha256=rust_info["dump_sha256"],
@@ -226,8 +259,28 @@ def compare(fonts: list[Path], reference: Path, silk: Path, timeout: float,
             lines=rust_info["lines"],
             parse_errors=rust_info["parse_errors"],
         )
-        if difference is not None:
-            return finish(1)
+        return observation, messages, None
+
+    with ThreadPoolExecutor(max_workers=JOBS) as pool:
+        results = list(pool.map(check, fonts))
+    observations.extend(observation for observation, _, _ in results)
+    status = 0
+    for observation, messages, error in results:
+        for message in messages:
+            print(message)
+        if error is not None:
+            # An unusable dump or a timeout is a harness error, not a difference.
+            finish(2)
+            raise error
+        if observation["status"] == "failure":
+            print(f"{observation['font']}: {observation.get('error', 'dumper failed')}", file=sys.stderr)
+            status = 2
+        elif observation["status"] == "difference":
+            status = max(status, 1)
+    if status:
+        failed = sum(item["status"] != "match" for item in observations)
+        print(f"FAIL: {failed} of {len(fonts)} fonts differ or failed")
+        return finish(status)
     print(f"MATCH: {len(fonts)} fonts; format 9, Phase 2 scope")
     return finish(0)
 

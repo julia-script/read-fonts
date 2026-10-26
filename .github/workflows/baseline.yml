@@ -1,0 +1,67 @@
+# Differential checks against the Rust read-fonts the port started from.
+# Too slow for pull requests; run by hand or weekly. The original is a
+# baseline, not a parity target: a difference here is a prompt to look,
+# not automatically a bug.
+name: Baseline comparison
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  READ_FONTS_PROFILE: release
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: ./.github/actions/setup-silk
+      - name: Build release dumpers
+        run: scripts/build --release
+      - name: Rust reference dumper
+        run: |
+          cargo fmt --manifest-path scripts/rust-font-dump/Cargo.toml --check
+          cargo clippy --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust --all-targets -- -D warnings
+          cargo test --locked --manifest-path scripts/rust-font-dump/Cargo.toml --target-dir build/rust
+      - name: Reference corpus
+        run: |
+          scripts/font-list --output build/fonts.txt --report build/corpus-inventory.json
+          scripts/verify-reference --timeout 600 --report build/reference-report.json
+      - name: Corpus dumps
+        if: ${{ !cancelled() }}
+        run: scripts/compare --timeout 600 --report build/parity-report.json
+      - name: Fixtures
+        if: ${{ !cancelled() }}
+        run: |
+          status=0
+          scripts/check-core-fixtures || status=1
+          for kind in table layout variation aat cff model phase2; do
+            scripts/check-$kind-fixtures --report build/$kind-fixtures-report.json || status=1
+          done
+          exit $status
+      - name: Malformed corpus
+        if: ${{ !cancelled() }}
+        run: scripts/check-malformed --report build/malformed-report.json.gz
+      - name: Speed
+        if: ${{ !cancelled() }}
+        run: scripts/benchmark --report build/benchmark-report.json
+      - name: Upload reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-reports
+          path: |
+            build/*.json
+            build/*.json.gz
+            build/malformed-failures/
+          if-no-files-found: ignore
