@@ -178,7 +178,7 @@ effect fn font<'a>(index: u32, font: FontRef<'a>, data:&'a [u8]) -> () ! WriterE
   run extensions_model.dump(&mut path,data,index)
 }
 pub effect fn dump<'a>(data: &'a [u8]) -> () ! WriterError | OutOfMemoryError ? &mut Writer | &mut Allocator {
-  run Format.format("font-dump.version=9\ndump.scope=phase2-model\nfile.length={value}\n", &.{ value: data.length })
+  run Format.format("font-dump.version=9\ndump.scope=all\nfile.length={value}\n", &.{ value: data.length })
   // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
   let file = match move FileRef<'a>.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value

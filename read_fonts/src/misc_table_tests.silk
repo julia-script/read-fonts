@@ -14,7 +14,7 @@ import tables.fvar { Fvar }
 import tables.cpal { Cpal, ColorRecord, PaletteType }
 import tables.svg { Svg }
 import tables.dsig { Dsig, SignatureRecord, SignatureBlockFormat1, PermissionFlags }
-import generated_phase2_fixtures as Fixtures
+import generated_misc_table_fixtures as Fixtures
 import generated_model_fixtures as Models
 import test_font_builder as Builder
 import font_types.lib { Tag, MajorMinor, Fixed, F48Dot16, F2Dot14, NameId, GlyphId, Offset16 }

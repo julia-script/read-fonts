@@ -367,12 +367,12 @@ import model_metrics_tests
 import model_scaled_metrics_tests
 
 import model_glyph_source_tests
-import phase2_core_tests
+import misc_table_tests
 
-import phase2_bitmap_tests
+import bitmap_tests
 
-import phase2_colr_tests
+import colr_tests
 
-import phase2_math_tests
+import math_tests
 
-import model_phase2_tests
+import model_extent_source_tests

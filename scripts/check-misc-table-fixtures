@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare Phase 2 fields, offset arrays and malformed nested table views."""
+"""Compare BASE, bitmap, COLR, MATH and other table fields, offset arrays and malformed nested table views."""
 import argparse
 import ast
 from pathlib import Path
@@ -15,7 +15,7 @@ sfnt, tables = helpers['sfnt'], helpers['tables']
 
 
 def fixtures():
-    source = (ROOT / 'read_fonts/src/generated_phase2_fixtures.silk').read_text()
+    source = (ROOT / 'read_fonts/src/generated_misc_table_fixtures.silk').read_text()
     packed = {name: ast.literal_eval(literal) for name, literal in re.findall(
         r"pub fn (\w+)\(\) -> &'static \[u8\] \{ return (b\"[^\"]*\") \}", source)}
     seeds = {b'MATH': packed['mathTable'], b'BASE': packed['baseTable'], b'meta': packed['simpleMeta'],
@@ -212,7 +212,7 @@ def main():
     parser.add_argument('--silk-dumper', type=Path)
     parser.add_argument('--report', type=Path)
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix='font-phase2-fixtures-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='font-misc-table-fixtures-') as temporary:
         paths = []
         for name, data in fixtures():
             path = Path(temporary) / f'{name}.ttf'

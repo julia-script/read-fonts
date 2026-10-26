@@ -1,7 +1,7 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import model.metrics { GlyphMetrics,GlyphExtents,Scale,ScaleF32,Scale26Dot6,ScaledGlyphMetrics,NoExtents }
 import model.glyph { GlyphSourceOrder }
-import generated_phase2_fixtures as Fixtures
+import generated_misc_table_fixtures as Fixtures
 import generated_model_fixtures as Expected
 import lib { FontRef,FontData,ReadError }
 import font_types.lib { GlyphId,F48Dot16,BoundingBox,F2Dot14 }
@@ -11,8 +11,8 @@ import silk.testing { Testing,AssertionError }
 import silk.allocator { Allocator,OutOfMemoryError }
 import silk.effect { Effect }
 
-effect fn must<T>(result: Result<T,ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T,ReadError>.Success { value } => move value _ => { run Testing.expect(false,"Phase 2 font reads") return Intrinsic.trap("assertion") } } }
-effect fn some<T>(option: Option<T>) -> T ! AssertionError<'static> { return match move option { Option<T>.Some { value } => move value _ => { run Testing.expect(false,"Phase 2 metric exists") return Intrinsic.trap("assertion") } } }
+effect fn must<T>(result: Result<T,ReadError>) -> T ! AssertionError<'static> { return match move result { Result<T,ReadError>.Success { value } => move value _ => { run Testing.expect(false,"font reads") return Intrinsic.trap("assertion") } } }
+effect fn some<T>(option: Option<T>) -> T ! AssertionError<'static> { return match move option { Option<T>.Some { value } => move value _ => { run Testing.expect(false,"metric exists") return Intrinsic.trap("assertion") } } }
 fn none<T>(option: Option<T>) -> bool { return match move option { Option<T>.None => true _ => false } }
 fn same(a: GlyphExtents<F48Dot16>,b: GlyphExtents<F48Dot16>) -> bool { return &a.xBearing == &b.xBearing && &a.yBearing == &b.yBearing && &a.width == &b.width && &a.height == &b.height }
 fn sameF32(a: GlyphExtents<f32>,b: GlyphExtents<f32>) -> bool { return a.xBearing == b.xBearing && a.yBearing == b.yBearing && a.width == b.width && a.height == b.height }

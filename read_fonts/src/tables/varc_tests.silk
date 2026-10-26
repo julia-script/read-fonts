@@ -4,7 +4,7 @@ import font { FontRef,TableDirectory,TableRecords,TableRecord }
 import tables.cmap { Cmap }
 import generated_layout { ConditionFormat1,ConditionFormat2,ConditionFormat3,ConditionFormat4,ConditionFormat5 }
 import generated_variations { PackedDeltaFetcher }
-import generated_phase2_fixtures as VarcFixtures
+import generated_misc_table_fixtures as VarcFixtures
 import test_font_builder as VarcBuilder
 import font_types.cast as VarcCast
 import silk.slice { Slice }
