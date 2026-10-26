@@ -81,3 +81,4 @@ subprocess.run([str(ROOT / "scripts/generate-static")] + (["--check"] if args.ch
 subprocess.run([str(ROOT / "scripts/generate-layout-fixtures")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-variation-fixtures")] + (["--check"] if args.check else []), check=True)
 subprocess.run([str(ROOT / "scripts/generate-aat-fixtures")] + (["--check"] if args.check else []), check=True)
+subprocess.run([str(ROOT / "scripts/generate-ps-data")] + (["--check"] if args.check else []), check=True)

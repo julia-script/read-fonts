@@ -473,3 +473,22 @@ independent equal-sized chains/subtables. Full helper observation rules are in
 `docs/DUMP-FORMAT.md`.
 
 PR #6 is open; remote CI and merge are pending. Milestones 6–9 remain pending.
+
+## Session 22 — 2026-10-26 — milestone 5 merged; CFF foundations
+
+Milestone 5 merged as **PR #6** at `b0d6ac3` after every CI step passed
+([run 40301296730](https://github.com/julia-script/read-fonts/actions/runs/40301296730)).
+Remote validation includes debug/release corpus and AAT fixture comparisons,
+previous focused fixtures, unit tests, generation drift, formatting and Clippy.
+
+The milestone 6 branch generates CFF/CFF2 headers, INDEX objects, charsets and
+FDSelect tables from the pinned grammar. Handwritten code adds both INDEX
+versions, checked object offsets, all charset mappings and iterators, all
+predefined/custom encodings, font-DICT selection and packed standard strings.
+All **31 upstream tests** in these areas pass. The complete suite passes **347
+read_fonts tests**; font_types remains at **64**, for **395 upstream ports**.
+The **98-file** generation drift and library build checks pass.
+
+CFF/CFF2 top-level wrappers, numeric/DICT decoding, charstring evaluation, names
+and bounds differential dumps are still pending. This is an implementation
+checkpoint, not an M6 parity claim. Milestones 7–9 remain pending.

@@ -1,0 +1,22 @@
+// Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
+import font_data { FontData }
+import read { ReadError }
+import font_types.lib { Uint24 }
+import silk.option { Option }
+import silk.result { Result }
+import silk.u8
+import silk.u16
+import silk.u32
+import silk.usize
+pub fn readOffset<'a>(index: usize, count: usize, width: u8, data: FontData<'a>) -> Option<usize> {
+  if index > count { return Option<usize>.None }
+  let position = match move usize.checkedMultiply(index, u8.toUsize(width)) { Option<usize>.Some { value } => value _ => { return Option<usize>.None } }
+  let offset = match width {
+    1 => match move FontData<'a>.readAt<u8>(&data, position) { Result<u8, ReadError>.Success { value } => u8.toUsize(value) _ => { return Option<usize>.None } }
+    2 => match move FontData<'a>.readAt<u16>(&data, position) { Result<u16, ReadError>.Success { value } => u16.toUsize(value) _ => { return Option<usize>.None } }
+    3 => match move FontData<'a>.readAt<Uint24>(&data, position) { Result<Uint24, ReadError>.Success { value } => u32.toUsize(Uint24.toU32(value)) _ => { return Option<usize>.None } }
+    4 => match move FontData<'a>.readAt<u32>(&data, position) { Result<u32, ReadError>.Success { value } => u32.toUsize(value) _ => { return Option<usize>.None } }
+    _ => { return Option<usize>.None }
+  }
+  return usize.checkedSubtract(offset, 1)
+}

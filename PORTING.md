@@ -269,3 +269,18 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   Kerning, feature-name and AAT lookup searches preserve Rust's exact candidate
   sequence, including malformed unsorted input; sorted duplicate keys select
   the rightmost matching entry.
+
+## Milestone 6 (in progress)
+
+- The CFF grammar emits the `ps.cff.v1` and `ps.cff.v2` public facades, matching
+  upstream's ownership of generated types. INDEX offsets stay borrowed and use
+  checked multiplication, subtraction and object ranges. The common `Index.Empty`
+  retains the upstream distinction between an exact empty blob and a parsed
+  zero-count INDEX with a header.
+- `scripts/generate-ps-data` packs all 391 standard strings, predefined encodings
+  and expert charsets from the immutable sources. `Sid.fromI32` explicitly keeps
+  the low 16 bits. Charset iterators yield `CharsetEntry { glyph, sid }` in place
+  of Rust pairs, retain the range cursor, and reject cumulative overflow.
+- Custom encodings expose borrowed scalar/record arrays in named union fields.
+  Supplemental lookup precedence, range saturation, glyph-count boundaries and
+  Rust's exact FDSelect binary-search candidate sequence are preserved.
