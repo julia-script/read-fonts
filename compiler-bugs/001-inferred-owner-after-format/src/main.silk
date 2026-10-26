@@ -1,0 +1,26 @@
+import silk.result { Result }
+import silk.writer { Writer, WriterError }
+import silk.effect { Effect }
+import silk.os_writer { StdoutWriter }
+import silk.format { Format }
+pub struct View<'a> { bytes: &'a [u8], }
+impl<'a> View<'a> {
+pub fn parse(data: &'a [u8]) -> Result<View<'a>, i32> {
+  return Result<Self, i32>.succeed(View { bytes: data })
+}
+}
+
+effect fn show<'a>(data: &'a [u8]) -> () ! WriterError ? &mut Writer {
+  run Format.format("length={value}\n", &.{ value: data.length })
+  let view = match move View.parse(data) {
+    Result<View<'a>, i32>.Success { value } => move value
+    Result<View<'a>, i32>.Failure { error } => { return }
+  }
+  drop view
+}
+pub effect fn main() -> i32 ! WriterError {
+  let mut writer = StdoutWriter.make()
+  let local: [u8; 4] = [1, 2, 3, 4]
+  run show(&local) |> Effect.provideMut<Writer>(&mut writer)
+  return 0
+}
