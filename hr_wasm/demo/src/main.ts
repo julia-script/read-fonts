@@ -26,6 +26,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { ShapingError } from 'harfrust-wasm/effect'
 
+import { builtWithSilk } from './builtWithSilk'
 import {
   EngineResource,
   type EngineService,
@@ -1182,9 +1183,15 @@ const headerView = (h: HtmlBuilder<Message>): Html =>
   h.header(
     [h.Class('flex flex-col gap-2')],
     [
-      h.h1(
-        [h.Class('font-display text-4xl font-medium tracking-tight')],
-        ['Text shaping in Silk'],
+      h.div(
+        [h.Class('flex flex-wrap items-center justify-between gap-4')],
+        [
+          h.h1(
+            [h.Class('font-display text-4xl font-medium tracking-tight')],
+            ['Text shaping in Silk'],
+          ),
+          builtWithSilk(h),
+        ],
       ),
       h.p(
         [h.Class('max-w-3xl text-soft')],

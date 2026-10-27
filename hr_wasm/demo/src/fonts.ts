@@ -40,7 +40,7 @@ export const bundledFonts: ReadonlyArray<BundledFont> = [
     id: 'roboto',
     name: 'Roboto',
     file: 'Roboto-Regular.ttf',
-    sample: 'Official affine office ½ → fi fl ffi',
+    sample: 'Official affine office ½ fi fl ffi',
     note: 'Latin: ligatures, kerning and fractions',
   },
 ]
