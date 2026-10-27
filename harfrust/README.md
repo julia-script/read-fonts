@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 105M | 65.3M | 1.61× |
-| Roboto / English words | 143M | 87.9M | 1.63× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,202M | 789M | 1.52× |
-| Noto Nastaliq Urdu / Persian words | 1,013M | 847M | 1.20× |
-| Noto Sans Devanagari / Hindi words | 339M | 225M | 1.50× |
-| Amiri / Persian Little Prince | 575M | 374M | 1.54× |
-| Source Serif Variable / react-dom | 1,335M | 1,004M | 1.33× |
+| Roboto / English Little Prince | 97.5M | 65.3M | 1.49× |
+| Roboto / English words | 135M | 87.9M | 1.54× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,174M | 789M | 1.49× |
+| Noto Nastaliq Urdu / Persian words | 996M | 847M | 1.18× |
+| Noto Sans Devanagari / Hindi words | 333M | 225M | 1.48× |
+| Amiri / Persian Little Prince | 518M | 374M | 1.39× |
+| Source Serif Variable / react-dom | 1,274M | 1,004M | 1.27× |
 
-The geometric mean is **1.47×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.40×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -199,7 +199,9 @@ read straight from the hmtx bytes; glyph properties are set in place, and normal
 maps single glyphs without copying them and composes only marks that can be the second
 half of a composition. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
-and a lookup's subtables share one search for the second glyph. Plans keep a digest of the glyphs that can follow the first one in each lookup's
+and a lookup's subtables share one search for the second glyph; a format 1 pair set whose digest lacks that glyph is
+rejected before the kerning path is called, and a step group that every glyph enables skips the per-glyph
+feature check. Plans keep a digest of the glyphs that can follow the first one in each lookup's
 ligatures and pairs, so a lookup none of whose second glyphs is in the buffer is skipped
 whole unless the buffer records unsafe-to-concat flags; format 3 contextual subtables add
 their second input or first lookahead coverage to that digest, and format 1 and 2
@@ -214,7 +216,8 @@ steps sharing a lookup ends, and the buffer's glyph digest is kept across shaper
 only reorder glyphs.
 Format 3 rules keep digests of their second input, first backtrack and first lookahead
 coverages, so most failing rules are ruled out from the glyphs on either side of the first
-one before the rest of the rule is read or any coverage is searched. Kerning reads expanded pair
+one before the rest of the rule is read or any coverage is searched. A covered format 3 rule that fails
+this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. Kerning reads expanded pair
 classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
