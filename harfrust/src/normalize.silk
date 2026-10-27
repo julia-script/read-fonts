@@ -20,6 +20,7 @@ pub effect fn normalize<F: FontFuncs>(
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut allSimple = true
+
   // Whether every code point is below U+0300, so none is a mark or a CGJ.
   let mut low = true
   if true {
@@ -225,6 +226,7 @@ pub effect fn normalize<F: FontFuncs>(
     drop run trace.message(font, &buffer.*, "end reorder")
   }
   let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+
   // Decomposition never produces a CGJ, so text below U+0300 has none.
   i = 1
   if low {
