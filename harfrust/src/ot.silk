@@ -49,8 +49,12 @@ struct Context<'a, 's> {
   positions: [usize; 64],
   classTables: &'s [ClassTable],
   classValues: &'s [u16],
+  /// Contextual input positions, 64 per lookup nesting depth.
+  positionStack: List<usize>,
   glyphClasses: Classes<'a, 's>,
   markAttachClasses: Classes<'a, 's>,
+  /// GDEF's variation store, read once; None without variation coordinates, as in harfrust.
+  varStore: Option<ItemVariationStore<'a>>,
 }
 
 /// A class definition, expanded to one class per glyph when the plan holds it.
@@ -186,10 +190,12 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     shaper: buffer.shaper,
     restrictSyllable: false,
     positions: [0; 64],
+    positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
+    varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
   }
   let mut step: usize = 0
   let mut stage: u32 = 0
@@ -423,10 +429,12 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     shaper: 0,
     restrictSyllable: false,
     positions: [0; 64],
+    positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
+    varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
   }
   let mut i: usize = 0
   while i < steps.length {
@@ -1374,8 +1382,12 @@ effect fn contextual<F: FontFuncs>(
     count = u16.toUsize(View.u16(&ruleSet, 0))
   }
 
-  // Matched input positions; each rule overwrites the entries it uses.
-  let mut positions: [usize; 64] = [0; 64]
+  // Matched input positions live in this nesting depth's slot of the context's scratch list, so
+  // each application neither zeroes nor copies a 64-entry array.
+  let base = depth * 64
+  while List<usize>.length(&context.positionStack) < base + 64 {
+    run List<usize>.append(&mut context.positionStack, 0)
+  }
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
     context.budget = context.budget - 1
@@ -1424,7 +1436,7 @@ effect fn contextual<F: FontFuncs>(
       ruleIndex = ruleIndex + 1
       continue
     }
-    positions[0] = at
+    List<usize>.set(&mut context.positionStack, base + 0, at)
     let mut n: usize = 1
     let mut cursor = at
     while n < inputCount {
@@ -1457,7 +1469,7 @@ effect fn contextual<F: FontFuncs>(
         || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
         break
       }
-      positions[n] = cursor
+      List<usize>.set(&mut context.positionStack, base + n, cursor)
       n = n + 1
     }
     if n != inputCount
@@ -1520,8 +1532,9 @@ effect fn contextual<F: FontFuncs>(
     let mut outputCursor = at
     while action < actionCount && buffer.successful {
       let sequence = u16.toUsize(View.u16(&rule, actionPos + action * 4))
-      if sequence < matchedCount && positions[sequence] < Buffer.len(&buffer.*) {
-        let atAction = positions[sequence]
+      if sequence < matchedCount
+        && List<usize>.get(&context.positionStack, base + sequence) < Buffer.len(&buffer.*) {
+        let atAction = List<usize>.get(&context.positionStack, base + sequence)
         let mut moveCost = usize.saturatingSubtract(atAction, outputCursor)
         if outputCursor > atAction {
           moveCost = outputCursor - atAction
@@ -1569,11 +1582,13 @@ effect fn contextual<F: FontFuncs>(
             let mut j = matchedCount
             while j > sequence + 1 {
               j = j - 1
-              positions[j + delta] = positions[j] + delta
+              let moved = List<usize>.get(&context.positionStack, base + j) + delta
+              List<usize>.set(&mut context.positionStack, base + j + delta, moved)
             }
             j = sequence + 1
             while j <= sequence + delta {
-              positions[j] = positions[j - 1] + 1
+              let moved = List<usize>.get(&context.positionStack, base + j - 1) + 1
+              List<usize>.set(&mut context.positionStack, base + j, moved)
               j = j + 1
             }
             matchedCount = matchedCount + delta
@@ -1584,7 +1599,11 @@ effect fn contextual<F: FontFuncs>(
             }
             let mut j = sequence + 1
             while j + delta < matchedCount {
-              positions[j] = usize.saturatingSubtract(positions[j + delta], delta)
+              let moved = usize.saturatingSubtract(
+                List<usize>.get(&context.positionStack, base + j + delta),
+                delta,
+              )
+              List<usize>.set(&mut context.positionStack, base + j, moved)
               j = j + 1
             }
             matchedCount = matchedCount - delta
@@ -1618,14 +1637,23 @@ fn valueSize(format: u16) -> usize {
   return n * 2
 }
 
+fn readVarStore<'a>(gdef: View<'a>, coordCount: usize) -> Option<ItemVariationStore<'a>> {
+  if coordCount == 0 {
+    return Option<ItemVariationStore<'a>>.None
+  }
+  return match move ItemVariationStore.read(View.gdefVarStore(&gdef).data) {
+    Result<ItemVariationStore<'a>, ReadError>.Success { value } => Option<
+      ItemVariationStore<'a>
+    >.some(value)
+    _ => Option<ItemVariationStore<'a>>.None
+  }
+}
+
 fn deviceDelta(context: &Context, device: View) -> f32 {
   if View.u16(&device, 4) != 0x8000 {
     return 0.0
   }
-  let data = View.gdefVarStore(&context.gdef)
-  if let Result<ItemVariationStore, ReadError>.Success { value: store } = ItemVariationStore.read(
-    data.data,
-  ) {
+  if let Option<ItemVariationStore>.Some { value: store } = &context.varStore {
     let index = DeltaSetIndex { outer: View.u16(&device, 0), inner: View.u16(&device, 2) }
     if let Option<F48Dot16>.Some { value } = ItemVariationStore.computeDelta(
       &store,
@@ -1646,45 +1674,72 @@ fn adjustValue(
   pos: usize,
   format: u16,
 ) -> () {
-  if offset(pos, 1, valueSize(format)) > View.len(&table) {
+  if offset(pos, 1, valueSize(format)) > View.len(&table) || at >= Buffer.len(&buffer.*) {
     return
   }
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
+  let horizontal = Direction.isHorizontal(buffer.direction)
+  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
   let mut cursor = pos
-  let mut bit: u16 = 1
-  while bit <= 128 {
-    if (format & bit) != 0 {
-      let mut value: i32 = 0
-      if bit <= 8 {
-        value = i16.toI32(View.i16(&table, cursor))
-      }
-      let mut scaledX: i32 = 0
-      let mut scaledY: i32 = 0
-      if bit <= 8 {
-        scaledX = Scale.x(&context.scale, value)
-        scaledY = Scale.y(&context.scale, value)
-      } else {
-        let delta = deviceDelta(context, View.offset16(&table, cursor))
-        scaledX = Scale.xf(&context.scale, delta)
-        scaledY = Scale.yf(&context.scale, delta)
-      }
-      if bit == 1 || bit == 16 {
-        item.position.xOffset = add(item.position.xOffset, scaledX)
-      }
-      if bit == 2 || bit == 32 {
-        item.position.yOffset = add(item.position.yOffset, scaledY)
-      }
-      if (bit == 4 || bit == 64) && Direction.isHorizontal(buffer.direction) {
-        item.position.xAdvance = add(item.position.xAdvance, scaledX)
-      }
-      if (bit == 8 || bit == 128) && !Direction.isHorizontal(buffer.direction) {
-        item.position.yAdvance = sub(item.position.yAdvance, scaledY)
-      }
-      cursor = cursor + 2
-    }
-    bit = bit * 2
+  if (format & 1) != 0 {
+    let value = i16.toI32(View.i16(&table, cursor))
+    glyphs[at].position.xOffset = add(glyphs[at].position.xOffset, Scale.x(&context.scale, value))
+    cursor = cursor + 2
   }
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  if (format & 2) != 0 {
+    let value = i16.toI32(View.i16(&table, cursor))
+    glyphs[at].position.yOffset = add(glyphs[at].position.yOffset, Scale.y(&context.scale, value))
+    cursor = cursor + 2
+  }
+  if (format & 4) != 0 {
+    if horizontal {
+      let value = i16.toI32(View.i16(&table, cursor))
+      glyphs[at].position.xAdvance = add(
+        glyphs[at].position.xAdvance,
+        Scale.x(&context.scale, value),
+      )
+    }
+    cursor = cursor + 2
+  }
+  if (format & 8) != 0 {
+    if !horizontal {
+      let value = i16.toI32(View.i16(&table, cursor))
+      glyphs[at].position.yAdvance = sub(
+        glyphs[at].position.yAdvance,
+        Scale.y(&context.scale, value),
+      )
+    }
+    cursor = cursor + 2
+  }
+  if (format & 240) == 0 {
+    return
+  }
+  if (format & 16) != 0 {
+    let delta = deviceDelta(context, View.offset16(&table, cursor))
+    glyphs[at].position.xOffset = add(glyphs[at].position.xOffset, Scale.xf(&context.scale, delta))
+    cursor = cursor + 2
+  }
+  if (format & 32) != 0 {
+    let delta = deviceDelta(context, View.offset16(&table, cursor))
+    glyphs[at].position.yOffset = add(glyphs[at].position.yOffset, Scale.yf(&context.scale, delta))
+    cursor = cursor + 2
+  }
+  if (format & 64) != 0 {
+    if horizontal {
+      let delta = deviceDelta(context, View.offset16(&table, cursor))
+      glyphs[at].position.xAdvance = add(
+        glyphs[at].position.xAdvance,
+        Scale.xf(&context.scale, delta),
+      )
+    }
+    cursor = cursor + 2
+  }
+  if (format & 128) != 0 && !horizontal {
+    let delta = deviceDelta(context, View.offset16(&table, cursor))
+    glyphs[at].position.yAdvance = sub(
+      glyphs[at].position.yAdvance,
+      Scale.yf(&context.scale, delta),
+    )
+  }
 }
 
 struct Anchor {
@@ -1825,13 +1880,13 @@ effect fn position<F: FontFuncs>(
     drop run trace.pair(font, &buffer.*, "try kerning glyphs at ", at, ",", second, "")
     adjustValue(context, &mut buffer, at, values, pos, vf1)
     adjustValue(context, &mut buffer, second, values, pos + size1, vf2)
-    if hasValue(context, values, pos, vf1, buffer.direction)
-      || hasValue(context, values, pos + size1, vf2, buffer.direction) {
+    let kerned = hasValue(context, values, pos, vf1, buffer.direction)
+      || hasValue(context, values, pos + size1, vf2, buffer.direction)
+    if kerned {
       Buffer.unsafeToBreak(&mut buffer, at, second + 1)
     }
     Buffer.unsafeToConcat(&mut buffer, at, second + 1)
-    if hasValue(context, values, pos, vf1, buffer.direction)
-      || hasValue(context, values, pos + size1, vf2, buffer.direction) {
+    if kerned {
       drop run trace.pair(font, &buffer.*, "kerned glyphs at ", at, ",", second, "")
     }
     drop run trace.pair(font, &buffer.*, "tried kerning glyphs at ", at, ",", second, "")
@@ -2125,21 +2180,37 @@ fn crossOffset(buffer: &Buffer, at: usize) -> i32 {
 }
 
 fn hasValue(context: &Context, table: View, pos: usize, format: u16, direction: Direction) -> bool {
+  let horizontal = Direction.isHorizontal(direction)
   let mut at = pos
-  let mut bit: u16 = 1
-  while bit <= 128 {
+  if (format & 1) != 0 {
+    if View.i16(&table, at) != 0 {
+      return true
+    }
+    at = at + 2
+  }
+  if (format & 2) != 0 {
+    if View.i16(&table, at) != 0 {
+      return true
+    }
+    at = at + 2
+  }
+  if (format & 4) != 0 {
+    if horizontal && View.i16(&table, at) != 0 {
+      return true
+    }
+    at = at + 2
+  }
+  if (format & 8) != 0 {
+    if !horizontal && View.i16(&table, at) != 0 {
+      return true
+    }
+    at = at + 2
+  }
+  let mut bit: u16 = 16
+  while bit <= 128 && (format & 240) != 0 {
     if (format & bit) != 0 {
-      let mut value = i16.toF32(View.i16(&table, at))
-      if bit > 8 {
-        value = deviceDelta(context, View.offset16(&table, at))
-      }
-      if (bit == 4 || bit == 64) && !Direction.isHorizontal(direction) {
-        value = 0.0
-      }
-      if (bit == 8 || bit == 128) && Direction.isHorizontal(direction) {
-        value = 0.0
-      }
-      if value != 0.0 {
+      let applies = (bit != 64 || horizontal) && (bit != 128 || !horizontal)
+      if applies && deviceDelta(context, View.offset16(&table, at)) != 0.0 {
         return true
       }
       at = at + 2
