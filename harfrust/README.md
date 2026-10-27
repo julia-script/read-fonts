@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 339M | 65.3M | 5.19× |
-| Roboto / English words | 489M | 87.9M | 5.56× |
-| Noto Nastaliq Urdu / Persian Little Prince | 2,063M | 789M | 2.61× |
-| Noto Nastaliq Urdu / Persian words | 2,057M | 847M | 2.43× |
-| Noto Sans Devanagari / Hindi words | 866M | 225M | 3.84× |
-| Amiri / Persian Little Prince | 1,022M | 374M | 2.73× |
-| Source Serif Variable / react-dom | 4,057M | 1,004M | 4.04× |
+| Roboto / English Little Prince | 326M | 65.3M | 4.99× |
+| Roboto / English words | 476M | 87.9M | 5.41× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,997M | 789M | 2.53× |
+| Noto Nastaliq Urdu / Persian words | 1,989M | 847M | 2.35× |
+| Noto Sans Devanagari / Hindi words | 850M | 225M | 3.78× |
+| Amiri / Persian Little Prince | 985M | 374M | 2.64× |
+| Source Serif Variable / react-dom | 3,937M | 1,004M | 3.92× |
 
-The geometric mean is **3.60×**, down from 11.25× for the initial port. Plans
+The geometric mean is **3.49×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -168,7 +168,8 @@ ligature set's second components, so a set none of whose ligatures can match is
 rejected without walking it; pair sets keep a digest of their second glyphs, and
 kerning-only pair subtables adjust the advance directly; steps whose features
 have no per-glyph conditions skip those checks; context matching compares each
-glyph with its expected value once. The remaining gap is mostly per-glyph table walking that harfrust
+glyph with its expected value once, and the common GDEF class checks for skipped
+glyphs are inlined into every glyph walk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences

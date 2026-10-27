@@ -576,13 +576,22 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
   return result
 }
 
-fn ignored(context: &Context, lookup: Lookup, glyph: &Glyph) -> bool {
-  if glyph.glyphClass == 1 && (lookup.flags & 2) != 0 {
-    return true
+/// Whether `lookup` skips `glyph` by its GDEF class. The class checks are inlined into every
+/// glyph walk; marks filtered by a set or attachment class take `markIgnored`.
+fn ignored(context: &Context, lookup: Lookup, glyph: &Glyph) -> bool with Intrinsic.inlineAlways() {
+  if glyph.glyphClass == 1 {
+    return (lookup.flags & 2) != 0
   }
-  if glyph.glyphClass == 2 && (lookup.flags & 4) != 0 {
-    return true
+  if glyph.glyphClass == 2 {
+    return (lookup.flags & 4) != 0
   }
+  if glyph.glyphClass == 3 && (lookup.flags & 0xff18) != 0 {
+    return markIgnored(context, lookup, glyph)
+  }
+  return false
+}
+
+fn markIgnored(context: &Context, lookup: Lookup, glyph: &Glyph) -> bool {
   if glyph.glyphClass == 3 {
     if (lookup.flags & 8) != 0 {
       return true
