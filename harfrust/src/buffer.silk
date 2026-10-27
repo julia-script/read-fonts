@@ -330,6 +330,55 @@ impl Buffer {
     }
   }
 
+  /// Makes room for `count` copies of `item` at `at`, moving the later glyphs right in one pass.
+  /// `List.insert` moves the tail once per glyph and one element at a time.
+  pub effect fn insertCopies(self: &mut Self, at: usize, count: usize, item: Glyph) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let length = Buffer.len(&self.*)
+    let mut n: usize = 0
+    while n < count {
+      run List<Glyph>.append(&mut self.glyphs, item)
+      n = n + 1
+    }
+    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+    let mut i = length
+    while i > at {
+      i = i - 1
+      slots[i + count] = slots[i]
+    }
+    n = 0
+    while n < count {
+      slots[at + n] = item
+      n = n + 1
+    }
+  }
+
+  /// Removes the glyphs at `positions`, which ascend, moving the later glyphs left in one pass.
+  pub fn removeSorted(self: &mut Self, positions: &[usize]) -> () {
+    if positions.length == 0 {
+      return
+    }
+    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+    let length = slots.length
+    let mut write = positions[0]
+    let mut k: usize = 0
+    while k < positions.length {
+      let mut read = positions[k] + 1
+      k = k + 1
+      let mut end = length
+      if k < positions.length {
+        end = positions[k]
+      }
+      while read < end {
+        slots[write] = slots[read]
+        write = write + 1
+        read = read + 1
+      }
+    }
+    List<Glyph>.truncate(&mut self.glyphs, write)
+  }
+
   pub fn deleteGlyph(self: &mut Self, at: usize) -> () {
     if at >= Buffer.len(&self.*) {
       return

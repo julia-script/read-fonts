@@ -945,6 +945,7 @@ effect fn substitute<F: FontFuncs>(
       }
       run saveInput(&mut context, &buffer.*)
       drop run trace.indexed(font, &buffer.*, "multiplying glyph at ", at, "")
+      run Buffer.insertCopies(&mut buffer, at + 1, count - 1, glyph)
       let mut i: usize = 0
       while i < count {
         let mut item = glyph
@@ -955,11 +956,7 @@ effect fn substitute<F: FontFuncs>(
         if View.len(&View.gdefList(&context.gdef, 0)) == 0 && glyph.glyphClass == 2 {
           item.glyphClass = 1
         }
-        if i == 0 {
-          List<Glyph>.set(&mut buffer.glyphs, at, item)
-        } else {
-          run List<Glyph>.insert(&mut buffer.glyphs, at + i, item)
-        }
+        List<Glyph>.set(&mut buffer.glyphs, at + i, item)
         setGlyph(
           &context.*,
           &mut buffer,
@@ -1188,11 +1185,7 @@ effect fn substitute<F: FontFuncs>(
             p = p + 1
           }
         }
-        n = components
-        while n > 1 {
-          n = n - 1
-          drop List<Glyph>.remove(&mut buffer.glyphs, context.positions[n])
-        }
+        Buffer.removeSorted(&mut buffer, Slice.view(&context.positions, 1, components - 1))
         drop run trace.indexed(font, &buffer.*, "ligated glyph at ", at, "")
         return yes(at + 1)
       }
