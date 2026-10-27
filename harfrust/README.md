@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 177M | 65.3M | 2.71× |
-| Roboto / English words | 245M | 87.9M | 2.79× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,528M | 789M | 1.94× |
+| Roboto / English Little Prince | 175M | 65.3M | 2.68× |
+| Roboto / English words | 242M | 87.9M | 2.76× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,529M | 789M | 1.94× |
 | Noto Nastaliq Urdu / Persian words | 1,446M | 847M | 1.71× |
-| Noto Sans Devanagari / Hindi words | 494M | 225M | 2.19× |
+| Noto Sans Devanagari / Hindi words | 494M | 225M | 2.20× |
 | Amiri / Persian Little Prince | 822M | 374M | 2.20× |
-| Source Serif Variable / react-dom | 1,827M | 1,004M | 1.82× |
+| Source Serif Variable / react-dom | 1,796M | 1,004M | 1.79× |
 
-The geometric mean is **2.16×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.15×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -192,7 +192,9 @@ pairs; per-call scratch lists are sized once instead of grown glyph by glyph; te
 the right-to-left script check is a generated match. Format 4 character maps
 are searched through arrays located once per font. Normalization maps a code point
 that stays one glyph in place, so Indic text is not copied to a new list. Composition first checks
-that the mark is the second half of some composition. Kerning-only 16-bit pair subtables
+that the mark is the second half of some composition. Text entirely below U+0300 skips
+the mark scans in normalization, and flag propagation skips flagless single-glyph
+clusters. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
 and a lookup's subtables share one search for the second glyph. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.

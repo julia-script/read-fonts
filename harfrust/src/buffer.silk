@@ -594,6 +594,13 @@ impl Buffer {
     let mut i: usize = 0
     while i < glyphs.length {
       let cluster = glyphs[i].info.cluster
+
+      // A glyph without flags that is alone in its cluster stays as it is.
+      if glyphs[i].info.flags == 0
+        && (i + 1 == glyphs.length || glyphs[i + 1].info.cluster != cluster) {
+        i = i + 1
+        continue
+      }
       let mut end = i + 1
       let mut flags = glyphs[i].info.flags
       while end < glyphs.length && glyphs[end].info.cluster == cluster {
