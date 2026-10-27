@@ -2,7 +2,6 @@
 // Copyright 2026 the fontations-silk Authors. Licensed under Apache-2.0 or MIT.
 import silk.ownership { Copy }
 
-// compiler-bugs/005: constrain Copy on the conformance, not the product.
 pub struct ReadArgs2<A, B> {
   pub first: A,
   pub second: B,

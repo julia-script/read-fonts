@@ -38,6 +38,10 @@ pub fn tableTag<T: TopLevelTable>() -> Tag {
 }
 
 pub interface TableProvider<'a> {
+  fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> {
+    return readTable<T, Self>(self, tableTag<T>())
+  }
+
   fn varc(self: &Self) -> Result<Varc<'a>, ReadError> {
     return readTable<Varc<'a>, Self>(self, Varc.tag())
   }
@@ -601,13 +605,6 @@ fn isMissingTable(error: ReadError, expected: Tag) -> bool {
     ReadError.TableIsMissing { tag } => &tag == &expected
     _ => false
   }
-}
-
-// compiler-bugs/004: a free generic helper avoids an unsupported generic default operation.
-pub fn expectTable<'a, T: TopLevelTable + FontRead<'a, ()>, P: TableProvider<'a>>(
-  provider: &P,
-) -> Result<T, ReadError> {
-  return readTable<T, P>(provider, tableTag<T>())
 }
 
 pub struct GlyfLoca<'a> {

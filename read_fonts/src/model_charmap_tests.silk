@@ -641,9 +641,8 @@ impl TableCallback for CountedFont {
     ! OutOfMemoryError
     ? &mut Allocator {
     // The counter lives in snapshotBody until the callback snapshot is complete.
-    if &tag == &Tag.new(&[99, 109, 97, 112]) { // compiler-bugs/008-drop-generic-unsafe
-      let previous = unsafe Atomic.fetchAdd<u32>(self.reads, 1, MemoryOrder.Relaxed)
-      drop previous
+    if &tag == &Tag.new(&[99, 109, 97, 112]) {
+      drop unsafe Atomic.fetchAdd<u32>(self.reads, 1, MemoryOrder.Relaxed)
     }
     if let Result<FontRef, ReadError>.Success { value: font } = FontRef.new(vazirmatn()) {
       if let Option<FontData>.Some { value } = FontRef.tableData(&font, tag) {

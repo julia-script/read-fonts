@@ -231,7 +231,6 @@ impl<'a, T> Lookup<'a, T> {
   }
 }
 
-// compiler-bugs/006: consumers retain the FontRead bound on T.
 pub interface ExtensionLookup<'a, T> {
   fn extension(self: &Self) -> Result<T, ReadError>
 }

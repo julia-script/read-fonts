@@ -68,7 +68,6 @@ impl<T> Nullable<T> {
   }
 }
 
-// compiler-bugs/002: spell the generic provider as Self in operation signatures.
 impl<T: Scalar + OffsetValue + Copy> Scalar for Nullable<T> {
   fn rawByteLen() -> usize {
     return rawByteLen<T>()

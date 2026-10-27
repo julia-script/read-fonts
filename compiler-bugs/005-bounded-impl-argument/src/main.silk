@@ -1,9 +1,0 @@
-import silk.ownership { Copy }
-struct Flag { value: u16, }
-impl Copy for Flag {}
-struct Args<A: Copy, B: Copy> { first: A, second: B, }
-impl<A: Copy, B: Copy> Copy for Args<A, B> {}
-interface Read<'a, A> { fn read(data: &'a [u8], args: A) -> Self }
-struct Table<'a> { data: &'a [u8], }
-impl<'a> Read<'a, Args<Flag, Flag>> for Table<'a> { fn read(data: &'a [u8], args: Args<Flag, Flag>) -> Self { return Table<'a> { data: data } } }
-pub fn main() -> i32 { return 0 }
