@@ -1,18 +1,29 @@
 //! Fixed-capacity output buffering for large differential dumps.
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.layout { Layout }
 import silk.effect { Effect }
+import silk.raw_buffer { RawBuffer }
 import silk.writer { Writer, WriterError }
 import silk.os_writer { StdoutWriter }
-import silk.slice { Slice }
+
+const CAPACITY: usize = 65536
 
 pub struct BufferedStdout {
   output: StdoutWriter,
-  buffer: [u8; 65536],
+  buffer: Intrinsic.RawBuffer<u8>,
   length: usize,
 }
 
 impl BufferedStdout {
-  pub fn make() -> Self {
-    return Self { output: StdoutWriter.make(), buffer: [0; 65536], length: 0 }
+  pub effect fn make() -> Self
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let allocation = run Allocator.allocate(Layout { bytes: CAPACITY, alignment: 1 })
+
+    // The allocation was requested for CAPACITY bytes with byte alignment.
+    let mut buffer = unsafe RawBuffer.from<u8>(move allocation, CAPACITY)
+    RawBuffer.fill(&mut buffer, 0, CAPACITY, 0)
+    return Self { output: StdoutWriter.make(), buffer: move buffer, length: 0 }
   }
 
   effect fn flushOutput(self: &mut Self) -> ()
@@ -20,24 +31,26 @@ impl BufferedStdout {
     if self.length == 0 {
       return
     }
-    run Writer.writeAll(Slice.view<u8>(&self.buffer, 0, self.length))
+
+    // The first `length` slots were filled by `make` and `write`.
+    run Writer.writeAll(unsafe RawBuffer.view<u8>(&self.buffer, 0, self.length))
       |> Effect.provideMut<Writer>(&mut self.output)
     self.length = 0
   }
 
   effect fn write(self: &mut Self, value: &[u8]) -> ()
     ! WriterError {
-    if value.length > self.buffer.length - self.length {
+    if value.length > CAPACITY - self.length {
       run BufferedStdout.flushOutput(&mut self)
+      if value.length > CAPACITY {
+        run Writer.writeAll(value) |> Effect.provideMut<Writer>(&mut self.output)
+        return
+      }
     }
-    if value.length > self.buffer.length {
-      run Writer.writeAll(value) |> Effect.provideMut<Writer>(&mut self.output)
-      return
-    }
-    let mut i: usize = 0
-    while i < value.length {
-      self.buffer[self.length + i] = value[i]
-      i = i + 1
+
+    // In bounds by the checks above. Bytes have no drop, so overwritten slots leak nothing.
+    unsafe {
+      RawBuffer.copy<u8>(&mut self.buffer, self.length, value, value.length)
     }
     self.length = self.length + value.length
   }

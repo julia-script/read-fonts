@@ -21,18 +21,17 @@ import font_types.lib { Fixed, F2Dot14, BoundingBox, Matrix, GlyphId, Tag }
 import generated_dump_cff
 import generated_dump_cff2
 import generated_dump_variations
-import dump_support { DumpPath, scalar, absent, readError, bytes }
+import dump_support { DumpPath, DumpValue, scalar, absent, readError, bytes }
 import silk.option { Option }
 import silk.result { Result }
 import silk.writer { Writer, WriterError }
-import silk.format { Display }
 import silk.string { String }
 import silk.slice { Slice }
 import silk.u16
 import silk.u32
 import silk.usize
 
-effect fn field<T: Display>(path: &mut DumpPath, name: string<'static>, value: T) -> ()
+effect fn field<T: DumpValue>(path: &mut DumpPath, name: string<'static>, value: T) -> ()
   ! WriterError
   ? &mut Writer {
   DumpPath.push(&mut path, name)
@@ -40,7 +39,7 @@ effect fn field<T: Display>(path: &mut DumpPath, name: string<'static>, value: T
   DumpPath.pop(&mut path)
 }
 
-effect fn optional<T: Display>(path: &DumpPath, input: Option<T>) -> ()
+effect fn optional<T: DumpValue>(path: &DumpPath, input: Option<T>) -> ()
   ! WriterError
   ? &mut Writer {
   match move input {
@@ -49,7 +48,7 @@ effect fn optional<T: Display>(path: &DumpPath, input: Option<T>) -> ()
   }
 }
 
-effect fn optionalField<T: Display>(
+effect fn optionalField<T: DumpValue>(
   path: &mut DumpPath,
   name: string<'static>,
   value: Option<T>,

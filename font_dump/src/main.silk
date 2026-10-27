@@ -47,7 +47,7 @@ effect fn process() -> i32
     let path = run pathFromArgument(&base, Bytes.asSlice(&value))
     let mut files = run OsFileSystem.make("/")
     let data = run FileSystem.readFile(&path) |> Effect.provideMut<FileSystem>(&mut files)
-    let mut buffered = BufferedStdout.make()
+    let mut buffered = run BufferedStdout.make()
     run dump(Bytes.asSlice(&data)) |> Effect.provideMut<Writer>(&mut buffered)
     run Writer.flush() |> Effect.provideMut<Writer>(&mut buffered)
     return 0

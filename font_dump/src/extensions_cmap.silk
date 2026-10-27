@@ -13,10 +13,9 @@ import read_fonts.tables.cmap {
   MapVariant
 }
 import font_types.lib { GlyphId }
-import dump_support { DumpPath, scalar, absent }
+import dump_support { DumpPath, scalar, absent, integers }
 import silk.option { Option }
 import silk.writer { Writer, WriterError }
-import silk.format { Format }
 import silk.u32
 
 fn mapped(value: Option<GlyphId>) -> i64 {
@@ -111,15 +110,12 @@ pub effect fn dumpSubtable<'a>(path: &mut DumpPath, table: CmapSubtable<'a>) -> 
       }
       Option<CmapMapping>.Some { value } => {
         DumpPath.setIndex(&mut path, i)
-        run DumpPath.write(&path)
-        run Format.format(
-          "={cp},{gid},{lookup}\n",
-          &.{
-            cp: value.codepoint,
-            gid: GlyphId.toU32(value.glyph),
-            lookup: mapped(CmapSubtable<'a>.mapCodepoint(&table, value.codepoint)),
-          },
-        )
+        let fields = [
+          u32.toI64(value.codepoint),
+          u32.toI64(GlyphId.toU32(value.glyph)),
+          mapped(CmapSubtable<'a>.mapCodepoint(&table, value.codepoint)),
+        ]
+        run integers(&path, &fields)
         i = i + 1
       }
     }
@@ -149,16 +145,13 @@ effect fn dumpUvs<'a>(path: &mut DumpPath, table: UvsSubtable<'a>) -> ()
       }
       Option<UvsMappingEntry>.Some { value } => {
         DumpPath.setIndex(&mut path, i)
-        run DumpPath.write(&path)
-        run Format.format(
-          "={cp},{selector},{mapping},{lookup}\n",
-          &.{
-            cp: value.codepoint,
-            selector: value.selector,
-            mapping: variant(Option<MapVariant>.some(value.mapping)),
-            lookup: variant(UvsSubtable<'a>.mapVariant(&table, value.codepoint, value.selector)),
-          },
-        )
+        let fields = [
+          u32.toI64(value.codepoint),
+          u32.toI64(value.selector),
+          variant(Option<MapVariant>.some(value.mapping)),
+          variant(UvsSubtable<'a>.mapVariant(&table, value.codepoint, value.selector)),
+        ]
+        run integers(&path, &fields)
         i = i + 1
       }
     }
