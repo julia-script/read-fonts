@@ -141,6 +141,12 @@ impl Glyph {
     }
   }
 
+  fn setAscii(self: &mut Self, cp: u32, cluster: u32) -> () with Intrinsic.inlineAlways() {
+    self.info.glyphId = cp
+    self.info.cluster = cluster
+    self.codepoint = cp
+  }
+
   fn withProperties(cp: u32, cluster: u32) -> Self {
     let hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
       || (cp >= 0xe0020 && cp <= 0xe007f)
@@ -353,6 +359,16 @@ impl Buffer {
     let base = List<Glyph>.length(&self.glyphs)
     run List<Glyph>.appendRepeated(&mut self.glyphs, Glyph.new(0, 0), count)
     let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+    if count == bytes.length && count <= 0xffffffff {
+      // ASCII only: every byte is one scalar below U+0080, and the byte offset is also
+      // the character index, so both cluster kinds agree.
+      let mut i: usize = 0
+      while i < count {
+        Glyph.setAscii(&mut slots[base + i], u8.toU32(bytes[i]), usize.toU32(i))
+        i = i + 1
+      }
+      return
+    }
     let mut k = base
     let mut offset: usize = 0
     let mut index: u32 = 0

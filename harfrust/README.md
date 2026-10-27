@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 113M | 65.3M | 1.73× |
-| Roboto / English words | 155M | 87.9M | 1.76× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,524M | 789M | 1.93× |
-| Noto Nastaliq Urdu / Persian words | 1,448M | 847M | 1.71× |
-| Noto Sans Devanagari / Hindi words | 399M | 225M | 1.77× |
-| Amiri / Persian Little Prince | 705M | 374M | 1.89× |
-| Source Serif Variable / react-dom | 1,452M | 1,004M | 1.45× |
+| Roboto / English Little Prince | 112M | 65.3M | 1.71× |
+| Roboto / English words | 153M | 87.9M | 1.74× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,523M | 789M | 1.93× |
+| Noto Nastaliq Urdu / Persian words | 1,447M | 847M | 1.71× |
+| Noto Sans Devanagari / Hindi words | 398M | 225M | 1.77× |
+| Amiri / Persian Little Prince | 704M | 374M | 1.88× |
+| Source Serif Variable / react-dom | 1,427M | 1,004M | 1.42× |
 
-The geometric mean is **1.74×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.73×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -194,7 +194,8 @@ are searched through arrays located once per font. Normalization maps a code poi
 that stays one glyph in place, so Indic text is not copied to a new list. Composition first checks
 that the mark is the second half of some composition. Text entirely below U+0300 skips
 the mark scans in normalization, and flag propagation skips flagless single-glyph
-clusters. Kerning-only 16-bit pair subtables
+clusters; ASCII text fills the buffer in a plain loop, and horizontal advances are
+read straight from the hmtx bytes. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
 and a lookup's subtables share one search for the second glyph. Plans keep a digest of the glyphs that can follow the first one in each lookup's
 ligatures and pairs, so a lookup none of whose second glyphs is in the buffer is skipped
