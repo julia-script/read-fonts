@@ -10,6 +10,7 @@ import read_fonts.model.metrics {
 import view { View }
 import generated_unicode as Data
 import silk.u32
+import silk.u64
 import scale { Scale, sub }
 import read_fonts.lib { FontRef, FontData, ReadError, TableProvider }
 import read_fonts.model.charmap { Charmap }
@@ -186,6 +187,14 @@ pub struct DefaultFontFuncs {}
 impl FontFuncs for DefaultFontFuncs {
   fn isDefault(self: &Self) -> bool {
     return true
+  }
+
+  fn nominalGlyphs(
+    self: &Self,
+    font: &ConfiguredShaper<Self>,
+    glyphs: &mut NominalGlyphs,
+  ) -> usize {
+    return ConfiguredShaper.defaultNominalGlyphs(font, &mut glyphs)
   }
 }
 
@@ -623,19 +632,26 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
     return GlyphNameMap.glyphName(&self.data.names, glyph)
   }
 
+  /// Maps a batch of codepoints, remembering recent results so text repeating a small alphabet
+  /// searches the character map once per character. Each entry holds a codepoint in its high
+  /// half and its glyph in the low half; a codepoint lands in the entry of its low seven bits.
   pub fn defaultNominalGlyphs<F: FontFuncs>(self: &Self, glyphs: &mut NominalGlyphs) -> usize {
+    let mut cache: [u64; 128] = [u64.MAX; 128]
     let mut i: usize = 0
     while i < NominalGlyphs.len(&glyphs.*) {
-      let glyph = match move ConfiguredShaper.defaultNominalGlyph(
-        self,
-        NominalGlyphs.codepoint(&glyphs.*, i),
-      ) {
-        Option<GlyphId>.Some { value } => value
-        _ => {
-          break
-        }
+      let cp = NominalGlyphs.codepoint(&glyphs.*, i)
+      let slot = u32.toUsize(cp & 127)
+      let mut glyph: u32 = 0
+      if u64.shiftRight(cache[slot], 32) == u32.toU64(cp) {
+        glyph = u64.toU32(cache[slot] & 0xffffffff)
+      } else {
+        glyph = ShaperData.nominalGlyph(self.data, cp)
+        cache[slot] = u64.shiftLeft(u32.toU64(cp), 32) | u32.toU64(glyph)
       }
-      NominalGlyphs.set(&mut glyphs, i, GlyphId.toU32(glyph))
+      if glyph == 0 {
+        break
+      }
+      NominalGlyphs.set(&mut glyphs, i, glyph)
       i = i + 1
     }
     return i
