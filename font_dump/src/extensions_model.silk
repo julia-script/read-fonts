@@ -11,7 +11,8 @@ import read_fonts.model.charmap {
   UnicodeVariants,
   UnicodeVariant,
   Encodings,
-  Codes
+  Codes,
+  EncodingMapper
 }
 import read_fonts.model.name.glyph {
   GlyphName,
@@ -495,6 +496,7 @@ effect fn charmap(path: &mut DumpPath, map: Charmap) -> ()
     run optional(&mut path, "platform", move platform)
     run optional(&mut path, "encoding", move encodingId)
     let mut codes = Charmap.codes(&map, encoding)
+    let mapper = Charmap.encodingMapper(&map, encoding)
     let mut n: usize = 0
     DumpPath.push(&mut path, "codes")
     while n < 1114112 {
@@ -507,7 +509,7 @@ effect fn charmap(path: &mut DumpPath, map: Charmap) -> ()
       DumpPath.setIndex(&mut path, n)
       run field(&mut path, "code", e.codepoint)
       run field(&mut path, "glyph", GlyphId.toU32(e.glyph))
-      run optional(&mut path, "lookup", glyphValue(Charmap.mapCode(&map, encoding, e.codepoint)))
+      run optional(&mut path, "lookup", glyphValue(EncodingMapper.map(&mapper, e.codepoint)))
       n = n + 1
     }
     DumpPath.clearIndex(&mut path)
