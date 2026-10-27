@@ -125,8 +125,9 @@ pub fn hmtx<'a>(font: &FontRef<'a>) -> u64 {
   return sum
 }
 
-/// Draws every CFF or CFF2 glyph at default coordinates and design units.
-pub fn cff<'a>(font: &FontRef<'a>) -> u64 {
+/// Draws every CFF or CFF2 glyph at default coordinates and design units. With
+/// `onlySubfont`, only reads each glyph's subfont (its Private DICT).
+pub fn cff<'a>(font: &FontRef<'a>, onlySubfont: bool) -> u64 {
   let bytes = match move FontRef.cff(font) {
     Result<Cff<'a>, ReadError>.Success { value } => FontData.asBytes(&Cff.offsetData(&value))
     _ => match move FontRef.cff2(font) {
@@ -160,6 +161,10 @@ pub fn cff<'a>(font: &FontRef<'a>) -> u64 {
       _ => {
         continue
       }
+    }
+    if onlySubfont {
+      sink.sum = u64.wrappingAdd(sink.sum, u32.toU64(Subfont.subrsOffset(&subfont)))
+      continue
     }
     match move CffFontRef.draw(&outlines, &subfont, glyph, &coords, Option<f32>.None, &mut sink) {
       Result<Option<f32>, Error>.Success { value } => {

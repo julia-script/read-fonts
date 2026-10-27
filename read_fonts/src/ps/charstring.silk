@@ -8,7 +8,7 @@ import ps.cff.blend { BlendState }
 import ps.cff.stack { Stack }
 import ps.encoding { PredefinedEncoding }
 import ps.num { readInt }
-import ps.read { take, takeRead, require }
+import ps.read { take, takeRead, require, Failed, catchError }
 import ps.transform { FontMatrix, Transform }
 import font_data { FontData, Cursor }
 import array { ScalarArray }
@@ -294,7 +294,13 @@ pub fn evaluate<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
   data: &[u8],
   sink: &mut S,
 ) -> Result<Option<Fixed>, Error> {
-  return run Effect.result(evaluateImpl(context, move blend, data, &mut sink, false))
+  return match move run Intrinsic.catchFailure<Error>(
+    evaluateImpl(context, move blend, data, &mut sink, false),
+    catchError,
+  ) {
+    Option<Fixed> value => Result<Option<Fixed>, Error>.succeed(move value)
+    Failed { error } => Result<Option<Fixed>, Error>.failResult(error)
+  }
 }
 
 pub fn evaluateWidth<'a, 'c, C: CharstringContext<'a>>(
@@ -303,7 +309,13 @@ pub fn evaluateWidth<'a, 'c, C: CharstringContext<'a>>(
   data: &[u8],
 ) -> Result<Option<Fixed>, Error> {
   let mut sink = NullSink {}
-  return run Effect.result(evaluateImpl(context, move blend, data, &mut sink, true))
+  return match move run Intrinsic.catchFailure<Error>(
+    evaluateImpl(context, move blend, data, &mut sink, true),
+    catchError,
+  ) {
+    Option<Fixed> value => Result<Option<Fixed>, Error>.succeed(move value)
+    Failed { error } => Result<Option<Fixed>, Error>.failResult(error)
+  }
 }
 
 effect fn evaluateImpl<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(

@@ -13,7 +13,7 @@ import sys
 import time
 import harness
 
-WORKLOADS = ["cmap", "glyf", "hmtx", "cff"]
+WORKLOADS = ["cmap", "glyf", "hmtx", "cff", "cffsub"]
 
 
 def timed(binary: Path, workload: str, font: Path) -> tuple[float, bytes]:

@@ -97,7 +97,7 @@ impl PathSink for SumSink {
     }
 }
 
-fn cff(font: &FontRef) -> u64 {
+fn cff(font: &FontRef, only_subfont: bool) -> u64 {
     let bytes = match font.cff() {
         Ok(table) => table.offset_data().as_bytes(),
         Err(_) => match font.cff2() {
@@ -117,6 +117,10 @@ fn cff(font: &FontRef) -> u64 {
         let Ok(subfont) = outlines.subfont(index, &[]) else {
             continue;
         };
+        if only_subfont {
+            sink.sum = sink.sum.wrapping_add(subfont.subrs_offset() as u64);
+            continue;
+        }
         if outlines.draw(&subfont, glyph, &[], None, &mut sink).is_ok() {
             sink.sum = sink.sum.wrapping_add(1);
         }
@@ -127,7 +131,7 @@ fn cff(font: &FontRef) -> u64 {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
-        eprintln!("usage: font-bench cmap|glyf|hmtx|cff FONT");
+        eprintln!("usage: font-bench cmap|glyf|hmtx|cff|cffsub FONT");
         std::process::exit(2);
     }
     let data = std::fs::read(&args[2]).unwrap_or_else(|_| {
@@ -139,7 +143,8 @@ fn main() {
             "cmap" => cmap(&font),
             "glyf" => glyf(&font),
             "hmtx" => hmtx(&font),
-            "cff" => cff(&font),
+            "cff" => cff(&font, false),
+            "cffsub" => cff(&font, true),
             _ => {
                 eprintln!("font-bench: unknown workload");
                 std::process::exit(2);

@@ -34,3 +34,14 @@ pub effect fn require<T>(option: Option<T>, error: Error) -> T
     }
   }
 }
+
+/// A failure caught by `Intrinsic.catchFailure<Error>(effect, catchError)`. Hot paths
+/// catch with it instead of `Effect.result`, whose `Effect.map` is not inlined
+/// and costs tens of nanoseconds per call.
+pub struct Failed {
+  pub error: Error,
+}
+
+pub effect fn catchError(error: Error) -> Failed {
+  return Failed { error: error }
+}
