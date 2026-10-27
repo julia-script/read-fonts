@@ -23,6 +23,11 @@ import silk.u16
 import silk.u32
 import silk.u64
 
+struct CachedLookup {
+  digest: SetDigest,
+  lookupOffset: usize,
+}
+
 pub struct LookupStep {
   pub digest: SetDigest,
   /// The lookup table's offset in the layout table; the table's length when the index is invalid.
@@ -159,6 +164,12 @@ pub struct OtPlan<'a> {
   pub ruleSecondStarts: List<u32>,
   /// The second input value of each rule, in rule order, for the rule sets that have them.
   pub ruleSeconds: List<u32>,
+  /// For each lookup index, its first subtable in `subtables` in the high 32 bits and its
+  /// subtable count in the low ones, or `u64.MAX` when the plan has not cached it. Nested
+  /// lookups use these.
+  pub lookupSubtables: List<u64>,
+  /// Each cached lookup's `LookupStep.lookupOffset`.
+  lookupOffsets: List<usize>,
   /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
   /// glyphs; full when the set is malformed.
   pub pairDigests: List<SetDigest>,
@@ -182,6 +193,57 @@ impl<'a> OtPlan<'a> {
     value: u32,
     stage: u32,
   ) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let mut first = List<LookupSubtable>.length(&self.subtables)
+    let mut count: usize = 0
+    let mut digest = SetDigest.new()
+    let mut lookupOffset: usize = 0
+
+    // A lookup that several features use shares one cached copy of its subtables.
+    let slot = u16.toUsize(index)
+    if slot < List<u64>.length(&self.lookupSubtables)
+      && List<u64>.get(&self.lookupSubtables, slot) != u64.MAX {
+      let packed = List<u64>.get(&self.lookupSubtables, slot)
+      first = u64.toUsize(u64.shiftRight(packed, 32))
+      count = u64.toUsize(packed & 0xffffffff)
+      let mut i: usize = 0
+      while i < count {
+        SetDigest.include(
+          &mut digest,
+          &List<LookupSubtable>.asSlice(&self.subtables)[first + i].digest,
+        )
+        i = i + 1
+      }
+      lookupOffset = List<usize>.get(&self.lookupOffsets, slot)
+    } else {
+      let cached = run self.cacheLookup(index, true)
+      count = List<LookupSubtable>.length(&self.subtables) - first
+      digest = cached.digest
+      lookupOffset = cached.lookupOffset
+    }
+    run List<LookupStep>.append(
+      &mut self.steps,
+      LookupStep {
+        digest: digest,
+        lookupOffset: lookupOffset,
+        firstSubtable: first,
+        subtableCount: count,
+        index: index,
+        required: required,
+        tag: tag,
+        value: value,
+        stage: stage,
+        plain: plainFeature(tag),
+      },
+    )
+  }
+
+  /// Appends lookup `index`'s subtables to `subtables` with their digests, and their coverage
+  /// expansions when `expand`, and records them in `lookupSubtables` if the lookup has none
+  /// recorded yet. Nested lookups skip the expansions, which cost more to build than they save
+  /// at the few positions a nested lookup is applied.
+  effect fn cacheLookup(self: &mut Self, index: u16, expand: bool) -> CachedLookup
     ! OutOfMemoryError
     ? &mut Allocator {
     let first = List<LookupSubtable>.length(&self.subtables)
@@ -226,7 +288,10 @@ impl<'a> OtPlan<'a> {
         let pairDigests = List<SetDigest>.length(&self.pairDigests)
         run self.addPairDigests(table, kind)
         let coverageStart = List<u16>.length(&self.coverageValues)
-        let coverageFirst = run self.expandCoverage(table, kind)
+        let mut coverageFirst: u32 = 0
+        if expand {
+          coverageFirst = run self.expandCoverage(table, kind)
+        }
         run List<LookupSubtable>.append(
           &mut self.subtables,
           // Every view derived by offsets runs to the end of the layout table.
@@ -249,21 +314,50 @@ impl<'a> OtPlan<'a> {
         i = i + 1
       }
     }
-    run List<LookupStep>.append(
-      &mut self.steps,
-      LookupStep {
-        digest: digest,
-        lookupOffset: lookupOffset,
-        firstSubtable: first,
-        subtableCount: List<LookupSubtable>.length(&self.subtables) - first,
-        index: index,
-        required: required,
-        tag: tag,
-        value: value,
-        stage: stage,
-        plain: plainFeature(tag),
-      },
-    )
+    let lookups = u16.toUsize(View.u16(&list, 0))
+    while List<u64>.length(&self.lookupSubtables) < lookups {
+      run List<u64>.append(&mut self.lookupSubtables, u64.MAX)
+      run List<usize>.append(&mut self.lookupOffsets, 0)
+    }
+    let slot = u16.toUsize(index)
+    if slot < lookups && List<u64>.get(&self.lookupSubtables, slot) == u64.MAX {
+      let count = List<LookupSubtable>.length(&self.subtables) - first
+      List<u64>.set(
+        &mut self.lookupSubtables,
+        slot,
+        u64.shiftLeft(usize.toU64(first), 32) | usize.toU64(count),
+      )
+      List<usize>.set(&mut self.lookupOffsets, slot, lookupOffset)
+    }
+    return CachedLookup { digest: digest, lookupOffset: lookupOffset }
+  }
+
+  /// Caches the lookups that contextual subtables apply, so nested lookups skip uncovered
+  /// subtables the way steps do. Subtables cached here are scanned in turn, which covers
+  /// lookups nested more than one level deep.
+  effect fn cacheNestedLookups(self: &mut Self) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let mut nested = List<u16>.make()
+    let mut s: usize = 0
+    while s < List<LookupSubtable>.length(&self.subtables) {
+      let sub = List<LookupSubtable>.get(&self.subtables, s)
+      if contextualKind(sub.kind, self.positioning) {
+        List<u16>.clear(&mut nested)
+        run nestedLookups(View.tail(&self.table, sub.offset), sub.kind, &mut nested)
+        let mut n: usize = 0
+        while n < List<u16>.length(&nested) {
+          let index = List<u16>.get(&nested, n)
+          let slot = u16.toUsize(index)
+          if slot < List<u64>.length(&self.lookupSubtables)
+            && List<u64>.get(&self.lookupSubtables, slot) == u64.MAX {
+            drop run self.cacheLookup(index, false)
+          }
+          n = n + 1
+        }
+      }
+      s = s + 1
+    }
   }
 
   /// Appends a digest per rule set of a 16-bit format 1 or 2 contextual subtable, so
@@ -481,6 +575,8 @@ impl<'a> OtPlan<'a> {
       ruleDigests: List<u64>.make(),
       ruleSecondStarts: List<u32>.make(),
       ruleSeconds: List<u32>.make(),
+      lookupSubtables: List<u64>.make(),
+      lookupOffsets: List<usize>.make(),
       pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
@@ -872,6 +968,7 @@ impl<'a> OtPlan<'a> {
       List<LookupStep>.set(&mut plan.steps, j, item)
       i = i + 1
     }
+    run OtPlan.cacheNestedLookups(&mut plan)
     run OtPlan.addAllClasses(&mut plan)
     if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
       &mut plan,
@@ -1096,4 +1193,75 @@ fn offset16At(table: View, kind: u16, positioning: bool) -> usize {
     return 6
   }
   return 2
+}
+
+/// Appends the lookup indices of the actions of a 16-bit contextual subtable's rules.
+effect fn nestedLookups(table: View, kind: u16, out: &mut List<u16>) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let chained = kind == 6 || kind == 8
+  let format = View.u16(&table, 0)
+  if format == 3 {
+    let mut pos: usize = 2
+    let mut actionCount: usize = 0
+    if chained {
+      pos = pos + 2 + u16.toUsize(View.u16(&table, pos)) * 2
+      pos = pos + 2 + u16.toUsize(View.u16(&table, pos)) * 2
+      pos = pos + 2 + u16.toUsize(View.u16(&table, pos)) * 2
+      actionCount = u16.toUsize(View.u16(&table, pos))
+      pos = pos + 2
+    } else {
+      let inputCount = u16.toUsize(View.u16(&table, 2))
+      actionCount = u16.toUsize(View.u16(&table, 4))
+      pos = 6 + inputCount * 2
+    }
+    run appendActions(table, pos, actionCount, &mut out)
+    return ()
+  }
+  let mut countPos: usize = 4
+  if format == 2 {
+    countPos = 6
+    if chained {
+      countPos = 10
+    }
+  } else if format != 1 {
+    return ()
+  }
+  let sets = u16.toUsize(View.u16(&table, countPos))
+  let mut index: usize = 0
+  while index < sets {
+    let ruleSet = View.offset(&table, countPos + 2 + index * 2, 2)
+    let count = u16.toUsize(View.u16(&ruleSet, 0))
+    let mut r: usize = 0
+    while r < count {
+      let rule = View.offset(&ruleSet, 2 + r * 2, 2)
+      let mut pos: usize = 0
+      let mut actionCount: usize = 0
+      if chained {
+        pos = 2 + u16.toUsize(View.u16(&rule, 0)) * 2
+        let inputCount = u16.toUsize(View.u16(&rule, pos))
+        pos = pos + 2 + usize.saturatingSubtract(inputCount, 1) * 2
+        pos = pos + 2 + u16.toUsize(View.u16(&rule, pos)) * 2
+        actionCount = u16.toUsize(View.u16(&rule, pos))
+        pos = pos + 2
+      } else {
+        let inputCount = u16.toUsize(View.u16(&rule, 0))
+        actionCount = u16.toUsize(View.u16(&rule, 2))
+        pos = 4 + usize.saturatingSubtract(inputCount, 1) * 2
+      }
+      run appendActions(rule, pos, actionCount, &mut out)
+      r = r + 1
+    }
+    index = index + 1
+  }
+}
+
+effect fn appendActions(table: View, pos: usize, count: usize, out: &mut List<u16>) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut n: usize = 0
+  while n < count && pos + n * 4 + 4 <= View.len(&table) {
+    run List<u16>.append(&mut out, View.u16(&table, pos + n * 4 + 2))
+    n = n + 1
+  }
 }
