@@ -44,3 +44,12 @@ upstream's platform f32 trigonometry. `tables/varc_impl.silk` and COLR metric
 transforms call the platform `sinf`, `cosf` and `tanf` through the C ABI, as the glyph
 loader already does for `hypotf`. The stdlib and compiler remain unchanged. The seven upstream matrix
 tests and bitwise differential matrix observations cover this adaptation.
+
+## 006 — `Option<T>` is not `Copy`
+
+`Option<T>` has no `Copy` impl even when `T` is `Copy`, and a struct with an
+`Option` field cannot be declared `Copy` (SEM0083). Copyable model snapshots
+therefore use `model/optional.silk`'s `Maybe<T>`, and `CffFontRef` keeps its
+optional top dict fields as `Maybe` so `GlyphMetrics` can hold a parsed font
+instead of re-parsing it per glyph. Filed as
+[silk-lang/silk#2434](https://github.com/silk-lang/silk/issues/2434).

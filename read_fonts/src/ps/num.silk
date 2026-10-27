@@ -31,7 +31,7 @@ pub fn parseInt<'a>(cursor: &mut Cursor<'a>, b0: u8) -> Result<i32, Error> {
 
 /// Effect form of `parseInt` for hot parsing loops.
 pub effect fn readInt<'a>(cursor: &mut Cursor<'a>, b0: u8) -> i32
-  ! Error {
+  ! Error with Intrinsic.inlineAlways() {
   if b0 >= 32 && b0 <= 246 {
     return u8.toI32(b0) - 139
   }
