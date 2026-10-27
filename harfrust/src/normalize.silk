@@ -82,6 +82,29 @@ pub effect fn normalize<F: FontFuncs>(
           }
         }
       }
+      // A glyph that stays one glyph is mapped in place until the output list is needed.
+      let length = Buffer.len(&buffer.*)
+      if i + 1 >= length
+        || !unicode.isVariationSelector(List<Glyph>.asSlice(&buffer.glyphs)[i + 1].codepoint) {
+        let current = List<Glyph>.get(&buffer.glyphs, i)
+        let shortest = buffer.shaper == 0 && !isMark(current.codepoint)
+          && !(i + 1 < length && isMark(List<Glyph>.asSlice(&buffer.glyphs)[i + 1].codepoint))
+        if let Option<Glyph>.Some { value: single } = singleGlyph(
+          font,
+          &buffer.*,
+          current,
+          shortest,
+        ) {
+          if materialized {
+            run List<Glyph>.append(&mut output, single)
+          } else {
+            let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+            slots[i] = single
+          }
+          i = i + 1
+          continue
+        }
+      }
       if !materialized {
         let mut kept: usize = 0
         while kept < i {
@@ -130,28 +153,7 @@ pub effect fn normalize<F: FontFuncs>(
       }
       let before = List<Glyph>.length(&output)
       if !run decompose(font, &mut output, item, shortest, 0, buffer.shaper) {
-        let mut mapped = item
-        let mut cp = item.codepoint
-        if cp == 0x2011 && !ConfiguredShaper.hasGlyph(font, cp) {
-          cp = 0x2010
-        }
-        mapped.info.glyphId = ConfiguredShaper.glyphFor(font, cp)
-        if !ConfiguredShaper.mappedGlyphExists(font, cp, mapped.info.glyphId) {
-          let space = spaceType(item.codepoint)
-          mapped.info.glyphId = buffer.notFoundGlyph
-          if space != 0 {
-            mapped.info.glyphId = ConfiguredShaper.glyphFor(font, 32)
-            if !ConfiguredShaper.mappedGlyphExists(font, 32, mapped.info.glyphId) {
-              mapped.info.glyphId = GlyphId.toU32(
-                Buffer.getInvisibleGlyph(&buffer.*) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
-              )
-            }
-            if mapped.info.glyphId != 0 {
-              mapped.spaceFallback = space
-            }
-          }
-        }
-        run List<Glyph>.append(&mut output, mapped)
+        run List<Glyph>.append(&mut output, fallbackGlyph(font, &buffer.*, item))
       }
       if before == List<Glyph>.length(&output) {
         run List<Glyph>.append(&mut output, item)
@@ -280,19 +282,7 @@ effect fn decompose<F: FontFuncs>(
     run List<Glyph>.append(&mut output, mapped)
     return true
   }
-  let mut parts = unicode.decomposeRaw(item.codepoint)
-  if shaper == 1
-    && (item.codepoint == 0x0931 || item.codepoint == 0x09dc || item.codepoint == 0x09dd
-      || item.codepoint == 0x0b94) {
-    parts.first = 0
-  }
-  if shaper == 2
-    && (item.codepoint == 0x17be || item.codepoint == 0x17bf || item.codepoint == 0x17c0
-      || item.codepoint == 0x17c4
-      || item.codepoint == 0x17c5) {
-    parts.first = 0x17c1
-    parts.second = item.codepoint
-  }
+  let parts = decompositionFor(item.codepoint, shaper)
   if parts.first != 0 && depth < 32
     && (parts.second == 0 || ConfiguredShaper.hasGlyph(font, parts.second)) {
     let mut first = item
@@ -316,6 +306,70 @@ effect fn decompose<F: FontFuncs>(
     return true
   }
   return false
+}
+
+fn decompositionFor(cp: u32, shaper: u32) -> unicode.Decomposition {
+  let mut parts = unicode.decomposeRaw(cp)
+  if shaper == 1 && (cp == 0x0931 || cp == 0x09dc || cp == 0x09dd || cp == 0x0b94) {
+    parts.first = 0
+  }
+  if shaper == 2
+    && (cp == 0x17be || cp == 0x17bf || cp == 0x17c0 || cp == 0x17c4 || cp == 0x17c5) {
+    parts.first = 0x17c1
+    parts.second = cp
+  }
+  return parts
+}
+
+// The glyph a code point maps to when decompose finds no decomposition: the 0x2011 to
+// 0x2010 and space fallbacks, else the not-found glyph.
+fn fallbackGlyph<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &Buffer, item: Glyph) -> Glyph {
+  let mut mapped = item
+  let mut cp = item.codepoint
+  if cp == 0x2011 && !ConfiguredShaper.hasGlyph(font, cp) {
+    cp = 0x2010
+  }
+  mapped.info.glyphId = ConfiguredShaper.glyphFor(font, cp)
+  if !ConfiguredShaper.mappedGlyphExists(font, cp, mapped.info.glyphId) {
+    let space = spaceType(item.codepoint)
+    mapped.info.glyphId = buffer.notFoundGlyph
+    if space != 0 {
+      mapped.info.glyphId = ConfiguredShaper.glyphFor(font, 32)
+      if !ConfiguredShaper.mappedGlyphExists(font, 32, mapped.info.glyphId) {
+        mapped.info.glyphId = GlyphId.toU32(
+          Buffer.getInvisibleGlyph(buffer) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+        )
+      }
+      if mapped.info.glyphId != 0 {
+        mapped.spaceFallback = space
+      }
+    }
+  }
+  return mapped
+}
+
+// The single glyph that the decompose step turns `item` into, or `None` when `item` might
+// decompose into several glyphs. It matches decompose followed by fallbackGlyph.
+fn singleGlyph<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  buffer: &Buffer,
+  item: Glyph,
+  shortest: bool,
+) -> Option<Glyph> {
+  let glyph = ConfiguredShaper.glyphFor(font, item.codepoint)
+  let exists = ConfiguredShaper.mappedGlyphExists(font, item.codepoint, glyph)
+  if !(shortest && exists) {
+    let parts = decompositionFor(item.codepoint, buffer.shaper)
+    if parts.first != 0 && (parts.second == 0 || ConfiguredShaper.hasGlyph(font, parts.second)) {
+      return Option<Glyph>.None
+    }
+  }
+  if exists {
+    let mut mapped = item
+    mapped.info.glyphId = glyph
+    return Option<Glyph>.some(mapped)
+  }
+  return Option<Glyph>.some(fallbackGlyph(font, buffer, item))
 }
 
 // No code point below U+0300 is a mark, so Latin text skips the category table.

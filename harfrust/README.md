@@ -145,13 +145,13 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 192M | 65.3M | 2.94× |
 | Roboto / English words | 261M | 87.9M | 2.97× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,537M | 789M | 1.95× |
-| Noto Nastaliq Urdu / Persian words | 1,444M | 847M | 1.70× |
-| Noto Sans Devanagari / Hindi words | 515M | 225M | 2.29× |
-| Amiri / Persian Little Prince | 827M | 374M | 2.21× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,526M | 789M | 1.93× |
+| Noto Nastaliq Urdu / Persian words | 1,443M | 847M | 1.70× |
+| Noto Sans Devanagari / Hindi words | 499M | 225M | 2.21× |
+| Amiri / Persian Little Prince | 821M | 374M | 2.20× |
 | Source Serif Variable / react-dom | 2,019M | 1,004M | 2.01× |
 
-The geometric mean is **2.25×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.24×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -190,7 +190,8 @@ position probes check a digest of each probed feature's lookups before setting
 up a lookup, and vowel constraints are checked only against the script's own
 pairs; per-call scratch lists are sized once instead of grown glyph by glyph; text is decoded and added to the buffer in one pass, and
 the right-to-left script check is a generated match. Format 4 character maps
-are searched through arrays located once per font. The remaining gap is mostly per-glyph table walking that harfrust
+are searched through arrays located once per font. Normalization maps a code point
+that stays one glyph in place, so Indic text is not copied to a new list. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
