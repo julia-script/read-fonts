@@ -273,7 +273,7 @@ impl<'a, 'c, 'e, S, V, E> ScaledGlyphMetrics<'a, 'c, 'e, S, V, E> {
     }
   }
 
-  pub fn hAdvance(self: &Self, glyph: GlyphId) -> V {
+  pub fn hAdvance(self: &Self, glyph: GlyphId) -> V with Intrinsic.inlineAlways() {
     return Scale.scaleX(&self.scale, GlyphMetrics.hAdvanceExact(&self.metrics, glyph))
   }
 
