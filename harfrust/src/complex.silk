@@ -194,29 +194,54 @@ pub effect fn preprocess(buffer: &mut Buffer) -> ()
   if (buffer.flags & 16) != 0 || (buffer.shaper != 1 && buffer.shaper != 4) {
     return
   }
+
+  // The table is sorted by script, so this script's pairs are found once.
   let pairs = View.bytes(data.vowelConstraints())
+  let mut lo: usize = 0
+  while lo + 12 <= View.len(&pairs) && View.u32(&pairs, lo) != buffer.script {
+    lo = lo + 12
+  }
+  let mut hi = lo
+  let mut lowest: u32 = u32.MAX
+  let mut highest: u32 = 0
+  while hi + 12 <= View.len(&pairs) && View.u32(&pairs, hi) == buffer.script {
+    let first = View.u32(&pairs, hi + 4)
+    if first < lowest {
+      lowest = first
+    }
+    if first > highest {
+      highest = first
+    }
+    hi = hi + 12
+  }
+  let devanagari = buffer.script == 0x44657661
+  if lo == hi && !devanagari {
+    return
+  }
   let mut i: usize = 0
   while i + 1 < Buffer.len(&buffer.*) {
-    let first = List<Glyph>.get(&buffer.glyphs, i)
-    let second = List<Glyph>.get(&buffer.glyphs, i + 1)
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    let first = glyphs[i].codepoint
+    let second = glyphs[i + 1].codepoint
     let mut matched = false
-    let mut j: usize = 0
-    while j + 12 <= View.len(&pairs) {
-      if View.u32(&pairs, j) == buffer.script && View.u32(&pairs, j + 4) == first.codepoint
-        && View.u32(&pairs, j + 8) == second.codepoint {
+    let mut j = lo
+    if first < lowest || first > highest {
+      j = hi
+    }
+    while j < hi {
+      if View.u32(&pairs, j + 4) == first && View.u32(&pairs, j + 8) == second {
         matched = true
         break
       }
       j = j + 12
     }
-    if buffer.script == 0x44657661 && first.codepoint == 0x0930 && second.codepoint == 0x094d
-      && i + 2 < Buffer.len(&buffer.*)
-      && List<Glyph>.get(&buffer.glyphs, i + 2).codepoint == 0x0907 {
+    if devanagari && first == 0x0930 && second == 0x094d && i + 2 < glyphs.length
+      && glyphs[i + 2].codepoint == 0x0907 {
       i = i + 1
       matched = true
     }
     if matched {
-      let cluster = List<Glyph>.get(&buffer.glyphs, i + 1).info.cluster
+      let cluster = List<Glyph>.asSlice(&buffer.glyphs)[i + 1].info.cluster
       run List<Glyph>.insert(&mut buffer.glyphs, i + 1, Glyph.new(0x25cc, cluster))
       i = i + 1
     }

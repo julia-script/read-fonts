@@ -147,11 +147,11 @@ builds. Lower is better.
 | Roboto / English words | 281M | 87.9M | 3.19× |
 | Noto Nastaliq Urdu / Persian Little Prince | 1,558M | 789M | 1.97× |
 | Noto Nastaliq Urdu / Persian words | 1,515M | 847M | 1.79× |
-| Noto Sans Devanagari / Hindi words | 600M | 225M | 2.67× |
+| Noto Sans Devanagari / Hindi words | 570M | 225M | 2.53× |
 | Amiri / Persian Little Prince | 840M | 374M | 2.25× |
 | Source Serif Variable / react-dom | 2,210M | 1,004M | 2.20× |
 
-The geometric mean is **2.41×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.39×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -187,7 +187,8 @@ uncovered subtables the same way; a ligature set whose first glyph ends the
 buffer skips its longer ligatures without trying to match them, and fonts map
 U+0000 to U+00FF to glyphs once instead of on every call; Indic consonant
 position probes check a digest of each probed feature's lookups before setting
-up a lookup. The remaining gap is mostly per-glyph table walking that harfrust
+up a lookup, and vowel constraints are checked only against the script's own
+pairs. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
