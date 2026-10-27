@@ -40,6 +40,8 @@ def generate():
         triples.extend(values)
     out.append(byte_function("decompositions", b"".join(struct.pack(">III", *v) for v in triples)))
     out.append(byte_function("compositions", b"".join(struct.pack(">III", *v) for v in sorted(triples) if v[2])))
+    seconds = "".join(f"    0x{v:x} => true\n" for v in sorted({v[1] for v in triples if v[2]}))
+    out.append(f"pub fn composesAsSecond(cp: u32) -> bool {{\n  return match cp {{\n{seconds}    _ => false\n  }}\n}}\n")
     unicode = (SOURCE / "unicode/mod.rs").read_text()
     vertical = unicode.split("fn vertical(self) -> Option<Codepoint> {", 1)[1].split("#[cfg", 1)[0]
     out.append(byte_function("vertical", b"".join(struct.pack(">II", int(a,16), int(b,16)) for a,b in re.findall(r"(0x[0-9a-f]+) => (0x[0-9a-f]+)", vertical))))

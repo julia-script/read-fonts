@@ -129,6 +129,11 @@ pub fn composeRaw(a: u32, b: u32) -> u32 {
   if a >= 0xac00 && a <= 0xd788 && (a - 0xac00) % 28 == 0 && b > 0x11a7 && b < 0x11c3 {
     return a + b - 0x11a7
   }
+
+  // Most marks never compose, so they skip the table search.
+  if !Data.composesAsSecond(b) {
+    return 0
+  }
   let data = View.new(FontData.new(Data.compositions()))
   let mut lo: usize = 0
   let mut hi = View.len(&data) / 12
