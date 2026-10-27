@@ -619,10 +619,16 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
       ConfiguredShaper.glyphHAdvances(self.font, &mut advances)
       return
     }
+    // The scaled metrics are found once for the whole run.
+    let scaled = Metrics.scaled(self)
     let mut i: usize = 0
     while i < Advances.len(&advances.*) {
       let glyph = Advances.glyph(&advances.*, i)
-      Advances.set(&mut advances, i, Metrics.hAdvance(self, glyph))
+      let advance = ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.hAdvance(
+        scaled,
+        glyph,
+      )
+      Advances.set(&mut advances, i, Scale.clampXAdvance(&self.font.scale, advance))
       i = i + 1
     }
   }
