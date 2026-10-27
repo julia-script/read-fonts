@@ -200,12 +200,13 @@ Plan keys conservatively compare all variation coordinates. CLI differences
 are described above.
 
 Silk workarounds are documented and reproduced in
-[`compiler-bugs/007`](../compiler-bugs/007-bounded-self-result/README.md)
-(interface bounds on consuming methods, [silk-lang/silk#2397](https://github.com/silk-lang/silk/issues/2397)) and
-[`compiler-bugs/009`](../compiler-bugs/009-specialized-alias/README.md)
-(explicit nominal constructors, [silk-lang/silk#2412](https://github.com/silk-lang/silk/issues/2412)).
-`ShaperData.shaper` avoids the latter in normal use. Neither the compiler nor
-its standard library is patched or vendored.
+[`compiler-bugs/010`](../compiler-bugs/010-list-of-lifetime-struct/README.md)
+(plans store table offsets instead of views, [silk-lang/silk#2425](https://github.com/silk-lang/silk/issues/2425)),
+[`compiler-bugs/011`](../compiler-bugs/011-static-empty-slice/README.md)
+(an owned one-element coordinate array, [silk-lang/silk#2428](https://github.com/silk-lang/silk/issues/2428)) and
+[`compiler-bugs/012`](../compiler-bugs/012-list-shift/README.md)
+(glyph insertion and removal, [silk-lang/silk#2431](https://github.com/silk-lang/silk/issues/2431)).
+Neither the compiler nor its standard library is patched or vendored.
 
 ## License
 

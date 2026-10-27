@@ -2,7 +2,7 @@ import shape { shape, ShapeError }
 import shape_plan { ShapePlan, ShapePlanKey }
 import options { ShapeOptions }
 import plan { LookupStep }
-import font { ConfiguredShaper, DefaultFontFuncs, Shaper, ShaperData }
+import font { Shaper, ShaperData }
 import buffer { Buffer, Glyph, ClusterLevel, ContentType }
 import feature { Feature }
 import direction { Direction }
@@ -27,7 +27,7 @@ effect fn planCases() -> ()
     }
   }
   let data = ShaperData.new(&font)
-  let shaper = ConfiguredShaper<DefaultFontFuncs>.new(&data)
+  let shaper = Shaper.new(&data)
   let features = [Feature.new(Tag.fromU32(0x74657374), 1)]
   let mut buffer = Buffer.new()
   run Buffer.pushStr(&mut buffer, "AB")

@@ -35,11 +35,7 @@ pub effect fn render(data: &ShaperData, text: string, options: &Options) -> Stri
     run String.append(&mut result, String.view(&output))
     return move result
   }
-  return run renderWithFont(
-    ConfiguredShaper<DefaultFontFuncs>.withFuncs(data, DefaultFontFuncs {}),
-    text,
-    options,
-  )
+  return run renderWithFont(Shaper.withFuncs(data, DefaultFontFuncs {}), text, options)
 }
 
 struct CliTrace<'a> {

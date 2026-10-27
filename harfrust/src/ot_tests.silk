@@ -3,7 +3,7 @@ import generated_fixtures as Fixtures
 import buffer { Buffer, Glyph }
 import direction { Direction }
 import font_types.lib { F2Dot14 }
-import font { ConfiguredShaper, DefaultFontFuncs, ShaperData, Shaper }
+import font { ShaperData, Shaper }
 import plan { OtPlan }
 import view { View }
 import read_fonts.lib { FontRef, ReadError }
@@ -39,7 +39,7 @@ effect fn executeWithVariation<'a>(
   }
   let mut data = ShaperData.new(&font)
   data.gdef = View.bytes(gdef)
-  let mut shaper = ConfiguredShaper<DefaultFontFuncs>.new(&data)
+  let mut shaper = Shaper.new(&data)
   if fractional {
     run List<F2Dot14>.append(&mut shaper.coords, F2Dot14.fromBits(8192))
   }

@@ -1,8 +1,6 @@
 //! Reusable-buffer workloads matching the pinned upstream shaping benchmark.
 import io
 import harfrust.lib {
-  ConfiguredShaper,
-  DefaultFontFuncs,
   Buffer,
   GlyphInfo,
   GlyphPosition,
@@ -57,7 +55,7 @@ pub effect fn execute(base: &Path, fontPath: string, textPath: string, repeatTex
     }
   }
   let data = ShaperData.new(&font)
-  let shaper = ConfiguredShaper<DefaultFontFuncs>.new(&data)
+  let shaper = Shaper.new(&data)
   let mut buffer = Buffer.new()
   let mut plans = List<ShapePlan>.make()
   let mut checksum: u64 = 2166136261
