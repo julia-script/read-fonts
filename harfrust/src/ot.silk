@@ -760,7 +760,7 @@ effect fn applyLookup<F: FontFuncs>(
       // keeps the budget in a local; nothing they skip changes `buffer.successful`.
       let mut budget = context.budget
       let mut found = false
-      while i < count && budget != 0 {
+      while i < subtables.length && budget != 0 {
         budget = budget - 1
         let sub = &subtables[i]
         if SetDigest.mayHave(&sub.digest, glyph) {
@@ -2172,7 +2172,7 @@ effect fn contextual<F: FontFuncs>(
       // A rule the loop below would look at is skipped here too when its first backtrack value
       // rules it out, which the check below would do after reading the rule for the same budget.
       let mut budget = context.budget
-      while ruleIndex < count && budget != 0 {
+      while ruleIndex < seconds.length && budget != 0 {
         let value = seconds[ruleIndex]
         if value == target || value == RULE_STOP {
           if backs.length == 0 {
