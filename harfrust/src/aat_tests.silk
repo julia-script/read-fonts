@@ -3,7 +3,7 @@ import aat_map { Range }
 import aat_map
 import generated_fixtures as Fixtures
 import language { Language }
-import font { ConfiguredShaper, DefaultFontFuncs, ShaperData, Shaper }
+import font { ShaperData, Shaper }
 import font_types.lib { Tag }
 import read_fonts.lib { FontRef, ReadError }
 import silk.result { Result }
@@ -174,7 +174,7 @@ effect fn featureCases() -> ()
     }
   }
   let data = ShaperData.new(&font)
-  let shaper = ConfiguredShaper<DefaultFontFuncs>.new(&data)
+  let shaper = Shaper.new(&data)
   let mut buffer = Buffer.new()
   run Buffer.setLanguage(&mut buffer, "TR_tr")
   run Testing.expect(

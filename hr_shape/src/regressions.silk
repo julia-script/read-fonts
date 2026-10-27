@@ -1,8 +1,6 @@
 //! Upstream nonliteral shaping regressions, including attachment-distance limits.
 import io
 import harfrust.lib {
-  ConfiguredShaper,
-  DefaultFontFuncs,
   Buffer,
   GlyphPosition,
   GlyphInfo,
@@ -40,9 +38,9 @@ effect fn apply(
     }
   }
   let data = ShaperData.new(&font)
-  let mut shaper = ConfiguredShaper<DefaultFontFuncs>.new(&data)
+  let mut shaper = Shaper.new(&data)
   if scale != 0 {
-    ConfiguredShaper<DefaultFontFuncs>.setScale(&mut shaper, scale, scale)
+    Shaper.setScale(&mut shaper, scale, scale)
   }
   Buffer.guessSegmentProperties(&mut buffer)
   return match move run shape(&shaper, &mut buffer, features) {

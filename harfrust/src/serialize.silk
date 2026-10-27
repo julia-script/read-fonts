@@ -24,7 +24,7 @@ interface SerializationFont {
     ? &mut Allocator
 }
 
-struct FontSerialization<'a, 's, 'f, F> {
+struct FontSerialization<'a, 's, 'f, F: FontFuncs> {
   font: &'f ConfiguredShaper<'a, 's, F>,
 }
 
