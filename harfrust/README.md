@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 230M | 65.3M | 3.52× |
-| Roboto / English words | 333M | 87.9M | 3.79× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,611M | 789M | 2.04× |
-| Noto Nastaliq Urdu / Persian words | 1,589M | 847M | 1.88× |
-| Noto Sans Devanagari / Hindi words | 726M | 225M | 3.22× |
-| Amiri / Persian Little Prince | 847M | 374M | 2.26× |
-| Source Serif Variable / react-dom | 2,460M | 1,004M | 2.45× |
+| Roboto / English Little Prince | 229M | 65.3M | 3.51× |
+| Roboto / English words | 326M | 87.9M | 3.71× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,610M | 789M | 2.04× |
+| Noto Nastaliq Urdu / Persian words | 1,582M | 847M | 1.87× |
+| Noto Sans Devanagari / Hindi words | 720M | 225M | 3.20× |
+| Amiri / Persian Little Prince | 846M | 374M | 2.26× |
+| Source Serif Variable / react-dom | 2,446M | 1,004M | 2.43× |
 
-The geometric mean is **2.65×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.63×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -180,7 +180,8 @@ glyph, and contextual rules reuse the second input glyph found for the quick
 reject instead of walking to it again; plans keep each rule's second input value, or a
 stop mark for rules that must be looked at, so rules are skipped without reading
 them; format 3 rules are checked before the
-general rule setup. The remaining gap is mostly per-glyph table walking that harfrust
+general rule setup; shapers keep their default-instance metrics scaled, so a
+shaping call borrows them instead of copying them. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences

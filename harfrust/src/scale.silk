@@ -18,6 +18,11 @@ pub struct Scale {
 impl Copy for Scale {}
 
 impl Scale {
+  pub fn same(self: &Self, other: &Self) -> bool {
+    return self.xMult == other.xMult && self.yMult == other.yMult && self.xfMult == other.xfMult
+      && self.yfMult == other.yfMult
+  }
+
   pub fn identity() -> Self {
     return Self { xMult: 65536, yMult: 65536, xfMult: 1.0, yfMult: 1.0 }
   }
