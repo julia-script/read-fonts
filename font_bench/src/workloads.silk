@@ -5,7 +5,13 @@ import read_fonts.tables.cmap { Cmap, BestCmapSubtable, CmapSubtable }
 import read_fonts.tables.glyf { Glyf, Glyph, SimpleGlyph, CompositeGlyph, CurvePoint, Component }
 import read_fonts.tables.loca { Loca, LocaGlyph }
 import read_fonts.tables.hmtx { Hmtx }
-import font_types.lib { GlyphId }
+import read_fonts.ps.cff.v1 { Cff }
+import read_fonts.ps.cff.v2 { Cff2 }
+import read_fonts.ps.cff.font { CffFontRef, Subfont }
+import read_fonts.model.error { Error }
+import read_fonts.model.glyph.outline { PathSink }
+import read_fonts.lib { FontData }
+import font_types.lib { GlyphId, F2Dot14 }
 import silk.option { Option }
 import silk.result { Result }
 import silk.u16
@@ -14,6 +20,7 @@ import silk.u64
 import silk.i16
 import silk.i32
 import silk.usize
+import silk.f32
 
 /// Maps every Unicode scalar value through the best cmap subtable.
 pub fn cmap<'a>(font: &FontRef<'a>) -> u64 {
@@ -116,4 +123,87 @@ pub fn hmtx<'a>(font: &FontRef<'a>) -> u64 {
     gid = gid + 1
   }
   return sum
+}
+
+/// Draws every CFF or CFF2 glyph at default coordinates and design units.
+pub fn cff<'a>(font: &FontRef<'a>) -> u64 {
+  let bytes = match move FontRef.cff(font) {
+    Result<Cff<'a>, ReadError>.Success { value } => FontData.asBytes(&Cff.offsetData(&value))
+    _ => match move FontRef.cff2(font) {
+      Result<Cff2<'a>, ReadError>.Success { value } => FontData.asBytes(&Cff2.offsetData(&value))
+      _ => {
+        return 0
+      }
+    }
+  }
+  let outlines = match move CffFontRef.new(bytes, 0, Option<i32>.None) {
+    Result<CffFontRef<'a>, Error>.Success { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let coords: [F2Dot14; 0] = []
+  let mut sink = SumSink { sum: 0 }
+  let count = CffFontRef.numGlyphs(&outlines)
+  let mut gid: u32 = 0
+  while gid < count {
+    let glyph = GlyphId.new(gid)
+    gid = gid + 1
+    let index = match move CffFontRef.subfontIndex(&outlines, glyph) {
+      Option<u16>.Some { value } => value
+      _ => {
+        continue
+      }
+    }
+    let subfont = match move CffFontRef.subfont(&outlines, index, &coords) {
+      Result<Subfont, Error>.Success { value } => move value
+      _ => {
+        continue
+      }
+    }
+    match move CffFontRef.draw(&outlines, &subfont, glyph, &coords, Option<f32>.None, &mut sink) {
+      Result<Option<f32>, Error>.Success { value } => {
+        sink.sum = u64.wrappingAdd(sink.sum, 1)
+      }
+      _ => {}
+    }
+  }
+  return sink.sum
+}
+
+// Sums the bit patterns of every coordinate, plus one per command.
+struct SumSink {
+  sum: u64,
+}
+
+impl SumSink {
+  fn add(self: &mut Self, x: f32, y: f32) {
+    let bits = u64.wrappingAdd(u32.toU64(f32.toBits(x)), u32.toU64(f32.toBits(y)))
+    self.sum = u64.wrappingAdd(self.sum, u64.wrappingAdd(bits, 1))
+  }
+}
+
+impl PathSink for SumSink {
+  fn moveTo(self: &mut Self, x: f32, y: f32) {
+    SumSink.add(&mut self, x, y)
+  }
+
+  fn lineTo(self: &mut Self, x: f32, y: f32) {
+    SumSink.add(&mut self, x, y)
+  }
+
+  fn quadTo(self: &mut Self, cx: f32, cy: f32, x: f32, y: f32) {
+    SumSink.add(&mut self, cx, cy)
+    SumSink.add(&mut self, x, y)
+  }
+
+  fn curveTo(self: &mut Self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+    SumSink.add(&mut self, cx0, cy0)
+    SumSink.add(&mut self, cx1, cy1)
+    SumSink.add(&mut self, x, y)
+  }
+
+  fn close(self: &mut Self) {
+    self.sum = u64.wrappingAdd(self.sum, 1)
+  }
 }

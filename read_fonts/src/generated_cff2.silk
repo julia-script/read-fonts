@@ -364,7 +364,7 @@ impl<'a> MinByteRange<'a> for Index<'a> {
 
 // Handwritten extension from read_fonts/src/ps/cff/cff2_index_impl.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import ps.cff.index_offset { readOffset }
+import ps.cff.index_offset { readOffset, indexItem }
 
 impl<'a> Index<'a> {
   pub fn sizeInBytes(self: &Self) -> Option<usize> {
@@ -390,30 +390,14 @@ impl<'a> Index<'a> {
     )
   }
 
-  pub fn get(self: &Self, index: usize) -> Option<&'a [u8]> {
-    let start = match move Index.getOffset(self, index) {
-      Option<usize>.Some { value } => value
-      _ => {
-        return Option<&'a [u8]>.None
-      }
-    }
-    let next = match move usize.checkedAdd(index, 1) {
-      Option<usize>.Some { value } => value
-      _ => {
-        return Option<&'a [u8]>.None
-      }
-    }
-    let end = match move Index.getOffset(self, next) {
-      Option<usize>.Some { value } => value
-      _ => {
-        return Option<&'a [u8]>.None
-      }
-    }
-    let data = ScalarArray<u8>.offsetData(&Index.data(self))
-    return match move FontData.slice(&data, start, end) {
-      Option<FontData<'a>>.Some { value } => Option<&'a [u8]>.some(FontData.asBytes(&value))
-      _ => Option<&'a [u8]>.None
-    }
+  pub fn get(self: &Self, index: usize) -> Option<&'a [u8]> with Intrinsic.inlineAlways() {
+    return indexItem(
+      FontData.asBytes(&self._fontData),
+      u32.toUsize(Index.count(self)),
+      Index.offSize(self),
+      self._fieldRanges[2],
+      index,
+    )
   }
 }
 

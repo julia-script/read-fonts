@@ -1,6 +1,8 @@
 //! Rust counterpart of font_bench/src/workloads.silk: `font-bench WORKLOAD FONT` prints the
 //! same checksum the Silk program prints.
 use read_fonts::{
+    model::glyph::outline::PathSink,
+    ps::cff::CffFontRef,
     tables::{glyf::Glyph, loca::LocaGlyph},
     types::GlyphId,
     FontRef, TableProvider,
@@ -63,10 +65,69 @@ fn hmtx(font: &FontRef) -> u64 {
     sum
 }
 
+struct SumSink {
+    sum: u64,
+}
+
+impl SumSink {
+    fn add(&mut self, x: f32, y: f32) {
+        let bits = (x.to_bits() as u64).wrapping_add(y.to_bits() as u64);
+        self.sum = self.sum.wrapping_add(bits.wrapping_add(1));
+    }
+}
+
+impl PathSink for SumSink {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+        self.add(cx, cy);
+        self.add(x, y);
+    }
+    fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+        self.add(cx0, cy0);
+        self.add(cx1, cy1);
+        self.add(x, y);
+    }
+    fn close(&mut self) {
+        self.sum = self.sum.wrapping_add(1);
+    }
+}
+
+fn cff(font: &FontRef) -> u64 {
+    let bytes = match font.cff() {
+        Ok(table) => table.offset_data().as_bytes(),
+        Err(_) => match font.cff2() {
+            Ok(table) => table.offset_data().as_bytes(),
+            Err(_) => return 0,
+        },
+    };
+    let Ok(outlines) = CffFontRef::new(bytes, 0, None) else {
+        return 0;
+    };
+    let mut sink = SumSink { sum: 0 };
+    for gid in 0..outlines.num_glyphs() {
+        let glyph = GlyphId::new(gid);
+        let Some(index) = outlines.subfont_index(glyph) else {
+            continue;
+        };
+        let Ok(subfont) = outlines.subfont(index, &[]) else {
+            continue;
+        };
+        if outlines.draw(&subfont, glyph, &[], None, &mut sink).is_ok() {
+            sink.sum = sink.sum.wrapping_add(1);
+        }
+    }
+    sink.sum
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
-        eprintln!("usage: font-bench cmap|glyf|hmtx FONT");
+        eprintln!("usage: font-bench cmap|glyf|hmtx|cff FONT");
         std::process::exit(2);
     }
     let data = std::fs::read(&args[2]).unwrap_or_else(|_| {
@@ -78,6 +139,7 @@ fn main() {
             "cmap" => cmap(&font),
             "glyf" => glyf(&font),
             "hmtx" => hmtx(&font),
+            "cff" => cff(&font),
             _ => {
                 eprintln!("font-bench: unknown workload");
                 std::process::exit(2);

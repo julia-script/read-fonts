@@ -8,6 +8,8 @@ import silk.u8
 import silk.u16
 import silk.u32
 import silk.usize
+import silk.slice { Slice }
+import table_ref { ByteRange }
 
 pub fn readOffset<'a>(index: usize, count: usize, width: u8, data: FontData<'a>) -> Option<usize> {
   if index > count {
@@ -49,4 +51,57 @@ pub fn readOffset<'a>(index: usize, count: usize, width: u8, data: FontData<'a>)
     }
   }
   return usize.checkedSubtract(offset, 1)
+}
+
+// Reads a big-endian offset of `width` bytes; returns the 0-based value or None.
+fn offsetAt(offsets: &[u8], index: usize, width: usize) -> Option<
+  usize
+> with Intrinsic.inlineAlways() {
+  let at = usize.wrappingMultiply(index, width)
+  if width == 0 || width > 4 || at > offsets.length || width > offsets.length - at {
+    return Option<usize>.None
+  }
+  let mut value: usize = 0
+  let mut i: usize = 0
+  while i < width {
+    value = usize.shiftLeft(value, 8) | u8.toUsize(offsets[at + i])
+    i = i + 1
+  }
+  if value == 0 {
+    return Option<usize>.None
+  }
+  return Option<usize>.some(value - 1)
+}
+
+/// Returns item `index` of an INDEX whose offset array is `offsets` and whose
+/// object data follows it, reading the bytes directly.
+pub fn indexItem<'a>(
+  bytes: &'a [u8],
+  count: usize,
+  width: u8,
+  offsets: ByteRange,
+  index: usize,
+) -> Option<&'a [u8]> with Intrinsic.inlineAlways() {
+  if index >= count || offsets.start > offsets.end || offsets.end > bytes.length {
+    return Option<&'a [u8]>.None
+  }
+  let table = Slice.view<u8>(bytes, offsets.start, offsets.end - offsets.start)
+  let size = u8.toUsize(width)
+  let start = match move offsetAt(table, index, size) {
+    Option<usize>.Some { value } => value
+    _ => {
+      return Option<&'a [u8]>.None
+    }
+  }
+  let end = match move offsetAt(table, index + 1, size) {
+    Option<usize>.Some { value } => value
+    _ => {
+      return Option<&'a [u8]>.None
+    }
+  }
+  let dataLength = bytes.length - offsets.end
+  if start > end || end > dataLength {
+    return Option<&'a [u8]>.None
+  }
+  return Option<&'a [u8]>.some(Slice.view<u8>(bytes, offsets.end + start, end - start))
 }
