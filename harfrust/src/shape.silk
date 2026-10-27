@@ -382,7 +382,12 @@ fn hasFeature(plan: &OtPlan, tag: u32) -> bool {
 }
 
 fn fractions(buffer: &mut Buffer) -> () {
+  // Most runs have no fraction slash, so they are scanned without copying glyphs out.
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let mut i: usize = 0
+  while i < glyphs.length && glyphs[i].codepoint != 0x2044 {
+    i = i + 1
+  }
   while i < Buffer.len(&buffer.*) {
     if List<Glyph>.get(&buffer.glyphs, i).codepoint == 0x2044 {
       let mut first = i
