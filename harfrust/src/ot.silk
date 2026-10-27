@@ -136,9 +136,14 @@ fn gdefClasses<'a, 's>(
   }
 }
 
-/// The GDEF glyph class of `glyph`, using the plan's expansion when it has one.
-pub fn gdefGlyphClass<'a>(plan: &OtPlan<'a>, gdef: View<'a>, glyph: u32) -> u32 {
-  return classOf(&gdefClasses(plan, gdef, 0, plan.glyphClasses), glyph)
+/// Sets each glyph's GDEF glyph class, using the plan's expansion when it has one.
+pub fn setGdefGlyphClasses<'a>(plan: &OtPlan<'a>, gdef: View<'a>, glyphs: &mut [Glyph]) -> () {
+  let classes = gdefClasses(plan, gdef, 0, plan.glyphClasses)
+  let mut i: usize = 0
+  while i < glyphs.length {
+    glyphs[i].glyphClass = classOf(&classes, glyphs[i].info.glyphId)
+    i = i + 1
+  }
 }
 
 fn classOf(classes: &Classes, glyph: u32) -> u32 with Intrinsic.inlineAlways() {

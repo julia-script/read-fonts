@@ -163,18 +163,22 @@ effect fn execute<'a, 's, F: FontFuncs>(
   }
   let classes = View.gdefList(&font.data.gdef, 0)
   i = 0
-  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-  while i < glyphs.length {
-    let item = &mut glyphs[i]
-    if View.len(&classes) > 0 {
-      item.glyphClass = ot.gdefGlyphClass(substitutions, font.data.gdef, item.info.glyphId)
-    } else {
+  if View.len(&classes) > 0 {
+    ot.setGdefGlyphClasses(
+      substitutions,
+      font.data.gdef,
+      List<Glyph>.asMutSlice(&mut buffer.glyphs),
+    )
+  } else {
+    let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    while i < glyphs.length {
+      let item = &mut glyphs[i]
       item.glyphClass = 1
       if unicode.generalCategory(item.codepoint) == 12 && !item.ignorable {
         item.glyphClass = 3
       }
+      i = i + 1
     }
-    i = i + 1
   }
   buffer.contentType = ContentType.Glyphs
   if !buffer.dumber {
