@@ -5,7 +5,7 @@ import view { View, read16, offset, valueSize }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
-import plan { OtPlan, LookupStep, LookupSubtable, ClassTable, featureValue }
+import plan { OtPlan, LookupStep, LookupSubtable, ClassTable, featureValue, RULE_STOP }
 import feature { Feature }
 import arabic
 import complex
@@ -55,7 +55,7 @@ struct Context<'a, 's> {
   ruleDigests: &'s [u64],
   /// Where each rule set's second input values start in `ruleSeconds` (`OtPlan.ruleSecondStarts`).
   ruleSecondStarts: &'s [u32],
-  ruleSeconds: &'s [u16],
+  ruleSeconds: &'s [u32],
   /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
   coverageValues: &'s [u16],
   /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
@@ -233,7 +233,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
-    ruleSeconds: List<u16>.asSlice(&plan.ruleSeconds),
+    ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -503,7 +503,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
-    ruleSeconds: List<u16>.asSlice(&plan.ruleSeconds),
+    ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -1956,19 +1956,25 @@ effect fn contextual<F: FontFuncs>(
     run List<usize>.append(&mut context.positionStack, 0)
   }
 
-  // Rule sets whose rules are all well formed have their second input values in the plan, so
-  // rules are skipped by reading those instead of the rules. Buffers that track unsafe-to-concat
-  // take `skipRules`, which marks the span.
+  // The plan keeps each rule's second input value, so rules are skipped by reading those
+  // instead of the rules, stopping where `skipRules` would: at a rule whose second value matches
+  // or one the plan marks `RULE_STOP`. Buffers that track unsafe-to-concat take
+  // `skipRules`, which marks the span.
   let mut seconds = Slice.view(context.ruleSeconds, 0, 0)
-  if quickReject && second.found && (buffer.flags & 64) == 0 && ruleSetIndex < starts.length
+  if quickReject && (buffer.flags & 64) == 0 && ruleSetIndex < starts.length
     && starts[ruleSetIndex] != u32.MAX {
     seconds = Slice.view(context.ruleSeconds, u32.toUsize(starts[ruleSetIndex]), count)
+  }
+  let mut target = secondValue
+  if !second.found {
+    target = u32.MAX
   }
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
     if seconds.length != 0 {
       let mut budget = context.budget
-      while ruleIndex < count && budget != 0 && u16.toU32(seconds[ruleIndex]) != secondValue {
+      while ruleIndex < count && budget != 0 && seconds[ruleIndex] != target
+        && seconds[ruleIndex] != RULE_STOP {
         budget = budget - 1
         ruleIndex = ruleIndex + 1
       }

@@ -140,6 +140,9 @@ const MAX_CLASS_VALUES: usize = 4194304
 /// The most glyphs one expanded coverage spans; wider coverages are searched instead.
 const MAX_COVERAGE_SPAN: usize = 8192
 
+/// A `ruleSeconds` entry for a rule that no second input value lets the rule loop skip.
+pub const RULE_STOP: u32 = 0x10000
+
 pub struct OtPlan<'a> {
   pub table: View<'a>,
   pub steps: List<LookupStep>,
@@ -152,10 +155,10 @@ pub struct OtPlan<'a> {
   /// Likewise for each ligature set of a 16-bit ligature subtable, by second component.
   pub ruleDigests: List<u64>,
   /// For each entry of `ruleDigests`, where its rules' second input values start in
-  /// `ruleSeconds`, or `u32.MAX` for ligature sets and rule sets whose digest is full.
+  /// `ruleSeconds`, or `u32.MAX` for ligature sets.
   pub ruleSecondStarts: List<u32>,
   /// The second input value of each rule, in rule order, for the rule sets that have them.
-  pub ruleSeconds: List<u16>,
+  pub ruleSeconds: List<u32>,
   /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
   /// glyphs; full when the set is malformed.
   pub pairDigests: List<SetDigest>,
@@ -306,20 +309,18 @@ impl<'a> OtPlan<'a> {
       let ruleSet = View.offset(&table, countPos + 2 + index * 2, 2)
       let digest = ruleSetDigest(ruleSet, chained)
       run List<u64>.append(&mut self.ruleDigests, digest)
-      if digest == u64.MAX {
-        run List<u32>.append(&mut self.ruleSecondStarts, u32.MAX)
-      } else {
-        run List<u32>.append(
-          &mut self.ruleSecondStarts,
-          usize.toU32(List<u16>.length(&self.ruleSeconds)),
-        )
-        run self.addRuleSeconds(ruleSet, chained)
-      }
+      run List<u32>.append(
+        &mut self.ruleSecondStarts,
+        usize.toU32(List<u32>.length(&self.ruleSeconds)),
+      )
+      run self.addRuleSeconds(ruleSet, chained)
       index = index + 1
     }
   }
 
-  /// Appends the second input value of each rule of a rule set that `ruleSetDigest` accepted.
+  /// Appends the second input value of each rule of a rule set, or `RULE_STOP` for a rule that
+  /// the rule loop must look at whatever the second glyph is: a malformed rule, or one with
+  /// fewer than two or more than 64 inputs. These are the rules `skipRules16` stops at.
   effect fn addRuleSeconds(self: &mut Self, ruleSet: View, chained: bool) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
@@ -327,15 +328,21 @@ impl<'a> OtPlan<'a> {
     let count = read16(bytes, 0)
     let mut index: usize = 0
     while index < count {
-      let mut pos = read16(bytes, 2 + index * 2)
+      let start = read16(bytes, 2 + index * 2)
+      let mut countPos = start
       if chained {
-        pos = pos + 2 + read16(bytes, pos) * 2
+        countPos = countPos + 2 + read16(bytes, countPos) * 2
       }
-      pos = pos + 2
+      let inputCount = read16(bytes, countPos)
+      let mut pos = countPos + 2
       if !chained {
         pos = pos + 2
       }
-      run List<u16>.append(&mut self.ruleSeconds, usize.toU16(read16(bytes, pos)))
+      let mut value = RULE_STOP
+      if start != 0 && start <= bytes.length && inputCount >= 2 && inputCount <= 64 {
+        value = usize.toU32(read16(bytes, pos))
+      }
+      run List<u32>.append(&mut self.ruleSeconds, value)
       index = index + 1
     }
   }
@@ -473,7 +480,7 @@ impl<'a> OtPlan<'a> {
       classValues: List<u16>.make(),
       ruleDigests: List<u64>.make(),
       ruleSecondStarts: List<u32>.make(),
-      ruleSeconds: List<u16>.make(),
+      ruleSeconds: List<u32>.make(),
       pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
