@@ -377,7 +377,7 @@ test effect fn avarSegmentMaps() -> ()
       F2Dot14.toBits(AxisValueMap.fromCoordinate(&value))
         == F2Dot14.toBits(F2Dot14.fromF64(from[i]))
         && F2Dot14.toBits(AxisValueMap.toCoordinate(&value))
-        == F2Dot14.toBits(F2Dot14.fromF64(to[i])),
+          == F2Dot14.toBits(F2Dot14.fromF64(to[i])),
       "axis mapping",
     )
     i = i + 1
@@ -416,7 +416,7 @@ test effect fn avarSegmentMapsMultiAxis() -> ()
       F2Dot14.toBits(AxisValueMap.fromCoordinate(&record))
         == F2Dot14.toBits(F2Dot14.fromF64(from[i]))
         && F2Dot14.toBits(AxisValueMap.toCoordinate(&record))
-        == F2Dot14.toBits(F2Dot14.fromF64(to[i])),
+          == F2Dot14.toBits(F2Dot14.fromF64(to[i])),
       "all segment map fields",
     )
     i = i + 1

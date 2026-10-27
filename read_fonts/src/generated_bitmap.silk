@@ -695,12 +695,12 @@ impl<'a> IndexSubtableList<'a> {
   pub fn default() -> Self {
     return IndexSubtableList<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _numberOfIndexSubtables: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _numberOfIndexSubtables: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -863,13 +863,13 @@ impl<'a> IndexSubtable1<'a> {
       GlyphId16.new(0),
     )
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 4],
-        _lastGlyphIndex: GlyphId16.new(0),
-        _firstGlyphIndex: GlyphId16.new(0),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 4],
+          _lastGlyphIndex: GlyphId16.new(0),
+          _firstGlyphIndex: GlyphId16.new(0),
+        },
+      )
   }
 
   pub fn minSize() -> usize {

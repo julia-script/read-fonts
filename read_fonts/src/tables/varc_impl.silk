@@ -414,8 +414,8 @@ impl DecomposedTransform {
     if self._skewX != 0.0 || self._skewY != 0.0 {
       transform = transform
         * Matrix.fromElements<f32>(
-        [1.0, unsafe tanf(self._skewY * pi), unsafe tanf(-self._skewX * pi), 1.0, 0.0, 0.0],
-      )
+          [1.0, unsafe tanf(self._skewY * pi), unsafe tanf(-self._skewX * pi), 1.0, 0.0, 0.0],
+        )
     }
     if self._centerX != 0.0 || self._centerY != 0.0 {
       transform = transform

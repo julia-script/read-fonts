@@ -296,9 +296,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       }
       if arabic.usesScript(buffer.script)
         && (common || arabic.isFeature(tag) || tag == 0x726c6967 || tag == 0x63616c74
-        || tag == 0x6c696761
-        || tag == 0x636c6967
-        || tag == 0x6d736574) {
+          || tag == 0x6c696761
+          || tag == 0x636c6967
+          || tag == 0x6d736574) {
         context.autoZwj = false
       }
       let lookup = lookupAt(&context, steps[step].lookupOffset)
@@ -1085,12 +1085,12 @@ effect fn substitute<F: FontFuncs>(
         if (found & MISMATCH) != 0
           || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
           || !compatibleComponents(
-          &context.*,
-          &buffer.*,
-          lookup,
-          at,
-          &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
-        ) {
+            &context.*,
+            &buffer.*,
+            lookup,
+            at,
+            &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
+          ) {
           break
         }
         context.positions[matched] = cursor
@@ -1209,17 +1209,17 @@ effect fn substitute<F: FontFuncs>(
       noClasses(&context.*),
     )
       || !matchOutside(
-      &context.*,
-      &buffer.*,
-      lookup,
-      table,
-      aheadPos + 2,
-      aheadCount,
-      at,
-      false,
-      matchKind,
-      noClasses(&context.*),
-    ) {
+        &context.*,
+        &buffer.*,
+        lookup,
+        table,
+        aheadPos + 2,
+        aheadCount,
+        at,
+        false,
+        matchKind,
+        noClasses(&context.*),
+      ) {
       return no()
     }
     let substitutes = aheadPos + 2 + aheadCount * width
@@ -1840,7 +1840,7 @@ effect fn contextual<F: FontFuncs>(
   if quickReject && (buffer.flags & 64) == 0 && ruleSetIndex < digests.length
     && digests[ruleSetIndex] != u64.MAX
     && (!second.found
-    || (digests[ruleSetIndex] & u64.shiftLeft(1, u32.toU64(secondValue & 63))) == 0) {
+      || (digests[ruleSetIndex] & u64.shiftLeft(1, u32.toU64(secondValue & 63))) == 0) {
     if context.budget != 0 && buffer.successful {
       context.budget = usize.saturatingSubtract(context.budget, count)
     }
@@ -1951,12 +1951,12 @@ effect fn contextual<F: FontFuncs>(
       if (found & MISMATCH) != 0
         || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
         || !compatibleComponents(
-        &context.*,
-        &buffer.*,
-        lookup,
-        at,
-        &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
-      ) {
+          &context.*,
+          &buffer.*,
+          lookup,
+          at,
+          &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
+        ) {
         break
       }
       List<usize>.set(&mut context.positionStack, base + n, cursor)
@@ -1964,29 +1964,29 @@ effect fn contextual<F: FontFuncs>(
     }
     if n != inputCount
       || !matchOutside(
-      &context.*,
-      &buffer.*,
-      lookup,
-      rule,
-      backPos,
-      backCount,
-      at,
-      true,
-      kind,
-      backClasses,
-    )
+        &context.*,
+        &buffer.*,
+        lookup,
+        rule,
+        backPos,
+        backCount,
+        at,
+        true,
+        kind,
+        backClasses,
+      )
       || !matchOutside(
-      &context.*,
-      &buffer.*,
-      lookup,
-      rule,
-      aheadPos,
-      aheadCount,
-      cursor,
-      false,
-      kind,
-      aheadClasses,
-    ) {
+        &context.*,
+        &buffer.*,
+        lookup,
+        rule,
+        aheadPos,
+        aheadCount,
+        cursor,
+        false,
+        kind,
+        aheadClasses,
+      ) {
       Buffer.unsafeToConcat(&mut buffer, at, cursor + 1)
       ruleIndex = ruleIndex + 1
       continue
@@ -2322,9 +2322,9 @@ effect fn position<F: FontFuncs>(
       // The plan's digest of the pair set's second glyphs rejects most pairs without a search.
       if subtableIndex < subtables.length && coverage < subtables[subtableIndex].pairSets
         && !SetDigest.mayHave(
-        &context.pairDigests[subtables[subtableIndex].pairDigests + coverage],
-        right,
-      ) {
+          &context.pairDigests[subtables[subtableIndex].pairDigests + coverage],
+          right,
+        ) {
         Buffer.unsafeToConcat(&mut buffer, at, second + 1)
         return no()
       }

@@ -547,9 +547,9 @@ test effect fn coverage24bitGlyphsAndIndices() -> ()
   run Testing.expect(
     (CoverageTable.get(&table, GlyphId.new(65536)) |> Option<u32>.unwrapOr(0)) == 1
       && match move CoverageTable.get(&table, GlyphId.new(16777216)) {
-      Option<u32>.None => true
-      _ => false
-    },
+        Option<u32>.None => true
+        _ => false
+      },
     "wide lookup",
   )
   let range = run must(
@@ -559,9 +559,9 @@ test effect fn coverage24bitGlyphsAndIndices() -> ()
     (CoverageTable.get(&range, GlyphId.new(65538)) |> Option<u32>.unwrapOr(0)) == 65538
       && CoverageTable.population(&range) == 3
       && match move CoverageTable.get(&range, GlyphId.new(65539)) {
-      Option<u32>.None => true
-      _ => false
-    },
+        Option<u32>.None => true
+        _ => false
+      },
     "wide coverage index",
   )
 }
@@ -677,9 +677,9 @@ test effect fn coverageGetFormat2RejectsOverflowingCoverageIndex() -> ()
   run Testing.expect(
     (CoverageFormat2.get(&c, GlyphId.new(1)) |> Option<u16>.unwrapOr(0)) == 65535
       && match move CoverageFormat2.get(&c, GlyphId.new(2)) {
-      Option<u16>.None => true
-      _ => false
-    },
+        Option<u16>.None => true
+        _ => false
+      },
     "overflowing coverage index",
   )
 }
@@ -875,9 +875,9 @@ test effect fn pairposformat1() -> ()
     )
       == 1
       && ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.len(
-      &secondRecords,
-    )
-      == 1,
+        &secondRecords,
+      )
+        == 1,
     "pair record counts",
   )
   let a = run must(
@@ -900,7 +900,7 @@ test effect fn pairposformat1() -> ()
   run Testing.expect(
     (ValueRecord.xAdvance(&PairValueRecord.valueRecord1(&a)) |> Option<i16>.unwrapOr(0)) == -30
       && (ValueRecord.xPlacement(&PairValueRecord.valueRecord2(&a)) |> Option<i16>.unwrapOr(0))
-      == -20,
+        == -20,
     "first pair",
   )
   run Testing.expect(
@@ -913,7 +913,7 @@ test effect fn pairposformat1() -> ()
   run Testing.expect(
     (ValueRecord.xAdvance(&PairValueRecord.valueRecord1(&b)) |> Option<i16>.unwrapOr(0)) == -40
       && (ValueRecord.xPlacement(&PairValueRecord.valueRecord2(&b)) |> Option<i16>.unwrapOr(0))
-      == -25,
+        == -25,
     "second pair",
   )
 }
@@ -1114,7 +1114,7 @@ test effect fn valueformattable() -> ()
   run Testing.expect(
     &SinglePosFormat1.valueFormat(&table)
       == &(ValueFormat.xPlacement() | ValueFormat.yAdvance() | ValueFormat.xPlacementDevice()
-      | ValueFormat.yAdvanceDevice()),
+        | ValueFormat.yAdvanceDevice()),
     "device formats",
   )
   let record = SinglePosFormat1.valueRecord(&table)
@@ -1430,8 +1430,8 @@ test effect fn pairSetFindMatchesScan() -> ()
   let mut seen: usize = 0
   while i
     < ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.len(
-    &sets,
-  ) {
+      &sets,
+    ) {
     let set = run must(
       ArrayOfOffsets<'static, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'static>, Offset16>.get(
         &sets,
@@ -1450,8 +1450,8 @@ test effect fn pairSetFindMatchesScan() -> ()
     let mut j: usize = 0
     while j
       < ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.len(
-      &records,
-    ) {
+        &records,
+      ) {
       let want = run must(
         ComputedArray<'static, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'static>>.get(
           &records,

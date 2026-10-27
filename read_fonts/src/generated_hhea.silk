@@ -65,8 +65,8 @@ impl<'a> Hhea<'a> {
   pub fn default() -> Self {
     return Hhea<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -374,8 +374,8 @@ impl<'a> HheaExtended<'a> {
   pub fn default() -> Self {
     return HheaExtended<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
+      )
   }
 
   pub fn minSize() -> usize {

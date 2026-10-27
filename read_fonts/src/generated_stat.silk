@@ -65,8 +65,8 @@ impl<'a> Stat<'a> {
   pub fn default() -> Self {
     return Stat<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 7] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 7] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -348,12 +348,12 @@ impl<'a> AxisValueArray<'a> {
   pub fn default() -> Self {
     return AxisValueArray<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _axisValueCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _axisValueCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -586,8 +586,8 @@ impl<'a> AxisValueFormat1<'a> {
   pub fn default() -> Self {
     return AxisValueFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {

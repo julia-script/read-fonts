@@ -49,8 +49,8 @@ impl Feature {
     let startTag = pos
     while pos < raw.length
       && ((raw[pos] >= 65 && raw[pos] <= 90) || (raw[pos] >= 97 && raw[pos] <= 122)
-      || (raw[pos] >= 48 && raw[pos] <= 57)
-      || raw[pos] == 95) {
+        || (raw[pos] >= 48 && raw[pos] <= 57)
+        || raw[pos] == 95) {
       pos = pos + 1
     }
     let tag = match move Tag.newChecked(

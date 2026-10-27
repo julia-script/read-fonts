@@ -246,12 +246,12 @@ impl<'a> Sbix<'a> {
   pub fn default() -> Self {
     return Sbix<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 4],
-        _numGlyphs: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 4],
+          _numGlyphs: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -399,12 +399,12 @@ impl<'a> Strike<'a> {
   pub fn default() -> Self {
     return Strike<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
-        _numGlyphs: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
+          _numGlyphs: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -513,8 +513,8 @@ impl<'a> GlyphData<'a> {
   pub fn default() -> Self {
     return GlyphData<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {

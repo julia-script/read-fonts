@@ -27,7 +27,7 @@ shaping, OpenType and AAT layout, and the `hr_shape` CLI.
 git clone --recurse-submodules https://github.com/julia-script/read-fonts.git
 cd read-fonts
 export PATH="$(scripts/install-silk):$PATH"   # the Silk release pinned in the manifests
-export SILK_CLANG=/usr/bin/clang-18            # absolute path to Clang 18 or newer
+export SILK_CLANG="$(scripts/install-llvm)"   # Clang 22 (Silk needs 22 or newer)
 ```
 
 The scripts need Python 3.11+. Code generation and the Rust baseline need a

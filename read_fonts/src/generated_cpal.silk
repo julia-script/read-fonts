@@ -65,8 +65,8 @@ impl<'a> Cpal<'a> {
   pub fn default() -> Self {
     return Cpal<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 9] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 9] },
+      )
   }
 
   pub fn minSize() -> usize {

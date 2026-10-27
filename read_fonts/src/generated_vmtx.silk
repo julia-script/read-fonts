@@ -67,12 +67,12 @@ impl<'a> Vmtx<'a> {
   pub fn default() -> Self {
     return Vmtx<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _numberOfLongVerMetrics: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _numberOfLongVerMetrics: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -188,12 +188,12 @@ impl<'a> VmtxExtended<'a> {
   pub fn default() -> Self {
     return VmtxExtended<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _numberOfLongVerMetrics: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _numberOfLongVerMetrics: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {

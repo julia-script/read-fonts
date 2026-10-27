@@ -1,12 +1,13 @@
 name: Set up Silk
-description: Install the Silk release pinned in silk.toml and point it at Clang 18.
+description: Install the Silk release pinned in silk.toml and the Clang 22 it links with.
 runs:
   using: composite
   steps:
+    - uses: actions/cache@v4
+      with:
+        path: build/llvm-22.1.8
+        key: llvm-22.1.8-linux-x64-clang
     - shell: bash
       run: |
-        if [ ! -x /usr/bin/clang-18 ]; then
-          sudo apt-get update -qq && sudo apt-get install -y -qq clang-18
-        fi
-        echo "SILK_CLANG=/usr/bin/clang-18" >> "$GITHUB_ENV"
+        echo "SILK_CLANG=$(scripts/install-llvm)" >> "$GITHUB_ENV"
         scripts/install-silk >> "$GITHUB_PATH"

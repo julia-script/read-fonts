@@ -66,8 +66,8 @@ impl<'a> Post<'a> {
   pub fn default() -> Self {
     return Post<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 12] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 12] },
+      )
   }
 
   pub fn minSize() -> usize {

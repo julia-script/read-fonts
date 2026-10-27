@@ -28,8 +28,8 @@ effect fn cases() -> ()
   run Testing.expect(
     buffer.contentType == ContentType.Unicode
       && (GlyphInfos.get(&infos, 1)
-      |> Option<GlyphInfo>.unwrapOr(GlyphInfo { glyphId: 0, cluster: 0, flags: 0 })).glyphId
-      == 233,
+        |> Option<GlyphInfo>.unwrapOr(GlyphInfo { glyphId: 0, cluster: 0, flags: 0 })).glyphId
+        == 233,
     "unshaped glyph views expose Unicode",
   )
   run Testing.expect(
@@ -41,8 +41,8 @@ effect fn cases() -> ()
     run Testing.expect(
       GlyphPositionsMut.len(&positions) == 3
         && (GlyphPositionsMut.get(&positions, 2)
-        |> Option<GlyphPosition>.unwrapOr(GlyphPosition.zero())).xAdvance
-        == 0,
+          |> Option<GlyphPosition>.unwrapOr(GlyphPosition.zero())).xAdvance
+          == 0,
       "mutable positions initialize on demand",
     )
     let mut first = GlyphPosition.zero()

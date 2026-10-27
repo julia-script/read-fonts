@@ -991,8 +991,8 @@ pub effect fn dumpPairPosFormat1<'a>(path: &mut DumpPath, value: PairPosFormat1<
     let mut index: usize = 0
     while index
       < ArrayOfOffsets<'a, ReadArgs2<ValueFormat, ValueFormat>, PairSet<'a>, Offset16>.len(
-      &resolvedArray,
-    ) {
+        &resolvedArray,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       let resolved = ArrayOfOffsets<
@@ -1047,8 +1047,8 @@ pub effect fn dumpPairSet<'a>(path: &mut DumpPath, value: PairSet<'a>) -> ()
     let mut index: usize = 0
     while index
       < ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.len(
-      &fieldValue,
-    ) {
+        &fieldValue,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord<'a>>.get(
@@ -1227,8 +1227,8 @@ pub effect fn dumpPairPosFormat2<'a>(path: &mut DumpPath, value: PairPosFormat2<
     let mut index: usize = 0
     while index
       < ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(
-      &fieldValue,
-    ) {
+        &fieldValue,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(
@@ -2520,8 +2520,8 @@ pub effect fn dumpPairPosFormat3<'a>(path: &mut DumpPath, value: PairPosFormat3<
     let mut index: usize = 0
     while index
       < ArrayOfOffsets<'a, ReadArgs2<ValueFormat, ValueFormat>, PairSet2<'a>, Offset24>.len(
-      &resolvedArray,
-    ) {
+        &resolvedArray,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       let resolved = ArrayOfOffsets<
@@ -2576,8 +2576,8 @@ pub effect fn dumpPairSet2<'a>(path: &mut DumpPath, value: PairSet2<'a>) -> ()
     let mut index: usize = 0
     while index
       < ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.len(
-      &fieldValue,
-    ) {
+        &fieldValue,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ComputedArray<'a, ReadArgs2<ValueFormat, ValueFormat>, PairValueRecord2<'a>>.get(
@@ -2756,8 +2756,8 @@ pub effect fn dumpPairPosFormat4<'a>(path: &mut DumpPath, value: PairPosFormat4<
     let mut index: usize = 0
     while index
       < ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.len(
-      &fieldValue,
-    ) {
+        &fieldValue,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ComputedArray<'a, ReadArgs3<u16, ValueFormat, ValueFormat>, Class1Record<'a>>.get(

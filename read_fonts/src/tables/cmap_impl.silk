@@ -833,8 +833,8 @@ impl<'a> UvsSubtable<'a> {
     let range = Cmap15<'a>.varSelectorByteRange(&table)
     let selectors = recordArray<VariationSelector<'a>>(data, range.start, range.end)
       |> Result<ComputedArray<'a, (), VariationSelector<'a>>, ReadError>.unwrapOr(
-      ComputedArray<'a, (), VariationSelector<'a>>.empty(()),
-    )
+        ComputedArray<'a, (), VariationSelector<'a>>.empty(()),
+      )
     return Self { data: data, selectors: selectors, _format: 15 }
   }
 

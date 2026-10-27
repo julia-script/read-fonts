@@ -67,12 +67,12 @@ impl<'a> TupleVariationHeader<'a> {
   pub fn default() -> Self {
     return TupleVariationHeader<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 5],
-        _axisCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 5],
+          _axisCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -212,12 +212,12 @@ impl<'a> Tuple<'a> {
   pub fn default() -> Self {
     return Tuple<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _axisCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _axisCount: 0,
+        },
+      )
   }
 
   /// Coordinate array specifying a position within the font’s variation space.
@@ -277,8 +277,8 @@ impl<'a> DeltaSetIndexMapFormat0<'a> {
   pub fn default() -> Self {
     return DeltaSetIndexMapFormat0<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -410,8 +410,8 @@ impl<'a> DeltaSetIndexMapFormat1<'a> {
   pub fn default() -> Self {
     return DeltaSetIndexMapFormat1<'a>.read(FontData.defaultFormat1U8TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -833,8 +833,8 @@ impl<'a> VariationRegionList<'a> {
   pub fn default() -> Self {
     return VariationRegionList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -968,12 +968,12 @@ impl<'a> VariationRegion<'a> {
   pub fn default() -> Self {
     return VariationRegion<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _axisCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _axisCount: 0,
+        },
+      )
   }
 
   /// Array of region axis coordinates records, in the order of axes
@@ -1096,8 +1096,8 @@ impl<'a> ItemVariationStore<'a> {
   pub fn default() -> Self {
     return ItemVariationStore<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1241,8 +1241,8 @@ impl<'a> ItemVariationData<'a> {
   pub fn default() -> Self {
     return ItemVariationData<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {

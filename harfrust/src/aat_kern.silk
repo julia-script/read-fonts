@@ -497,7 +497,7 @@ pub fn machine(
       && (flags & 0x4000) == (View.u16(&start, 2) & 0x4000)
     let safe = !actionable(entry, legacy)
       && (state == 0 || ((flags & 0x4000) != 0 && nextState == 0)
-      || (!actionable(start, legacy) && same))
+        || (!actionable(start, legacy) && same))
       && !actionable(end, legacy)
     if !safe && i > 0 && !atEnd {
       Buffer.unsafeToBreak(&mut buffer, i - 1, i + 1)

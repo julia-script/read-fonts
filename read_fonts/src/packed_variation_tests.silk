@@ -100,9 +100,9 @@ test effect fn packedPoints() -> ()
   run Testing.expect(
     PackedPointNumbers.count(&PackedPointNumbers.splitOffFront(FontData.new(b"\x00")).points) == 0
       && PackedPointNumbers.count(
-      &PackedPointNumbers.splitOffFront(FontData.new(b"\x80\x00")).points,
-    )
-      == 0,
+        &PackedPointNumbers.splitOffFront(FontData.new(b"\x80\x00")).points,
+      )
+        == 0,
     "all points encodings",
   )
   run points(b"\x02\x01\x09\x06", &[9, 15])

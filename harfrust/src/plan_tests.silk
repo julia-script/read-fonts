@@ -68,9 +68,9 @@ effect fn planCases() -> ()
   run Testing.expect(
     buffer.flags == 64 && buffer.clusterLevel == ClusterLevel.Characters
       && GlyphId.toU32(
-      Buffer.getInvisibleGlyph(&buffer) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
-    )
-      == 42,
+        Buffer.getInvisibleGlyph(&buffer) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+      )
+        == 42,
     "clear retains buffer configuration",
   )
   run Buffer.pushStr(&mut buffer, "AB")
@@ -106,9 +106,9 @@ effect fn planCases() -> ()
   run Testing.expect(
     buffer.flags == 0 && buffer.clusterLevel == ClusterLevel.MonotoneGraphemes
       && GlyphId.toU32(
-      Buffer.getInvisibleGlyph(&buffer) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
-    )
-      == 0,
+        Buffer.getInvisibleGlyph(&buffer) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+      )
+        == 0,
     "reset also resets buffer configuration",
   )
   let requiredSource = match move FontRef.new(Fixtures.requiredFont()) {

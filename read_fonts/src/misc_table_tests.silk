@@ -649,7 +649,7 @@ test effect fn dsigEmpty() -> ()
   run Testing.expect(
     Dsig.version(&table) == 1
       && ComputedArray<'static, (), SignatureRecord<'static>>.len(&Dsig.signatureRecords(&table))
-      == 0
+        == 0
       && PermissionFlags.bits(&Dsig.flags(&table)) == 0,
     "empty signature table",
   )

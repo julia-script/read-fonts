@@ -122,7 +122,7 @@ pub effect fn normalize<F: FontFuncs>(
       let mut shortest = true
       if unicode.isMark(item.codepoint)
         || (i + 1 < Buffer.len(&buffer.*)
-        && unicode.isMark(List<Glyph>.get(&buffer.glyphs, i + 1).codepoint)) {
+          && unicode.isMark(List<Glyph>.get(&buffer.glyphs, i + 1).codepoint)) {
         shortest = false
       }
       if buffer.shaper != 0 {
@@ -284,13 +284,13 @@ effect fn decompose<F: FontFuncs>(
   let mut parts = unicode.decomposeRaw(item.codepoint)
   if shaper == 1
     && (item.codepoint == 0x0931 || item.codepoint == 0x09dc || item.codepoint == 0x09dd
-    || item.codepoint == 0x0b94) {
+      || item.codepoint == 0x0b94) {
     parts.first = 0
   }
   if shaper == 2
     && (item.codepoint == 0x17be || item.codepoint == 0x17bf || item.codepoint == 0x17c0
-    || item.codepoint == 0x17c4
-    || item.codepoint == 0x17c5) {
+      || item.codepoint == 0x17c4
+      || item.codepoint == 0x17c5) {
     parts.first = 0x17c1
     parts.second = item.codepoint
   }
@@ -333,7 +333,7 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
         || (cp >= 0xe0020 && cp <= 0xe007f)
         || (cp >= 0xff9e && cp <= 0xff9f)
         || (cp >= 0x1f1e6 && cp <= 0x1f1ff && prev >= 0x1f1e6 && prev <= 0x1f1ff
-        && !previousContinuation)
+          && !previousContinuation)
     }
     if i < Buffer.len(&buffer.*) {
       let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
@@ -454,7 +454,7 @@ effect fn reorderMarks(buffer: &mut Buffer, start: usize, end: usize) -> ()
       let c = List<Glyph>.get(&buffer.glyphs, i + 2).combiningClass
       if (a == unicode.modifiedCombiningClass(0x5b7) || a == unicode.modifiedCombiningClass(0x5b8))
         && (b == unicode.modifiedCombiningClass(0x5b0)
-        || b == unicode.modifiedCombiningClass(0x5b4))
+          || b == unicode.modifiedCombiningClass(0x5b4))
         && (c == 22 || c == 220) {
         Buffer.mergeClusters(&mut buffer, i + 1, i + 3)
         reverseRange(&mut buffer.glyphs, i + 1, i + 3)
