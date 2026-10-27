@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 111M | 65.3M | 1.70× |
-| Roboto / English words | 152M | 87.9M | 1.72× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,228M | 789M | 1.56× |
-| Noto Nastaliq Urdu / Persian words | 1,047M | 847M | 1.24× |
-| Noto Sans Devanagari / Hindi words | 352M | 225M | 1.56× |
-| Amiri / Persian Little Prince | 590M | 374M | 1.58× |
-| Source Serif Variable / react-dom | 1,407M | 1,004M | 1.40× |
+| Roboto / English Little Prince | 111M | 65.3M | 1.69× |
+| Roboto / English words | 151M | 87.9M | 1.72× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,223M | 789M | 1.55× |
+| Noto Nastaliq Urdu / Persian words | 1,042M | 847M | 1.23× |
+| Noto Sans Devanagari / Hindi words | 351M | 225M | 1.56× |
+| Amiri / Persian Little Prince | 588M | 374M | 1.57× |
+| Source Serif Variable / react-dom | 1,402M | 1,004M | 1.40× |
 
-The geometric mean is **1.53×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.52×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
