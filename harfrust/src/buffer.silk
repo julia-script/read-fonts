@@ -407,39 +407,37 @@ impl Buffer {
     Buffer.mergeClusterRange(&mut self, start, end)
   }
 
+  /// Gives glyphs `start..end`, and the neighbours sharing their first or last cluster, the
+  /// lowest cluster among them. A single glyph already shares its neighbours' cluster.
   fn mergeClusterRange(self: &mut Self, start: usize, end: usize) -> () {
-    if start >= end || end > Buffer.len(&self.*) {
+    if start >= end || end - start < 2 || end > Buffer.len(&self.*) {
       return
     }
-    let mut cluster = List<Glyph>.get(&self.glyphs, start).info.cluster
+    let glyphs = List<Glyph>.asMutSlice(&mut self.glyphs)
+    let mut cluster = glyphs[start].info.cluster
     let mut i = start + 1
     while i < end {
-      let c = List<Glyph>.get(&self.glyphs, i).info.cluster
-      if c < cluster {
-        cluster = c
+      if glyphs[i].info.cluster < cluster {
+        cluster = glyphs[i].info.cluster
       }
       i = i + 1
     }
+    let first = glyphs[start].info.cluster
+    let last = glyphs[end - 1].info.cluster
     let mut from = start
     let mut to = end
-    while from > 0
-      && List<Glyph>.get(&self.glyphs, from - 1).info.cluster
-      == List<Glyph>.get(&self.glyphs, start).info.cluster {
+    while from > 0 && glyphs[from - 1].info.cluster == first {
       from = from - 1
     }
-    while to < Buffer.len(&self.*)
-      && List<Glyph>.get(&self.glyphs, to).info.cluster
-      == List<Glyph>.get(&self.glyphs, end - 1).info.cluster {
+    while to < glyphs.length && glyphs[to].info.cluster == last {
       to = to + 1
     }
     i = from
     while i < to {
-      let mut item = List<Glyph>.get(&self.glyphs, i)
-      if item.info.cluster != cluster {
-        item.info.flags = 0
+      if glyphs[i].info.cluster != cluster {
+        glyphs[i].info.flags = 0
       }
-      item.info.cluster = cluster
-      List<Glyph>.set(&mut self.glyphs, i, item)
+      glyphs[i].info.cluster = cluster
       i = i + 1
     }
   }
