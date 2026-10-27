@@ -207,7 +207,7 @@ effect fn execute<'a, 's, F: FontFuncs>(
   let zeroMarks = !buffer.dumber && !applyKerx && (!applyKern || !aat_kern.hasMachine(font))
   let fallbackMarks = !applyGpos && !applyKerx && (!applyKern || !aat_kern.hasCross(font))
   buffer.havePositions = true
-  let metrics = metrics(font)
+  let metrics = run metrics(font)
   if Direction.isHorizontal(buffer.direction) {
     let mut advances = Advances { glyphs: List<Glyph>.asMutSlice(&mut buffer.glyphs) }
     Metrics.hAdvances(&metrics, &mut advances)

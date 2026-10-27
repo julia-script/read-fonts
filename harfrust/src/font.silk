@@ -132,6 +132,10 @@ pub struct ConfiguredShaper<'a, 's, F: FontFuncs> {
   /// Metrics at the default instance. Building them looks up a dozen tables, which costs more
   /// than shaping a short line, so shaping without variations reuses these.
   defaultGlyphMetrics: GlyphMetrics<'a, 's>,
+  /// `defaultGlyphMetrics` scaled by `defaultScale`, so shaping at that scale borrows them
+  /// instead of copying the metrics, which are a few kilobytes, for every call.
+  defaultScaled: ScaledGlyphMetrics<'a, 's, 'static, Scale, i32, NoExtents>,
+  defaultScale: Scale,
 }
 
 impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
@@ -140,18 +144,34 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
   }
 
   pub fn withFuncs(data: &'s ShaperData<'a>, funcs: F) -> Self {
+    let metrics = GlyphMetrics.new(&data.font, Slice.view(&data.noCoords, 0, 0))
     return Self {
       data: data,
       coords: List<F2Dot14>.make(),
       scale: Scale.identity(),
       pointSize: 0.0,
       funcs: move funcs,
-      defaultGlyphMetrics: GlyphMetrics.new(&data.font, Slice.view(&data.noCoords, 0, 0)),
+      defaultGlyphMetrics: metrics,
+      defaultScaled: ScaledGlyphMetrics<'a, 's, 'static, Scale, i32, NoExtents>.new(
+        metrics,
+        Scale.identity(),
+      ),
+      defaultScale: Scale.identity(),
     }
   }
 
   pub fn setScale(self: &mut Self, x: i32, y: i32) -> () {
     self.scale = Scale.new(x, y, u16.toI32(self.data.upem))
+    self.defaultScaled = ScaledGlyphMetrics<'a, 's, 'static, Scale, i32, NoExtents>.new(
+      self.defaultGlyphMetrics,
+      self.scale,
+    )
+    self.defaultScale = self.scale
+  }
+
+  /// Whether `defaultScaled` holds the metrics for the current coordinates and scale.
+  fn defaultScaledCurrent(self: &Self) -> bool {
+    return List<F2Dot14>.length(&self.coords) == 0 && Scale.same(&self.defaultScale, &self.scale)
   }
 
   pub effect fn setVariations(self: &mut Self, variations: &[Variation]) -> ()
@@ -439,6 +459,12 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
   }
 
   pub fn defaultGlyphHAdvance(self: &Self, glyph: GlyphId) -> i32 {
+    if ConfiguredShaper.defaultScaledCurrent(self) {
+      return Scale.clampXAdvance(
+        &self.scale,
+        ScaledGlyphMetrics.hAdvance(&self.defaultScaled, glyph),
+      )
+    }
     return Scale.clampXAdvance(
       &self.scale,
       ScaledGlyphMetrics.hAdvance(&defaultMetrics(self), glyph),
@@ -446,6 +472,12 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
   }
 
   pub fn defaultGlyphVAdvance(self: &Self, glyph: GlyphId) -> i32 {
+    if ConfiguredShaper.defaultScaledCurrent(self) {
+      return sub(
+        0,
+        Scale.clampYAdvance(&self.scale, ScaledGlyphMetrics.vAdvance(&self.defaultScaled, glyph)),
+      )
+    }
     return sub(
       0,
       Scale.clampYAdvance(&self.scale, ScaledGlyphMetrics.vAdvance(&defaultMetrics(self), glyph)),
@@ -532,18 +564,33 @@ fn defaultMetrics<'a, 's, 'c, F: FontFuncs>(
 }
 
 pub struct Metrics<'a, 's, 'c, F: FontFuncs> {
-  inner: ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>,
+  /// Metrics built for this call, or none when the font's `defaultScaled` are current. A list
+  /// rather than an `Option`, whose `if let` would copy the metrics out to borrow them.
+  owned: List<ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>>,
   font: &'c ConfiguredShaper<'a, 's, F>,
 }
 
 impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
+  fn scaled(self: &Self) -> &ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents> {
+    let owned = List<ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>>.asSlice(
+      &self.owned,
+    )
+    if owned.length != 0 {
+      return &owned[0]
+    }
+    return &self.font.defaultScaled
+  }
+
   pub fn hAdvance(self: &Self, glyph: GlyphId) -> i32 {
     if !FontFuncs.isDefault(&self.font.funcs) {
       return ConfiguredShaper.glyphHAdvance(self.font, glyph)
     }
     return Scale.clampXAdvance(
       &self.font.scale,
-      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.hAdvance(&self.inner, glyph),
+      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.hAdvance(
+        Metrics.scaled(self),
+        glyph,
+      ),
     )
   }
 
@@ -566,7 +613,10 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
     }
     return Scale.clampYAdvance(
       &self.font.scale,
-      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vAdvance(&self.inner, glyph),
+      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vAdvance(
+        Metrics.scaled(self),
+        glyph,
+      ),
     )
   }
 
@@ -578,7 +628,10 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
     }
     return [
       Metrics.hAdvance(self, glyph) / 2,
-      run ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vOriginY(&self.inner, glyph),
+      run ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vOriginY(
+        Metrics.scaled(self),
+        glyph,
+      ),
     ]
   }
 
@@ -589,19 +642,28 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
       return flipExtents(run ConfiguredShaper.glyphExtents(self.font, glyph))
     }
     return run ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.extents(
-      &self.inner,
+      Metrics.scaled(self),
       glyph,
     )
   }
 }
 
-pub fn metrics<'a, 's, 'c, F: FontFuncs>(font: &'c ConfiguredShaper<'a, 's, F>) -> Metrics<
+pub effect fn metrics<'a, 's, 'c, F: FontFuncs>(font: &'c ConfiguredShaper<'a, 's, F>) -> Metrics<
   'a,
   's,
   'c,
   F
-> {
-  return Metrics { inner: defaultMetrics(font), font: font }
+>
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut owned = List<ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>>.make()
+  if !ConfiguredShaper.defaultScaledCurrent(font) {
+    run List<ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>>.append(
+      &mut owned,
+      defaultMetrics(font),
+    )
+  }
+  return Metrics { owned: move owned, font: font }
 }
 
 impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
@@ -613,6 +675,8 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
       pointSize: self.pointSize,
       funcs: move funcs,
       defaultGlyphMetrics: self.defaultGlyphMetrics,
+      defaultScaled: self.defaultScaled,
+      defaultScale: self.defaultScale,
     }
   }
 

@@ -453,7 +453,7 @@ pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buf
   if !rtl {
     Buffer.reverse(&mut buffer)
   }
-  let metrics = metrics(font)
+  let metrics = run metrics(font)
   let mut i = Buffer.len(&buffer.*)
   while i != 0 {
     if List<Glyph>.get(&buffer.glyphs, i - 1).stretch == 0 {
