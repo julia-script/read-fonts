@@ -185,6 +185,9 @@ pub struct OtPlan<'a> {
   pub ruleSecondStarts: List<u32>,
   /// The second input value of each rule, in rule order, for the rule sets that have them.
   pub ruleSeconds: List<u32>,
+  /// The first backtrack value of each rule, alongside `ruleSeconds`, or `RULE_STOP` for a rule
+  /// that is not chained, has no backtrack, or is malformed.
+  pub ruleBacks: List<u32>,
   /// For each lookup index, its first subtable in `subtables` in the high 32 bits and its
   /// subtable count in the low ones, or `u64.MAX` when the plan has not cached it. Nested
   /// lookups use these.
@@ -318,7 +321,7 @@ impl<'a> OtPlan<'a> {
         if !self.positioning && kind == 4 {
           addLigatureSeconds(&mut second, table)
         } else if contextualKind(kind, self.positioning) {
-          addFormat3Seconds(&mut second, table, kind == 6 || kind == 8)
+          addContextSeconds(&mut second, table, kind == 6 || kind == 8)
         } else if List<SetDigest>.length(&self.pairDigests) > pairDigests {
           let mut n = pairDigests
           while n < List<SetDigest>.length(&self.pairDigests) {
@@ -481,6 +484,11 @@ impl<'a> OtPlan<'a> {
         value = usize.toU32(read16(bytes, pos))
       }
       run List<u32>.append(&mut self.ruleSeconds, value)
+      let mut back = RULE_STOP
+      if chained && start != 0 && start + 4 <= bytes.length && read16(bytes, start) != 0 {
+        back = usize.toU32(read16(bytes, start + 2))
+      }
+      run List<u32>.append(&mut self.ruleBacks, back)
       index = index + 1
     }
   }
@@ -615,6 +623,7 @@ impl<'a> OtPlan<'a> {
       ruleDigests: List<u64>.make(),
       ruleSecondStarts: List<u32>.make(),
       ruleSeconds: List<u32>.make(),
+      ruleBacks: List<u32>.make(),
       lookupSubtables: List<u64>.make(),
       lookupOffsets: List<usize>.make(),
       lookupSeconds: List<SetDigest>.make(),
@@ -1243,14 +1252,138 @@ fn addLigatureSeconds(digest: &mut SetDigest, table: View) -> () {
   }
 }
 
-/// Adds the glyphs a format 3 contextual subtable can match after its first input glyph: its
-/// second input coverage, or for a single input its first lookahead coverage. Other formats, and
-/// rules that match a single glyph, fill `digest`.
-fn addFormat3Seconds(digest: &mut SetDigest, table: View, chained: bool) -> () {
-  if View.u16(&table, 0) != 3 {
+/// Adds the glyphs a contextual subtable can match after its first input glyph: each rule's
+/// second input, or for a single input its first lookahead. Rules that match a single glyph, and
+/// anything malformed, fill `digest`.
+fn addContextSeconds(digest: &mut SetDigest, table: View, chained: bool) -> () {
+  let format = View.u16(&table, 0)
+  if format == 3 {
+    addFormat3Seconds(&mut digest, table, chained)
+    return ()
+  }
+  if format != 1 && format != 2 {
     digest.* = SetDigest.full()
     return ()
   }
+  let mut countPos: usize = 4
+  if format == 2 {
+    countPos = 6
+    if chained {
+      countPos = 10
+    }
+  }
+
+  // Format 1 rules hold glyphs and format 2 rules hold classes, of the input class definition
+  // for a second input and of the lookahead one for a first lookahead.
+  let mut inputs = SetDigest.new()
+  let mut aheads = SetDigest.new()
+  let mut anyInput = false
+  let mut anyAhead = false
+  let sets = u16.toUsize(View.u16(&table, countPos))
+  let mut index: usize = 0
+  while index < sets {
+    let setAt = countPos + 2 + index * 2
+    if View.u16(&table, setAt) != 0 {
+      let ruleSet = View.offset16(&table, setAt)
+      let bytes = FontData.asBytes(&ruleSet.data)
+      let count = read16(bytes, 0)
+      let mut n: usize = 0
+      while n < count {
+        let start = read16(bytes, 2 + n * 2)
+        if start == 0 || start >= bytes.length {
+          digest.* = SetDigest.full()
+          return ()
+        }
+        let mut pos = start
+        if chained {
+          pos = pos + 2 + read16(bytes, pos) * 2
+        }
+        let inputCount = read16(bytes, pos)
+        if inputCount >= 2 {
+          let mut at = pos + 4
+          if chained {
+            at = pos + 2
+          }
+          if at + 2 > bytes.length {
+            digest.* = SetDigest.full()
+            return ()
+          }
+          SetDigest.add(&mut inputs, usize.toU32(read16(bytes, at)))
+          anyInput = true
+        } else if chained && inputCount == 1 {
+          let ahead = pos + 2
+          if read16(bytes, ahead) == 0 || ahead + 4 > bytes.length {
+            digest.* = SetDigest.full()
+            return ()
+          }
+          SetDigest.add(&mut aheads, usize.toU32(read16(bytes, ahead + 2)))
+          anyAhead = true
+        } else {
+          digest.* = SetDigest.full()
+          return ()
+        }
+        n = n + 1
+      }
+    }
+    index = index + 1
+  }
+  if format == 1 {
+    SetDigest.include(&mut digest, &inputs)
+    SetDigest.include(&mut digest, &aheads)
+    return ()
+  }
+  let mut inputAt: usize = 4
+  if chained {
+    inputAt = 6
+  }
+  if anyInput {
+    addClassGlyphs(&mut digest, table, inputAt, &inputs)
+  }
+  if anyAhead {
+    addClassGlyphs(&mut digest, table, 8, &aheads)
+  }
+}
+
+/// Adds the glyphs of the 16-bit class definition at offset `at` of `table` whose classes
+/// `classes` may hold, or fills `digest` when class 0, which holds every other glyph, may be one
+/// of them or the definition is not a 16-bit one.
+fn addClassGlyphs(digest: &mut SetDigest, table: View, at: usize, classes: &SetDigest) -> () {
+  if SetDigest.mayHave(classes, 0) || View.u16(&table, at) == 0 {
+    digest.* = SetDigest.full()
+    return ()
+  }
+  let classDef = View.offset16(&table, at)
+  let format = View.u16(&classDef, 0)
+  if format == 1 {
+    let first = u16.toU32(View.u16(&classDef, 2))
+    let count = u16.toUsize(View.u16(&classDef, 4))
+    let mut i: usize = 0
+    while i < count {
+      if SetDigest.mayHave(classes, u16.toU32(View.u16(&classDef, 6 + i * 2))) {
+        SetDigest.add(&mut digest, first + usize.toU32(i))
+      }
+      i = i + 1
+    }
+  } else if format == 2 {
+    let ranges = u16.toUsize(View.u16(&classDef, 2))
+    let mut i: usize = 0
+    while i < ranges {
+      let rangeAt = 4 + i * 6
+      if SetDigest.mayHave(classes, u16.toU32(View.u16(&classDef, rangeAt + 4))) {
+        let rangeStart = u16.toU32(View.u16(&classDef, rangeAt))
+        let rangeEnd = u16.toU32(View.u16(&classDef, rangeAt + 2))
+        if rangeStart <= rangeEnd {
+          SetDigest.addRange(&mut digest, rangeStart, rangeEnd)
+        }
+      }
+      i = i + 1
+    }
+  } else {
+    digest.* = SetDigest.full()
+  }
+}
+
+fn addFormat3Seconds(digest: &mut SetDigest, table: View, chained: bool) -> () {
   let mut pos: usize = 2
   if chained {
     pos = 4 + u16.toUsize(View.u16(&table, 2)) * 2
