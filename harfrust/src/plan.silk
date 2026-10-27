@@ -1,0 +1,363 @@
+//! Resolve script, language, feature ranges and variation substitutions once per run.
+import view { View, offset }
+import set_digest { SetDigest, lookupDigest }
+import buffer { Buffer, Glyph }
+import direction { Direction }
+import feature { Feature }
+import arabic
+import complex
+import script { ScriptTags }
+import font { ConfiguredShaper, FontFuncs, Shaper }
+import read_fonts.tables.layout { FeatureVariations, LookupVariations }
+import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
+import read_fonts.model.error { Error }
+import read_fonts.lib { ReadError }
+import silk.result { Result }
+import silk.usize
+import font_types.lib { Tag, F2Dot14, F48Dot16 }
+import silk.ownership { Copy }
+import silk.list { List }
+import silk.option { Option }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.u16
+import silk.u32
+
+pub struct LookupStep {
+  pub digest: SetDigest,
+  pub index: u16,
+  pub required: bool,
+  pub tag: u32,
+  pub value: u32,
+  pub stage: u32,
+}
+
+impl Copy for LookupStep {}
+
+pub struct OtPlan<'a> {
+  pub table: View<'a>,
+  pub steps: List<LookupStep>,
+  pub direction: Direction,
+  pub script: u32,
+  pub positioning: bool,
+  pub chosenScript: u32,
+}
+
+impl<'a> OtPlan<'a> {
+  pub effect fn new<'s, F: FontFuncs>(
+    font: &ConfiguredShaper<'a, 's, F>,
+    buffer: &Buffer,
+    features: &[Feature],
+    positioning: bool,
+  ) -> Self
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let mut table = font.data.gsub
+    if positioning {
+      table = font.data.gpos
+    }
+    let mut plan = Self {
+      table: table,
+      steps: List<LookupStep>.make(),
+      direction: buffer.direction,
+      script: buffer.script,
+      positioning: positioning,
+      chosenScript: 0,
+    }
+    let scriptList = View.layoutList(&table, 0)
+    let mut script = View.tail(&table, View.len(&table))
+    let candidates = ScriptTags.forLanguage(buffer.script, &buffer.languageValue)
+    let mut rank: usize = 0
+    while rank < candidates.length + 2 {
+      let mut tag: u32 = 0x6c61746e
+      if rank < candidates.length {
+        tag = candidates.values[rank]
+      } else if rank == candidates.length {
+        tag = 0x44464c54
+      }
+      let mut i: usize = 0
+      while i < u16.toUsize(View.u16(&scriptList, 0)) {
+        if View.u32(&scriptList, 2 + i * 6) == tag {
+          script = View.offset16(&scriptList, 6 + i * 6)
+          break
+        }
+        i = i + 1
+      }
+      if View.len(&script) != 0 {
+        plan.chosenScript = tag
+        break
+      }
+      rank = rank + 1
+    }
+    let mut lang = View.offset16(&script, 0)
+    let mut i: usize = 0
+    let mut languageIndex: usize = 0
+    let mut languageCount = buffer.languageTags.length
+    if languageCount == 0 {
+      languageCount = 1
+    }
+    let mut foundLanguage = false
+    while languageIndex < languageCount && !foundLanguage {
+      let mut tag = buffer.language
+      if buffer.languageTags.length != 0 {
+        tag = buffer.languageTags.values[languageIndex]
+      }
+      i = 0
+      while i < u16.toUsize(View.u16(&script, 2)) {
+        if View.u32(&script, 4 + i * 6) == tag {
+          lang = View.offset16(&script, 8 + i * 6)
+          foundLanguage = true
+          break
+        }
+        i = i + 1
+      }
+      languageIndex = languageIndex + 1
+    }
+    let required = View.u16(&lang, 2)
+    let list = View.layoutList(&table, 1)
+    let alternatives = selectVariations(&table, font)
+    let deltaStore = varStore(font)
+    let deltaCoords = List<F2Dot14>.asSlice(&font.coords)
+    i = 0
+    while i < u16.toUsize(View.u16(&list, 0)) {
+      let tag = View.u32(&list, 2 + i * 6)
+      let isRequired = i == u16.toUsize(required) && View.len(&lang) >= 6
+      let mut present = i == u16.toUsize(required) && View.len(&lang) >= 6
+      let mut j: usize = 0
+      while !present && j < u16.toUsize(View.u16(&lang, 4)) {
+        present = u16.toUsize(View.u16(&lang, 6 + j * 2)) == i
+        j = j + 1
+      }
+      if tag == 0x76657274 {
+        present = true
+      }
+      let mut initial = defaultValue(tag, buffer.targetDirection)
+      if !buffer.dumber && arabic.usesScript(buffer.script)
+        && (arabic.isFeature(tag) || tag == 0x6d736574 || tag == 0x73746368) {
+        initial = 1
+      }
+      if !positioning {
+        initial = complex.featureDefault(buffer.shaper, tag, initial)
+      }
+      if !buffer.dumber && buffer.script == 0x48616e67
+        && (tag == 0x6c6a6d6f || tag == 0x766a6d6f || tag == 0x746a6d6f) {
+        initial = 1
+      }
+      let mut value = initial
+      j = 0
+      while j < features.length {
+        if Tag.toU32(features[j].tag) == tag {
+          if Feature.isGlobal(&features[j]) {
+            value = features[j].value
+          } else if value == 0 {
+            value = 1
+          }
+        }
+        j = j + 1
+      }
+      let mut selectedStage = stage(tag, buffer.script, buffer.shaper, positioning)
+      if isRequired {
+        if value == 0 {
+          selectedStage = 0
+        }
+        value = 1
+        initial = 1
+      }
+      if present && value != 0 {
+        let mut feature = View.offset16(&list, 6 + i * 6)
+        j = 0
+        while j < u16.toUsize(View.u16(&alternatives, 4)) {
+          if u16.toUsize(View.u16(&alternatives, 6 + j * 6)) == i {
+            feature = View.offset32(&alternatives, 8 + j * 6)
+            break
+          }
+          j = j + 1
+        }
+        let mut indices = List<u16>.make()
+        j = 0
+        while j < u16.toUsize(View.u16(&feature, 2)) {
+          run List<u16>.append(&mut indices, View.u16(&feature, 4 + j * 2))
+          j = j + 1
+        }
+        if let Option<FeatureVariations>.Some { value: vars } = readVariations(&table) {
+          if let Option<LookupVariations>.Some {
+            value: lookups
+          } = FeatureVariations.lookupVariations(&vars) {
+            drop run LookupVariations<'a>.apply<Error>(
+              &lookups,
+              usize.toU16(i),
+              List<F2Dot14>.asSlice(&font.coords),
+              fn(index: u32) -> Result<f64, Error> {
+                return delta(&deltaStore, deltaCoords, index)
+              },
+              &mut indices,
+            )
+          }
+        }
+        j = 0
+        while j < List<u16>.length(&indices) {
+          let step = LookupStep {
+            digest: lookupDigest(table, List<u16>.get(&indices, j), positioning),
+            index: List<u16>.get(&indices, j),
+            required: isRequired,
+            tag: tag,
+            value: initial,
+            stage: selectedStage,
+          }
+          if List<LookupStep>.length(&plan.steps) >= 65536 {
+            break
+          }
+          run List<LookupStep>.append(&mut plan.steps, step)
+          j = j + 1
+        }
+      }
+      i = i + 1
+    }
+
+    // Stable insertion sort: lookup lists are short and already mostly ordered.
+    i = 1
+    while i < List<LookupStep>.length(&plan.steps) {
+      let item = List<LookupStep>.get(&plan.steps, i)
+      let mut j = i
+      while j > 0 {
+        let prev = List<LookupStep>.get(&plan.steps, j - 1)
+        if prev.stage < item.stage || (prev.stage == item.stage && prev.index <= item.index) {
+          break
+        }
+        List<LookupStep>.set(&mut plan.steps, j, prev)
+        j = j - 1
+      }
+      List<LookupStep>.set(&mut plan.steps, j, item)
+      i = i + 1
+    }
+    return move plan
+  }
+}
+
+pub fn featureValue(tag: u32, default: u32, cluster: u32, features: &[Feature]) -> u32 {
+  let mut value = default
+  let mut i: usize = 0
+  while i < features.length {
+    let f = features[i]
+    if Tag.toU32(f.tag) == tag && cluster >= f.start && cluster < f.end {
+      value = f.value
+    }
+    i = i + 1
+  }
+  return value
+}
+
+pub fn defaultValue(tag: u32, direction: Direction) -> u32 {
+  if tag == 0x72616e64 {
+    return 4294967295
+  }
+  if tag == 0x66726163 || tag == 0x6e756d72 || tag == 0x646e6f6d {
+    return 1
+  }
+  if tag == 0x7276726e || tag == 0x6162766d || tag == 0x626c776d || tag == 0x63636d70
+    || tag == 0x6c6f636c
+    || tag == 0x6d61726b
+    || tag == 0x6d6b6d6b
+    || tag == 0x726c6967
+    || tag == 0x72616e64
+    || tag == 0x7472616b
+    || tag == 0x48617266
+    || tag == 0x48415246
+    || tag == 0x42757a7a
+    || tag == 0x42555a5a {
+    return 1
+  }
+  if Direction.isHorizontal(direction) {
+    if tag == 0x63616c74 || tag == 0x636c6967 || tag == 0x63757273 || tag == 0x64697374
+      || tag == 0x6b65726e
+      || tag == 0x6c696761
+      || tag == 0x72636c74 {
+      return 1
+    }
+    if direction == Direction.LeftToRight && (tag == 0x6c747261 || tag == 0x6c74726d) {
+      return 1
+    }
+    if direction == Direction.RightToLeft && (tag == 0x72746c61 || tag == 0x72746c6d) {
+      return 1
+    }
+  } else if tag == 0x76657274 || tag == 0x766b726e {
+    return 1
+  }
+  return 0
+}
+
+fn stage(tag: u32, script: u32, shaper: u32, positioning: bool) -> u32 {
+  if positioning {
+    return 0
+  }
+  if tag == 0x6c747261 || tag == 0x6c74726d || tag == 0x72746c61 || tag == 0x72746c6d
+    || tag == 0x66726163
+    || tag == 0x6e756d72
+    || tag == 0x646e6f6d
+    || tag == 0x72616e64
+    || tag == 0x48617266
+    || tag == 0x48415246 {
+    return 1
+  }
+  if shaper != 0 {
+    return complex.stage(shaper, tag)
+  }
+  if arabic.usesScript(script) {
+    return arabic.stage(tag, script)
+  }
+  if tag == 0x7276726e {
+    return 0
+  }
+  return 1
+}
+
+fn varStore<'a, 's, F: FontFuncs>(font: &ConfiguredShaper<'a, 's, F>) -> Option<
+  ItemVariationStore<'a>
+> {
+  return match move ItemVariationStore.read(View.gdefVarStore(&font.data.gdef).data) {
+    Result<ItemVariationStore<'a>, ReadError>.Success { value } => Option<
+      ItemVariationStore<'a>
+    >.some(value)
+    _ => Option<ItemVariationStore<'a>>.None
+  }
+}
+
+fn readVariations<'a>(table: &View<'a>) -> Option<FeatureVariations<'a>> {
+  if View.u16(table, 2) < 1 {
+    return Option<FeatureVariations<'a>>.None
+  }
+  return match move FeatureVariations.read(View.offset32(table, 10).data) {
+    Result<FeatureVariations<'a>, ReadError>.Success { value } => Option<
+      FeatureVariations<'a>
+    >.some(value)
+    _ => Option<FeatureVariations<'a>>.None
+  }
+}
+
+fn selectVariations<'a, 's, F: FontFuncs>(
+  table: &View<'a>,
+  font: &ConfiguredShaper<'a, 's, F>,
+) -> View<'a> {
+  if let Option<FeatureVariations<'a>>.Some { value: vars } = readVariations(table) {
+    let deltaStore = varStore(font)
+    let deltaCoords = List<F2Dot14>.asSlice(&font.coords)
+    if let Option<u32>.Some { value: index } = FeatureVariations<'a>.indexForCoordsWithDelta<Error>(
+      &vars,
+      List<F2Dot14>.asSlice(&font.coords),
+      fn(index: u32) -> Result<f64, Error> {
+        return delta(&deltaStore, deltaCoords, index)
+      },
+    ) {
+      return View.offset32(&View.offset32(table, 10), offset(12, u32.toUsize(index), 8))
+    }
+  }
+  return View.empty()
+}
+
+fn delta(store: &Option<ItemVariationStore>, coords: &[F2Dot14], index: u32) -> Result<f64, Error> {
+  let mut value = F48Dot16.zero()
+  if let Option<ItemVariationStore>.Some { value: selected } = &store.* {
+    value = ItemVariationStore.computeDelta(&selected, DeltaSetIndex.fromU32(index), coords)
+      |> Option<F48Dot16>.unwrapOr(F48Dot16.zero())
+  }
+  return Result<f64, Error>.succeed(F48Dot16.toF64(value))
+}

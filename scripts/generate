@@ -78,7 +78,10 @@ subprocess.run([str(ROOT / "scripts/generate-model-tables")], check=True)
 subprocess.run([str(ROOT / "scripts/generate-model-fixtures")], check=True)
 subprocess.run([str(ROOT / "scripts/generate-misc-table-fixtures")], check=True)
 
-packages = ["font_types", "read_fonts", "font_dump", "font_bench"]
+for generator in ("unicode", "machines", "languages", "fixtures", "tests"):
+    subprocess.run([str(ROOT / f"scripts/generate-shaping-{generator}")], check=True)
+
+packages = ["font_types", "read_fonts", "font_dump", "font_bench", "harfrust", "hr_shape"]
 subprocess.run([os.environ.get("SILK", "silk"), "format"] + [str(ROOT / package) for package in packages], check=True,
                stdout=subprocess.DEVNULL)
 if args.check:

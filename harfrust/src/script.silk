@@ -1,0 +1,173 @@
+//! ISO 15924 scripts and preferred OpenType script tags.
+import font_types.lib { Tag }
+import language { Language, LanguageTags, privateTag }
+import direction { Direction, ParseError }
+import unicode
+import silk.option { Option }
+import silk.result { Result }
+import silk.ownership { Copy }
+import silk.string { String }
+import silk.slice { Slice }
+import silk.u8
+
+pub struct Script {
+  pub value: u32,
+}
+
+impl Copy for Script {}
+
+impl Script {
+  pub fn fromIso15924Tag(tag: Tag) -> Option<Self> {
+    let value = Tag.toU32(tag)
+    if value == 0 {
+      return Option<Self>.None
+    }
+    let mut result = (value & 0xdfdfdfdf) | 0x00202020
+    if (result & 0xe0e0e0e0) != 0x40606060 {
+      result = 0x5a7a7a7a
+    }
+    result = match result {
+      0x4172616e => 0x41726162
+      0x43797273 => 0x4379726c
+      0x47656f6b => 0x47656f72
+      0x48616e73 => 0x48616e69
+      0x48616e74 => 0x48616e69
+      0x4a616d6f => 0x48616e67
+      0x4c617466 => 0x4c61746e
+      0x4c617467 => 0x4c61746e
+      0x53797265 => 0x53797263
+      0x5379726a => 0x53797263
+      0x5379726e => 0x53797263
+      _ => result
+    }
+    return Option<Self>.some(Self { value: result })
+  }
+
+  pub fn parse(text: string) -> Result<Self, ParseError> {
+    let bytes = String.utf8Bytes(text)
+    let mut value: u32 = 0
+    let mut i: usize = 0
+    while i < 4 {
+      value = value * 256
+      if i < bytes.length {
+        value = value + u8.toU32(bytes[i])
+      } else {
+        value = value + 32
+      }
+      i = i + 1
+    }
+    return match move Script.fromIso15924Tag(Tag.fromU32(value)) {
+      Option<Self>.Some { value: script } => Result<Self, ParseError>.succeed(script)
+      _ => Result<Self, ParseError>.failResult(ParseError.InvalidSetting)
+    }
+  }
+
+  pub fn tag(self: Self) -> Tag {
+    return Tag.fromU32(self.value)
+  }
+
+  pub fn horizontalDirection(self: Self) -> Direction {
+    if unicode.isRtl(self.value) {
+      return Direction.RightToLeft
+    }
+    return Direction.LeftToRight
+  }
+
+  pub fn tags(self: Self) -> ScriptTags {
+    return ScriptTags.forLanguage(self.value, &Language.empty())
+  }
+
+  pub fn tagsForLanguage(script: Option<Self>, language: &Language) -> SegmentTags {
+    let value = match move script {
+      Option<Self>.Some { value } => value.value
+      _ => 0
+    }
+    return SegmentTags {
+      scripts: ScriptTags.forLanguage(value, language),
+      languages: LanguageTags.fromLanguage(language),
+    }
+  }
+}
+
+pub struct ScriptTags {
+  pub values: [u32; 3],
+  pub length: usize,
+}
+
+impl Copy for ScriptTags {}
+
+pub struct SegmentTags {
+  pub scripts: ScriptTags,
+  pub languages: LanguageTags,
+}
+
+impl Copy for SegmentTags {}
+
+impl ScriptTags {
+  pub fn asSlice(self: &Self) -> &[u32] {
+    return Slice.view(&self.values, 0, self.length)
+  }
+
+  pub fn forLanguage(script: u32, language: &Language) -> Self {
+    let mut result = Self { values: [0; 3], length: 0 }
+    if let Option<u32>.Some { value } = privateTag(Language.asBytes(language), "-hbsc", false) {
+      result.values[0] = value
+      result.length = 1
+      return result
+    }
+    if script == 0 {
+      return result
+    }
+    let candidates = scriptTags(script)
+    let mut i: usize = 0
+    while i < 3 {
+      if i == 0 || candidates[i] != candidates[i - 1] {
+        result.values[result.length] = candidates[i]
+        result.length = result.length + 1
+      }
+      i = i + 1
+    }
+    return result
+  }
+}
+
+fn scriptTags(script: u32) -> [u32; 5] {
+  let lower = script | 0x20202020
+  let mut old = lower
+  if script == 0x5a6d7468 {
+    old = 0x6d617468
+  }
+  if script == 0x48697261 || script == 0x4b616e61 {
+    old = 0x6b616e61
+  }
+  if script == 0x4c616f6f {
+    old = 0x6c616f20
+  }
+  if script == 0x59696969 {
+    old = 0x79692020
+  }
+  if script == 0x4e6b6f6f {
+    old = 0x6e6b6f20
+  }
+  if script == 0x56616969 {
+    old = 0x76616920
+  }
+  let modern = match script {
+    0x42656e67 => 0x626e6732
+    0x44657661 => 0x64657632
+    0x47756a72 => 0x676a7232
+    0x47757275 => 0x67757232
+    0x4b6e6461 => 0x6b6e6432
+    0x4d6c796d => 0x6d6c6d32
+    0x4f727961 => 0x6f727932
+    0x54616d6c => 0x746d6c32
+    0x54656c75 => 0x74656c32
+    0x4d796d72 => 0x6d796d32
+    _ => old
+  }
+  let mut newest = modern
+  if modern != old && script != 0x4d796d72 {
+    newest = modern + 1
+  }
+  return [newest, modern, old, 0x44464c54, 0x6c61746e]
+}
