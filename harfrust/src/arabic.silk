@@ -439,6 +439,16 @@ fn wordCategory(gc: u8) -> bool {
 pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buffer) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let mut any = false
+  let mut k: usize = 0
+  while k < glyphs.length && !any {
+    any = glyphs[k].stretch != 0
+    k = k + 1
+  }
+  if !any {
+    return
+  }
   let rtl = buffer.direction == Direction.RightToLeft
   if !rtl {
     Buffer.reverse(&mut buffer)

@@ -24,6 +24,8 @@ import silk.u32
 
 pub struct LookupStep {
   pub digest: SetDigest,
+  /// The lookup table's offset in the layout table; the table's length when the index is invalid.
+  pub lookupOffset: usize,
   /// This step's lookup subtables in `OtPlan.subtables`.
   pub firstSubtable: usize,
   pub subtableCount: usize,
@@ -98,8 +100,10 @@ impl<'a> OtPlan<'a> {
       && View.u32(&self.table, 22) != 0 {
       width = 4
     }
+    let mut lookupOffset = View.len(&self.table)
     if index < View.u16(&list, 0) {
       let lookup = View.offset(&list, 2 + u16.toUsize(index) * width, width)
+      lookupOffset = View.len(&self.table) - View.len(&lookup)
       let lookupKind = View.u16(&lookup, 0)
       let count = u16.toUsize(View.u16(&lookup, 4))
       let mut i: usize = 0
@@ -141,6 +145,7 @@ impl<'a> OtPlan<'a> {
       &mut self.steps,
       LookupStep {
         digest: digest,
+        lookupOffset: lookupOffset,
         firstSubtable: first,
         subtableCount: List<LookupSubtable>.length(&self.subtables) - first,
         index: index,

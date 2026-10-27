@@ -1,0 +1,17 @@
+struct Point {
+  x: i32,
+}
+
+const NONE: [Point; 0] = []
+
+fn fromLiteral() -> &'static [Point] {
+  return &[]
+}
+
+fn fromConst() -> &'static [Point] {
+  return &NONE
+}
+
+pub fn main() -> i32 {
+  return 0
+}
