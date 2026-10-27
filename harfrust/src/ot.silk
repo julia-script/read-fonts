@@ -101,6 +101,26 @@ fn classesFor<'a, 's>(context: &Context<'a, 's>, view: View<'a>) -> Classes<'a, 
   return Classes { view: view, first: 0, values: Slice.view(context.classValues, 0, 0) }
 }
 
+/// The `n`th class definition, `view`, of the cached subtable `index` of `subtables`, from the
+/// plan's resolution when it has one. Uncached subtables pass an empty list.
+fn subtableClasses<'a, 's>(
+  context: &Context<'a, 's>,
+  subtables: &[LookupSubtable],
+  index: usize,
+  n: usize,
+  view: View<'a>,
+) -> Classes<'a, 's> {
+  if index < subtables.length && subtables[index].classesResolved {
+    let table = subtables[index].classes[n]
+    return Classes {
+      view: view,
+      first: table.first,
+      values: Slice.view(context.classValues, table.start, table.count),
+    }
+  }
+  return classesFor(context, view)
+}
+
 fn gdefClasses<'a, 's>(
   plan: &'s OtPlan<'a>,
   gdef: View<'a>,
@@ -640,6 +660,7 @@ effect fn applyLookup<F: FontFuncs>(
     count = subtables.length
     glyph = List<Glyph>.get(&buffer.glyphs, at).info.glyphId
   }
+
   let mut i: usize = 0
   while i < count && context.budget != 0 && buffer.successful {
     context.budget = context.budget - 1
@@ -698,6 +719,8 @@ effect fn applyLookup<F: FontFuncs>(
         &mut buffer,
         lookup,
         table,
+        subtables,
+        i,
         digests,
         known,
         at,
@@ -707,7 +730,18 @@ effect fn applyLookup<F: FontFuncs>(
         kind == 6 || kind == 8,
       )
     } else if context.positioning {
-      result = run position(font, &context.*, &mut buffer, lookup, table, kind, known, at)
+      result = run position(
+        font,
+        &context.*,
+        &mut buffer,
+        lookup,
+        table,
+        subtables,
+        i,
+        kind,
+        known,
+        at,
+      )
     } else {
       result = run substitute(
         font,
@@ -1622,6 +1656,8 @@ effect fn contextual<F: FontFuncs>(
   buffer: &mut Buffer,
   lookup: Lookup,
   table: View,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
   digests: &[u64],
   known: u32,
   at: usize,
@@ -1688,13 +1724,28 @@ effect fn contextual<F: FontFuncs>(
     let mut countPos = header
     if format == 2 {
       kind = 1
-      classes = classesFor(&context.*, View.offset(&table, header, coverageWidth))
+      classes = subtableClasses(
+        &context.*,
+        subtables,
+        subtableIndex,
+        0,
+        View.offset(&table, header, coverageWidth),
+      )
       countPos = header + coverageWidth
       if chained {
         backClasses = classes
-        classes = classesFor(&context.*, View.offset(&table, header + coverageWidth, coverageWidth))
-        aheadClasses = classesFor(
+        classes = subtableClasses(
           &context.*,
+          subtables,
+          subtableIndex,
+          1,
+          View.offset(&table, header + coverageWidth, coverageWidth),
+        )
+        aheadClasses = subtableClasses(
+          &context.*,
+          subtables,
+          subtableIndex,
+          2,
           View.offset(&table, header + coverageWidth * 2, coverageWidth),
         )
         countPos = header + coverageWidth * 3
@@ -2164,6 +2215,8 @@ effect fn position<F: FontFuncs>(
   buffer: &mut Buffer,
   lookup: Lookup,
   table: View,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
   kind: u16,
   known: u32,
   at: usize,
@@ -2251,11 +2304,26 @@ effect fn position<F: FontFuncs>(
       pos = pos + width
     } else if format == 2 {
       let c1 = u32.toUsize(
-        classOf(&classesFor(context, View.offset(&table, header + 4, coverageWidth)), glyphId),
+        classOf(
+          &subtableClasses(
+            context,
+            subtables,
+            subtableIndex,
+            0,
+            View.offset(&table, header + 4, coverageWidth),
+          ),
+          glyphId,
+        ),
       )
       let c2 = u32.toUsize(
         classOf(
-          &classesFor(context, View.offset(&table, header + 4 + coverageWidth, coverageWidth)),
+          &subtableClasses(
+            context,
+            subtables,
+            subtableIndex,
+            1,
+            View.offset(&table, header + 4 + coverageWidth, coverageWidth),
+          ),
           right,
         ),
       )

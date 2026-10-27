@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 401M | 65.3M | 6.14× |
-| Roboto / English words | 549M | 87.9M | 6.25× |
-| Noto Nastaliq Urdu / Persian Little Prince | 2,230M | 789M | 2.83× |
-| Noto Nastaliq Urdu / Persian words | 2,243M | 847M | 2.65× |
-| Noto Sans Devanagari / Hindi words | 884M | 225M | 3.92× |
-| Amiri / Persian Little Prince | 1,102M | 374M | 2.95× |
-| Source Serif Variable / react-dom | 4,271M | 1,004M | 4.25× |
+| Roboto / English Little Prince | 398M | 65.3M | 6.09× |
+| Roboto / English words | 546M | 87.9M | 6.21× |
+| Noto Nastaliq Urdu / Persian Little Prince | 2,188M | 789M | 2.77× |
+| Noto Nastaliq Urdu / Persian words | 2,198M | 847M | 2.60× |
+| Noto Sans Devanagari / Hindi words | 885M | 225M | 3.93× |
+| Amiri / Persian Little Prince | 1,110M | 374M | 2.97× |
+| Source Serif Variable / react-dom | 4,122M | 1,004M | 4.10× |
 
-The geometric mean is **3.92×**, down from 11.25× for the initial port. Plans
+The geometric mean is **3.87×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -162,7 +162,8 @@ any other setup; ligature sets skip candidates the same way; plans keep a digest
 of each contextual rule set's second input values, so a rule set none of whose
 rules can match is skipped whole; each subtable's starting coverage is expanded
 in the plan, so lookups skip uncovered subtables without a call and pass the
-coverage index to the ones they apply. The remaining gap is mostly per-glyph table walking that harfrust
+coverage index to the ones they apply; each subtable's class definitions are
+resolved once in the plan instead of per glyph. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
