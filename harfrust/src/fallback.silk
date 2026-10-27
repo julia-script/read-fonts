@@ -72,7 +72,7 @@ pub effect fn position<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Bu
   if !run trace.message(font, &buffer.*, "start fallback mark") {
     return
   }
-  let m = metrics(font)
+  let m = run metrics(font)
   let mut i: usize = 0
   while i < Buffer.len(&buffer.*) {
     let item = List<Glyph>.get(&buffer.glyphs, i)
