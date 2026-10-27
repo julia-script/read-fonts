@@ -61,15 +61,7 @@ pub fn script(cp: u32) -> u32 {
 }
 
 pub fn isRtl(script: u32) -> bool {
-  let data = View.new(FontData.new(Data.rtlScripts()))
-  let mut i: usize = 0
-  while i < View.len(&data) {
-    if View.u32(&data, i) == script {
-      return true
-    }
-    i = i + 4
-  }
-  return false
+  return Data.isRtlScript(script)
 }
 
 pub fn mirror(cp: u32) -> u32 {
