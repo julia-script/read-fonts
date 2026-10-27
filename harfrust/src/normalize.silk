@@ -229,20 +229,21 @@ pub effect fn normalize<F: FontFuncs>(
   let mut starter: usize = 0
   i = 1
   while i < Buffer.len(&buffer.*) {
-    let item = List<Glyph>.get(&buffer.glyphs, i)
-    let previous = List<Glyph>.get(&buffer.glyphs, i - 1)
-    if isMark(item.codepoint)
-      && (previous.combiningClass < item.combiningClass || i == starter + 1) {
-      let base = List<Glyph>.get(&buffer.glyphs, starter)
-      let mut composed = unicode.composeRaw(base.codepoint, item.codepoint)
-      if composed == 0 && !buffer.dumber && buffer.script == 0x48656272 && !hasGposMark {
-        composed = hebrewCompose(base.codepoint, item.codepoint)
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    let cp = glyphs[i].codepoint
+    let combiningClass = glyphs[i].combiningClass
+    if isMark(cp) && (glyphs[i - 1].combiningClass < combiningClass || i == starter + 1) {
+      let baseCp = glyphs[starter].codepoint
+      let mut composed: u32 = 0
+
+      // Indic, Khmer and Myanmar shapers never compose onto a mark base.
+      if !((buffer.shaper == 1 || buffer.shaper == 2 || buffer.shaper == 4) && isMark(baseCp)) {
+        composed = unicode.composeRaw(baseCp, cp)
+        if composed == 0 && !buffer.dumber && buffer.script == 0x48656272 && !hasGposMark {
+          composed = hebrewCompose(baseCp, cp)
+        }
       }
-      if (buffer.shaper == 1 || buffer.shaper == 2 || buffer.shaper == 4)
-        && isMark(base.codepoint) {
-        composed = 0
-      }
-      if buffer.shaper == 1 && base.codepoint == 0x09af && item.codepoint == 0x09bc {
+      if buffer.shaper == 1 && baseCp == 0x09af && cp == 0x09bc {
         composed = 0x09df
       }
       if composed != 0 {
@@ -258,7 +259,7 @@ pub effect fn normalize<F: FontFuncs>(
         }
       }
     }
-    if item.combiningClass == 0 {
+    if combiningClass == 0 {
       starter = i
     }
     i = i + 1
