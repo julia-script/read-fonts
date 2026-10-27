@@ -476,24 +476,31 @@ fn groupIsConstant<T: AnyMapGroup>() -> bool {
   return AnyMapGroup.isConstant()
 }
 
+// Reads a big-endian u32 at a constant offset of a fixed-size record.
+fn readU32(bytes: &[u8], at: usize) -> u32 with Intrinsic.inlineAlways() {
+  return u32.shiftLeft(u8.toU32(bytes[at]), 24) | u32.shiftLeft(u8.toU32(bytes[at + 1]), 16)
+    | u32.shiftLeft(u8.toU32(bytes[at + 2]), 8)
+    | u8.toU32(bytes[at + 3])
+}
+
+// Both group types are 12 bytes: startCharCode, endCharCode, then the glyph. The search decodes
+// those fields in place instead of reading a group record per probe.
 fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
   groups: ComputedArray<'a, (), T>,
   cp: u32,
-) -> Option<Cmap12Group> {
+) -> Option<Cmap12Group> with Intrinsic.inlineAlways() {
   let mut lo: usize = 0
   let mut hi = ComputedArray<'a, (), T>.len(&groups)
   let mut first: u32 = 0
   let mut last: u32 = 4294967295
   while lo < hi {
     let i = lo + (hi - lo) / 2
-    let group = match move ComputedArray<'a, (), T>.get(&groups, i) {
-      Result<T, ReadError>.Success { value } => move value
-      _ => {
-        return Option<Cmap12Group>.None
-      }
+    let group = ComputedArray<'a, (), T>.itemBytes(&groups, i)
+    if group.length < 12 {
+      return Option<Cmap12Group>.None
     }
-    let start = AnyMapGroup.startCode(&group)
-    let end = AnyMapGroup.endCode(&group)
+    let start = readU32(group, 0)
+    let end = readU32(group, 4)
     if cp < start {
       hi = i
       last = min32(last, u32.saturatingSubtract(start, 1))
@@ -504,7 +511,7 @@ fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
       return Option<Cmap12Group>.some(
         Cmap12Group {
           startCode: start,
-          startGlyph: AnyMapGroup.refGlyph(&group),
+          startGlyph: readU32(group, 8),
           first: max32(start, first),
           last: min32(end, last),
         },
@@ -517,7 +524,7 @@ fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
 fn mapGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
   groups: ComputedArray<'a, (), T>,
   cp: u32,
-) -> Option<GlyphId> {
+) -> Option<GlyphId> with Intrinsic.inlineAlways() {
   let group = match move findGroup<T>(groups, cp) {
     Option<Cmap12Group>.Some { value } => value
     _ => {

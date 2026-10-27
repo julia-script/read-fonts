@@ -6,6 +6,7 @@ import font_types.lib { Scalar, rawByteLen }
 import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
+import silk.slice { Slice }
 
 pub struct ScalarArray<'a, T: Scalar> {
   data: FontData<'a>,
@@ -142,6 +143,21 @@ impl<'a, Args, T> ComputedArray<'a, Args, T> {
 
   pub fn isEmpty(self: &Self) -> bool {
     return self.count == 0
+  }
+
+  /// Returns the raw bytes of item `index`, `itemLength()` bytes, or an empty slice when it is
+  /// out of range. For hot loops that decode fixed fields in place.
+  pub fn itemBytes(self: &Self, index: usize) -> &'a [u8] {
+    if index >= self.count {
+      return Slice.view<u8>(FontData.asBytes(&self.data), 0, 0)
+    }
+
+    // new/representableLen keep start + count * itemLen within the data.
+    return Slice.view<u8>(
+      FontData.asBytes(&self.data),
+      self.start + index * self.itemLen,
+      self.itemLen,
+    )
   }
 
   pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {
