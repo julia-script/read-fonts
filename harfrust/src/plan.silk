@@ -25,11 +25,15 @@ import silk.u64
 
 struct CachedLookup {
   digest: SetDigest,
+  second: SetDigest,
   lookupOffset: usize,
 }
 
 pub struct LookupStep {
   pub digest: SetDigest,
+  /// The glyphs that may follow the first one in a match of any of the lookup's subtables; full
+  /// when a subtable can match a single glyph or its second glyphs are not collected.
+  pub second: SetDigest,
   /// The lookup table's offset in the layout table; the table's length when the index is invalid.
   pub lookupOffset: usize,
   /// This step's lookup subtables in `OtPlan.subtables`.
@@ -187,6 +191,8 @@ pub struct OtPlan<'a> {
   pub lookupSubtables: List<u64>,
   /// Each cached lookup's `LookupStep.lookupOffset`.
   lookupOffsets: List<usize>,
+  /// Each cached lookup's `LookupStep.second`.
+  lookupSeconds: List<SetDigest>,
   /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
   /// glyphs; full when the set is malformed.
   pub pairDigests: List<SetDigest>,
@@ -215,6 +221,7 @@ impl<'a> OtPlan<'a> {
     let mut first = List<LookupSubtable>.length(&self.subtables)
     let mut count: usize = 0
     let mut digest = SetDigest.new()
+    let mut second = SetDigest.full()
     let mut lookupOffset: usize = 0
 
     // A lookup that several features use shares one cached copy of its subtables.
@@ -233,16 +240,19 @@ impl<'a> OtPlan<'a> {
         i = i + 1
       }
       lookupOffset = List<usize>.get(&self.lookupOffsets, slot)
+      second = List<SetDigest>.get(&self.lookupSeconds, slot)
     } else {
       let cached = run self.cacheLookup(index, true)
       count = List<LookupSubtable>.length(&self.subtables) - first
       digest = cached.digest
+      second = cached.second
       lookupOffset = cached.lookupOffset
     }
     run List<LookupStep>.append(
       &mut self.steps,
       LookupStep {
         digest: digest,
+        second: second,
         lookupOffset: lookupOffset,
         firstSubtable: first,
         subtableCount: count,
@@ -265,6 +275,7 @@ impl<'a> OtPlan<'a> {
     ? &mut Allocator {
     let first = List<LookupSubtable>.length(&self.subtables)
     let mut digest = SetDigest.new()
+    let mut second = SetDigest.new()
     let list = View.layoutList(&self.table, 2)
     let mut width: usize = 2
     if View.u16(&self.table, 0) == 1 && View.u16(&self.table, 2) >= 2
@@ -304,6 +315,17 @@ impl<'a> OtPlan<'a> {
         run self.addRuleDigests(table, kind)
         let pairDigests = List<SetDigest>.length(&self.pairDigests)
         run self.addPairDigests(table, kind)
+        if !self.positioning && kind == 4 {
+          addLigatureSeconds(&mut second, table)
+        } else if List<SetDigest>.length(&self.pairDigests) > pairDigests {
+          let mut n = pairDigests
+          while n < List<SetDigest>.length(&self.pairDigests) {
+            SetDigest.include(&mut second, &List<SetDigest>.asSlice(&self.pairDigests)[n])
+            n = n + 1
+          }
+        } else {
+          second = SetDigest.full()
+        }
         let coverageStart = List<u16>.length(&self.coverageValues)
         let mut coverageFirst: u32 = 0
         if expand {
@@ -336,6 +358,7 @@ impl<'a> OtPlan<'a> {
     while List<u64>.length(&self.lookupSubtables) < lookups {
       run List<u64>.append(&mut self.lookupSubtables, u64.MAX)
       run List<usize>.append(&mut self.lookupOffsets, 0)
+      run List<SetDigest>.append(&mut self.lookupSeconds, SetDigest.full())
     }
     let slot = u16.toUsize(index)
     if slot < lookups && List<u64>.get(&self.lookupSubtables, slot) == u64.MAX {
@@ -346,8 +369,9 @@ impl<'a> OtPlan<'a> {
         u64.shiftLeft(usize.toU64(first), 32) | usize.toU64(count),
       )
       List<usize>.set(&mut self.lookupOffsets, slot, lookupOffset)
+      List<SetDigest>.set(&mut self.lookupSeconds, slot, second)
     }
-    return CachedLookup { digest: digest, lookupOffset: lookupOffset }
+    return CachedLookup { digest: digest, second: second, lookupOffset: lookupOffset }
   }
 
   /// Caches the lookups that contextual subtables apply, so nested lookups skip uncovered
@@ -595,6 +619,7 @@ impl<'a> OtPlan<'a> {
       ruleSeconds: List<u32>.make(),
       lookupSubtables: List<u64>.make(),
       lookupOffsets: List<usize>.make(),
+      lookupSeconds: List<SetDigest>.make(),
       pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
@@ -1195,6 +1220,33 @@ fn ligatureSetDigest(set: View) -> u64 {
     index = index + 1
   }
   return digest
+}
+
+/// Adds the second components of a 16-bit ligature subtable's ligatures to `digest`, or fills it
+/// when a ligature is malformed or has a single component.
+fn addLigatureSeconds(digest: &mut SetDigest, table: View) -> () {
+  if View.u16(&table, 0) != 1 {
+    digest.* = SetDigest.full()
+    return ()
+  }
+  let sets = u16.toUsize(View.u16(&table, 4))
+  let mut index: usize = 0
+  while index < sets {
+    let set = View.offset(&table, 6 + index * 2, 2)
+    let bytes = FontData.asBytes(&set.data)
+    let count = read16(bytes, 0)
+    let mut n: usize = 0
+    while n < count {
+      let start = read16(bytes, 2 + n * 2)
+      if start == 0 || start + 6 > bytes.length || read16(bytes, start + 2) < 2 {
+        digest.* = SetDigest.full()
+        return ()
+      }
+      SetDigest.add(&mut digest, usize.toU32(read16(bytes, start + 4)))
+      n = n + 1
+    }
+    index = index + 1
+  }
 }
 
 fn contextualKind(kind: u16, positioning: bool) -> bool {
