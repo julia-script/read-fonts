@@ -53,6 +53,9 @@ struct Context<'a, 's> {
   classValues: &'s [u16],
   /// Per rule set digests of contextual subtables' second input values (`OtPlan.ruleDigests`).
   ruleDigests: &'s [u64],
+  /// Where each rule set's second input values start in `ruleSeconds` (`OtPlan.ruleSecondStarts`).
+  ruleSecondStarts: &'s [u32],
+  ruleSeconds: &'s [u16],
   /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
   coverageValues: &'s [u16],
   /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
@@ -229,6 +232,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
+    ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
+    ruleSeconds: List<u16>.asSlice(&plan.ruleSeconds),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -497,6 +502,8 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
+    ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
+    ruleSeconds: List<u16>.asSlice(&plan.ruleSeconds),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -752,8 +759,14 @@ effect fn applyLookup<F: FontFuncs>(
     if (!context.positioning && (kind == 5 || kind == 6))
       || (context.positioning && (kind == 7 || kind == 8)) {
       let mut digests = Slice.view(context.ruleDigests, 0, 0)
+      let mut starts = Slice.view(context.ruleSecondStarts, 0, 0)
       if cached {
         digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
+        starts = Slice.view(
+          context.ruleSecondStarts,
+          subtables[i].ruleDigests,
+          subtables[i].ruleSets,
+        )
       }
       result = run contextual(
         font,
@@ -764,6 +777,7 @@ effect fn applyLookup<F: FontFuncs>(
         subtables,
         i,
         digests,
+        starts,
         known,
         at,
         first,
@@ -1621,6 +1635,80 @@ fn inputSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) ->
   return InputSecond { found: false, index: at, glyph: 0, skippable: false }
 }
 
+/// Whether the rule loop in `contextual` would reject the 16-bit format 3 rule at `at`, whose
+/// first input glyph is known to match. It makes the same checks in the same order.
+fn format3Fails(
+  context: &Context,
+  buffer: &Buffer,
+  lookup: Lookup,
+  table: View,
+  at: usize,
+  first: usize,
+  last: usize,
+  chained: bool,
+) -> bool {
+  let classes = noClasses(context)
+  let mut pos: usize = 2
+  let mut backPos: usize = 0
+  let mut backCount: usize = 0
+  if chained {
+    backCount = u16.toUsize(View.u16(&table, 2))
+    backPos = 4
+    pos = 4 + backCount * 2
+  }
+  let inputCount = u16.toUsize(View.u16(&table, pos))
+  pos = pos + 2
+  let mut actionCount: usize = 0
+  if !chained {
+    actionCount = u16.toUsize(View.u16(&table, pos))
+    pos = pos + 2
+  }
+  let inputPos = pos
+  let tail = ruleTail(table, pos + inputCount * 2, chained, actionCount, 2)
+  if inputCount == 0 || inputCount > 64 || !tail.valid {
+    return true
+  }
+  let mut cursor = at
+  let mut n: usize = 1
+  while n < inputCount {
+    let found = nextExpected(
+      context,
+      buffer,
+      lookup,
+      cursor,
+      false,
+      table,
+      inputPos + n * 2,
+      2,
+      classes,
+      false,
+    )
+    if found == NOT_FOUND || (found & MISMATCH) != 0 {
+      return true
+    }
+    cursor = found
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    if enabled(context, &glyphs[cursor], first, last) == 0
+      || !compatibleComponents(context, buffer, lookup, at, &glyphs[cursor]) {
+      return true
+    }
+    n = n + 1
+  }
+  return !matchOutside(context, buffer, lookup, table, backPos, backCount, at, true, 2, classes)
+    || !matchOutside(
+      context,
+      buffer,
+      lookup,
+      table,
+      tail.aheadPos,
+      tail.aheadCount,
+      cursor,
+      false,
+      2,
+      classes,
+    )
+}
+
 fn matchOutside(
   context: &Context,
   buffer: &Buffer,
@@ -1705,6 +1793,7 @@ effect fn contextual<F: FontFuncs>(
   subtables: &[LookupSubtable],
   subtableIndex: usize,
   digests: &[u64],
+  starts: &[u32],
   known: u32,
   at: usize,
   first: usize,
@@ -1736,6 +1825,14 @@ effect fn contextual<F: FontFuncs>(
       return no()
     }
     firstMatched = true
+  }
+
+  // Most format 3 rules whose first input matches still fail. Without unsafe-to-concat tracking
+  // a failed rule only spends its budget unit, so check the rule before the general setup.
+  if rawFormat == 3 && (buffer.flags & 64) == 0 && context.budget != 0 && buffer.successful
+    && format3Fails(&context.*, &buffer.*, lookup, table, at, first, last, chained) {
+    context.budget = context.budget - 1
+    return no()
   }
   let mut format = rawFormat
   let mut offsetWidth: usize = 2
@@ -1858,9 +1955,28 @@ effect fn contextual<F: FontFuncs>(
   while List<usize>.length(&context.positionStack) < base + 64 {
     run List<usize>.append(&mut context.positionStack, 0)
   }
+
+  // Rule sets whose rules are all well formed have their second input values in the plan, so
+  // rules are skipped by reading those instead of the rules. Buffers that track unsafe-to-concat
+  // take `skipRules`, which marks the span.
+  let mut seconds = Slice.view(context.ruleSeconds, 0, 0)
+  if quickReject && second.found && (buffer.flags & 64) == 0 && ruleSetIndex < starts.length
+    && starts[ruleSetIndex] != u32.MAX {
+    seconds = Slice.view(context.ruleSeconds, u32.toUsize(starts[ruleSetIndex]), count)
+  }
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
-    if quickReject {
+    if seconds.length != 0 {
+      let mut budget = context.budget
+      while ruleIndex < count && budget != 0 && u16.toU32(seconds[ruleIndex]) != secondValue {
+        budget = budget - 1
+        ruleIndex = ruleIndex + 1
+      }
+      context.budget = budget
+      if ruleIndex >= count || budget == 0 {
+        break
+      }
+    } else if quickReject {
       ruleIndex = skipRules(
         &mut context,
         &mut buffer,
