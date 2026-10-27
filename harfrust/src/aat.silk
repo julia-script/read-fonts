@@ -125,7 +125,7 @@ pub effect fn substitute<F: FontFuncs>(
       }
       if aat_map.any(List<Range>.asSlice(&ranges), subFlags)
         && ((coverage & 0x20000000) != 0
-        || ((coverage & 0x80000000) != 0) == !Direction.isHorizontal(buffer.direction)) {
+          || ((coverage & 0x80000000) != 0) == !Direction.isHorizontal(buffer.direction)) {
         if !run trace.indexed(font, &buffer.*, "start chainsubtable ", n, "") {
           subOffset = subOffset + subLength
           n = n + 1
@@ -301,7 +301,7 @@ effect fn machine(
         && ((View.u16(&startTransition, 2) & 0x4000) == (flags & 0x4000))
       let safe = !actionable(kind, legacy, entry)
         && (state == 0 || ((flags & 0x4000) != 0 && starts)
-        || (!actionable(kind, legacy, startTransition) && same))
+          || (!actionable(kind, legacy, startTransition) && same))
         && (!actionable(kind, legacy, endTransition) || (kind == 1 && !markSet))
       if !safe {
         Buffer.unsafeToBreak(&mut buffer, index - 1, index + 1)

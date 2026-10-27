@@ -65,8 +65,8 @@ impl<'a> Glyf<'a> {
   pub fn default() -> Self {
     return Glyf<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 0] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 0] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -115,8 +115,8 @@ impl<'a> SimpleGlyph<'a> {
   pub fn default() -> Self {
     return SimpleGlyph<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 9] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 9] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -632,8 +632,8 @@ impl<'a> CompositeGlyph<'a> {
   pub fn default() -> Self {
     return CompositeGlyph<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {

@@ -66,8 +66,8 @@ impl<'a> Fvar<'a> {
   pub fn default() -> Self {
     return Fvar<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 7] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 7] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -251,14 +251,14 @@ impl<'a> AxisInstanceArrays<'a> {
   pub fn default() -> Self {
     return AxisInstanceArrays<'a>.read(FontData.defaultTableData(), 0, 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _axisCount: 0,
-        _instanceCount: 0,
-        _instanceSize: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _axisCount: 0,
+          _instanceCount: 0,
+          _instanceSize: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -518,8 +518,8 @@ impl<'a> Fvar<'a> {
     }
     let axes = Fvar.axes(self)
       |> Result<ComputedArray<'a, (), VariationAxisRecord<'a>>, ReadError>.unwrapOr(
-      ComputedArray<'a, (), VariationAxisRecord<'a>>.empty(()),
-    )
+        ComputedArray<'a, (), VariationAxisRecord<'a>>.empty(()),
+      )
     let mut count = ComputedArray<'a, (), VariationAxisRecord<'a>>.len(&axes)
     if count > normalizedCoords.length {
       count = normalizedCoords.length
@@ -576,7 +576,7 @@ fn siftAxisOrder<'a>(
     let mut child = root * 2 + 1
     if child + 1 < end
       && axisTagAt(axes, u16.toUsize(order[child]))
-      < axisTagAt(axes, u16.toUsize(order[child + 1])) {
+        < axisTagAt(axes, u16.toUsize(order[child + 1])) {
       child = child + 1
     }
     if axisTagAt(axes, u16.toUsize(order[root])) >= axisTagAt(axes, u16.toUsize(order[child])) {

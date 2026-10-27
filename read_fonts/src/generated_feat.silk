@@ -65,8 +65,8 @@ impl<'a> Feat<'a> {
   pub fn default() -> Self {
     return Feat<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -290,12 +290,12 @@ impl<'a> SettingNameArray<'a> {
   pub fn default() -> Self {
     return SettingNameArray<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _nSettings: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _nSettings: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {

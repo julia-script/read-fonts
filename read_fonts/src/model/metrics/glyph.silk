@@ -672,8 +672,8 @@ pub fn originFromExtents(
   return match move extents {
     Option<GlyphExtents<F48Dot16>>.Some { value } => value.yBearing
       + F48Dot16.fromBits(
-      i64.shiftRight(F48Dot16.toBits(line.ascender - line.descender - value.height), 1),
-    )
+        i64.shiftRight(F48Dot16.toBits(line.ascender - line.descender - value.height), 1),
+      )
     _ => line.ascender
   }
 }

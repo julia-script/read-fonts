@@ -72,8 +72,8 @@ impl<'a> Varc<'a> {
   pub fn default() -> Self {
     return Varc<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -277,8 +277,8 @@ impl<'a> MultiItemVariationStore<'a> {
   pub fn default() -> Self {
     return MultiItemVariationStore<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -421,8 +421,8 @@ impl<'a> SparseVariationRegionList<'a> {
   pub fn default() -> Self {
     return SparseVariationRegionList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -516,8 +516,8 @@ impl<'a> SparseVariationRegion<'a> {
   pub fn default() -> Self {
     return SparseVariationRegion<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -616,8 +616,8 @@ impl<'a> SparseRegionAxisCoordinates<'a> {
   pub fn default() -> Self {
     return SparseRegionAxisCoordinates<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -728,8 +728,8 @@ impl<'a> MultiItemVariationData<'a> {
   pub fn default() -> Self {
     return MultiItemVariationData<'a>.read(FontData.defaultFormat1U8TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -854,8 +854,8 @@ impl<'a> ConditionList<'a> {
   pub fn default() -> Self {
     return ConditionList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1689,8 +1689,8 @@ impl DecomposedTransform {
     if self._skewX != 0.0 || self._skewY != 0.0 {
       transform = transform
         * Matrix.fromElements<f32>(
-        [1.0, unsafe tanf(self._skewY * pi), unsafe tanf(-self._skewX * pi), 1.0, 0.0, 0.0],
-      )
+          [1.0, unsafe tanf(self._skewY * pi), unsafe tanf(-self._skewX * pi), 1.0, 0.0, 0.0],
+        )
     }
     if self._centerX != 0.0 || self._centerY != 0.0 {
       transform = transform

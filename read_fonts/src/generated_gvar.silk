@@ -66,8 +66,8 @@ impl<'a> Gvar<'a> {
   pub fn default() -> Self {
     return Gvar<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -272,8 +272,8 @@ impl<'a> GvarExtended<'a> {
   pub fn default() -> Self {
     return GvarExtended<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -632,13 +632,13 @@ impl<'a> SharedTuples<'a> {
   pub fn default() -> Self {
     return SharedTuples<'a>.read(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _sharedTupleCount: 0,
-        _axisCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _sharedTupleCount: 0,
+          _axisCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -731,8 +731,8 @@ impl<'a> GlyphVariationDataHeader<'a> {
   pub fn default() -> Self {
     return GlyphVariationDataHeader<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -854,8 +854,8 @@ impl<'a> GlyphVariationDataHeaderExtended<'a> {
   pub fn default() -> Self {
     return GlyphVariationDataHeaderExtended<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {

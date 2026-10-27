@@ -192,7 +192,7 @@ pub fn add(tags: &mut LanguageTags, tag: u32) -> () {
 pub fn langMatches(value: string, prefix: string) -> bool {
   return value == prefix
     || (String.startsWith(value, prefix) && String.byteLength(value) > String.byteLength(prefix)
-    && String.utf8Bytes(value)[String.byteLength(prefix)] == 45)
+      && String.utf8Bytes(value)[String.byteLength(prefix)] == 45)
 }
 
 pub fn subtagMatches(value: string, subtag: string) -> bool {

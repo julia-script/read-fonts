@@ -930,8 +930,8 @@ effect fn fallbackLineBody() -> ()
             == Scale.scaleY(&scale, F48Dot16.fromI32(upem)) / 2.0
             && (run ScaledGlyphMetrics.vOriginY(&overridden, gid)) == Scale.scaleY(&scale, ascender)
             && ScaledGlyphMetrics.vAdvance(&metrics, gid)
-            == Scale.scaleY(&scale, ascender)
-            - Scale.scaleY(&scale, ascender - F48Dot16.fromI32(upem)),
+              == Scale.scaleY(&scale, ascender)
+                - Scale.scaleY(&scale, ascender - F48Dot16.fromI32(upem)),
           "80 percent em ascender and whole em height",
         )
         checked = true

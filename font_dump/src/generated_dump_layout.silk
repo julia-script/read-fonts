@@ -2121,8 +2121,8 @@ pub effect fn dumpChainedSequenceContextFormat2<'a>(
     let mut index: usize = 0
     while index
       < ArrayOfNullableOffsets<'a, (), ChainedClassSequenceRuleSet<'a>, Offset16>.len(
-      &resolvedArray,
-    ) {
+        &resolvedArray,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ArrayOfNullableOffsets<'a, (), ChainedClassSequenceRuleSet<'a>, Offset16>.get(
@@ -4918,8 +4918,8 @@ pub effect fn dumpChainedSequenceContextFormat5<'a>(
     let mut index: usize = 0
     while index
       < ArrayOfNullableOffsets<'a, (), ChainedClassSequenceRuleSet2<'a>, Offset24>.len(
-      &resolvedArray,
-    ) {
+        &resolvedArray,
+      ) {
       DumpPath.setIndex(&mut path, index)
       DumpPath.setArguments(&mut path, targetArgs)
       match move ArrayOfNullableOffsets<'a, (), ChainedClassSequenceRuleSet2<'a>, Offset24>.get(

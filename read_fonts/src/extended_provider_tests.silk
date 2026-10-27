@@ -121,7 +121,7 @@ effect fn checkMetrics<'a>(font: &FontRef<'a>, extended: bool) -> ()
   run Testing.expect(
     ComputedArray<'a, (), LongMetric<'a>>.len(&GlyphMetricRecords.longMetrics(&h)) == longCount
       && ComputedArray<'a, (), LongMetric<'a>>.len(&GlyphMetricRecords.longMetrics(&v))
-      == longCount,
+        == longCount,
     "selected long records",
   )
   run Testing.expect(

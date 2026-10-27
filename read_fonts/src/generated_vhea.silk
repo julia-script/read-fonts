@@ -65,8 +65,8 @@ impl<'a> Vhea<'a> {
   pub fn default() -> Self {
     return Vhea<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -376,8 +376,8 @@ impl<'a> VheaExtended<'a> {
   pub fn default() -> Self {
     return VheaExtended<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
+      )
   }
 
   pub fn minSize() -> usize {

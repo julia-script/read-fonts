@@ -18,8 +18,9 @@ workaround, and report it upstream. Never patch or vendor the compiler.
 - [007 — bounded Self in an interface result](007-bounded-self-result/README.md): `Values<Self>` is rejected when Values requires the provider's interface; keep the bound on consuming cursor methods.
 - [008 — dropping a generic unsafe operation](008-drop-generic-unsafe/README.md): directly dropping Atomic.fetchAdd with its static ordering is rejected; bind the result before dropping it.
 
-All eight still reproduce, with the same output, on `0.1.0-dev.20+10a8c67813a1`
-(checked 2026-10-26).
+All eight still reproduced on `0.1.0-dev.20+10a8c67813a1` (checked 2026-10-26). On
+`0.1.0-dev.22+5cd5bc433c4e` (checked 2026-10-27) 001 to 009 build, so their
+workarounds can go; 010 and 011 still fail as described.
 
 - [009 — specialized alias constructor](009-specialized-alias/README.md): an associated call through a specialized alias rejects a valid argument; use the explicit nominal owner. Reported as silk-lang/silk#2412.
 - [010 — list of lifetime-carrying values in a struct](010-list-of-lifetime-struct/README.md): appending such a struct to a `List` with an elided lifetime reports SEM0012; store offsets instead of views. Reported as silk-lang/silk#2425.

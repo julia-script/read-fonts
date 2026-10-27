@@ -65,8 +65,8 @@ impl<'a> Trak<'a> {
   pub fn default() -> Self {
     return Trak<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -224,8 +224,8 @@ impl<'a> TrackData<'a> {
   pub fn default() -> Self {
     return TrackData<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {

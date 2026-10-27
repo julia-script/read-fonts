@@ -334,18 +334,18 @@ test effect fn subfontMatrix()
   run Testing.expect(
     matrix.scale == 10
       && equal(
-      matrix.matrix,
-      Matrix.fromElements<Fixed>(
-        [
-          Fixed.fromI32(5),
-          Fixed.zero(),
-          Fixed.zero(),
-          Fixed.fromI32(5),
-          Fixed.zero(),
-          Fixed.zero(),
-        ],
+        matrix.matrix,
+        Matrix.fromElements<Fixed>(
+          [
+            Fixed.fromI32(5),
+            Fixed.zero(),
+            Fixed.zero(),
+            Fixed.fromI32(5),
+            Fixed.zero(),
+            Fixed.zero(),
+          ],
+        ),
       ),
-    ),
     "raw subfont matrix",
   )
 }

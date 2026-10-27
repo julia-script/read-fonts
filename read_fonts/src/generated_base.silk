@@ -67,8 +67,8 @@ impl<'a> Base<'a> {
   pub fn default() -> Self {
     return Base<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -246,8 +246,8 @@ impl<'a> Axis<'a> {
   pub fn default() -> Self {
     return Axis<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -349,8 +349,8 @@ impl<'a> BaseTagList<'a> {
   pub fn default() -> Self {
     return BaseTagList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -439,8 +439,8 @@ impl<'a> BaseScriptList<'a> {
   pub fn default() -> Self {
     return BaseScriptList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -590,8 +590,8 @@ impl<'a> BaseScript<'a> {
   pub fn default() -> Self {
     return BaseScript<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -797,8 +797,8 @@ impl<'a> BaseValues<'a> {
   pub fn default() -> Self {
     return BaseValues<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -916,8 +916,8 @@ impl<'a> MinMax<'a> {
   pub fn default() -> Self {
     return MinMax<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1265,8 +1265,8 @@ impl<'a> BaseCoordFormat1<'a> {
   pub fn default() -> Self {
     return BaseCoordFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {

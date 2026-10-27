@@ -84,8 +84,8 @@ impl<'a> Gpos<'a> {
   pub fn default() -> Self {
     return Gpos<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -951,8 +951,8 @@ impl<'a> AnchorFormat1<'a> {
   pub fn default() -> Self {
     return AnchorFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1342,8 +1342,8 @@ impl<'a> MarkArray<'a> {
   pub fn default() -> Self {
     return MarkArray<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1632,8 +1632,8 @@ impl<'a> SinglePosFormat1<'a> {
   pub fn default() -> Self {
     return SinglePosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2076,8 +2076,8 @@ impl<'a> PairPosFormat1<'a> {
   pub fn default() -> Self {
     return PairPosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2268,13 +2268,13 @@ impl<'a> PairSet<'a> {
   pub fn default() -> Self {
     return PairSet<'a>.read(FontData.defaultTableData(), ValueFormat.empty(), ValueFormat.empty())
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2475,13 +2475,13 @@ impl<'a> PairValueRecord<'a> {
       },
     )
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   /// Glyph ID of second glyph in the pair (first glyph is listed in
@@ -2912,14 +2912,14 @@ impl<'a> Class1Record<'a> {
       },
     )
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _class2Count: 0,
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _class2Count: 0,
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   /// Array of Class2 records, ordered by classes in classDef2.
@@ -3067,13 +3067,13 @@ impl<'a> Class2Record<'a> {
       },
     )
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   /// Positioning for first glyph — empty if valueFormat1 = 0.
@@ -3161,8 +3161,8 @@ impl<'a> CursivePosFormat1<'a> {
   pub fn default() -> Self {
     return CursivePosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3369,8 +3369,8 @@ impl<'a> MarkBasePosFormat1<'a> {
   pub fn default() -> Self {
     return MarkBasePosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3553,12 +3553,12 @@ impl<'a> BaseArray<'a> {
   pub fn default() -> Self {
     return BaseArray<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3677,12 +3677,12 @@ impl<'a> BaseRecord<'a> {
   pub fn default() -> Self {
     return BaseRecord<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per mark class) to Anchor tables. Offsets
@@ -3756,8 +3756,8 @@ impl<'a> MarkLigPosFormat1<'a> {
   pub fn default() -> Self {
     return MarkLigPosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3940,12 +3940,12 @@ impl<'a> LigatureArray<'a> {
   pub fn default() -> Self {
     return LigatureArray<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4048,12 +4048,12 @@ impl<'a> LigatureAttach<'a> {
   pub fn default() -> Self {
     return LigatureAttach<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4170,12 +4170,12 @@ impl<'a> ComponentRecord<'a> {
   pub fn default() -> Self {
     return ComponentRecord<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per class) to Anchor tables. Offsets are
@@ -4249,8 +4249,8 @@ impl<'a> MarkMarkPosFormat1<'a> {
   pub fn default() -> Self {
     return MarkMarkPosFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 6] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4433,12 +4433,12 @@ impl<'a> Mark2Array<'a> {
   pub fn default() -> Self {
     return Mark2Array<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4557,12 +4557,12 @@ impl<'a> Mark2Record<'a> {
   pub fn default() -> Self {
     return Mark2Record<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per class) to Anchor tables. Offsets are
@@ -4636,8 +4636,8 @@ impl<'a, T> ExtensionPosFormat1<'a, T> {
   pub fn default() -> Self {
     return ExtensionPosFormat1<'a, T>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5414,13 +5414,13 @@ impl<'a> PairSet2<'a> {
   pub fn default() -> Self {
     return PairSet2<'a>.read(FontData.defaultTableData(), ValueFormat.empty(), ValueFormat.empty())
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5621,13 +5621,13 @@ impl<'a> PairValueRecord2<'a> {
       },
     )
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
-        _valueFormat1: ValueFormat.empty(),
-        _valueFormat2: ValueFormat.empty(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
+          _valueFormat1: ValueFormat.empty(),
+          _valueFormat2: ValueFormat.empty(),
+        },
+      )
   }
 
   /// Glyph ID of second glyph in the pair (first glyph is listed in
@@ -6377,12 +6377,12 @@ impl<'a> BaseArray2<'a> {
   pub fn default() -> Self {
     return BaseArray2<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6501,12 +6501,12 @@ impl<'a> BaseRecord2<'a> {
   pub fn default() -> Self {
     return BaseRecord2<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per mark class) to Anchor tables. Offsets
@@ -6757,12 +6757,12 @@ impl<'a> LigatureArray2<'a> {
   pub fn default() -> Self {
     return LigatureArray2<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6868,12 +6868,12 @@ impl<'a> LigatureAttach2<'a> {
   pub fn default() -> Self {
     return LigatureAttach2<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6990,12 +6990,12 @@ impl<'a> ComponentRecord2<'a> {
   pub fn default() -> Self {
     return ComponentRecord2<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per class) to Anchor tables. Offsets are
@@ -7246,12 +7246,12 @@ impl<'a> Mark2Array2<'a> {
   pub fn default() -> Self {
     return Mark2Array2<'a>.read(FontData.defaultTableData(), 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 2],
+          _markClassCount: 0,
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -7368,12 +7368,12 @@ impl<'a> Mark2Record2<'a> {
   pub fn default() -> Self {
     return Mark2Record2<'a>.readAt(FontData.defaultTableData(), 0, 0)
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
-        _markClassCount: 0,
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 1],
+          _markClassCount: 0,
+        },
+      )
   }
 
   /// Array of offsets (one per class) to Anchor tables. Offsets are
@@ -7447,8 +7447,8 @@ impl<'a> MarkArray2<'a> {
   pub fn default() -> Self {
     return MarkArray2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {

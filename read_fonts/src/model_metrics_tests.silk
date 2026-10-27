@@ -982,7 +982,7 @@ effect fn glyfBearingUsesHmtxTailThenFallsBackToZeroBody() -> ()
           F48Dot16.toBits((run some(run GlyphMetrics.extentsExact(&shortened, glyph))).xBearing)
             == 0
             && F48Dot16.toBits((run some(run GlyphMetrics.extentsExact(&loaded, glyph))).xBearing)
-            == 0,
+              == 0,
           "missing tail bearing defaults zero in both paths",
         )
         checked = true
@@ -1013,7 +1013,7 @@ test effect fn extendedMetricsInTheCachedFontModel() -> ()
       run Testing.expect(
         F48Dot16.toI32(GlyphMetrics.hAdvanceExact(&metrics, gid)) == 1000 + u32.toI32(ids[i] % 100)
           && F48Dot16.toI32(GlyphMetrics.vAdvanceExact(&metrics, gid))
-          == 1200 + u32.toI32(ids[i] % 100),
+            == 1200 + u32.toI32(ids[i] % 100),
         "extended metrics selected",
       )
       i = i + 1

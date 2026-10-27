@@ -65,8 +65,8 @@ impl<'a> Cmap<'a> {
   pub fn default() -> Self {
     return Cmap<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -180,8 +180,8 @@ impl<'a> Dmap<'a> {
   pub fn default() -> Self {
     return Dmap<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -625,8 +625,8 @@ impl<'a> Cmap0<'a> {
   pub fn default() -> Self {
     return Cmap0<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2526,8 +2526,8 @@ impl<'a> DefaultUvs<'a> {
   pub fn default() -> Self {
     return DefaultUvs<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2621,8 +2621,8 @@ impl<'a> NonDefaultUvs<'a> {
   pub fn default() -> Self {
     return NonDefaultUvs<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2711,8 +2711,8 @@ impl<'a> NonDefaultUvs24<'a> {
   pub fn default() -> Self {
     return NonDefaultUvs24<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3788,8 +3788,8 @@ impl<'a> UvsSubtable<'a> {
     let range = Cmap15<'a>.varSelectorByteRange(&table)
     let selectors = recordArray<VariationSelector<'a>>(data, range.start, range.end)
       |> Result<ComputedArray<'a, (), VariationSelector<'a>>, ReadError>.unwrapOr(
-      ComputedArray<'a, (), VariationSelector<'a>>.empty(()),
-    )
+        ComputedArray<'a, (), VariationSelector<'a>>.empty(()),
+      )
     return Self { data: data, selectors: selectors, _format: 15 }
   }
 

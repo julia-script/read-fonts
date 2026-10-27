@@ -60,8 +60,8 @@ impl<'a> Fvar<'a> {
     }
     let axes = Fvar.axes(self)
       |> Result<ComputedArray<'a, (), VariationAxisRecord<'a>>, ReadError>.unwrapOr(
-      ComputedArray<'a, (), VariationAxisRecord<'a>>.empty(()),
-    )
+        ComputedArray<'a, (), VariationAxisRecord<'a>>.empty(()),
+      )
     let mut count = ComputedArray<'a, (), VariationAxisRecord<'a>>.len(&axes)
     if count > normalizedCoords.length {
       count = normalizedCoords.length
@@ -118,7 +118,7 @@ fn siftAxisOrder<'a>(
     let mut child = root * 2 + 1
     if child + 1 < end
       && axisTagAt(axes, u16.toUsize(order[child]))
-      < axisTagAt(axes, u16.toUsize(order[child + 1])) {
+        < axisTagAt(axes, u16.toUsize(order[child + 1])) {
       child = child + 1
     }
     if axisTagAt(axes, u16.toUsize(order[root])) >= axisTagAt(axes, u16.toUsize(order[child])) {

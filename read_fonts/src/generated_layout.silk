@@ -66,8 +66,8 @@ impl<'a> ScriptList<'a> {
   pub fn default() -> Self {
     return ScriptList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -218,8 +218,8 @@ impl<'a> Script<'a> {
   pub fn default() -> Self {
     return Script<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -397,8 +397,8 @@ impl<'a> LangSys<'a> {
   pub fn default() -> Self {
     return LangSys<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -511,8 +511,8 @@ impl<'a> FeatureList<'a> {
   pub fn default() -> Self {
     return FeatureList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -667,12 +667,12 @@ impl<'a> Feature<'a> {
   pub fn default() -> Self {
     return Feature<'a>.read(FontData.defaultTableData(), Tag.default())
       |> Result<Self, ReadError>.unwrapOr(
-      Self {
-        _fontData: FontData.new(b""),
-        _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
-        _featureTag: Tag.default(),
-      },
-    )
+        Self {
+          _fontData: FontData.new(b""),
+          _fieldRanges: [ByteRange { start: 0, end: 0 }; 3],
+          _featureTag: Tag.default(),
+        },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -795,8 +795,8 @@ impl<'a, T> LookupList<'a, T> {
   pub fn default() -> Self {
     return LookupList<'a, T>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -900,8 +900,8 @@ impl<'a, T> Lookup<'a, T> {
   pub fn default() -> Self {
     return Lookup<'a, T>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1064,8 +1064,8 @@ impl<'a> CoverageFormat1<'a> {
   pub fn default() -> Self {
     return CoverageFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1473,8 +1473,8 @@ impl<'a> ClassDefFormat1<'a> {
   pub fn default() -> Self {
     return ClassDefFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -1949,8 +1949,8 @@ impl<'a> SequenceContextFormat1<'a> {
   pub fn default() -> Self {
     return SequenceContextFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2092,8 +2092,8 @@ impl<'a> SequenceRuleSet<'a> {
   pub fn default() -> Self {
     return SequenceRuleSet<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2191,8 +2191,8 @@ impl<'a> SequenceRule<'a> {
   pub fn default() -> Self {
     return SequenceRule<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2487,8 +2487,8 @@ impl<'a> ClassSequenceRuleSet<'a> {
   pub fn default() -> Self {
     return ClassSequenceRuleSet<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -2586,8 +2586,8 @@ impl<'a> ClassSequenceRule<'a> {
   pub fn default() -> Self {
     return ClassSequenceRule<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3026,8 +3026,8 @@ impl<'a> ChainedSequenceContextFormat1<'a> {
   pub fn default() -> Self {
     return ChainedSequenceContextFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3177,8 +3177,8 @@ impl<'a> ChainedSequenceRuleSet<'a> {
   pub fn default() -> Self {
     return ChainedSequenceRuleSet<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3279,8 +3279,8 @@ impl<'a> ChainedSequenceRule<'a> {
   pub fn default() -> Self {
     return ChainedSequenceRule<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3699,8 +3699,8 @@ impl<'a> ChainedClassSequenceRuleSet<'a> {
   pub fn default() -> Self {
     return ChainedClassSequenceRuleSet<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -3806,8 +3806,8 @@ impl<'a> ChainedClassSequenceRule<'a> {
   pub fn default() -> Self {
     return ChainedClassSequenceRule<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4475,8 +4475,8 @@ impl<'a> Device<'a> {
   pub fn default() -> Self {
     return Device<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4601,8 +4601,8 @@ impl<'a> VariationIndex<'a> {
   pub fn default() -> Self {
     return VariationIndex<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -4759,8 +4759,8 @@ impl<'a> FeatureVariations<'a> {
   pub fn default() -> Self {
     return FeatureVariations<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5038,8 +5038,8 @@ impl<'a> FeatureLookups<'a> {
   pub fn default() -> Self {
     return FeatureLookups<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5405,8 +5405,8 @@ impl<'a> LookupIndexList<'a> {
   pub fn default() -> Self {
     return LookupIndexList<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5491,8 +5491,8 @@ impl<'a> ConditionSet<'a> {
   pub fn default() -> Self {
     return ConditionSet<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -5736,8 +5736,8 @@ impl<'a> ConditionFormat1<'a> {
   pub fn default() -> Self {
     return ConditionFormat1<'a>.read(FontData.defaultFormat1U16TableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6281,8 +6281,8 @@ impl<'a> FeatureTableSubstitution<'a> {
   pub fn default() -> Self {
     return FeatureTableSubstitution<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 3] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6444,8 +6444,8 @@ impl<'a> SizeParams<'a> {
   pub fn default() -> Self {
     return SizeParams<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 5] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6596,8 +6596,8 @@ impl<'a> StylisticSetParams<'a> {
   pub fn default() -> Self {
     return StylisticSetParams<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -6688,8 +6688,8 @@ impl<'a> CharacterVariantParams<'a> {
   pub fn default() -> Self {
     return CharacterVariantParams<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -7605,8 +7605,8 @@ impl<'a> SequenceRuleSet2<'a> {
   pub fn default() -> Self {
     return SequenceRuleSet2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -7704,8 +7704,8 @@ impl<'a> SequenceRule2<'a> {
   pub fn default() -> Self {
     return SequenceRule2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 4] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -8000,8 +8000,8 @@ impl<'a> ClassSequenceRuleSet2<'a> {
   pub fn default() -> Self {
     return ClassSequenceRuleSet2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -8394,8 +8394,8 @@ impl<'a> ChainedSequenceRuleSet2<'a> {
   pub fn default() -> Self {
     return ChainedSequenceRuleSet2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -8501,8 +8501,8 @@ impl<'a> ChainedSequenceRule2<'a> {
   pub fn default() -> Self {
     return ChainedSequenceRule2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 8] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -8921,8 +8921,8 @@ impl<'a> ChainedClassSequenceRuleSet2<'a> {
   pub fn default() -> Self {
     return ChainedClassSequenceRuleSet2<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -9028,8 +9028,8 @@ impl<'a, T> LookupList2<'a, T> {
   pub fn default() -> Self {
     return LookupList2<'a, T>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 2] },
+      )
   }
 
   pub fn minSize() -> usize {
@@ -10796,10 +10796,10 @@ impl<'a> ClassDefFormat2<'a> {
         }
         if range.end >= first && range.value == u16.toU32(class)
           && IntSet<GlyphId>.intersectsRange(
-          glyphs,
-          GlyphId.new(range.start),
-          GlyphId.new(range.end),
-        ) {
+            glyphs,
+            GlyphId.new(range.start),
+            GlyphId.new(range.end),
+          ) {
           return true
         }
         at = at + 1

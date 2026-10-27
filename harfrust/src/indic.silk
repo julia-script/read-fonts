@@ -167,7 +167,7 @@ effect fn initialSyllable<F: FontFuncs>(
   let logical = buffer.script == 0x4d6c796d
   if !logical && start + 3 <= end
     && ((!explicit && !joiner(&List<Glyph>.asSlice(&buffer.glyphs)[start + 2]))
-    || (explicit && List<Glyph>.get(&buffer.glyphs, start + 2).category == 6)) {
+      || (explicit && List<Glyph>.get(&buffer.glyphs, start + 2).category == 6)) {
     let a = List<Glyph>.get(&buffer.glyphs, start).info.glyphId
     let b = List<Glyph>.get(&buffer.glyphs, start + 1).info.glyphId
     let c = List<Glyph>.get(&buffer.glyphs, start + 2).info.glyphId

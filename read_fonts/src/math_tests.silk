@@ -403,7 +403,7 @@ test effect fn variantsAndAssembly() -> ()
     run Testing.expect(
       GlyphId16.toU32(MathGlyphVariantRecord.variantGlyph(&record)) == 21 + usize.toU32(i)
         && UfWord.toU16(MathGlyphVariantRecord.advanceMeasurement(&record))
-        == 300 + 100 * usize.toU16(i),
+          == 300 + 100 * usize.toU16(i),
       "variant glyph and advance",
     )
     i = i + 1

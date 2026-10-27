@@ -565,10 +565,10 @@ impl<'a> ClassDefFormat2<'a> {
         }
         if range.end >= first && range.value == u16.toU32(class)
           && IntSet<GlyphId>.intersectsRange(
-          glyphs,
-          GlyphId.new(range.start),
-          GlyphId.new(range.end),
-        ) {
+            glyphs,
+            GlyphId.new(range.start),
+            GlyphId.new(range.end),
+          ) {
           return true
         }
         at = at + 1

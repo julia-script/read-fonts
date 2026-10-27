@@ -364,7 +364,7 @@ fn unicodeLigatures<F: FontFuncs>(
         let target = ConfiguredShaper.glyphFor(font, u16.toU32(View.u16(&data, p + 8)))
         if !ConfiguredShaper.mappedGlyphExists(font, u16.toU32(View.u16(&data, p + 8)), target)
           || ConfiguredShaper.glyphFor(font, u16.toU32(View.u16(&data, p + 2)))
-          != first.info.glyphId {
+            != first.info.glyphId {
           p = p + 10
           continue
         }
@@ -482,7 +482,7 @@ pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buf
       let item = List<Glyph>.get(&buffer.glyphs, context - 1)
       if item.stretch != 0
         || !((item.ignorable && !item.substituted)
-        || wordCategory(unicode.generalCategory(item.codepoint))) {
+          || wordCategory(unicode.generalCategory(item.codepoint))) {
         break
       }
       context = context - 1

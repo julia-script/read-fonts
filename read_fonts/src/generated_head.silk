@@ -570,8 +570,8 @@ impl<'a> Head<'a> {
   pub fn default() -> Self {
     return Head<'a>.read(FontData.defaultTableData())
       |> Result<Self, ReadError>.unwrapOr(
-      Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
-    )
+        Self { _fontData: FontData.new(b""), _fieldRanges: [ByteRange { start: 0, end: 0 }; 17] },
+      )
   }
 
   pub fn minSize() -> usize {
