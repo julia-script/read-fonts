@@ -363,7 +363,11 @@ fn fallbackGlyph<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &Buffer, item
   return mapped
 }
 
-fn fallbackMapping<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &Buffer, codepoint: u32) -> Mapped {
+fn fallbackMapping<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  buffer: &Buffer,
+  codepoint: u32,
+) -> Mapped {
   let mut cp = codepoint
   if cp == 0x2011 && !ConfiguredShaper.hasGlyph(font, cp) {
     cp = 0x2010
