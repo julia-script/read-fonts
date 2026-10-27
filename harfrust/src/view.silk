@@ -290,6 +290,14 @@ fn be16(bytes: &[u8], at: usize) -> u16 with Intrinsic.inlineAlways() {
   return u16.shiftLeft(u8.toU16(bytes[at]), 8) | u8.toU16(bytes[at + 1])
 }
 
+/// A big-endian u16 at `at` as a usize, or 0 past the end, like `View.u16`.
+pub fn read16(bytes: &[u8], at: usize) -> usize with Intrinsic.inlineAlways() {
+  if at >= bytes.length || bytes.length - at < 2 {
+    return 0
+  }
+  return u8.toUsize(bytes[at]) * 256 + u8.toUsize(bytes[at + 1])
+}
+
 pub fn offset(base: usize, index: usize, size: usize) -> usize with Intrinsic.inlineAlways() {
   return usize.saturatingAdd(base, usize.saturatingMultiply(index, size))
 }
