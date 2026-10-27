@@ -144,11 +144,22 @@ impl Glyph {
   fn withProperties(cp: u32, cluster: u32) -> Self {
     let hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
       || (cp >= 0xe0020 && cp <= 0xe007f)
-    return Glyph.make(cp, cluster, unicode.modifiedCombiningClass(cp), unicode.isDefaultIgnorable(cp), hidden)
+    return Glyph.make(
+      cp,
+      cluster,
+      unicode.modifiedCombiningClass(cp),
+      unicode.isDefaultIgnorable(cp),
+      hidden,
+    )
   }
 
-  fn make(cp: u32, cluster: u32, combiningClass: u8, ignorable: bool, hidden: bool) -> Self
-    with Intrinsic.inlineAlways() {
+  fn make(
+    cp: u32,
+    cluster: u32,
+    combiningClass: u8,
+    ignorable: bool,
+    hidden: bool,
+  ) -> Self with Intrinsic.inlineAlways() {
     return Self {
       info: GlyphInfo { glyphId: cp, cluster: cluster, flags: 0 },
       position: GlyphPosition.zero(),
@@ -327,6 +338,7 @@ impl Buffer {
     ! OutOfMemoryError
     ? &mut Allocator {
     self.contentType = ContentType.Unicode
+
     // Every scalar starts with a non-continuation byte, so the glyphs can be added in one
     // step and filled in place instead of appended one at a time.
     let bytes = String.utf8Bytes(text)
@@ -359,7 +371,8 @@ impl Buffer {
           width = 3
         } else {
           cp = (cp - 240) * 262144 + (u8.toU32(bytes[offset + 1]) - 128) * 4096
-            + (u8.toU32(bytes[offset + 2]) - 128) * 64 + (u8.toU32(bytes[offset + 3]) - 128)
+            + (u8.toU32(bytes[offset + 2]) - 128) * 64
+            + (u8.toU32(bytes[offset + 3]) - 128)
           width = 4
         }
         if cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) {
@@ -370,6 +383,7 @@ impl Buffer {
       if utf8Clusters {
         cluster = usize.toU32(offset)
       }
+
       // Slots already hold Glyph.new(0, 0); only the code point dependent fields change.
       Glyph.setCodepoint(&mut slots[k], cp, cluster)
       k = k + 1
