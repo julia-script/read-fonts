@@ -160,9 +160,8 @@ fn zero<F: FontFuncs>(font: &ConfiguredShaper<F>, u: u32) -> bool {
 
 fn combine(buffer: &mut Buffer, at: usize, count: usize, cp: u32) -> () {
   Buffer.mergeClusters(&mut buffer, at, at + count)
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  item.codepoint = cp
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  slots[at].codepoint = cp
   let mut n: usize = 1
   while n < count {
     drop List<Glyph>.remove(&mut buffer.glyphs, at + 1)
@@ -174,9 +173,9 @@ fn jamo(buffer: &mut Buffer, start: usize, end: usize) -> () {
   let tags: [u32; 3] = [0x6c6a6d6f, 0x766a6d6f, 0x746a6d6f]
   let mut i = start
   while i < end && i - start < 3 {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    item.form = tags[i - start]
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
+    let updated = tags[i - start]
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    slots[i].form = updated
     i = i + 1
   }
   if ClusterLevel.isGraphemes(buffer.clusterLevel) {

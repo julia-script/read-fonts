@@ -148,9 +148,8 @@ pub effect fn normalize<F: FontFuncs>(
   } else {
     let mut n: usize = 0
     while n < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, n)
-      item.info.glyphId = 0
-      List<Glyph>.set(&mut buffer.glyphs, n, item)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[n].info.glyphId = 0
       n = n + 1
     }
     allSimple = true
@@ -320,9 +319,8 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
         && !previousContinuation)
     }
     if i < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, i)
-      item.continuation = continuation
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[i].continuation = continuation
     }
     if !continuation {
       Buffer.mergeGraphemeClusters(&mut buffer, start, i)

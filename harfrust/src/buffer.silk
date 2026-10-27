@@ -457,17 +457,18 @@ impl Buffer {
     if (self.flags & 64) == 0 {
       allowed = 5
     }
+    let marked = (self.flags & 128) != 0
+    let glyphs = List<Glyph>.asMutSlice(&mut self.glyphs)
     let mut i: usize = 0
-    while i < Buffer.len(&self.*) {
-      let cluster = List<Glyph>.get(&self.glyphs, i).info.cluster
+    while i < glyphs.length {
+      let cluster = glyphs[i].info.cluster
       let mut end = i
       let mut flags: u32 = 0
-      while end < Buffer.len(&self.*)
-        && List<Glyph>.get(&self.glyphs, end).info.cluster == cluster {
-        flags = flags | List<Glyph>.get(&self.glyphs, end).info.flags
+      while end < glyphs.length && glyphs[end].info.cluster == cluster {
+        flags = flags | glyphs[end].info.flags
         end = end + 1
       }
-      if (self.flags & 128) != 0 {
+      if marked {
         if (flags & 1) != 0 {
           flags = flags & 3
         }
@@ -477,9 +478,7 @@ impl Buffer {
       }
       flags = flags & allowed
       while i < end {
-        let mut glyph = List<Glyph>.get(&self.glyphs, i)
-        glyph.info.flags = flags
-        List<Glyph>.set(&mut self.glyphs, i, glyph)
+        glyphs[i].info.flags = flags
         i = i + 1
       }
     }
@@ -704,9 +703,8 @@ impl Buffer {
     if index >= Buffer.len(&self.*) {
       return false
     }
-    let mut item = List<Glyph>.get(&self.glyphs, index)
-    item.position = position
-    List<Glyph>.set(&mut self.glyphs, index, item)
+    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+    slots[index].position = position
     self.havePositions = true
     return true
   }
@@ -826,9 +824,9 @@ impl Buffer {
   pub fn resetClusters(self: &mut Self) -> () {
     let mut i: usize = 0
     while i < Buffer.len(&self.*) {
-      let mut item = List<Glyph>.get(&self.glyphs, i)
-      item.info.cluster = usize.toU32(i)
-      List<Glyph>.set(&mut self.glyphs, i, item)
+      let updated = usize.toU32(i)
+      let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+      slots[i].info.cluster = updated
       i = i + 1
     }
   }
