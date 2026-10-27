@@ -45,6 +45,8 @@ struct Context<'a, 's> {
   ligatureId: u32,
   shaper: u32,
   restrictSyllable: bool,
+  // Ligature component positions, reused so each candidate ligature skips a 512-byte memset.
+  positions: [usize; 64],
 }
 
 struct Lookup<'a> {
@@ -109,6 +111,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ligatureId: 0,
     shaper: buffer.shaper,
     restrictSyllable: false,
+    positions: [0; 64],
   }
   let mut step: usize = 0
   let mut stage: u32 = 0
@@ -263,6 +266,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ligatureId: 0,
     shaper: 0,
     restrictSyllable: false,
+    positions: [0; 64],
   }
   let mut i: usize = 0
   while i < steps.length {
@@ -677,8 +681,7 @@ effect fn substitute<F: FontFuncs>(
       if wide {
         matchKind = 4
       }
-      let mut positions: [usize; 64] = [0; 64]
-      positions[0] = at
+      context.positions[0] = at
       let mut matched: usize = 1
       let mut cursor = at
       while matched < components {
@@ -707,7 +710,7 @@ effect fn substitute<F: FontFuncs>(
           || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
           break
         }
-        positions[matched] = cursor
+        context.positions[matched] = cursor
         matched = matched + 1
       }
       if matched == components {
@@ -715,7 +718,7 @@ effect fn substitute<F: FontFuncs>(
           font,
           &buffer.*,
           "ligating glyphs at ",
-          Slice.view(&positions, 0, components),
+          Slice.view(&context.positions, 0, components),
           0,
         )
         Buffer.mergeClusters(&mut buffer, at, cursor + 1)
@@ -726,7 +729,7 @@ effect fn substitute<F: FontFuncs>(
         let mut total = Glyph.ligNumComps(&original)
         let mut n: usize = 1
         while n < components {
-          let part = List<Glyph>.get(&buffer.glyphs, positions[n])
+          let part = List<Glyph>.get(&buffer.glyphs, context.positions[n])
           if part.glyphClass != 3 {
             baseLigature = false
             markLigature = false
@@ -756,7 +759,7 @@ effect fn substitute<F: FontFuncs>(
         n = 1
         while p <= cursor {
           let mut part = List<Glyph>.get(&buffer.glyphs, p)
-          if n < components && p == positions[n] {
+          if n < components && p == context.positions[n] {
             n = n + 1
             lastId = part.ligatureId
             lastNum = Glyph.ligContribution(&part)
@@ -793,7 +796,7 @@ effect fn substitute<F: FontFuncs>(
         n = components
         while n > 1 {
           n = n - 1
-          drop List<Glyph>.remove(&mut buffer.glyphs, positions[n])
+          drop List<Glyph>.remove(&mut buffer.glyphs, context.positions[n])
         }
         drop run trace.indexed(font, &buffer.*, "ligated glyph at ", at, "")
         return yes(at + 1)
