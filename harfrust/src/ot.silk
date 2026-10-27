@@ -670,7 +670,7 @@ effect fn applyLookup<F: FontFuncs>(
     return no()
   }
   if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
-    || ignored(&context.*, lookup, &List<Glyph>.get(&buffer.glyphs, at)) {
+    || ignored(&context.*, lookup, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
     return no()
   }
   context.budget = context.budget - 1
@@ -1073,9 +1073,15 @@ effect fn substitute<F: FontFuncs>(
           break
         }
         cursor = found & (MISMATCH - 1)
-        let item = List<Glyph>.get(&buffer.glyphs, cursor)
-        if (found & MISMATCH) != 0 || enabled(&context.*, &item, first, last) == 0
-          || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
+        if (found & MISMATCH) != 0
+          || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
+          || !compatibleComponents(
+          &context.*,
+          &buffer.*,
+          lookup,
+          at,
+          &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
+        ) {
           break
         }
         context.positions[matched] = cursor
@@ -1933,9 +1939,15 @@ effect fn contextual<F: FontFuncs>(
         break
       }
       cursor = found & (MISMATCH - 1)
-      let item = List<Glyph>.get(&buffer.glyphs, cursor)
-      if (found & MISMATCH) != 0 || enabled(&context.*, &item, first, last) == 0
-        || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
+      if (found & MISMATCH) != 0
+        || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
+        || !compatibleComponents(
+        &context.*,
+        &buffer.*,
+        lookup,
+        at,
+        &List<Glyph>.asSlice(&buffer.glyphs)[cursor],
+      ) {
         break
       }
       List<usize>.set(&mut context.positionStack, base + n, cursor)

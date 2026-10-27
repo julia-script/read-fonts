@@ -167,7 +167,7 @@ effect fn initialSyllable<F: FontFuncs>(
   let explicit = buffer.script == 0x54656c75
   let logical = buffer.script == 0x4d6c796d
   if !logical && start + 3 <= end
-    && ((!explicit && !joiner(&List<Glyph>.get(&buffer.glyphs, start + 2)))
+    && ((!explicit && !joiner(&List<Glyph>.asSlice(&buffer.glyphs)[start + 2]))
     || (explicit && List<Glyph>.get(&buffer.glyphs, start + 2).category == 6)) {
     let a = List<Glyph>.get(&buffer.glyphs, start).info.glyphId
     let b = List<Glyph>.get(&buffer.glyphs, start + 1).info.glyphId
@@ -175,7 +175,7 @@ effect fn initialSyllable<F: FontFuncs>(
     if (run probe(font, plan, 0x72706866, a, b))
       || (explicit && (run ot.wouldSubstitute(font, plan, 0x72706866, &[a, b, c]))) {
       limit = start + 2
-      while limit < end && joiner(&List<Glyph>.get(&buffer.glyphs, limit)) {
+      while limit < end && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[limit]) {
         limit = limit + 1
       }
       base = start
@@ -183,7 +183,7 @@ effect fn initialSyllable<F: FontFuncs>(
     }
   } else if logical && List<Glyph>.get(&buffer.glyphs, start).category == 14 {
     limit = start + 1
-    while limit < end && joiner(&List<Glyph>.get(&buffer.glyphs, limit)) {
+    while limit < end && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[limit]) {
       limit = limit + 1
     }
     base = start
@@ -331,7 +331,7 @@ effect fn initialSyllable<F: FontFuncs>(
     let mut j = firstMatra
     i = firstMatra
     while i <= lastMatra {
-      if matra(&List<Glyph>.get(&buffer.glyphs, i)) {
+      if matra(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
         reverseRange(&mut buffer.glyphs, j, i + 1)
         j = i + 1
       }
@@ -472,7 +472,7 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
         if (item.featureMask & 2) != 0 {
           if !(item.substituted && item.ligated && !item.multiplied) {
             base = i
-            while base < end && halant(&List<Glyph>.get(&buffer.glyphs, base)) {
+            while base < end && halant(&List<Glyph>.asSlice(&buffer.glyphs)[base]) {
               base = base + 1
             }
             if base < end {
@@ -487,14 +487,14 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
       if buffer.script == 0x4d6c796d {
         i = base + 1
         while i < end {
-          while i < end && joiner(&List<Glyph>.get(&buffer.glyphs, i)) {
+          while i < end && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
             i = i + 1
           }
-          if i == end || !halant(&List<Glyph>.get(&buffer.glyphs, i)) {
+          if i == end || !halant(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
             break
           }
           i = i + 1
-          while i < end && joiner(&List<Glyph>.get(&buffer.glyphs, i)) {
+          while i < end && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
             i = i + 1
           }
           if i < end {
@@ -534,8 +534,8 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
     }
     if !simple {
       while true {
-        while target > start && !matra(&List<Glyph>.get(&buffer.glyphs, target))
-          && !halant(&List<Glyph>.get(&buffer.glyphs, target)) {
+        while target > start && !matra(&List<Glyph>.asSlice(&buffer.glyphs)[target])
+          && !halant(&List<Glyph>.asSlice(&buffer.glyphs)[target]) {
           target = target - 1
         }
         let item = List<Glyph>.get(&buffer.glyphs, target)
@@ -586,12 +586,12 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
     && ((first.category == 14) != (first.ligated && !first.multiplied)) {
     let pos = rephPosition(buffer.script)
     let mut target = start + 1
-    while target < base && !halant(&List<Glyph>.get(&buffer.glyphs, target)) {
+    while target < base && !halant(&List<Glyph>.asSlice(&buffer.glyphs)[target]) {
       target = target + 1
     }
-    let found = target < base && halant(&List<Glyph>.get(&buffer.glyphs, target))
+    let found = target < base && halant(&List<Glyph>.asSlice(&buffer.glyphs)[target])
     if found {
-      if target + 1 < base && joiner(&List<Glyph>.get(&buffer.glyphs, target + 1)) {
+      if target + 1 < base && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[target + 1]) {
         target = target + 1
       }
     } else if pos == 5 || pos == 9 {
@@ -611,10 +611,10 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
       while target > start && List<Glyph>.get(&buffer.glyphs, target).order == 13 {
         target = target - 1
       }
-      if halant(&List<Glyph>.get(&buffer.glyphs, target)) {
+      if halant(&List<Glyph>.asSlice(&buffer.glyphs)[target]) {
         let mut i = base + 1
         while i < target {
-          if matra(&List<Glyph>.get(&buffer.glyphs, i)) {
+          if matra(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
             target = target - 1
           }
           i = i + 1
@@ -635,13 +635,14 @@ fn finalSyllable(buffer: &mut Buffer, start: usize, end: usize) -> () {
         if item.ligated && !item.multiplied {
           let mut target = base
           if !simple {
-            while target > start && !matra(&List<Glyph>.get(&buffer.glyphs, target - 1))
-              && !halant(&List<Glyph>.get(&buffer.glyphs, target - 1)) {
+            while target > start && !matra(&List<Glyph>.asSlice(&buffer.glyphs)[target - 1])
+              && !halant(&List<Glyph>.asSlice(&buffer.glyphs)[target - 1]) {
               target = target - 1
             }
           }
-          if target > start && halant(&List<Glyph>.get(&buffer.glyphs, target - 1)) && target < end
-            && joiner(&List<Glyph>.get(&buffer.glyphs, target)) {
+          if target > start && halant(&List<Glyph>.asSlice(&buffer.glyphs)[target - 1])
+            && target < end
+            && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[target]) {
             target = target + 1
           }
           Buffer.mergeClusters(&mut buffer, target, i + 1)

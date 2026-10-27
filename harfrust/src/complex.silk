@@ -600,7 +600,7 @@ fn myanmar(buffer: &mut Buffer) -> () {
       let mut base = limit
       let mut i = limit
       while i < end {
-        if consonant(&List<Glyph>.get(&buffer.glyphs, i)) {
+        if consonant(&List<Glyph>.asSlice(&buffer.glyphs)[i]) {
           base = i
           break
         }
