@@ -34,9 +34,8 @@ import read_fonts.tables.fvar { Fvar, VariationAxisRecord }
 import read_fonts.tables.cmap { CmapMapping }
 import read_fonts.lib { FontData, ReadError, ComputedArray }
 import font_types.lib { GlyphId, F48Dot16, F26Dot6, F2Dot14, Tag }
-import dump_support { DumpPath, scalar, absent, bytes }
+import dump_support { DumpPath, DumpValue, scalar, absent, bytes }
 import silk.writer { Writer, WriterError }
-import silk.format { Display }
 import silk.option { Option }
 import silk.result { Result }
 import silk.string { String }
@@ -48,7 +47,7 @@ import silk.u32
 import silk.usize
 import silk.f32
 
-effect fn field<T: Display>(path: &mut DumpPath, key: string<'static>, value: T) -> ()
+effect fn field<T: DumpValue>(path: &mut DumpPath, key: string<'static>, value: T) -> ()
   ! WriterError
   ? &mut Writer {
   DumpPath.push(&mut path, key)
@@ -56,7 +55,7 @@ effect fn field<T: Display>(path: &mut DumpPath, key: string<'static>, value: T)
   DumpPath.pop(&mut path)
 }
 
-effect fn optional<T: Display>(path: &mut DumpPath, key: string<'static>, input: Option<T>) -> ()
+effect fn optional<T: DumpValue>(path: &mut DumpPath, key: string<'static>, input: Option<T>) -> ()
   ! WriterError
   ? &mut Writer {
   DumpPath.push(&mut path, key)

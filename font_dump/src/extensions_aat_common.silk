@@ -18,11 +18,10 @@ import read_fonts.tables.mort {
   InsertionEntryData as MortInsert
 }
 import font_types.lib { BigEndian, Scalar, FixedSize, GlyphId, GlyphId16 }
-import dump_support { DumpPath, scalar, readError }
+import dump_support { DumpPath, DumpValue, scalar, readError }
 import generated_dump_aat
 import silk.result { Result }
 import silk.option { Option }
-import silk.format { Display }
 import silk.ownership { Copy }
 import silk.writer { Writer, WriterError }
 import silk.u16
@@ -41,7 +40,7 @@ impl StatePayload for NoPayload {
   }
 }
 
-impl<T: Scalar + Copy + Display> StatePayload for BigEndian<T> {
+impl<T: Scalar + Copy + DumpValue> StatePayload for BigEndian<T> {
   effect fn dump(self: &Self, path: &mut DumpPath) -> ()
     ! WriterError
     ? &mut Writer {
@@ -101,7 +100,7 @@ impl<'a> StatePayload for MortInsert<'a> {
   }
 }
 
-pub effect fn dumpArray<'a, T: Scalar + Copy + Display>(
+pub effect fn dumpArray<'a, T: Scalar + Copy + DumpValue>(
   path: &mut DumpPath,
   values: ScalarArray<'a, T>,
 ) -> ()
