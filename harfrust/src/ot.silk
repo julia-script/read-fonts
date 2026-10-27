@@ -1361,9 +1361,9 @@ fn compatibleComponents(
 /// since then each ligature must be matched in full.
 /// `ligatureSecond` results besides a glyph index: a glyph that stops matching, and the end of
 /// the buffer (or only ignored glyphs) after the first component.
-const NO_SECOND: usize = 18446744073709551615
+const NO_SECOND: usize = usize.MAX
 
-const NOTHING_AFTER: usize = 18446744073709551614
+const NOTHING_AFTER: usize = usize.MAX - 1
 
 fn ligatureSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) -> usize {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
@@ -1404,9 +1404,9 @@ fn matches(table: View, pos: usize, kind: u32, classes: Classes, glyph: u32) -> 
 
 /// `nextExpected` results: no glyph to compare, or this bit on the index of a glyph that does
 /// not match.
-const NOT_FOUND: usize = 18446744073709551615
+const NOT_FOUND: usize = usize.MAX
 
-const MISMATCH: usize = 9223372036854775808
+const MISMATCH: usize = usize.MAX / 2 + 1
 
 fn nextExpected(
   context: &Context,
@@ -2449,9 +2449,9 @@ fn anchor(context: &Context, table: View) -> Anchor {
 }
 
 /// `kern`'s shared second glyph before it is looked for, and when there is none.
-const SECOND_UNKNOWN: usize = 18446744073709551615
+const SECOND_UNKNOWN: usize = usize.MAX
 
-const SECOND_NONE: usize = 18446744073709551614
+const SECOND_NONE: usize = usize.MAX - 1
 
 /// Applies a 16-bit kerning-only pair subtable (`LookupSubtable.kern`) whose first glyph's
 /// coverage index is `known - 1`. An advance device adds nothing without variation

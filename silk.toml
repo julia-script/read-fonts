@@ -1,2 +1,2 @@
 [workspace]
-members = ["font_types", "read_fonts", "font_dump", "font_bench", "harfrust", "hr_shape"]
+members = ["font_types", "read_fonts", "font_dump", "font_bench", "harfrust", "hr_shape", "hr_wasm"]
