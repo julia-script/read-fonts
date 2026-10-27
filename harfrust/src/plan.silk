@@ -151,6 +151,11 @@ pub struct OtPlan<'a> {
   /// value (mod 64) of its rules; all bits when a rule has no second value or is malformed.
   /// Likewise for each ligature set of a 16-bit ligature subtable, by second component.
   pub ruleDigests: List<u64>,
+  /// For each entry of `ruleDigests`, where its rules' second input values start in
+  /// `ruleSeconds`, or `u32.MAX` for ligature sets and rule sets whose digest is full.
+  pub ruleSecondStarts: List<u32>,
+  /// The second input value of each rule, in rule order, for the rule sets that have them.
+  pub ruleSeconds: List<u16>,
   /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
   /// glyphs; full when the set is malformed.
   pub pairDigests: List<SetDigest>,
@@ -274,6 +279,7 @@ impl<'a> OtPlan<'a> {
           &mut self.ruleDigests,
           ligatureSetDigest(View.offset(&table, 6 + index * 2, 2)),
         )
+        run List<u32>.append(&mut self.ruleSecondStarts, u32.MAX)
         index = index + 1
       }
       return ()
@@ -298,7 +304,38 @@ impl<'a> OtPlan<'a> {
     let mut index: usize = 0
     while index < sets {
       let ruleSet = View.offset(&table, countPos + 2 + index * 2, 2)
-      run List<u64>.append(&mut self.ruleDigests, ruleSetDigest(ruleSet, chained))
+      let digest = ruleSetDigest(ruleSet, chained)
+      run List<u64>.append(&mut self.ruleDigests, digest)
+      if digest == u64.MAX {
+        run List<u32>.append(&mut self.ruleSecondStarts, u32.MAX)
+      } else {
+        run List<u32>.append(
+          &mut self.ruleSecondStarts,
+          usize.toU32(List<u16>.length(&self.ruleSeconds)),
+        )
+        run self.addRuleSeconds(ruleSet, chained)
+      }
+      index = index + 1
+    }
+  }
+
+  /// Appends the second input value of each rule of a rule set that `ruleSetDigest` accepted.
+  effect fn addRuleSeconds(self: &mut Self, ruleSet: View, chained: bool) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let bytes = FontData.asBytes(&ruleSet.data)
+    let count = read16(bytes, 0)
+    let mut index: usize = 0
+    while index < count {
+      let mut pos = read16(bytes, 2 + index * 2)
+      if chained {
+        pos = pos + 2 + read16(bytes, pos) * 2
+      }
+      pos = pos + 2
+      if !chained {
+        pos = pos + 2
+      }
+      run List<u16>.append(&mut self.ruleSeconds, usize.toU16(read16(bytes, pos)))
       index = index + 1
     }
   }
@@ -435,6 +472,8 @@ impl<'a> OtPlan<'a> {
       classTables: List<ClassTable>.make(),
       classValues: List<u16>.make(),
       ruleDigests: List<u64>.make(),
+      ruleSecondStarts: List<u32>.make(),
+      ruleSeconds: List<u16>.make(),
       pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },

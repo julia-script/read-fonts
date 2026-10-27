@@ -16,7 +16,7 @@ and cluster levels, custom font callbacks, reusable plans, and tracing.
 ## Library
 
 Add a path dependency on `harfrust` and import `harfrust.lib`. All manifests
-pin `0.1.0-dev.20+10a8c67813a1`.
+pin `0.1.0-dev.22+5cd5bc433c4e`.
 
 ```silk
 import harfrust.lib { Buffer, ShaperData, shape, ShapeOptions }
@@ -139,19 +139,20 @@ are tens of milliseconds and too noisy to compare, so the ratios below are
 callgrind instruction counts for one iteration
 (`scripts/bench-shaping --callgrind --iterations 1 --samples 1`), Silk
 `0.1.0-dev.20+10a8c67813a1` with Clang 18 against Rust 1.99.1, both release
-builds. Lower is better.
+builds. Lower is better. The manifests now pin dev.22; these numbers have not
+been re-measured with it yet.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 255M | 65.3M | 3.91× |
-| Roboto / English words | 388M | 87.9M | 4.41× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,801M | 789M | 2.28× |
-| Noto Nastaliq Urdu / Persian words | 1,817M | 847M | 2.15× |
-| Noto Sans Devanagari / Hindi words | 783M | 225M | 3.48× |
-| Amiri / Persian Little Prince | 926M | 374M | 2.48× |
-| Source Serif Variable / react-dom | 2,683M | 1,004M | 2.67× |
+| Roboto / English Little Prince | 250M | 65.3M | 3.82× |
+| Roboto / English words | 367M | 87.9M | 4.17× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,737M | 789M | 2.20× |
+| Noto Nastaliq Urdu / Persian words | 1,732M | 847M | 2.04× |
+| Noto Sans Devanagari / Hindi words | 765M | 225M | 3.40× |
+| Amiri / Persian Little Prince | 860M | 374M | 2.30× |
+| Source Serif Variable / react-dom | 2,688M | 1,004M | 2.68× |
 
-The geometric mean is **2.95×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.84×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -177,7 +178,9 @@ recent codepoints within each batch; lookups that cover no glyph in the buffer
 are skipped before any setup, and AAT tables are found once per font; multiple
 and ligature substitutions move the rest of the buffer once instead of once per
 glyph, and contextual rules reuse the second input glyph found for the quick
-reject instead of walking to it again. The remaining gap is mostly per-glyph table walking that harfrust
+reject instead of walking to it again; plans keep each rule's second input value, so
+rules are skipped without reading them; format 3 rules are checked before the
+general rule setup. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
