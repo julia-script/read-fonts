@@ -5,7 +5,7 @@ import view { View, offset }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
-import plan { OtPlan, LookupStep, featureValue }
+import plan { OtPlan, LookupStep, LookupSubtable, featureValue }
 import feature { Feature }
 import arabic
 import complex
@@ -173,13 +173,28 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         context.autoZwj = false
       }
       let lookup = getLookup(&context, steps[step].index)
+      let subtables = Slice.view(
+        List<LookupSubtable>.asSlice(&plan.subtables),
+        steps[step].firstSubtable,
+        steps[step].subtableCount,
+      )
       if lookup.kind == 8 && !context.positioning {
         let mut i = Buffer.len(&buffer.*)
         while i > 0 && context.budget != 0 && buffer.successful {
           i = i - 1
           if SetDigest.mayHave(&steps[step].digest, List<Glyph>.get(&buffer.glyphs, i).info.glyphId)
             && enabled(&context, &List<Glyph>.get(&buffer.glyphs, i), step, end) > 0 {
-            drop run applyLookup(font, &mut context, &mut buffer, lookup, i, step, end, 0)
+            drop run applyLookup(
+              font,
+              &mut context,
+              &mut buffer,
+              lookup,
+              subtables,
+              i,
+              step,
+              end,
+              0,
+            )
           }
         }
       } else {
@@ -188,7 +203,17 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           let mut result = no()
           if SetDigest.mayHave(&steps[step].digest, List<Glyph>.get(&buffer.glyphs, i).info.glyphId)
             && enabled(&context, &List<Glyph>.get(&buffer.glyphs, i), step, end) > 0 {
-            result = run applyLookup(font, &mut context, &mut buffer, lookup, i, step, end, 0)
+            result = run applyLookup(
+              font,
+              &mut context,
+              &mut buffer,
+              lookup,
+              subtables,
+              i,
+              step,
+              end,
+              0,
+            )
           }
           if result.yes {
             i = result.next
@@ -286,7 +311,22 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
         run List<Glyph>.append(&mut buffer.glyphs, item)
         j = j + 1
       }
-      let result = run applyLookup(font, &mut context, &mut buffer, lookup, 0, i, i + 1, 0)
+      let subtables = Slice.view(
+        List<LookupSubtable>.asSlice(&plan.subtables),
+        steps[i].firstSubtable,
+        steps[i].subtableCount,
+      )
+      let result = run applyLookup(
+        font,
+        &mut context,
+        &mut buffer,
+        lookup,
+        subtables,
+        0,
+        i,
+        i + 1,
+        0,
+      )
       if result.yes {
         return true
       }
@@ -403,11 +443,14 @@ fn next(context: &Context, buffer: &Buffer, lookup: Lookup, start: usize, backwa
   }
 }
 
+/// Applies the first subtable of `lookup` that matches at `at`. `subtables` is the plan's
+/// cached subtable list for this lookup; when it is empty the subtables are read from the table.
 effect fn applyLookup<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
   lookup: Lookup,
+  subtables: &[LookupSubtable],
   at: usize,
   first: usize,
   last: usize,
@@ -424,20 +467,36 @@ effect fn applyLookup<F: FontFuncs>(
     return no()
   }
   context.budget = context.budget - 1
-  let count = u16.toUsize(View.u16(&lookup.table, 4))
+  let cached = subtables.length != 0
+  let mut count = u16.toUsize(View.u16(&lookup.table, 4))
+  let mut glyph: u32 = 0
+  if cached {
+    count = subtables.length
+    glyph = List<Glyph>.get(&buffer.glyphs, at).info.glyphId
+  }
   let mut i: usize = 0
   while i < count && context.budget != 0 && buffer.successful {
     context.budget = context.budget - 1
-    let mut table = View.offset16(&lookup.table, 6 + i * 2)
+    let mut table = View.empty()
     let mut kind = lookup.kind
-    let extension = (!context.positioning && kind == 7) || (context.positioning && kind == 9)
-    if extension {
-      if View.u16(&table, 0) != 1 {
+    if cached {
+      if !SetDigest.mayHave(&subtables[i].digest, glyph) {
         i = i + 1
         continue
       }
-      kind = View.u16(&table, 2)
-      table = View.offset32(&table, 4)
+      table = View.tail(&context.table, subtables[i].offset)
+      kind = subtables[i].kind
+    } else {
+      table = View.offset16(&lookup.table, 6 + i * 2)
+      let extension = (!context.positioning && kind == 7) || (context.positioning && kind == 9)
+      if extension {
+        if View.u16(&table, 0) != 1 {
+          i = i + 1
+          continue
+        }
+        kind = View.u16(&table, 2)
+        table = View.offset32(&table, 4)
+      }
     }
     let mut result = no()
     if (!context.positioning && (kind == 5 || kind == 6))
@@ -668,12 +727,35 @@ effect fn substitute<F: FontFuncs>(
       drop run trace.indexed(font, &buffer.*, "replaced glyph at ", at, " (alternate substitution)")
       return yes(at + 1)
     }
+
+    // With several candidates, find the glyph after this one once and reject ligatures whose
+    // second component differs without matching them, as harfrust does.
+    let mut second: u32 = 0
+    let mut secondAt: usize = 0
+    let mut haveSecond = false
+    let mut skippedAny = false
+    if count > 1 {
+      if let Option<usize>.Some { value } = ligatureSecond(&context.*, &buffer.*, lookup, at) {
+        second = List<Glyph>.get(&buffer.glyphs, value).info.glyphId
+        secondAt = value
+        haveSecond = true
+      }
+    }
     let mut i: usize = 0
     while i < count && context.budget != 0 && buffer.successful {
       context.budget = context.budget - 1
       let ligature = View.offset(&set, 2 + i * width, width)
       let components = u16.toUsize(View.u16(&ligature, width))
       if components == 0 || components > 64 {
+        i = i + 1
+        continue
+      }
+      if haveSecond && components > 1 && View.uint(&ligature, 2 + width, width) != second {
+        // A full match would have failed at the second glyph and marked the same span.
+        if !skippedAny {
+          Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+          skippedAny = true
+        }
         i = i + 1
         continue
       }
@@ -897,6 +979,28 @@ fn compatibleComponents(
     return false
   }
   return item.ligatureId == 0 || item.component == 0 || item.ligatureId == first.ligatureId
+}
+
+/// The glyph a ligature's second component must match: the next glyph the lookup does not
+/// ignore. None when that glyph may be skipped as default-ignorable, or the syllable ends,
+/// since then each ligature must be matched in full.
+fn ligatureSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) -> Option<usize> {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let mut i = at + 1
+  while i < glyphs.length {
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != glyphs[at].syllable {
+      return Option<usize>.None
+    }
+    if !ignored(context, lookup, item) {
+      if item.ignorable && !item.substituted && (!item.hidden || context.positioning) {
+        return Option<usize>.None
+      }
+      return Option<usize>.some(i)
+    }
+    i = i + 1
+  }
+  return Option<usize>.None
 }
 
 fn matchWidth(kind: u32) -> usize {
@@ -1299,11 +1403,15 @@ effect fn contextual<F: FontFuncs>(
           atAction,
           "",
         )
+
+        // Nested lookups are not cached in the plan; they parse their subtables in place.
+        let uncached: [LookupSubtable; 0] = []
         let applied = run applyLookup(
           font,
           &mut context,
           &mut buffer,
           nested,
+          &uncached,
           atAction,
           first,
           last,

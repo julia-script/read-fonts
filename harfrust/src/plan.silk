@@ -1,6 +1,6 @@
 //! Resolve script, language, feature ranges and variation substitutions once per run.
 import view { View, offset }
-import set_digest { SetDigest, lookupDigest }
+import set_digest { SetDigest, subtableCoverage }
 import buffer { Buffer, Glyph }
 import direction { Direction }
 import feature { Feature }
@@ -24,6 +24,9 @@ import silk.u32
 
 pub struct LookupStep {
   pub digest: SetDigest,
+  /// This step's lookup subtables in `OtPlan.subtables`.
+  pub firstSubtable: usize,
+  pub subtableCount: usize,
   pub index: u16,
   pub required: bool,
   pub tag: u32,
@@ -33,9 +36,22 @@ pub struct LookupStep {
 
 impl Copy for LookupStep {}
 
+/// A lookup subtable resolved through any extension, with the digest of the glyphs it can
+/// start at. A subtable whose digest rejects the current glyph is skipped without parsing it.
+/// The subtable is kept as its offset in the layout table rather than a view, because a plan
+/// holding a list of lifetime-carrying values cannot be stored in a list (compiler-bugs/010).
+pub struct LookupSubtable {
+  pub offset: usize,
+  pub kind: u16,
+  pub digest: SetDigest,
+}
+
+impl Copy for LookupSubtable {}
+
 pub struct OtPlan<'a> {
   pub table: View<'a>,
   pub steps: List<LookupStep>,
+  pub subtables: List<LookupSubtable>,
   pub direction: Direction,
   pub script: u32,
   pub positioning: bool,
@@ -43,6 +59,79 @@ pub struct OtPlan<'a> {
 }
 
 impl<'a> OtPlan<'a> {
+  /// Appends a step for lookup `index`, caching its subtables and their digests.
+  pub effect fn addStep(
+    self: &mut Self,
+    index: u16,
+    required: bool,
+    tag: u32,
+    value: u32,
+    stage: u32,
+  ) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let first = List<LookupSubtable>.length(&self.subtables)
+    let mut digest = SetDigest.new()
+    let list = View.layoutList(&self.table, 2)
+    let mut width: usize = 2
+    if View.u16(&self.table, 0) == 1 && View.u16(&self.table, 2) >= 2
+      && View.u32(&self.table, 22) != 0 {
+      width = 4
+    }
+    if index < View.u16(&list, 0) {
+      let lookup = View.offset(&list, 2 + u16.toUsize(index) * width, width)
+      let lookupKind = View.u16(&lookup, 0)
+      let count = u16.toUsize(View.u16(&lookup, 4))
+      let mut i: usize = 0
+      while i < count {
+        let mut table = View.offset16(&lookup, 6 + i * 2)
+        let mut kind = lookupKind
+        let mut subtableDigest = SetDigest.new()
+        if (!self.positioning && kind == 7) || (self.positioning && kind == 9) {
+          // An invalid extension keeps its slot, with an empty digest, so lookup work
+          // budgets count the same subtables as the table does.
+          if View.u16(&table, 0) == 1 {
+            kind = View.u16(&table, 2)
+            table = View.offset32(&table, 4)
+            SetDigest.addCoverage(
+              &mut subtableDigest,
+              subtableCoverage(table, kind, self.positioning),
+            )
+          }
+        } else {
+          SetDigest.addCoverage(
+            &mut subtableDigest,
+            subtableCoverage(table, kind, self.positioning),
+          )
+        }
+        SetDigest.include(&mut digest, &subtableDigest)
+        run List<LookupSubtable>.append(
+          &mut self.subtables,
+          // Every view derived by offsets runs to the end of the layout table.
+          LookupSubtable {
+            offset: View.len(&self.table) - View.len(&table),
+            kind: kind,
+            digest: subtableDigest,
+          },
+        )
+        i = i + 1
+      }
+    }
+    run List<LookupStep>.append(
+      &mut self.steps,
+      LookupStep {
+        digest: digest,
+        firstSubtable: first,
+        subtableCount: List<LookupSubtable>.length(&self.subtables) - first,
+        index: index,
+        required: required,
+        tag: tag,
+        value: value,
+        stage: stage,
+      },
+    )
+  }
+
   pub effect fn new<'s, F: FontFuncs>(
     font: &ConfiguredShaper<'a, 's, F>,
     buffer: &Buffer,
@@ -58,6 +147,7 @@ impl<'a> OtPlan<'a> {
     let mut plan = Self {
       table: table,
       steps: List<LookupStep>.make(),
+      subtables: List<LookupSubtable>.make(),
       direction: buffer.direction,
       script: buffer.script,
       positioning: positioning,
@@ -195,18 +285,17 @@ impl<'a> OtPlan<'a> {
         }
         j = 0
         while j < List<u16>.length(&indices) {
-          let step = LookupStep {
-            digest: lookupDigest(table, List<u16>.get(&indices, j), positioning),
-            index: List<u16>.get(&indices, j),
-            required: isRequired,
-            tag: tag,
-            value: initial,
-            stage: selectedStage,
-          }
           if List<LookupStep>.length(&plan.steps) >= 65536 {
             break
           }
-          run List<LookupStep>.append(&mut plan.steps, step)
+          run OtPlan.addStep(
+            &mut plan,
+            List<u16>.get(&indices, j),
+            isRequired,
+            tag,
+            initial,
+            selectedStage,
+          )
           j = j + 1
         }
       }
