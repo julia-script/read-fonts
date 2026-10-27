@@ -44,9 +44,9 @@ pub struct ShaperData<'a> {
   /// Backs the empty coordinate slice of default-instance metrics. An empty array literal
   /// cannot be borrowed for 'static (compiler-bugs/011).
   noCoords: [F2Dot14; 1],
-  /// Nominal glyphs for U+0000 to U+00FF, mapped once, since most text maps these codepoints
-  /// over and over.
-  latinGlyphs: [u32; 256],
+  /// Nominal glyphs for U+0000 to U+2FFF, mapped once, since most text maps these codepoints
+  /// over and over. 0xFFFF means the code point goes through `mapNominal`.
+  bmpGlyphs: [u16; 12288],
 }
 
 impl<'a> ShaperData<'a> {
@@ -77,12 +77,12 @@ impl<'a> ShaperData<'a> {
       kern: table(font, 0x6b65726e),
       upem: upem,
       noCoords: [F2Dot14.zero()],
-      latinGlyphs: [0; 256],
+      bmpGlyphs: [0xffff; 12288],
     }
-    let mut cp: u32 = 0
-    while cp < 256 {
-      data.latinGlyphs[u32.toUsize(cp)] = ShaperData.mapNominal(&data, cp)
-      cp = cp + 1
+
+    // A symbol font remaps unmapped code points, so its table stays unused.
+    if symbolPage == 0 {
+      drop Charmap.fillUnicode(&data.charmap, &mut data.bmpGlyphs)
     }
     return move data
   }
@@ -93,8 +93,11 @@ impl<'a> ShaperData<'a> {
   }
 
   pub fn nominalGlyph(self: &Self, cp: u32) -> u32 {
-    if cp < 256 {
-      return self.latinGlyphs[u32.toUsize(cp)]
+    if cp < 12288 {
+      let glyph = self.bmpGlyphs[u32.toUsize(cp)]
+      if glyph != 0xffff {
+        return u16.toU32(glyph)
+      }
     }
     return ShaperData.mapNominal(self, cp)
   }
@@ -723,8 +726,27 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
   /// searches the character map once per character. Each entry holds a codepoint in its high
   /// half and its glyph in the low half; a codepoint lands in the entry of its low seven bits.
   pub fn defaultNominalGlyphs(self: &Self, glyphs: &mut NominalGlyphs) -> usize {
-    let mut cache: [u64; 128] = [u64.MAX; 128]
+    // Code points in the data's table need no cache; the first one outside it switches to
+    // the cached loop.
     let mut i: usize = 0
+    while i < NominalGlyphs.len(&glyphs.*) {
+      let cp = NominalGlyphs.codepoint(&glyphs.*, i)
+      if cp >= 12288 || self.data.bmpGlyphs[u32.toUsize(cp)] == 0xffff {
+        return ConfiguredShaper.cachedNominalGlyphs(self, move glyphs, i)
+      }
+      let glyph = u16.toU32(self.data.bmpGlyphs[u32.toUsize(cp)])
+      if glyph == 0 {
+        break
+      }
+      NominalGlyphs.set(&mut glyphs, i, glyph)
+      i = i + 1
+    }
+    return i
+  }
+
+  fn cachedNominalGlyphs(self: &Self, glyphs: &mut NominalGlyphs, start: usize) -> usize {
+    let mut cache: [u64; 128] = [u64.MAX; 128]
+    let mut i = start
     while i < NominalGlyphs.len(&glyphs.*) {
       let cp = NominalGlyphs.codepoint(&glyphs.*, i)
       let slot = u32.toUsize(cp & 127)
