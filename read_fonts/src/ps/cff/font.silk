@@ -224,14 +224,8 @@ effect fn readFontDict<'a>(dict: &'a [u8]) -> FontDict
   let mut range = Option<ByteRange>.None
   let mut matrix = Option<ScaledFontMatrix>.None
   let mut iter = entries(dict, Option<BlendState<'a, 'static>>.None)
-  while true {
-    let result = match move Entries.next(&mut iter) {
-      Option<Result<Entry, Error>>.Some { value } => move value
-      _ => {
-        break
-      }
-    }
-    match run take(move result) {
+  while let Option<Entry>.Some { value: entry } = run Entries.nextImpl(&mut iter) {
+    match entry {
       Entry.PrivateDictRange { value } => {
         range = Option<ByteRange>.some(value)
       }
@@ -341,14 +335,14 @@ effect fn readSubfont<'a, 'c>(
   let mut params = HintingParams.default()
   let mut iter = privateEntries(bytes, move blend, hinted)
   while true {
-    let result = match move Entries.next(&mut iter) {
-      Option<Result<Entry, Error>>.Some { value } => move value
-      _ => {
-        break
+    // Like the iterator, a malformed entry is skipped and parsing goes on.
+    let entry = match move run Effect.result(Entries.nextImpl(&mut iter)) {
+      Result<Option<Entry>, Error>.Success { value } => match move value {
+        Option<Entry>.Some { value: entry } => entry
+        _ => {
+          break
+        }
       }
-    }
-    let entry = match move result {
-      Result<Entry, Error>.Success { value } => value
       _ => {
         continue
       }

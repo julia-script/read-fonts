@@ -315,7 +315,7 @@ impl<'a, 'c> Entries<'a, 'c> {
     }
   }
 
-  effect fn nextImpl(self: &mut Self) -> Option<Entry>
+  pub effect fn nextImpl(self: &mut Self) -> Option<Entry>
     ! Error {
     while Cursor.remainingBytes(&self.cursor) != 0 {
       let b0 = run takeRead(Cursor<'a>.read<u8>(&mut self.cursor))
