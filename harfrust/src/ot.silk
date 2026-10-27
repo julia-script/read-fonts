@@ -272,17 +272,14 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   let tracing = trace.enabled(font, &buffer.*)
   while stage < stageLimit && context.budget != 0 && buffer.successful {
     if !plan.positioning {
-      run complex.pause(font, &mut buffer, plan, stage, features)
-      digestStale = true
+      if run complex.pause(font, &mut buffer, plan, stage, features) {
+        digestStale = true
+      }
     }
     context.restrictSyllable = !plan.positioning && buffer.shaper != 0
     while step < steps.length && steps[step].stage == stage && context.budget != 0
       && buffer.successful {
-      let mut end = step + 1
-      while end < steps.length && steps[end].index == steps[step].index
-        && steps[end].stage == steps[step].stage {
-        end = end + 1
-      }
+      let end = steps[step].groupEnd
       if digestStale {
         glyphDigest = bufferDigest(&buffer.*)
         digestStale = false
