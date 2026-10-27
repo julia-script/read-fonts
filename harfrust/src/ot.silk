@@ -530,9 +530,17 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
   let mut result: u32 = 0
   let mut i = first
   while i < last {
-    let step = context.steps[i]
+    let step = &context.steps[i]
     if step.required {
       return 1
+    }
+    if step.plain {
+      let value = featureValue(step.tag, step.value, glyph.info.cluster, context.features)
+      if value > result {
+        result = value
+      }
+      i = i + 1
+      continue
     }
     let mut initial = step.value
     if context.shaper != 1 && arabic.isFeature(step.tag) && glyph.form != step.tag {

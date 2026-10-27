@@ -35,6 +35,9 @@ pub struct LookupStep {
   pub tag: u32,
   pub value: u32,
   pub stage: u32,
+  /// Whether the step applies to every glyph by its value and the features' ranges alone, with
+  /// none of the per-glyph conditions of `ot.enabled`.
+  pub plain: bool,
 }
 
 impl Copy for LookupStep {}
@@ -250,6 +253,7 @@ impl<'a> OtPlan<'a> {
         tag: tag,
         value: value,
         stage: stage,
+        plain: plainFeature(tag),
       },
     )
   }
@@ -837,6 +841,21 @@ impl<'a> OtPlan<'a> {
     }
     return move plan
   }
+}
+
+/// Whether `ot.enabled` checks nothing about a glyph for feature `tag` but its cluster: not
+/// an Arabic joining form, a complex shaper's per-glyph feature, a Hangul jamo feature, `calt`,
+/// a fraction feature or `rtlm`.
+fn plainFeature(tag: u32) -> bool {
+  return !arabic.isFeature(tag) && complex.featureBit(tag) == 0 && tag != 0x72706866
+    && tag != 0x6c6a6d6f
+    && tag != 0x766a6d6f
+    && tag != 0x746a6d6f
+    && tag != 0x63616c74
+    && tag != 0x66726163
+    && tag != 0x6e756d72
+    && tag != 0x646e6f6d
+    && tag != 0x72746c6d
 }
 
 pub fn featureValue(tag: u32, default: u32, cluster: u32, features: &[Feature]) -> u32 {
