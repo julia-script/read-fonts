@@ -9,6 +9,7 @@ import silk.result { Result }
 import silk.effect { Effect }
 import silk.i32
 import silk.usize
+import silk.u64
 
 pub union Number {
   I32 { pub value: i32 },
@@ -45,17 +46,33 @@ fn intoNumber<T: IntoNumber>(number: T) -> Number {
 
 pub struct Stack {
   values: [i32; 513],
-  valueIsFixed: [bool; 513],
+  // One bit per value: a `[bool; 513]` repeat literal is filled byte by byte.
+  fixedBits: [u64; 9],
   top: usize,
 }
 
 impl Stack {
   pub fn new() -> Self {
-    return Self { values: [0; 513], valueIsFixed: [false; 513], top: 0 }
+    return Self { values: [0; 513], fixedBits: [0; 9], top: 0 }
   }
 
   pub fn default() -> Self {
     return Stack.new()
+  }
+
+  fn isFixed(self: &Self, index: usize) -> bool with Intrinsic.inlineAlways() {
+    return (u64.shiftRight(self.fixedBits[usize.shiftRight(index, 6)], usize.toU64(index & 63)) & 1)
+      != 0
+  }
+
+  fn setFixed(self: &mut Self, index: usize, fixed: bool) with Intrinsic.inlineAlways() {
+    let word = usize.shiftRight(index, 6)
+    let bit = u64.shiftLeft(1, usize.toU64(index & 63))
+    if fixed {
+      self.fixedBits[word] = self.fixedBits[word] | bit
+    } else {
+      self.fixedBits[word] = self.fixedBits[word] & u64.bitNot(bit)
+    }
   }
 
   pub fn isEmpty(self: &Self) -> bool {
@@ -85,11 +102,12 @@ impl Stack {
     let a = self.top - 1
     let b = a - 1
     let value = self.values[a]
-    let flag = self.valueIsFixed[a]
+    let flag = Stack.isFixed(&self, a)
     self.values[a] = self.values[b]
-    self.valueIsFixed[a] = self.valueIsFixed[b]
+    let other = Stack.isFixed(&self, b)
+    Stack.setFixed(&mut self, a, other)
     self.values[b] = value
-    self.valueIsFixed[b] = flag
+    Stack.setFixed(&mut self, b, flag)
     return Result<(), Error>.succeed(())
   }
 
@@ -104,11 +122,11 @@ impl Stack {
     match intoNumber(move number) {
       Number.I32 { value } => {
         self.values[index] = value
-        self.valueIsFixed[index] = false
+        Stack.setFixed(&mut self, index, false)
       }
       Number.Fixed { value } => {
         self.values[index] = Fixed.toBits(value)
-        self.valueIsFixed[index] = true
+        Stack.setFixed(&mut self, index, true)
       }
     }
     self.top = index + 1
@@ -122,11 +140,11 @@ impl Stack {
     match intoNumber(move number) {
       Number.I32 { value } => {
         self.values[index] = value
-        self.valueIsFixed[index] = false
+        Stack.setFixed(&mut self, index, false)
       }
       Number.Fixed { value } => {
         self.values[index] = Fixed.toBits(value)
-        self.valueIsFixed[index] = true
+        Stack.setFixed(&mut self, index, true)
       }
     }
     return Result<(), Error>.succeed(())
@@ -136,7 +154,7 @@ impl Stack {
     if index >= 513 {
       return Result<i32, Error>.succeed(0)
     }
-    if self.valueIsFixed[index] {
+    if Stack.isFixed(&self, index) {
       return Result<i32, Error>.failResult(Error.InvalidOperation)
     }
     return Result<i32, Error>.succeed(self.values[index])
@@ -146,7 +164,7 @@ impl Stack {
     if index >= 513 {
       return Result<Fixed, Error>.succeed(Fixed.zero())
     }
-    if self.valueIsFixed[index] {
+    if Stack.isFixed(&self, index) {
       return Result<Fixed, Error>.succeed(Fixed.fromBits(self.values[index]))
     }
     return Result<Fixed, Error>.succeed(Fixed.fromI32(self.values[index]))
@@ -180,7 +198,7 @@ impl Stack {
       output[i] = Fixed.zero()
       if firstIndex < self.top && i < self.top - firstIndex {
         let index = firstIndex + i
-        if self.valueIsFixed[index] {
+        if Stack.isFixed(&self, index) {
           output[i] = Fixed.fromBits(self.values[index])
         } else {
           output[i] = Fixed.fromI32(self.values[index])
@@ -199,12 +217,12 @@ impl Stack {
     let mut i: usize = 0
     while i < self.top {
       let mut value = Fixed.fromI32(self.values[i])
-      if self.valueIsFixed[i] {
+      if Stack.isFixed(&self, i) {
         value = Fixed.fromBits(self.values[i])
       }
       sum = Fixed.wrappingAdd(sum, value)
       self.values[i] = Fixed.toBits(sum)
-      self.valueIsFixed[i] = true
+      Stack.setFixed(&mut self, i, true)
       i = i + 1
     }
   }
@@ -230,9 +248,9 @@ impl Stack {
     let end = start + operands
     let mut i = start
     while i < end {
-      if !self.valueIsFixed[i] {
+      if !Stack.isFixed(&self, i) {
         self.values[i] = Fixed.toBits(Fixed.fromI32(self.values[i]))
-        self.valueIsFixed[i] = true
+        Stack.setFixed(&mut self, i, true)
       }
       i = i + 1
     }
@@ -288,7 +306,7 @@ impl Stack {
         index = startIndex
         let u = offset + i32.toUsize(index)
         last = self.values[u]
-        lastFixed = self.valueIsFixed[u]
+        lastFixed = Stack.isFixed(&self, u)
       }
       index = index + rotation
       if index >= count {
@@ -298,9 +316,9 @@ impl Stack {
       }
       let u = offset + i32.toUsize(index)
       let value = self.values[u]
-      let flag = self.valueIsFixed[u]
+      let flag = Stack.isFixed(&self, u)
       self.values[u] = last
-      self.valueIsFixed[u] = lastFixed
+      Stack.setFixed(&mut self, u, lastFixed)
       last = value
       lastFixed = flag
       i = i + 1
@@ -318,7 +336,7 @@ impl Stack {
     let aIndex = Stack.pop(&mut self)
     let mut a = Fixed.zero()
     let mut b = Fixed.zero()
-    if self.valueIsFixed[aIndex] {
+    if Stack.isFixed(&self, aIndex) {
       a = run take(Stack.getFixed(&self, aIndex))
       b = run take(Stack.getFixed(&self, bIndex))
     } else {
@@ -347,7 +365,7 @@ impl<'s> FixedValues<'s> {
     }
     let index = self.index
     self.index = self.index + 1
-    if self.stack.valueIsFixed[index] {
+    if Stack.isFixed(&self.stack, index) {
       return Option<Fixed>.some(Fixed.fromBits(self.stack.values[index]))
     }
     return Option<Fixed>.some(Fixed.fromI32(self.stack.values[index]))
