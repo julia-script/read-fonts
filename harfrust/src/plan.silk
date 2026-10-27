@@ -215,6 +215,9 @@ pub struct OtPlan<'a> {
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
   pub markAttachClasses: ClassTable,
+  /// The GDEF glyph class and mark attachment class definitions, found once per plan.
+  pub glyphClassDef: View<'a>,
+  pub markAttachClassDef: View<'a>,
   pub direction: Direction,
   pub script: u32,
   pub positioning: bool,
@@ -706,6 +709,8 @@ impl<'a> OtPlan<'a> {
       contextDigests: List<SetDigest>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
+      glyphClassDef: View.empty(),
+      markAttachClassDef: View.empty(),
       direction: Direction.LeftToRight,
       script: 0,
       positioning: positioning,
@@ -1101,15 +1106,16 @@ impl<'a> OtPlan<'a> {
     }
     run OtPlan.cacheNestedLookups(&mut plan)
     run OtPlan.addAllClasses(&mut plan)
-    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
-      &mut plan,
-      View.gdefList(&font.data.gdef, 0),
-    ) {
+    let glyphClassDef = View.gdefList(&font.data.gdef, 0)
+    let markAttachClassDef = View.gdefList(&font.data.gdef, 3)
+    plan.glyphClassDef = glyphClassDef
+    plan.markAttachClassDef = markAttachClassDef
+    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(&mut plan, glyphClassDef) {
       plan.glyphClasses = value
     }
     if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
       &mut plan,
-      View.gdefList(&font.data.gdef, 3),
+      markAttachClassDef,
     ) {
       plan.markAttachClasses = value
     }

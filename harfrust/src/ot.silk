@@ -134,22 +134,20 @@ fn subtableClasses<'a, 's>(
   return classesFor(context, view)
 }
 
-fn gdefClasses<'a, 's>(
-  plan: &'s OtPlan<'a>,
-  gdef: View<'a>,
-  list: usize,
-  table: ClassTable,
-) -> Classes<'a, 's,> {
+fn gdefClasses<'a, 's>(plan: &'s OtPlan<'a>, view: View<'a>, table: ClassTable) -> Classes<
+  'a,
+  's,
+> {
   return Classes {
-    view: View.gdefList(&gdef, list),
+    view: view,
     first: table.first,
     values: Slice.view(List<u16>.asSlice(&plan.classValues), table.start, table.count),
   }
 }
 
 /// Sets each glyph's GDEF glyph class, using the plan's expansion when it has one.
-pub fn setGdefGlyphClasses<'a>(plan: &OtPlan<'a>, gdef: View<'a>, glyphs: &mut [Glyph]) -> () {
-  let classes = gdefClasses(plan, gdef, 0, plan.glyphClasses)
+pub fn setGdefGlyphClasses<'a>(plan: &OtPlan<'a>, glyphs: &mut [Glyph]) -> () {
+  let classes = gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses)
   let mut i: usize = 0
   while i < glyphs.length {
     glyphs[i].glyphClass = classOf(&classes, glyphs[i].info.glyphId)
@@ -247,8 +245,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
-    glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
-    markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
+    glyphClasses: gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses),
+    markAttachClasses: gdefClasses(plan, plan.markAttachClassDef, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
     variable: List<F2Dot14>.length(&font.coords) != 0,
   }
@@ -544,8 +542,8 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
-    glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
-    markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
+    glyphClasses: gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses),
+    markAttachClasses: gdefClasses(plan, plan.markAttachClassDef, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
     variable: List<F2Dot14>.length(&font.coords) != 0,
   }
@@ -1079,7 +1077,7 @@ effect fn substitute<F: FontFuncs>(
           item.component = usize.toU32(i) & 15
           item.numComponents = 1
         }
-        if View.len(&View.gdefList(&context.gdef, 0)) == 0 && glyph.glyphClass == 2 {
+        if View.len(&context.glyphClasses.view) == 0 && glyph.glyphClass == 2 {
           item.glyphClass = 1
         }
         List<Glyph>.set(&mut buffer.glyphs, at + i, item)
@@ -1277,7 +1275,7 @@ effect fn substitute<F: FontFuncs>(
           item.ligatureId = id
           item.component = 0
           item.numComponents = total & 15
-          if View.len(&View.gdefList(&context.gdef, 0)) == 0 {
+          if View.len(&context.glyphClasses.view) == 0 {
             item.glyphClass = 2
           }
         }
