@@ -327,6 +327,31 @@ fn setForm(buffer: &mut Buffer, start: usize, end: usize, form: u32) -> () {
 
 /// Runs the shaper's work between lookup stages. Returns whether it may have changed which
 /// glyphs the buffer holds, rather than only their order or properties.
+/// The stages `pause` does anything at for `kind` and `script`, as bits; `ot.apply` calls it
+/// only at these. Keep in step with the conditions in `pause`.
+pub fn pausedStages(kind: u32, script: u32) -> u64 {
+  let mut stages: u64 = 0
+  if arabic.usesScript(script) {
+    stages = stages | 4
+  }
+  if script == 0x41726162 {
+    stages = stages | 2048
+  }
+  if kind == 1 {
+    stages = stages | 4 | 8192 | 16384
+  }
+  if kind == 2 {
+    stages = stages | 2 | 4
+  }
+  if kind == 3 {
+    stages = stages | 4 | 64
+  }
+  if kind == 4 {
+    stages = stages | 4 | 8 | 16 | 32
+  }
+  return stages
+}
+
 pub effect fn pause<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   buffer: &mut Buffer,
