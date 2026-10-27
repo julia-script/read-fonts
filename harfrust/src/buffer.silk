@@ -677,14 +677,15 @@ pub fn reverseRange(glyphs: &mut List<Glyph>, first: usize, last: usize) -> () {
   }
 }
 
-fn markFlags(buffer: &mut Buffer, start: usize, end: usize, flags: u32) -> () {
+fn markFlags(buffer: &mut Buffer, start: usize, end: usize, flags: u32) -> () with Intrinsic.inlineNever() {
   if start >= end || end > Buffer.len(&buffer.*) {
     return
   }
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
   let mut cluster: u32 = 4294967295
   let mut i = start
   while i < end {
-    let c = List<Glyph>.get(&buffer.glyphs, i).info.cluster
+    let c = slots[i].info.cluster
     if c < cluster {
       cluster = c
     }
@@ -692,11 +693,9 @@ fn markFlags(buffer: &mut Buffer, start: usize, end: usize, flags: u32) -> () {
   }
   i = start
   while i < end {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if item.info.cluster != cluster || flags == 2 {
-      item.info.flags = item.info.flags | flags
+    if slots[i].info.cluster != cluster || flags == 2 {
+      slots[i].info.flags = slots[i].info.flags | flags
     }
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
     i = i + 1
   }
 }
