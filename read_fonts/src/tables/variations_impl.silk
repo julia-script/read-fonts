@@ -78,7 +78,7 @@ impl<'a> DeltaSetIndexMap<'a> {
     let mut format = EntryFormat.empty()
     let mut count: u32 = 0
     let mut data = FontData.new(b"")
-    match self.* {
+    match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => {
         format = DeltaSetIndexMapFormat0.entryFormat(&value)
         count = u16.toU32(DeltaSetIndexMapFormat0.mapCount(&value))

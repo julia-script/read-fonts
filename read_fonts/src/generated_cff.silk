@@ -406,7 +406,7 @@ impl<'a> FdSelect<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => FdSelectFormat0<'a>.offsetData(&value)
       FdSelect<'a>.Format3 { value } => FdSelectFormat3<'a>.offsetData(&value)
       FdSelect<'a>.Format4 { value } => FdSelectFormat4<'a>.offsetData(&value)
@@ -415,7 +415,7 @@ impl<'a> FdSelect<'a> {
 
   /// Format = 0.
   pub fn format(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => FdSelectFormat0<'a>.format(&value)
       FdSelect<'a>.Format3 { value } => FdSelectFormat3<'a>.format(&value)
       FdSelect<'a>.Format4 { value } => FdSelectFormat4<'a>.format(&value)
@@ -431,7 +431,7 @@ impl<'a> FontRead<'a, ()> for FdSelect<'a> {
 
 impl<'a> MinByteRange<'a> for FdSelect<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
       FdSelect<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
       FdSelect<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
@@ -439,7 +439,7 @@ impl<'a> MinByteRange<'a> for FdSelect<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
       FdSelect<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
       FdSelect<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
@@ -962,7 +962,7 @@ impl<'a> CustomCharset<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       CustomCharset<'a>.Format0 { value } => CharsetFormat0<'a>.offsetData(&value)
       CustomCharset<'a>.Format1 { value } => CharsetFormat1<'a>.offsetData(&value)
       CustomCharset<'a>.Format2 { value } => CharsetFormat2<'a>.offsetData(&value)
@@ -971,7 +971,7 @@ impl<'a> CustomCharset<'a> {
 
   /// Format; =0
   pub fn format(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       CustomCharset<'a>.Format0 { value } => CharsetFormat0<'a>.format(&value)
       CustomCharset<'a>.Format1 { value } => CharsetFormat1<'a>.format(&value)
       CustomCharset<'a>.Format2 { value } => CharsetFormat2<'a>.format(&value)
@@ -987,7 +987,7 @@ impl<'a> FontRead<'a, ()> for CustomCharset<'a> {
 
 impl<'a> MinByteRange<'a> for CustomCharset<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       CustomCharset<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
       CustomCharset<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       CustomCharset<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
@@ -995,7 +995,7 @@ impl<'a> MinByteRange<'a> for CustomCharset<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       CustomCharset<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
       CustomCharset<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       CustomCharset<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
@@ -1568,7 +1568,7 @@ impl<'a> Index<'a> {
 impl<'a> FdSelect<'a> {
   pub fn fontIndex(self: &Self, glyphId: GlyphId) -> Option<u16> {
     let gid = GlyphId.toU32(glyphId)
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => match move ScalarArray<u8>.get(
         &FdSelectFormat0.fds(&value),
         u32.toUsize(gid),

@@ -386,14 +386,14 @@ impl<'a> FileRef<'a> {
   }
 
   pub fn len(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       FileRef.Font { font } => 1
       FileRef.Collection { collection } => CollectionRef.len(&collection)
     }
   }
 
   pub fn get(self: &Self, index: u32) -> Result<FontRef<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       FileRef.Collection { collection } => CollectionRef.get(&collection, index)
       FileRef.Font { font } => {
         if index != 0 {

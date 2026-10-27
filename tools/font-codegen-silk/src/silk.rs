@@ -797,7 +797,7 @@ impl Context<'_> {
                 .0;
             writeln!(out,"      {value} => {{ return match move {target}<'a>.read(data) {{ Result<{target}<'a>, ReadError>.Success {{ value }} => Result<Self, ReadError>.succeed({name}<'a>.{} {{ value: value }}) Result<{target}<'a>, ReadError>.Failure {{ error }} => Result<Self, ReadError>.failResult(error) }} }}",v.name).unwrap();
         }
-        writeln!(out,"      _ => {{ return Result<Self, ReadError>.failResult(ReadError.InvalidFormat {{ value: {typ}.toI64(format) }}) }}\n    }}\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match self.* {{").unwrap();
+        writeln!(out,"      _ => {{ return Result<Self, ReadError>.failResult(ReadError.InvalidFormat {{ value: {typ}.toI64(format) }}) }}\n    }}\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match &self.* {{").unwrap();
         for v in &format.variants {
             writeln!(
                 out,
@@ -838,7 +838,7 @@ impl Context<'_> {
                 docs(out, &field.attrs.docs);
                 writeln!(
                     out,
-                    "  pub fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+                    "  pub fn {method}(self: &Self) -> {result} {{ return match &self.* {{"
                 )
                 .unwrap();
                 for variant in &format.variants {
@@ -858,7 +858,7 @@ impl Context<'_> {
         for (method, result) in [("minByteRange", "ByteRange"), ("minTableBytes", "&'a [u8]")] {
             writeln!(
                 out,
-                "  fn {method}(self: &Self) -> {result} {{ return match self.* {{"
+                "  fn {method}(self: &Self) -> {result} {{ return match &self.* {{"
             )
             .unwrap();
             for variant in &format.variants {

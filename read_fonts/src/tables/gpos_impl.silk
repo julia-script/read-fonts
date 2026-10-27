@@ -499,14 +499,14 @@ impl<'a> PositionLookup<'a> {
 
 impl<'a> AnchorTable<'a> {
   pub fn xDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> {
-    return match self.* {
+    return match &self.* {
       AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.xDevice(&value)
       _ => Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.None
     }
   }
 
   pub fn yDevice(self: &Self) -> Option<Result<DeviceOrVariationIndex<'a>, ReadError>> {
-    return match self.* {
+    return match &self.* {
       AnchorTable<'a>.Format3 { value } => AnchorFormat3<'a>.yDevice(&value)
       _ => Option<Result<DeviceOrVariationIndex<'a>, ReadError>>.None
     }

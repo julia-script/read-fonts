@@ -125,7 +125,7 @@ impl<'a, T: FontRead<'a, ()>> Copy for LayoutOffsetArray<'a, T> {}
 
 impl<'a, T> LayoutOffsetArray<'a, T> {
   pub fn len(self: &Self) -> usize {
-    return match self.* {
+    return match &self.* {
       LayoutOffsetArray<'a, T>.Offset16 { value } => ArrayOfOffsets<'a, (), T, Offset16>.len(&value)
       LayoutOffsetArray<'a, T>.Offset24 { value } => ArrayOfOffsets<'a, (), T, Offset24>.len(&value)
       LayoutOffsetArray<'a, T>.Offset32 { value } => ArrayOfOffsets<'a, (), T, Offset32>.len(&value)
@@ -137,7 +137,7 @@ impl<'a, T> LayoutOffsetArray<'a, T> {
   }
 
   pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {
-    return match self.* {
+    return match &self.* {
       LayoutOffsetArray<'a, T>.Offset16 { value } => ArrayOfOffsets<'a, (), T, Offset16>.get(
         &value,
         index,
@@ -200,14 +200,14 @@ impl<'a, T: FontRead<'a, ()>> Copy for SelectedLookupList<'a, T> {}
 
 impl<'a, T> SelectedLookupList<'a, T> {
   pub fn lookupCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LookupList<'a, T>.lookupCount(&value)
       SelectedLookupList<'a, T>.Extended { value } => LookupList2<'a, T>.lookupCount(&value)
     }
   }
 
   pub fn lookups(self: &Self) -> LayoutOffsetArray<'a, T> {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LayoutOffsetArray<'a, T>.Offset16 {
         value: LookupList<'a, T>.lookups(&value)
       }
@@ -218,7 +218,7 @@ impl<'a, T> SelectedLookupList<'a, T> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LookupList<'a, T>.offsetData(&value)
       SelectedLookupList<'a, T>.Extended { value } => LookupList2<'a, T>.offsetData(&value)
     }

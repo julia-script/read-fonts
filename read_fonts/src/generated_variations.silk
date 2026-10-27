@@ -581,7 +581,7 @@ impl<'a> DeltaSetIndexMap<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.offsetData(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.offsetData(&value)
     }
@@ -589,7 +589,7 @@ impl<'a> DeltaSetIndexMap<'a> {
 
   /// DeltaSetIndexMap format: set to 0.
   pub fn format(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.format(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.format(&value)
     }
@@ -598,7 +598,7 @@ impl<'a> DeltaSetIndexMap<'a> {
   /// A packed field that describes the compressed representation of
   /// delta-set indices. See details below.
   pub fn entryFormat(self: &Self) -> EntryFormat {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.entryFormat(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.entryFormat(&value)
     }
@@ -606,7 +606,7 @@ impl<'a> DeltaSetIndexMap<'a> {
 
   /// The delta-set index mapping data. See details below.
   pub fn mapData(self: &Self) -> ScalarArray<'a, u8> {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => DeltaSetIndexMapFormat0<'a>.mapData(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => DeltaSetIndexMapFormat1<'a>.mapData(&value)
     }
@@ -621,14 +621,14 @@ impl<'a> FontRead<'a, ()> for DeltaSetIndexMap<'a> {
 
 impl<'a> MinByteRange<'a> for DeltaSetIndexMap<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
       DeltaSetIndexMap<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -1456,7 +1456,7 @@ impl<'a> DeltaSetIndexMap<'a> {
     let mut format = EntryFormat.empty()
     let mut count: u32 = 0
     let mut data = FontData.new(b"")
-    match self.* {
+    match &self.* {
       DeltaSetIndexMap<'a>.Format0 { value } => {
         format = DeltaSetIndexMapFormat0.entryFormat(&value)
         count = u16.toU32(DeltaSetIndexMapFormat0.mapCount(&value))

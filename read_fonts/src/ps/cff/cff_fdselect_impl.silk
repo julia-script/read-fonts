@@ -2,7 +2,7 @@
 impl<'a> FdSelect<'a> {
   pub fn fontIndex(self: &Self, glyphId: GlyphId) -> Option<u16> {
     let gid = GlyphId.toU32(glyphId)
-    return match self.* {
+    return match &self.* {
       FdSelect<'a>.Format0 { value } => match move ScalarArray<u8>.get(
         &FdSelectFormat0.fds(&value),
         u32.toUsize(gid),

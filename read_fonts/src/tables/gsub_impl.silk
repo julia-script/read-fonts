@@ -333,7 +333,7 @@ impl<'a> SubstitutionLookup<'a> {
 
 impl<'a> MultipleSubst<'a> {
   pub fn coverage(self: &Self) -> Result<CoverageTable<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.coverage(&value)
       MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.coverage(&value)
     }

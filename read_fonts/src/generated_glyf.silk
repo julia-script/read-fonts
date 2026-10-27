@@ -1147,7 +1147,7 @@ impl<'a> Glyph<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.offsetData(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.offsetData(&value)
     }
@@ -1808,7 +1808,7 @@ impl Equal for Anchor {
 impl Anchor {
   pub fn computeFlags(self: &Self) -> CompositeGlyphFlags {
     let mut bits: u16 = 0
-    match self.* {
+    match &self.* {
       Anchor.Offset { x, y } => {
         bits = 2
         if x < -128 || x > 127 || y < -128 || y > 127 {
@@ -2118,35 +2118,35 @@ impl<'a> CompositeGlyph<'a> {
 
 impl<'a> Glyph<'a> {
   pub fn numberOfContours(self: &Self) -> i16 {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.numberOfContours(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.numberOfContours(&value)
     }
   }
 
   pub fn xMin(self: &Self) -> i16 {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.xMin(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.xMin(&value)
     }
   }
 
   pub fn yMin(self: &Self) -> i16 {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.yMin(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.yMin(&value)
     }
   }
 
   pub fn xMax(self: &Self) -> i16 {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.xMax(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.xMax(&value)
     }
   }
 
   pub fn yMax(self: &Self) -> i16 {
-    return match self.* {
+    return match &self.* {
       Glyph<'a>.Simple { value } => SimpleGlyph.yMax(&value)
       Glyph<'a>.Composite { value } => CompositeGlyph.yMax(&value)
     }

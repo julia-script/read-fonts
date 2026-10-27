@@ -1410,7 +1410,7 @@ impl<'a> CoverageTable<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => CoverageFormat1<'a>.offsetData(&value)
       CoverageTable<'a>.Format2 { value } => CoverageFormat2<'a>.offsetData(&value)
       CoverageTable<'a>.Format3 { value } => CoverageFormat3<'a>.offsetData(&value)
@@ -1420,7 +1420,7 @@ impl<'a> CoverageTable<'a> {
 
   /// Format identifier — format = 1
   pub fn coverageFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => CoverageFormat1<'a>.coverageFormat(&value)
       CoverageTable<'a>.Format2 { value } => CoverageFormat2<'a>.coverageFormat(&value)
       CoverageTable<'a>.Format3 { value } => CoverageFormat3<'a>.coverageFormat(&value)
@@ -1437,7 +1437,7 @@ impl<'a> FontRead<'a, ()> for CoverageTable<'a> {
 
 impl<'a> MinByteRange<'a> for CoverageTable<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       CoverageTable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       CoverageTable<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -1446,7 +1446,7 @@ impl<'a> MinByteRange<'a> for CoverageTable<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       CoverageTable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       CoverageTable<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -1831,7 +1831,7 @@ impl<'a> ClassDef<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => ClassDefFormat1<'a>.offsetData(&value)
       ClassDef<'a>.Format2 { value } => ClassDefFormat2<'a>.offsetData(&value)
       ClassDef<'a>.Format3 { value } => ClassDefFormat3<'a>.offsetData(&value)
@@ -1841,7 +1841,7 @@ impl<'a> ClassDef<'a> {
 
   /// Format identifier — format = 1
   pub fn classFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => ClassDefFormat1<'a>.classFormat(&value)
       ClassDef<'a>.Format2 { value } => ClassDefFormat2<'a>.classFormat(&value)
       ClassDef<'a>.Format3 { value } => ClassDefFormat3<'a>.classFormat(&value)
@@ -1858,7 +1858,7 @@ impl<'a> FontRead<'a, ()> for ClassDef<'a> {
 
 impl<'a> MinByteRange<'a> for ClassDef<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       ClassDef<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       ClassDef<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -1867,7 +1867,7 @@ impl<'a> MinByteRange<'a> for ClassDef<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       ClassDef<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       ClassDef<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -2955,7 +2955,7 @@ impl<'a> SequenceContext<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       SequenceContext<'a>.Format1 { value } => SequenceContextFormat1<'a>.offsetData(&value)
       SequenceContext<'a>.Format2 { value } => SequenceContextFormat2<'a>.offsetData(&value)
       SequenceContext<'a>.Format3 { value } => SequenceContextFormat3<'a>.offsetData(&value)
@@ -2967,7 +2967,7 @@ impl<'a> SequenceContext<'a> {
 
   /// Format identifier: format = 1
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SequenceContext<'a>.Format1 { value } => SequenceContextFormat1<'a>.format(&value)
       SequenceContext<'a>.Format2 { value } => SequenceContextFormat2<'a>.format(&value)
       SequenceContext<'a>.Format3 { value } => SequenceContextFormat3<'a>.format(&value)
@@ -2986,7 +2986,7 @@ impl<'a> FontRead<'a, ()> for SequenceContext<'a> {
 
 impl<'a> MinByteRange<'a> for SequenceContext<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       SequenceContext<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       SequenceContext<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       SequenceContext<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -2997,7 +2997,7 @@ impl<'a> MinByteRange<'a> for SequenceContext<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       SequenceContext<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       SequenceContext<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       SequenceContext<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -4333,7 +4333,7 @@ impl<'a> ChainedSequenceContext<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       ChainedSequenceContext<'a>.Format1 { value } => ChainedSequenceContextFormat1<'a>.offsetData(
         &value,
       )
@@ -4354,7 +4354,7 @@ impl<'a> ChainedSequenceContext<'a> {
 
   /// Format identifier: format = 1
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       ChainedSequenceContext<'a>.Format1 { value } => ChainedSequenceContextFormat1<'a>.format(
         &value,
       )
@@ -4382,7 +4382,7 @@ impl<'a> FontRead<'a, ()> for ChainedSequenceContext<'a> {
 
 impl<'a> MinByteRange<'a> for ChainedSequenceContext<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       ChainedSequenceContext<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       ChainedSequenceContext<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       ChainedSequenceContext<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -4392,7 +4392,7 @@ impl<'a> MinByteRange<'a> for ChainedSequenceContext<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       ChainedSequenceContext<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       ChainedSequenceContext<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       ChainedSequenceContext<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -4733,7 +4733,7 @@ impl<'a> DeviceOrVariationIndex<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       DeviceOrVariationIndex<'a>.Device { value } => Device<'a>.offsetData(&value)
       DeviceOrVariationIndex<'a>.VariationIndex { value } => VariationIndex<'a>.offsetData(&value)
     }
@@ -5669,7 +5669,7 @@ impl<'a> Condition<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       Condition<'a>.Format1AxisRange { value } => ConditionFormat1<'a>.offsetData(&value)
       Condition<'a>.Format2VariableValue { value } => ConditionFormat2<'a>.offsetData(&value)
       Condition<'a>.Format3And { value } => ConditionFormat3<'a>.offsetData(&value)
@@ -5680,7 +5680,7 @@ impl<'a> Condition<'a> {
 
   /// Format, = 1
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       Condition<'a>.Format1AxisRange { value } => ConditionFormat1<'a>.format(&value)
       Condition<'a>.Format2VariableValue { value } => ConditionFormat2<'a>.format(&value)
       Condition<'a>.Format3And { value } => ConditionFormat3<'a>.format(&value)
@@ -5698,7 +5698,7 @@ impl<'a> FontRead<'a, ()> for Condition<'a> {
 
 impl<'a> MinByteRange<'a> for Condition<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       Condition<'a>.Format1AxisRange { value } => MinByteRange.minByteRange(&value)
       Condition<'a>.Format2VariableValue { value } => MinByteRange.minByteRange(&value)
       Condition<'a>.Format3And { value } => MinByteRange.minByteRange(&value)
@@ -5708,7 +5708,7 @@ impl<'a> MinByteRange<'a> for Condition<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       Condition<'a>.Format1AxisRange { value } => MinByteRange.minTableBytes(&value)
       Condition<'a>.Format2VariableValue { value } => MinByteRange.minTableBytes(&value)
       Condition<'a>.Format3And { value } => MinByteRange.minTableBytes(&value)
@@ -9249,7 +9249,7 @@ impl<'a, T: FontRead<'a, ()>> Copy for LayoutOffsetArray<'a, T> {}
 
 impl<'a, T> LayoutOffsetArray<'a, T> {
   pub fn len(self: &Self) -> usize {
-    return match self.* {
+    return match &self.* {
       LayoutOffsetArray<'a, T>.Offset16 { value } => ArrayOfOffsets<'a, (), T, Offset16>.len(&value)
       LayoutOffsetArray<'a, T>.Offset24 { value } => ArrayOfOffsets<'a, (), T, Offset24>.len(&value)
       LayoutOffsetArray<'a, T>.Offset32 { value } => ArrayOfOffsets<'a, (), T, Offset32>.len(&value)
@@ -9261,7 +9261,7 @@ impl<'a, T> LayoutOffsetArray<'a, T> {
   }
 
   pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {
-    return match self.* {
+    return match &self.* {
       LayoutOffsetArray<'a, T>.Offset16 { value } => ArrayOfOffsets<'a, (), T, Offset16>.get(
         &value,
         index,
@@ -9324,14 +9324,14 @@ impl<'a, T: FontRead<'a, ()>> Copy for SelectedLookupList<'a, T> {}
 
 impl<'a, T> SelectedLookupList<'a, T> {
   pub fn lookupCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LookupList<'a, T>.lookupCount(&value)
       SelectedLookupList<'a, T>.Extended { value } => LookupList2<'a, T>.lookupCount(&value)
     }
   }
 
   pub fn lookups(self: &Self) -> LayoutOffsetArray<'a, T> {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LayoutOffsetArray<'a, T>.Offset16 {
         value: LookupList<'a, T>.lookups(&value)
       }
@@ -9342,7 +9342,7 @@ impl<'a, T> SelectedLookupList<'a, T> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       SelectedLookupList<'a, T>.Original { value } => LookupList<'a, T>.offsetData(&value)
       SelectedLookupList<'a, T>.Extended { value } => LookupList2<'a, T>.offsetData(&value)
     }
@@ -9798,7 +9798,7 @@ impl<'a> CoverageFormat2<'a> {
 
 impl<'a> CoverageTable<'a> {
   pub fn get(self: &Self, glyph: GlyphId) -> Option<u32> {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => match move CoverageFormat1<'a>.get(&value, glyph) {
         Option<u16>.Some { value: index } => Option<u32>.some(u16.toU32(index))
         Option<u16>.None => Option<u32>.None
@@ -9817,7 +9817,7 @@ impl<'a> CoverageTable<'a> {
   }
 
   pub fn population(self: &Self) -> usize {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => CoverageFormat1<'a>.population(&value)
       CoverageTable<'a>.Format2 { value } => CoverageFormat2<'a>.population(&value)
       CoverageTable<'a>.Format3 { value } => u32.toUsize(
@@ -9830,7 +9830,7 @@ impl<'a> CoverageTable<'a> {
   }
 
   pub fn cost(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       CoverageTable<'a>.Format1 { value } => CoverageFormat1<'a>.cost(&value)
       CoverageTable<'a>.Format2 { value } => CoverageFormat2<'a>.cost(&value)
       CoverageTable<'a>.Format3 { value } => bitStorage(
@@ -10011,7 +10011,7 @@ impl Copy for ClassEntry16 {}
 
 impl<'a> ClassDef<'a> {
   pub fn get(self: &Self, glyph: GlyphId) -> u32 {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => u16.toU32(ClassDefFormat1<'a>.get(&value, glyph))
       ClassDef<'a>.Format2 { value } => u16.toU32(ClassDefFormat2<'a>.get(&value, glyph))
       ClassDef<'a>.Format3 { value } => ClassDefFormat3<'a>.get(&value, glyph)
@@ -10024,7 +10024,7 @@ impl<'a> ClassDef<'a> {
   }
 
   pub fn population(self: &Self) -> usize {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => ClassDefFormat1<'a>.population(&value)
       ClassDef<'a>.Format2 { value } => ClassDefFormat2<'a>.population(&value)
       ClassDef<'a>.Format3 { value } => u32.toUsize(
@@ -10037,7 +10037,7 @@ impl<'a> ClassDef<'a> {
   }
 
   pub fn cost(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       ClassDef<'a>.Format1 { value } => 1
       ClassDef<'a>.Format2 { value } => ClassDefFormat2<'a>.cost(&value)
       ClassDef<'a>.Format3 { value } => 1
@@ -10406,7 +10406,7 @@ impl<'a> CoverageFormat2<'a> {
 
 impl<'a> CoverageTable<'a> {
   pub fn intersects(self: &Self, glyphs: &IntSet<GlyphId>) -> bool {
-    match self.* {
+    match &self.* {
       CoverageTable<'a>.Format1 { value } => {
         return CoverageFormat1<'a>.intersects(&value, glyphs)
       }
@@ -10447,7 +10447,7 @@ impl<'a> CoverageTable<'a> {
   pub effect fn intersectSet(self: &Self, glyphs: &IntSet<GlyphId>) -> IntSet<GlyphId>
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       CoverageTable<'a>.Format1 { value } => {
         return run CoverageFormat1<'a>.intersectSet(&value, glyphs)
       }
@@ -10871,7 +10871,7 @@ impl<'a> ClassDef<'a> {
   pub effect fn intersectClasses(self: &Self, glyphs: &IntSet<GlyphId>) -> IntSet<u32>
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         return run widenClasses(run ClassDefFormat1<'a>.intersectClasses(&value, glyphs))
       }
@@ -10904,7 +10904,7 @@ impl<'a> ClassDef<'a> {
   >
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         if class > 65535 {
           return IntSet<GlyphId>.empty()
@@ -10945,7 +10945,7 @@ impl<'a> ClassDef<'a> {
   pub effect fn intersectsClassGlyphs(self: &Self, glyphs: &IntSet<GlyphId>, class: u32) -> bool
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         if class > 65535 {
           return false

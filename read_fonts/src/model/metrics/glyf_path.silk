@@ -157,7 +157,7 @@ impl PendingState {
 
   fn emit<S: PathSink>(self: &mut Self, point: ContourPoint, sink: &mut S) -> bool {
     let p = point.point
-    match self.* {
+    match &self.* {
       PendingState.Empty => {
         if PointFlags.isOffCurveQuad(point.flags) {
           self.* = PendingState.Quad { value: point }

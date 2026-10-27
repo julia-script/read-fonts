@@ -89,7 +89,7 @@ impl<'a> IndexSubtable<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => IndexSubtable1.offsetData(&value)
       IndexSubtable<'a>.Format2 { value } => IndexSubtable2.offsetData(&value)
       IndexSubtable<'a>.Format3 { value } => IndexSubtable3.offsetData(&value)
@@ -99,7 +99,7 @@ impl<'a> IndexSubtable<'a> {
   }
 
   pub fn indexFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => IndexSubtable1.indexFormat(&value)
       IndexSubtable<'a>.Format2 { value } => IndexSubtable2.indexFormat(&value)
       IndexSubtable<'a>.Format3 { value } => IndexSubtable3.indexFormat(&value)
@@ -109,7 +109,7 @@ impl<'a> IndexSubtable<'a> {
   }
 
   pub fn imageFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => IndexSubtable1.imageFormat(&value)
       IndexSubtable<'a>.Format2 { value } => IndexSubtable2.imageFormat(&value)
       IndexSubtable<'a>.Format3 { value } => IndexSubtable3.imageFormat(&value)
@@ -119,7 +119,7 @@ impl<'a> IndexSubtable<'a> {
   }
 
   pub fn imageDataOffset(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => IndexSubtable1.imageDataOffset(&value)
       IndexSubtable<'a>.Format2 { value } => IndexSubtable2.imageDataOffset(&value)
       IndexSubtable<'a>.Format3 { value } => IndexSubtable3.imageDataOffset(&value)
@@ -140,7 +140,7 @@ impl<'a> FontRead<'a, ReadArgs2<GlyphId16, GlyphId16>> for IndexSubtable<'a> {
 
 impl<'a> MinByteRange<'a> for IndexSubtable<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       IndexSubtable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       IndexSubtable<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -150,7 +150,7 @@ impl<'a> MinByteRange<'a> for IndexSubtable<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       IndexSubtable<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       IndexSubtable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       IndexSubtable<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)

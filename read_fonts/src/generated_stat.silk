@@ -502,7 +502,7 @@ impl<'a> AxisValue<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.offsetData(&value)
       AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.offsetData(&value)
       AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.offsetData(&value)
@@ -512,7 +512,7 @@ impl<'a> AxisValue<'a> {
 
   /// Format identifier — set to 1.
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.format(&value)
       AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.format(&value)
       AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.format(&value)
@@ -522,7 +522,7 @@ impl<'a> AxisValue<'a> {
 
   /// Flags — see below for details.
   pub fn flags(self: &Self) -> AxisValueTableFlags {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.flags(&value)
       AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.flags(&value)
       AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.flags(&value)
@@ -533,7 +533,7 @@ impl<'a> AxisValue<'a> {
   /// The name ID for entries in the 'name' table that provide a
   /// display string for this attribute value.
   pub fn valueNameId(self: &Self) -> NameId {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => AxisValueFormat1<'a>.valueNameId(&value)
       AxisValue<'a>.Format2 { value } => AxisValueFormat2<'a>.valueNameId(&value)
       AxisValue<'a>.Format3 { value } => AxisValueFormat3<'a>.valueNameId(&value)
@@ -550,7 +550,7 @@ impl<'a> FontRead<'a, ()> for AxisValue<'a> {
 
 impl<'a> MinByteRange<'a> for AxisValue<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       AxisValue<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       AxisValue<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -559,7 +559,7 @@ impl<'a> MinByteRange<'a> for AxisValue<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       AxisValue<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       AxisValue<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -1451,7 +1451,7 @@ impl FixedSize for AxisValueTableFlags {
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 impl<'a> AxisValue<'a> {
   pub fn value(self: &Self) -> Option<Fixed> {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => Option<Fixed>.some(AxisValueFormat1.value(&value))
       AxisValue<'a>.Format2 { value } => Option<Fixed>.some(AxisValueFormat2.nominalValue(&value))
       AxisValue<'a>.Format3 { value } => Option<Fixed>.some(AxisValueFormat3.value(&value))
@@ -1460,14 +1460,14 @@ impl<'a> AxisValue<'a> {
   }
 
   pub fn linkedValue(self: &Self) -> Option<Fixed> {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format3 { value } => Option<Fixed>.some(AxisValueFormat3.linkedValue(&value))
       _ => Option<Fixed>.None
     }
   }
 
   pub fn axisIndex(self: &Self) -> Option<u16> {
-    return match self.* {
+    return match &self.* {
       AxisValue<'a>.Format1 { value } => Option<u16>.some(AxisValueFormat1.axisIndex(&value))
       AxisValue<'a>.Format2 { value } => Option<u16>.some(AxisValueFormat2.axisIndex(&value))
       AxisValue<'a>.Format3 { value } => Option<u16>.some(AxisValueFormat3.axisIndex(&value))

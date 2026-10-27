@@ -538,7 +538,7 @@ impl<'a> CmapSubtable<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => Cmap0<'a>.offsetData(&value)
       CmapSubtable<'a>.Format2 { value } => Cmap2<'a>.offsetData(&value)
       CmapSubtable<'a>.Format4 { value } => Cmap4<'a>.offsetData(&value)
@@ -554,7 +554,7 @@ impl<'a> CmapSubtable<'a> {
 
   /// Format number is set to 0.
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => Cmap0<'a>.format(&value)
       CmapSubtable<'a>.Format2 { value } => Cmap2<'a>.format(&value)
       CmapSubtable<'a>.Format4 { value } => Cmap4<'a>.format(&value)
@@ -577,7 +577,7 @@ impl<'a> FontRead<'a, ()> for CmapSubtable<'a> {
 
 impl<'a> MinByteRange<'a> for CmapSubtable<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
       CmapSubtable<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       CmapSubtable<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
@@ -592,7 +592,7 @@ impl<'a> MinByteRange<'a> for CmapSubtable<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
       CmapSubtable<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       CmapSubtable<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
@@ -3672,7 +3672,7 @@ impl<'a> Cmap13Iter<'a> {
 
 impl<'a> CmapSubtable<'a> {
   pub fn language(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => u16.toU32(Cmap0<'a>.language(&value))
       CmapSubtable<'a>.Format2 { value } => u16.toU32(Cmap2<'a>.language(&value))
       CmapSubtable<'a>.Format4 { value } => u16.toU32(Cmap4<'a>.language(&value))
@@ -3685,7 +3685,7 @@ impl<'a> CmapSubtable<'a> {
   }
 
   pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => Cmap0<'a>.mapCodepoint(&value, cp)
       CmapSubtable<'a>.Format4 { value } => Cmap4<'a>.mapCodepoint(&value, cp)
       CmapSubtable<'a>.Format6 { value } => Cmap6<'a>.mapCodepoint(&value, cp)
@@ -3704,7 +3704,7 @@ impl<'a> CmapSubtable<'a> {
   }
 
   pub fn iterWithLimits(self: &Self, limits: CmapIterLimits) -> CmapSubtableIter<'a> {
-    return match self.* {
+    return match &self.* {
       CmapSubtable<'a>.Format0 { value } => CmapSubtableIter<'a>.Format0 {
         iter: Cmap0<'a>.iter(&value)
       }

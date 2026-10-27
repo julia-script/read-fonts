@@ -44,7 +44,7 @@ impl<'a> Encoding<'a> {
   }
 
   pub fn map(self: &Self, charset: &Charset<'a>, code: u8) -> Option<GlyphId> {
-    return match self.* {
+    return match &self.* {
       Encoding<'a>.Predefined { value } => match move PredefinedEncoding.sid(&value, code) {
         Option<Sid>.Some { value: sid } => Charset.glyphId(charset, sid)
         _ => Option<GlyphId>.None
@@ -166,7 +166,7 @@ impl<'a> CustomEncoding<'a> {
   }
 
   pub fn map(self: &Self, charset: &Charset<'a>, code: u8) -> Option<GlyphId> {
-    return match self.* {
+    return match &self.* {
       CustomEncoding<'a>.Format0 { codes, supplements } => {
         match move readSupplement(supplements, charset, code) {
           Option<GlyphId>.Some { value } => {
