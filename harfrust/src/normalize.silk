@@ -20,13 +20,22 @@ pub effect fn normalize<F: FontFuncs>(
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut allSimple = true
-  let mut scan: usize = 1
-  while scan < Buffer.len(&buffer.*) {
-    if isMark(List<Glyph>.asSlice(&buffer.glyphs)[scan].codepoint) {
-      allSimple = false
-      break
+  // Whether every code point is below U+0300, so none is a mark or a CGJ.
+  let mut low = true
+  if true {
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    let mut scan: usize = 0
+    while scan < glyphs.length {
+      let cp = glyphs[scan].codepoint
+      if cp >= 0x300 {
+        low = false
+        if scan >= 1 && unicode.isMark(cp) {
+          allSimple = false
+          break
+        }
+      }
+      scan = scan + 1
     }
-    scan = scan + 1
   }
   let decomposeEnabled = run trace.message(font, &buffer.*, "start decompose")
   if decomposeEnabled {
@@ -50,6 +59,9 @@ pub effect fn normalize<F: FontFuncs>(
     while i < Buffer.len(&buffer.*) {
       if buffer.shaper == 0 {
         let mut end = i
+        if low {
+          end = Buffer.len(&buffer.*)
+        }
         while end < Buffer.len(&buffer.*) {
           if isMark(List<Glyph>.asSlice(&buffer.glyphs)[end].codepoint) {
             break
@@ -213,7 +225,11 @@ pub effect fn normalize<F: FontFuncs>(
     drop run trace.message(font, &buffer.*, "end reorder")
   }
   let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  // Decomposition never produces a CGJ, so text below U+0300 has none.
   i = 1
+  if low {
+    i = slots.length
+  }
   while i + 1 < slots.length {
     if slots[i].codepoint == 0x34f {
       let next = slots[i + 1].combiningClass
