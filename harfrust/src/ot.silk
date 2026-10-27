@@ -268,8 +268,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   let mut glyphDigest = SetDigest.new()
   let mut digestStale = true
   let tracing = trace.enabled(font, &buffer.*)
+  let paused = complex.pausedStages(buffer.shaper, buffer.script)
   while stage < stageLimit && context.budget != 0 && buffer.successful {
-    if !plan.positioning {
+    if !plan.positioning && stage < 64 && (u64.shiftRight(paused, u32.toU64(stage)) & 1) != 0 {
       if run complex.pause(font, &mut buffer, plan, stage, features) {
         digestStale = true
       }
@@ -285,7 +286,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
 
       // A lookup that cannot match the buffer's glyphs does nothing; without tracing, it is
       // skipped before any setup.
-      if !stepMayApply(&steps[step], &glyphDigest, &buffer.*) && !tracing {
+      let mayApply = stepMayApply(&steps[step], &glyphDigest, &buffer.*)
+      if !mayApply && !tracing {
         step = end
         continue
       }
@@ -330,12 +332,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         steps[step].firstSubtable,
         steps[step].subtableCount,
       )
-      if digestStale {
-        glyphDigest = bufferDigest(&buffer.*)
-        digestStale = false
-      }
       let everywhere = enabledEverywhere(&context, step, end)
-      if !stepMayApply(&steps[step], &glyphDigest, &buffer.*) {
+      if !mayApply {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
         digestStale = true

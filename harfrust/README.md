@@ -219,7 +219,8 @@ coverages, so most failing rules are ruled out from the glyphs on either side of
 one before the rest of the rule is read or any coverage is searched. A covered format 3 rule that fails
 this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. Plans find the GDEF class definitions once,
 so a shaping call does not look them up again, and keep the digests Indic consonant position
-probes check. Kerning reads expanded pair
+probes check. Shaper pauses run only at the stages where the shaper has
+work to do. Kerning reads expanded pair
 classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
