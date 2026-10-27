@@ -74,9 +74,26 @@ pub struct LookupSubtable {
   /// `addAllClasses` has resolved them; an unexpanded definition has a count of 0.
   pub classes: [ClassTable; 3],
   pub classesResolved: bool,
+  /// 1 or 2 for a 16-bit pair subtable of that format whose values only adjust the first
+  /// glyph's advance, which is how kerning is stored; 3 or 4 when the advance also has a
+  /// device or variation record; 0 otherwise.
+  pub kern: u8,
 }
 
 impl Copy for LookupSubtable {}
+
+fn kernFormat(table: View, kind: u16, positioning: bool) -> u8 {
+  let format = View.u16(&table, 0)
+  let first = View.u16(&table, 4)
+  if !positioning || kind != 2 || (format != 1 && format != 2) || (first != 4 && first != 0x44)
+    || View.u16(&table, 6) != 0 {
+    return 0
+  }
+  if first == 0x44 {
+    return u16.toU8(format) + 2
+  }
+  return u16.toU8(format)
+}
 
 fn noClassTable() -> ClassTable {
   return ClassTable { offset: 0, first: 0, start: 0, count: 0 }
@@ -309,6 +326,7 @@ impl<'a> OtPlan<'a> {
             missSpends: contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3,
             classes: [noClassTable(); 3],
             classesResolved: false,
+            kern: kernFormat(table, kind, self.positioning),
           },
         )
         i = i + 1

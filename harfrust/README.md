@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 192M | 65.3M | 2.94× |
-| Roboto / English words | 261M | 87.9M | 2.97× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,526M | 789M | 1.93× |
-| Noto Nastaliq Urdu / Persian words | 1,443M | 847M | 1.70× |
-| Noto Sans Devanagari / Hindi words | 499M | 225M | 2.21× |
-| Amiri / Persian Little Prince | 821M | 374M | 2.20× |
-| Source Serif Variable / react-dom | 2,019M | 1,004M | 2.01× |
+| Roboto / English Little Prince | 177M | 65.3M | 2.71× |
+| Roboto / English words | 245M | 87.9M | 2.79× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,529M | 789M | 1.94× |
+| Noto Nastaliq Urdu / Persian words | 1,446M | 847M | 1.71× |
+| Noto Sans Devanagari / Hindi words | 500M | 225M | 2.22× |
+| Amiri / Persian Little Prince | 822M | 374M | 2.20× |
+| Source Serif Variable / react-dom | 1,827M | 1,004M | 1.82× |
 
-The geometric mean is **2.24×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.16×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -191,7 +191,9 @@ up a lookup, and vowel constraints are checked only against the script's own
 pairs; per-call scratch lists are sized once instead of grown glyph by glyph; text is decoded and added to the buffer in one pass, and
 the right-to-left script check is a generated match. Format 4 character maps
 are searched through arrays located once per font. Normalization maps a code point
-that stays one glyph in place, so Indic text is not copied to a new list. The remaining gap is mostly per-glyph table walking that harfrust
+that stays one glyph in place, so Indic text is not copied to a new list. Kerning-only 16-bit pair subtables
+(including advance devices without variation coordinates) take a dedicated path,
+and a lookup's subtables share one search for the second glyph. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
