@@ -463,6 +463,21 @@ fn getLookup<'a, 's>(context: &Context<'a, 's>, index: u16) -> Lookup<'a> {
   }
 }
 
+/// The union of the digests of `plan`'s steps for `tag`. A glyph it rejects starts no
+/// substitution by that feature, so callers probing many glyphs check it first.
+pub fn featureDigest(plan: &OtPlan, tag: u32) -> SetDigest {
+  let steps = List<LookupStep>.asSlice(&plan.steps)
+  let mut digest = SetDigest.new()
+  let mut k: usize = 0
+  while k < steps.length {
+    if steps[k].tag == tag {
+      SetDigest.include(&mut digest, &steps[k].digest)
+    }
+    k = k + 1
+  }
+  return digest
+}
+
 pub effect fn wouldSubstitute<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   plan: &OtPlan,
