@@ -1,0 +1,56 @@
+import silk.list { List }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.ownership { Copy }
+import silk.effect { Effect }
+import silk.host_input { HostInput }
+import silk.u64
+
+struct Big {
+  a: u64,
+  b: u64,
+  c: u64,
+  d: u64,
+  e: u64,
+  f: u64,
+  g: u64,
+  h: u64,
+  i: u64,
+  j: u64,
+}
+
+impl Copy for Big {}
+
+effect fn work() -> u64
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut list = List<Big>.make()
+  let item = Big { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9, j: 10 }
+  let mut n: u64 = 0
+  while n < 200 {
+    run List<Big>.append(&mut list, item)
+    n = n + 1
+  }
+
+  // 1000 inserts at index 0 into a list of 200, each followed by a remove to keep the length.
+  let mut k: u64 = 0
+  while k < 1000 {
+    run List<Big>.insert(&mut list, 0, item)
+    drop List<Big>.remove(&mut list, 0)
+    k = k + 1
+  }
+  return List<Big>.get(&list, 5).a
+}
+
+effect fn failed(error: OutOfMemoryError) -> u64 {
+  return 1
+}
+
+pub effect fn main() -> i32
+  ? &mut HostInput {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let value = run Effect.catchAll(work(), failed) |> Effect.provideMut<Allocator>(&mut allocator)
+  if value == 1 {
+    return 1
+  }
+  return 0
+}

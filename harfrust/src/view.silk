@@ -5,6 +5,7 @@ import font_types.lib { GlyphId }
 import silk.ownership { Copy }
 import silk.option { Option }
 import silk.result { Result }
+import silk.slice { Slice }
 import silk.u8
 import silk.u16
 import silk.u32
@@ -66,7 +67,7 @@ impl<'a> View<'a> {
       | u8.toU32(bytes[at + 2])
   }
 
-  pub fn offset(self: &Self, at: usize, width: usize) -> Self with Intrinsic.inline() {
+  pub fn offset(self: &Self, at: usize, width: usize) -> Self with Intrinsic.inlineAlways() {
     let value = View.uint(self, at, width)
     if value == 0 {
       return View.empty()
@@ -124,14 +125,17 @@ impl<'a> View<'a> {
     return View.offset16(self, 4 + index * 2)
   }
 
-  pub fn tail(self: &Self, at: usize) -> Self with Intrinsic.inline() {
-    return View.new(
-      FontData.slice(&self.data, at, View.len(self))
-        |> Option<FontData<'a>>.unwrapOr(FontData.new(b"")),
-    )
+  // Offsets are followed for every rule and subtable probe, so tail slices the bytes directly
+  // instead of going through FontData.slice and its Option.
+  pub fn tail(self: &Self, at: usize) -> Self with Intrinsic.inlineAlways() {
+    let bytes = FontData.asBytes(&self.data)
+    if at > bytes.length {
+      return View.empty()
+    }
+    return View.bytes(Slice.view<u8>(bytes, at, bytes.length - at))
   }
 
-  pub fn offset16(self: &Self, at: usize) -> Self with Intrinsic.inline() {
+  pub fn offset16(self: &Self, at: usize) -> Self with Intrinsic.inlineAlways() {
     let offset = View.u16(self, at)
     if offset == 0 {
       return View.empty()

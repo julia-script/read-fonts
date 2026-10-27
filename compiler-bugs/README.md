@@ -24,3 +24,4 @@ All eight still reproduce, with the same output, on `0.1.0-dev.20+10a8c67813a1`
 - [009 — specialized alias constructor](009-specialized-alias/README.md): an associated call through a specialized alias rejects a valid argument; use the explicit nominal owner. Reported as silk-lang/silk#2412.
 - [010 — list of lifetime-carrying values in a struct](010-list-of-lifetime-struct/README.md): appending such a struct to a `List` with an elided lifetime reports SEM0012; store offsets instead of views. Reported as silk-lang/silk#2425.
 - [011 — static empty slice](011-static-empty-slice/README.md): `&[]` or an empty `const` array cannot be returned as `&'static [T]` (SEM0212); slice zero elements from an owned array instead. Reported as silk-lang/silk#2428.
+- [012 — list shifts](012-list-shift/README.md): `List.insert` and `List.remove` move the tail one element at a time instead of with a memmove; no workaround. Reported as silk-lang/silk#2431.
