@@ -1,5 +1,5 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import lib { FontRef, FontData, ReadError, TableProvider, expectTable, ComputedArray, ScalarArray }
+import lib { FontRef, FontData, ReadError, TableProvider, ComputedArray, ScalarArray }
 import tables.maxp { Maxp, SelectedMaxp }
 import tables.hhea { Hhea, SelectedHhea }
 import tables.hmtx { Hmtx, LongMetric, GlyphMetricRecords }
@@ -108,7 +108,7 @@ impl TableProvider<'static> for DummyProvider {
 test effect fn bug105() -> ()
   ! AssertionError<'static> {
   let provider = DummyProvider {}
-  let header = run must(expectTable<Hhea<'static>, DummyProvider>(&provider))
+  let header = run must(TableProvider.expectTable<Hhea<'static>>(&provider))
   let profile = run must(TableProvider.maxp(&provider))
   let metrics = run must(TableProvider.hmtx(&provider))
   run Testing.expect(

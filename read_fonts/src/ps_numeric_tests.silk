@@ -8,7 +8,7 @@ import silk.result { Result }
 import silk.option { Option }
 import silk.equal { Equal }
 
-// compiler-bugs/003: dispatch generic equality through its explicit bound.
+// silk-lang/silk#2448: `==` misses generic Equal conformances; go through the bound.
 fn equal<T: Equal>(a: T, b: T) -> bool {
   return &a == &b
 }

@@ -500,7 +500,7 @@ impl<'a> TTCHeader<'a> {
   }
 }
 
-import table_provider { TableProvider, TopLevelTable, readTable, tableTag }
+import table_provider { TableProvider }
 import tables.head { Head }
 import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
 import tables.cmap { Cmap, Dmap }
@@ -679,13 +679,6 @@ impl<'a> FontRef<'a> {
 
   pub fn hGlyphMetricRecords(self: &Self) -> Result<GlyphMetricRecords<'a>, ReadError> {
     return TableProvider.hGlyphMetricRecords(self)
-  }
-}
-
-// compiler-bugs/004: keep this generic operation on the concrete owner.
-impl<'a> FontRef<'a> {
-  pub fn expectTable<T: TopLevelTable + FontRead<'a, ()>>(self: &Self) -> Result<T, ReadError> {
-    return readTable<T, FontRef<'a>>(self, tableTag<T>())
   }
 }
 

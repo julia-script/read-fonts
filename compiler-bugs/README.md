@@ -8,21 +8,17 @@ around one cites it as `compiler-bugs/NNN`.
 To add one, create `compiler-bugs/NNN-short-name/`, link it below and at every
 workaround, and report it upstream. Never patch or vendor the compiler.
 
-- [001 — inferred owner lifetime after Format.format](001-inferred-owner-after-format/README.md): valid Result arms rejected with SEM0042; explicit owner lifetime works around it.
-- [002 — explicit generic Self in a conformance](002-explicit-generic-self/README.md): the provider spelling is rejected as unsupported; using `Self` works.
-- [003 — generic operator conformances](003-generic-operators/README.md): arithmetic on a generic struct is rejected at use; concrete operator providers delegate to generic named functions.
+001 to 009 were fixed in `0.1.0-dev.22+5cd5bc433c4e`. The reproducers and
+workarounds for 001 to 006 and 008 (inferred owner after Format.format, explicit
+generic Self, generic operators, generic default interface operations, bounded impl
+arguments, dependent interface bounds, dropping a generic unsafe call) are removed.
+The 003 fix covers arithmetic but not `==` on a generic Equal conformance
+(silk-lang/silk#2448), so ps_numeric_tests keeps its bounded `equal` helper.
+007 and 009 stay until harfrust drops its workarounds for them:
 
-- [004 — generic default interface operation](004-generic-interface-default/README.md): native compilation reports an unsupported construct at a legal generic default operation call; use a free generic helper or concrete-owner method.
-- [005 — bounded type application in an impl argument](005-bounded-impl-argument/README.md): an acyclic `Read<Args<Flag, Flag>>` conformance reports SEM0223; keep argument-product Copy bounds on its conformance instead of its declaration.
-- [006 — applying an interface with a bounded type parameter](006-dependent-interface-bound/README.md): native compilation rejects the dependent bound; keep the target bound on consuming types and functions.
-- [007 — bounded Self in an interface result](007-bounded-self-result/README.md): `Values<Self>` is rejected when Values requires the provider's interface; keep the bound on consuming cursor methods.
-- [008 — dropping a generic unsafe operation](008-drop-generic-unsafe/README.md): directly dropping Atomic.fetchAdd with its static ordering is rejected; bind the result before dropping it.
+- [007 — bounded Self in an interface result](007-bounded-self-result/README.md): fixed in dev.22.
 
-All eight still reproduced on `0.1.0-dev.20+10a8c67813a1` (checked 2026-10-26). On
-`0.1.0-dev.22+5cd5bc433c4e` (checked 2026-10-27) 001 to 009 build, so their
-workarounds can go; 010 and 011 still fail as described.
-
-- [009 — specialized alias constructor](009-specialized-alias/README.md): an associated call through a specialized alias rejects a valid argument; use the explicit nominal owner. Reported as silk-lang/silk#2412.
+- [009 — specialized alias constructor](009-specialized-alias/README.md): an associated call through a specialized alias rejects a valid argument; use the explicit nominal owner. Reported as silk-lang/silk#2412; fixed in dev.22.
 - [010 — list of lifetime-carrying values in a struct](010-list-of-lifetime-struct/README.md): appending such a struct to a `List` with an elided lifetime reports SEM0012; store offsets instead of views. Reported as silk-lang/silk#2425.
 - [011 — static empty slice](011-static-empty-slice/README.md): `&[]` or an empty `const` array cannot be returned as `&'static [T]` (SEM0212); slice zero elements from an owned array instead. Reported as silk-lang/silk#2428.
 - [012 — list shifts](012-list-shift/README.md): `List.insert` and `List.remove` move the tail one element at a time instead of with a memmove; no workaround. Reported as silk-lang/silk#2431.

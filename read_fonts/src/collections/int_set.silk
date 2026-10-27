@@ -52,7 +52,6 @@ pub interface Domain {
   }
 }
 
-// compiler-bugs/007: the bound belongs on cursor methods, not this storage type.
 pub struct DomainValues<T> {
   front: u64,
   end: u64,

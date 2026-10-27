@@ -261,8 +261,7 @@ pub effect fn dump<'a>(data: &'a [u8]) -> ()
     &.{ value: data.length },
   )
 
-  // compiler-bugs/001: explicit owner lifetime avoids inference failure after Format.format.
-  let file = match move FileRef<'a>.new(data) {
+  let file = match move FileRef.new(data) {
     Result<FileRef<'a>, ReadError>.Success { value } => value
     Result<FileRef<'a>, ReadError>.Failure { error: err } => {
       run text("file.error=")

@@ -1110,9 +1110,7 @@ fn tagMask(tag: Tag) -> u64 {
 
 impl<'a> TableProvider<'a> for Counted<'a> {
   fn dataForTag(self: &Self, tag: Tag) -> Option<FontData<'a>> {
-    // compiler-bugs/008-drop-generic-unsafe
-    let previous = unsafe Atomic.fetchAdd<u32>(self.reads, 1, MemoryOrder.Relaxed)
-    drop previous
+    drop unsafe Atomic.fetchAdd<u32>(self.reads, 1, MemoryOrder.Relaxed)
     let previousTags = unsafe Atomic.load<u64>(self.tags, MemoryOrder.Relaxed)
     unsafe Atomic.store<u64>(self.tags, previousTags | tagMask(tag), MemoryOrder.Relaxed)
     return FontRef.tableData(&self.font, tag)

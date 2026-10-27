@@ -71,10 +71,9 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
 - Generic geometry operations whose bounds vary by operation use a method type
   parameter, e.g. `Matrix.identity<f32>()`. `Matrix.transform` returns the nominal
   `Coordinates<T>` tuple because Silk has no anonymous tuple types in signatures.
-- Compiler reports 001 and 002 document explicit-lifetime and `Self` spelling
-  workarounds. Report 003 requires concrete arithmetic operator conformances for
-  built-in numeric Point/Matrix types; generic named operations remain available
-  for custom coordinate types.
+- Point and Matrix arithmetic operators are generic conformances over the
+  coordinate type (compiler report 003 was fixed in Silk dev.22). Generic `==`
+  on them still needs a bounded helper (silk-lang/silk#2448).
 - `VarLenArray.get` skips repeated iterations after a zero-size item: every later
   index would otherwise revisit the identical offset. It returns the same read of
   the empty extent; `iter` terminates on zero length, as upstream does.
@@ -592,7 +591,7 @@ read outside this repository. The bundled release compiler/stdlib remain unchang
   resolution errors that disappeared with a clean cache. Three reduced incremental
   builds (adding and reordering exported modules and imports) all passed. This is
   an unreproduced cache incident, not a confirmed additional compiler defect;
-  compiler-bugs/001–008 remain the independently reproducible reports. Generation
+  compiler-bugs/ holds the independently reproducible reports. Generation
   and compilation are serialized to avoid reading sources while they are replaced.
 
 - Drawn glyf bounds pass through the upstream contour-to-path state machine,

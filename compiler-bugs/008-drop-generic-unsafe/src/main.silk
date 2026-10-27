@@ -1,8 +1,0 @@
-import silk.atomic { Atomic,MemoryOrder }
-import silk.pointer { Pointer }
-pub fn main() -> i32 {
-  let mut value:u32=0
-  let counter=Pointer.fromMutRef(&mut value)
-  drop unsafe Atomic.fetchAdd<u32>(counter,1,MemoryOrder.Relaxed)
-  return 0
-}
