@@ -33,6 +33,12 @@ pub struct ShaperData<'a> {
   pub gsub: View<'a>,
   pub gpos: View<'a>,
   pub gdef: View<'a>,
+  /// AAT tables that shaping checks on every call, found once.
+  pub morx: View<'a>,
+  pub mort: View<'a>,
+  pub trak: View<'a>,
+  pub kerx: View<'a>,
+  pub kern: View<'a>,
   pub upem: u16,
   pub symbolPage: u16,
   /// Backs the empty coordinate slice of default-instance metrics. An empty array literal
@@ -61,6 +67,11 @@ impl<'a> ShaperData<'a> {
       gsub: table(font, 0x47535542),
       gpos: table(font, 0x47504f53),
       gdef: table(font, 0x47444546),
+      morx: table(font, 0x6d6f7278),
+      mort: table(font, 0x6d6f7274),
+      trak: table(font, 0x7472616b),
+      kerx: table(font, 0x6b657278),
+      kern: table(font, 0x6b65726e),
       upem: upem,
       noCoords: [F2Dot14.zero()],
     }

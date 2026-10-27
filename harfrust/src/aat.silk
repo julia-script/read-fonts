@@ -60,10 +60,10 @@ pub effect fn substitute<F: FontFuncs>(
 ) -> bool
   ! OutOfMemoryError
   ? &mut Allocator {
-  let mut data = table(&font.data.font, 0x6d6f7278)
+  let mut data = font.data.morx
   let mut legacy = false
   if View.len(&data) == 0 {
-    data = table(&font.data.font, 0x6d6f7274)
+    data = font.data.mort
     legacy = true
   }
   if View.len(&data) < 8 {
@@ -503,7 +503,7 @@ pub fn tracking<F: FontFuncs>(
   features: &[Feature],
   pointSize: f32,
 ) -> () {
-  let trak = table(&font.data.font, 0x7472616b)
+  let trak = font.data.trak
   let horizontal = Direction.isHorizontal(buffer.direction)
   let mut at: usize = 8
   if horizontal {

@@ -53,8 +53,7 @@ impl<'a> ShapePlan<'a> {
     let fallbackPosition = properties.shaper == 0 && buffer.script != 0x54686169
       && buffer.script != 0x4c616f6f
       && buffer.script != 0x51616167
-    let hasMorph = View.len(&table(&font.data.font, 0x6d6f7278)) >= 8
-      || View.len(&table(&font.data.font, 0x6d6f7274)) >= 8
+    let hasMorph = View.len(&font.data.morx) >= 8 || View.len(&font.data.mort) >= 8
     let specialized = properties.shaper != 0 || arabic.usesScript(buffer.script)
       || buffer.script == 0x48656272
       || buffer.script == 0x48616e67

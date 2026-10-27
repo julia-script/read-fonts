@@ -189,7 +189,7 @@ pub effect fn kerx<F: FontFuncs>(
   if !run trace.message(font, &buffer.*, "start table kerx") {
     return
   }
-  let data = table(&font.data.font, 0x6b657278)
+  let data = font.data.kerx
   let ankr = table(&font.data.font, 0x616e6b72)
   let length = Buffer.len(&buffer.*)
   Buffer.unsafeToConcat(&mut buffer, 0, length)

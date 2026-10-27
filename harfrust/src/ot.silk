@@ -253,6 +253,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   // glyph walk. Positioning never changes glyphs, so only substitution refreshes it.
   let mut glyphDigest = SetDigest.new()
   let mut digestStale = true
+  let tracing = trace.enabled(font, &buffer.*)
   while stage < stageLimit && context.budget != 0 && buffer.successful {
     if !plan.positioning {
       run complex.pause(font, &mut buffer, plan, stage, features)
@@ -265,6 +266,17 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       while end < steps.length && steps[end].index == steps[step].index
         && steps[end].stage == steps[step].stage {
         end = end + 1
+      }
+      if digestStale {
+        glyphDigest = bufferDigest(&buffer.*)
+        digestStale = false
+      }
+
+      // A lookup none of whose subtables covers a glyph in the buffer does nothing; without
+      // tracing, it is skipped before any setup.
+      if !SetDigest.mayIntersect(&steps[step].digest, &glyphDigest) && !tracing {
+        step = end
+        continue
       }
       context.haveSavedInput = false
       List<Glyph>.clear(&mut context.savedInput)
