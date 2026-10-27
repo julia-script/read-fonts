@@ -18,6 +18,7 @@ import font_types.lib { Fixed, F2Dot14, GlyphId, BoundingBox, Matrix }
 import font_data { FontData }
 import table_ref { ByteRange }
 import model.error { Error }
+import model.optional { Maybe }
 import read { ReadError }
 import silk.option { Option }
 import silk.result { Result }
@@ -28,6 +29,13 @@ import silk.slice { Slice }
 import silk.usize
 import silk.u32
 import silk.u16
+
+fn optionOf<T: Copy>(value: &Maybe<T>) -> Option<T> {
+  return match &value.* {
+    Maybe<T>.Some { value: item } => Option<T>.some(item)
+    _ => Option<T>.None
+  }
+}
 
 fn copyOption<T: Copy>(value: &Option<T>) -> Option<T> {
   return match &value.* {
@@ -70,18 +78,24 @@ fn parseIndex<'a>(data: &'a [u8], offset: usize, v2: bool) -> Option<Index<'a>> 
 
 union CffFontKind<'a> {
   Sid { strings: Index<'a>, privateDict: ByteRange },
-  Cid { fdArray: Index<'a>, fdSelect: Option<FdSelect<'a>> },
-  Cff2 { fdArray: Index<'a>, fdSelect: Option<FdSelect<'a>> },
+  Cid { fdArray: Index<'a>, fdSelect: Maybe<FdSelect<'a>> },
+  Cff2 { fdArray: Index<'a>, fdSelect: Maybe<FdSelect<'a>> },
 }
+
+// Copy, so model snapshots can hold a parsed font instead of re-parsing it per glyph.
+// Optional fields are Maybe because Option is not Copy (silk-lang/silk#2434).
+impl<'a> Copy for CffFontKind<'a> {}
 
 struct TopDict<'a> {
   charstrings: Index<'a>,
   charsetOffset: u32,
   encodingOffset: u32,
-  matrix: Option<ScaledFontMatrix>,
-  varStore: Option<ItemVariationStore<'a>>,
+  matrix: Maybe<ScaledFontMatrix>,
+  varStore: Maybe<ItemVariationStore<'a>>,
   kind: CffFontKind<'a>,
 }
+
+impl<'a> Copy for TopDict<'a> {}
 
 impl<'a> TopDict<'a> {
   fn new(data: &'a [u8], dict: &'a [u8], strings: Index<'a>, v2: bool) -> Result<Self, Error> {
@@ -173,9 +187,15 @@ effect fn newImpl<'a>(data: &'a [u8], dict: &'a [u8], strings: Index<'a>, v2: bo
   match move fdArray {
     Option<Index<'a>>.Some { value } => {
       if v2 {
-        kind = CffFontKind<'a>.Cff2 { fdArray: value, fdSelect: move fdSelect }
+        kind = CffFontKind<'a>.Cff2 {
+          fdArray: value,
+          fdSelect: Maybe<FdSelect<'a>>.fromOption(move fdSelect),
+        }
       } else {
-        kind = CffFontKind<'a>.Cid { fdArray: value, fdSelect: move fdSelect }
+        kind = CffFontKind<'a>.Cid {
+          fdArray: value,
+          fdSelect: Maybe<FdSelect<'a>>.fromOption(move fdSelect),
+        }
       }
     }
     _ => {
@@ -188,9 +208,9 @@ effect fn newImpl<'a>(data: &'a [u8], dict: &'a [u8], strings: Index<'a>, v2: bo
     charstrings: chars,
     charsetOffset: charsetOffset,
     encodingOffset: encodingOffset,
-    matrix: move matrix,
-    varStore: move varStore,
-    kind: move kind,
+    matrix: Maybe<ScaledFontMatrix>.fromOption(move matrix),
+    varStore: Maybe<ItemVariationStore<'a>>.fromOption(move varStore),
+    kind: kind,
   }
 }
 
@@ -403,6 +423,8 @@ pub struct CffFontRef<'a> {
   topDictIndex: u16,
 }
 
+impl<'a> Copy for CffFontRef<'a> {}
+
 impl<'a> CffFontRef<'a> {
   pub fn new(data: &'a [u8], topDictIndex: u32, upem: Option<i32>) -> Result<Self, Error> {
     let version = match move FontData<'a>.readAt<u8>(&FontData.new(data), 0) {
@@ -509,7 +531,7 @@ impl<'a> CffFontRef<'a> {
   }
 
   pub fn matrix(self: &Self) -> Option<ScaledFontMatrix> {
-    return copyOption(&self.topDict.matrix)
+    return optionOf(&self.topDict.matrix)
   }
 
   pub fn upem(self: &Self) -> i32 {
@@ -517,7 +539,7 @@ impl<'a> CffFontRef<'a> {
   }
 
   pub fn varStore(self: &Self) -> Option<ItemVariationStore<'a>> {
-    return copyOption(&self.topDict.varStore)
+    return optionOf(&self.topDict.varStore)
   }
 
   pub fn numSubfonts(self: &Self) -> u16 {
@@ -558,7 +580,7 @@ impl<'a> CffFontRef<'a> {
     BlendState<'a, 'c>
   > {
     return match &self.topDict.varStore {
-      Option<ItemVariationStore<'a>>.Some { value } => ok(BlendState.new(value, coords, index))
+      Maybe<ItemVariationStore<'a>>.Some { value } => ok(BlendState.new(value, coords, index))
       _ => Option<BlendState<'a, 'c>>.None
     }
   }
@@ -569,7 +591,7 @@ impl<'a> CffFontRef<'a> {
       _ => Option<Fixed>.None
     }
     let scaled = match &self.topDict.matrix {
-      Option<ScaledFontMatrix>.Some { value: top } => match &subfont._matrix {
+      Maybe<ScaledFontMatrix>.Some { value: top } => match &subfont._matrix {
         Option<ScaledFontMatrix>.Some { value: sub } => Option<ScaledFontMatrix>.some(
           ScaledFontMatrix.combine(&top, &sub),
         )
@@ -596,9 +618,9 @@ impl<'a> CffFontRef<'a> {
   }
 }
 
-fn selectFont<'a>(select: &Option<FdSelect<'a>>, gid: GlyphId) -> Option<u16> {
+fn selectFont<'a>(select: &Maybe<FdSelect<'a>>, gid: GlyphId) -> Option<u16> {
   return match &select.* {
-    Option<FdSelect<'a>>.Some { value } => FdSelect.fontIndex(&value, gid)
+    Maybe<FdSelect<'a>>.Some { value } => FdSelect.fontIndex(&value, gid)
     _ => Option<u16>.some(0)
   }
 }
@@ -671,7 +693,7 @@ effect fn readCffFont<'a>(data: &'a [u8], index: u32, upem: Option<i32>, v2: boo
   }
   let topDict = run take(TopDict.new(data, topData, strings, v2))
   let units = match &topDict.matrix {
-    Option<ScaledFontMatrix>.Some { value } => value.scale
+    Maybe<ScaledFontMatrix>.Some { value } => value.scale
     _ => 1000
   }
   return CffFontRef<'a> {

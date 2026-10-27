@@ -29,8 +29,8 @@ pub struct BaseOutlines<'a> {
   pub glyphCount: u32,
   pub ascender: i32,
   pub descender: i32,
-  pub cff: Maybe<FontData<'a>>,
-  pub cff2: Maybe<FontData<'a>>,
+  pub cff: Maybe<CffFontRef<'a>>,
+  pub cff2: Maybe<CffFontRef<'a>>,
   pub standalone: Maybe<&'a CffFontRef<'a>>,
   pub upem: u16,
   pub order: GlyphSourceOrder,
@@ -119,14 +119,8 @@ impl<'a> BaseOutlines<'a> {
         if source == GlyphSource.Cff2 {
           data = self.cff2
         }
-        if let Maybe<FontData<'a>>.Some { value } = data {
-          if let Result<CffFontRef<'a>, Error>.Success { value: font } = CffFontRef.new(
-            FontData.asBytes(&value),
-            0,
-            Option<i32>.some(u16.toI32(self.upem)),
-          ) {
-            return true
-          }
+        if let Maybe<CffFontRef<'a>>.Some { value } = data {
+          return true
         }
       }
     }
@@ -182,15 +176,9 @@ impl<'a> BaseOutlines<'a> {
         if source == GlyphSource.Cff2 {
           data = self.cff2
         }
-        if let Maybe<FontData<'a>>.Some { value } = data {
-          if let Result<CffFontRef<'a>, Error>.Success { value: font } = CffFontRef.new(
-            FontData.asBytes(&value),
-            0,
-            Option<i32>.some(u16.toI32(self.upem)),
-          ) {
-            run drawCff(&font, glyph, coords, &mut sink)
-            return
-          }
+        if let Maybe<CffFontRef<'a>>.Some { value: font } = data {
+          run drawCff(&font, glyph, coords, &mut sink)
+          return
         }
       }
     }
