@@ -166,7 +166,7 @@ effect fn execute<'a, 's, F: FontFuncs>(
   while i < Buffer.len(&buffer.*) {
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
     if View.len(&classes) > 0 {
-      item.glyphClass = View.class(&classes, item.info.glyphId)
+      item.glyphClass = ot.gdefGlyphClass(substitutions, font.data.gdef, item.info.glyphId)
     } else {
       item.glyphClass = 1
       if unicode.generalCategory(item.codepoint) == 12 && !item.ignorable {

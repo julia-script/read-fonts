@@ -48,10 +48,30 @@ pub struct LookupSubtable {
 
 impl Copy for LookupSubtable {}
 
+/// A class definition expanded to one class per glyph from `first`, kept in
+/// `OtPlan.classValues`. `offset` is the class definition's offset in the layout table.
+pub struct ClassTable {
+  pub offset: usize,
+  pub first: u32,
+  pub start: usize,
+  pub count: usize,
+}
+
+impl Copy for ClassTable {}
+
+/// Expanded class definitions, enough for every contextual and pair subtable of a large font.
+const MAX_CLASS_VALUES: usize = 4194304
+
 pub struct OtPlan<'a> {
   pub table: View<'a>,
   pub steps: List<LookupStep>,
   pub subtables: List<LookupSubtable>,
+  /// Class definitions of the plan's class-based subtables, sorted by offset.
+  pub classTables: List<ClassTable>,
+  pub classValues: List<u16>,
+  /// GDEF glyph classes and mark attachment classes, when expanded.
+  pub glyphClasses: ClassTable,
+  pub markAttachClasses: ClassTable,
   pub direction: Direction,
   pub script: u32,
   pub positioning: bool,
@@ -132,6 +152,208 @@ impl<'a> OtPlan<'a> {
     )
   }
 
+  /// An empty plan over a GSUB or GPOS table; `addStep` adds lookups to it.
+  pub fn forTable(table: View<'a>, positioning: bool) -> Self {
+    return Self {
+      table: table,
+      steps: List<LookupStep>.make(),
+      subtables: List<LookupSubtable>.make(),
+      classTables: List<ClassTable>.make(),
+      classValues: List<u16>.make(),
+      glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
+      markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
+      direction: Direction.LeftToRight,
+      script: 0,
+      positioning: positioning,
+      chosenScript: 0,
+    }
+  }
+
+  /// Expands the class definitions of every lookup in the table, including those that
+  /// contextual rules reach without a feature.
+  pub effect fn addAllClasses(self: &mut Self) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let list = View.layoutList(&self.table, 2)
+    let mut width: usize = 2
+    if View.u16(&self.table, 0) == 1 && View.u16(&self.table, 2) >= 2
+      && View.u32(&self.table, 22) != 0 {
+      width = 4
+    }
+    let lookups = u16.toUsize(View.u16(&list, 0))
+    let mut index: usize = 0
+    while index < lookups {
+      let lookup = View.offset(&list, 2 + index * width, width)
+      let lookupKind = View.u16(&lookup, 0)
+      let count = u16.toUsize(View.u16(&lookup, 4))
+      let mut i: usize = 0
+      while i < count {
+        let mut table = View.offset16(&lookup, 6 + i * 2)
+        let mut kind = lookupKind
+        if (!self.positioning && kind == 7) || (self.positioning && kind == 9) {
+          if View.u16(&table, 0) != 1 {
+            i = i + 1
+            continue
+          }
+          kind = View.u16(&table, 2)
+          table = View.offset32(&table, 4)
+        }
+        run OtPlan.addSubtableClasses(&mut self, table, kind)
+        i = i + 1
+      }
+      index = index + 1
+    }
+  }
+
+  /// Expands the class definitions a class-based contextual or pair subtable reads per glyph.
+  effect fn addSubtableClasses(self: &mut Self, table: View<'a>, kind: u16) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let rawFormat = View.u16(&table, 0)
+    let contextual = (!self.positioning && (kind == 5 || kind == 6))
+      || (self.positioning && (kind == 7 || kind == 8))
+    if contextual {
+      let chained = (!self.positioning && kind == 6) || (self.positioning && kind == 8)
+      let mut header: usize = 4
+      let mut width: usize = 2
+      if rawFormat == 5 {
+        header = 6
+        width = 4
+      } else if rawFormat != 2 {
+        return
+      }
+      run OtPlan.addClasses(&mut self, View.offset(&table, header, width))
+      if chained {
+        run OtPlan.addClasses(&mut self, View.offset(&table, header + width, width))
+        run OtPlan.addClasses(&mut self, View.offset(&table, header + width * 2, width))
+      }
+    } else if self.positioning && kind == 2 {
+      if rawFormat == 2 {
+        run OtPlan.addClasses(&mut self, View.offset(&table, 8, 2))
+        run OtPlan.addClasses(&mut self, View.offset(&table, 10, 2))
+      } else if rawFormat == 4 {
+        run OtPlan.addClasses(&mut self, View.offset(&table, 10, 4))
+        run OtPlan.addClasses(&mut self, View.offset(&table, 14, 4))
+      }
+    }
+  }
+
+  /// Expands the class definition at `classes`, a view into the layout table, unless it is
+  /// already expanded.
+  effect fn addClasses(self: &mut Self, classes: View<'a>) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let offset = View.len(&self.table) - View.len(&classes)
+    let tables = List<ClassTable>.asSlice(&self.classTables)
+    let mut lo: usize = 0
+    let mut hi = tables.length
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      if tables[mid].offset < offset {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    if lo < tables.length && tables[lo].offset == offset {
+      return
+    }
+    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(&mut self, classes) {
+      let mut table = value
+      table.offset = offset
+      run List<ClassTable>.insert(&mut self.classTables, lo, table)
+    }
+  }
+
+  /// Appends one class per glyph of `classes` to `classValues`. Class definitions that are
+  /// malformed, unsorted or too large are not expanded; callers search them in place.
+  effect fn expandClasses(self: &mut Self, classes: View<'a>) -> Option<ClassTable>
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let format = View.u16(&classes, 0)
+    if format < 1 || format > 4 {
+      return Option<ClassTable>.None
+    }
+    let mut width: usize = 2
+    if format >= 3 {
+      width = 3
+    }
+    let start = List<u16>.length(&self.classValues)
+    let mut first: u32 = 0
+    let mut count: usize = 0
+    if format == 1 || format == 3 {
+      first = View.uint(&classes, 2, width)
+      count = u32.toUsize(View.uint(&classes, 2 + width, width))
+      let header = 2 + width * 2
+      if header > View.len(&classes) || count > (View.len(&classes) - header) / width
+        || count > MAX_CLASS_VALUES - start {
+        return Option<ClassTable>.None
+      }
+      let mut i: usize = 0
+      while i < count {
+        let value = View.uint(&classes, header + i * width, width)
+        if value > 65535 {
+          List<u16>.truncate(&mut self.classValues, start)
+          return Option<ClassTable>.None
+        }
+        run List<u16>.append(&mut self.classValues, u32.toU16(value))
+        i = i + 1
+      }
+    } else {
+      let header = 2 + width
+      let stride = width * 2 + 2
+      let ranges = u32.toUsize(View.uint(&classes, 2, width))
+      if ranges == 0 || header > View.len(&classes)
+        || ranges > (View.len(&classes) - header) / stride {
+        return Option<ClassTable>.None
+      }
+
+      // Only sorted, disjoint ranges give the same answers as the binary search.
+      first = View.uint(&classes, header, width)
+      let mut previous: u32 = 0
+      let mut i: usize = 0
+      while i < ranges {
+        let at = header + i * stride
+        let rangeStart = View.uint(&classes, at, width)
+        let rangeEnd = View.uint(&classes, at + width, width)
+        if rangeEnd < rangeStart || (i > 0 && rangeStart <= previous) {
+          return Option<ClassTable>.None
+        }
+        previous = rangeEnd
+        i = i + 1
+      }
+      let span = u32.toUsize(previous - first) + 1
+      if span > MAX_CLASS_VALUES - start {
+        return Option<ClassTable>.None
+      }
+      count = span
+      let mut glyph = first
+      i = 0
+      while i < ranges {
+        let at = header + i * stride
+        let rangeStart = View.uint(&classes, at, width)
+        let rangeEnd = View.uint(&classes, at + width, width)
+        let value = View.u16(&classes, at + width * 2)
+        while glyph < rangeStart {
+          run List<u16>.append(&mut self.classValues, 0)
+          glyph = glyph + 1
+        }
+        while glyph <= rangeEnd {
+          run List<u16>.append(&mut self.classValues, value)
+          if glyph == rangeEnd {
+            break
+          }
+          glyph = glyph + 1
+        }
+        glyph = rangeEnd + 1
+        i = i + 1
+      }
+    }
+    return Option<ClassTable>.some(
+      ClassTable { offset: 0, first: first, start: start, count: count },
+    )
+  }
+
   pub effect fn new<'s, F: FontFuncs>(
     font: &ConfiguredShaper<'a, 's, F>,
     buffer: &Buffer,
@@ -144,15 +366,9 @@ impl<'a> OtPlan<'a> {
     if positioning {
       table = font.data.gpos
     }
-    let mut plan = Self {
-      table: table,
-      steps: List<LookupStep>.make(),
-      subtables: List<LookupSubtable>.make(),
-      direction: buffer.direction,
-      script: buffer.script,
-      positioning: positioning,
-      chosenScript: 0,
-    }
+    let mut plan = OtPlan.forTable(table, positioning)
+    plan.direction = buffer.direction
+    plan.script = buffer.script
     let scriptList = View.layoutList(&table, 0)
     let mut script = View.tail(&table, View.len(&table))
     let candidates = ScriptTags.forLanguage(buffer.script, &buffer.languageValue)
@@ -317,6 +533,19 @@ impl<'a> OtPlan<'a> {
       }
       List<LookupStep>.set(&mut plan.steps, j, item)
       i = i + 1
+    }
+    run OtPlan.addAllClasses(&mut plan)
+    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
+      &mut plan,
+      View.gdefList(&font.data.gdef, 0),
+    ) {
+      plan.glyphClasses = value
+    }
+    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
+      &mut plan,
+      View.gdefList(&font.data.gdef, 3),
+    ) {
+      plan.markAttachClasses = value
     }
     return move plan
   }
