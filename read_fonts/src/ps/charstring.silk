@@ -553,7 +553,7 @@ enum Operator {
 }
 
 impl Operator {
-  fn read<'d>(cursor: &mut Cursor<'d>, b0: u8) -> Option<Self> {
+  fn read<'d>(cursor: &mut Cursor<'d>, b0: u8) -> Option<Self> with Intrinsic.inlineAlways() {
     if b0 != 12 {
       return Operator.fromOpcode(b0)
     }
@@ -566,7 +566,7 @@ impl Operator {
     return Operator.fromTwoByteOpcode(b1)
   }
 
-  fn fromOpcode(opcode: u8) -> Option<Self> {
+  fn fromOpcode(opcode: u8) -> Option<Self> with Intrinsic.inlineAlways() {
     return match opcode {
       1 => Option<Self>.some(Operator.HStem)
       3 => Option<Self>.some(Operator.VStem)
@@ -644,7 +644,7 @@ effect fn evalOp<'a, 'c, 'd, C: CharstringContext<'a>, S: CommandSink>(
   cursor: &mut Cursor<'d>,
   depth: u32,
 ) -> bool
-  ! Error {
+  ! Error with Intrinsic.inlineAlways() {
   if op == Operator.Flex {
     run emitCurves(&mut state, &mut sink, &[PointMode.DxDy; 6], false)
     Evaluator.reset(&mut state)
