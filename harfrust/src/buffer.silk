@@ -444,18 +444,14 @@ impl Buffer {
     ! OutOfMemoryError
     ? &mut Allocator {
     let length = Buffer.len(&self.*)
-    let mut n: usize = 0
-    while n < count {
-      run List<Glyph>.append(&mut self.glyphs, item)
-      n = n + 1
-    }
+    run List<Glyph>.appendRepeated(&mut self.glyphs, item, count)
     let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
     let mut i = length
     while i > at {
       i = i - 1
       slots[i + count] = slots[i]
     }
-    n = 0
+    let mut n: usize = 0
     while n < count {
       slots[at + n] = item
       n = n + 1
@@ -667,12 +663,12 @@ pub fn reverseRange(glyphs: &mut List<Glyph>, first: usize, last: usize) -> () {
   if hi > List<Glyph>.length(&glyphs.*) {
     return
   }
+  let slots = List<Glyph>.asMutSlice(&mut glyphs)
   while lo < hi {
     hi = hi - 1
-    let a = List<Glyph>.get(&glyphs.*, lo)
-    let b = List<Glyph>.get(&glyphs.*, hi)
-    List<Glyph>.set(&mut glyphs, lo, b)
-    List<Glyph>.set(&mut glyphs, hi, a)
+    let a = slots[lo]
+    slots[lo] = slots[hi]
+    slots[hi] = a
     lo = lo + 1
   }
 }
@@ -977,9 +973,9 @@ impl Buffer {
     let mut start: usize = 0
     while start < Buffer.len(&self.*) {
       let mut end = start + 1
-      let cluster = List<Glyph>.get(&self.glyphs, start).info.cluster
+      let cluster = List<Glyph>.asSlice(&self.glyphs)[start].info.cluster
       while end < Buffer.len(&self.*)
-        && List<Glyph>.get(&self.glyphs, end).info.cluster == cluster {
+        && List<Glyph>.asSlice(&self.glyphs)[end].info.cluster == cluster {
         end = end + 1
       }
       reverseRange(&mut self.glyphs, start, end)
