@@ -4,13 +4,16 @@ Font parsing for [Silk](https://github.com/silk-lang/silk), ported from Google's
 [read-fonts and font-types](https://github.com/googlefonts/fontations). It parses
 sfnt and TTC files, core, layout, variation, AAT, bitmap, COLR and CFF/CFF2
 tables, and provides a font model for metrics, character maps, names, glyph
-outlines and bounds.
+outlines and bounds. The native [harfrust port](harfrust/README.md) adds Unicode text
+shaping, OpenType and AAT layout, and the `hr_shape` CLI.
 
 ## Layout
 
 - `font_types/`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
 - `read_fonts/`: borrowed parsing, generated tables, integer sets and the font model.
 - `font_dump/`: CLI that prints every parsed field of a font as text.
+- `harfrust/`: native text shaping, reusable plans, custom font callbacks and tracing.
+- `hr_shape/`: glyph-string CLI, data-driven shaping suite and benchmark runner.
 - `font_bench/`: library workloads (cmap lookups, glyf decoding, hmtx advances) timed
   against a Rust twin in `scripts/rust-font-dump/src/bin/font-bench.rs`.
 - `tools/font-codegen-silk/`: the upstream codegen grammar parser with Silk backends.
@@ -33,7 +36,7 @@ stable Rust toolchain.
 ## Checks
 
 Pull request CI ([ci.yml](.github/workflows/ci.yml)) has a hard 15 minute budget
-and runs three jobs in parallel:
+and runs four jobs in parallel:
 
 ```sh
 # Silk tests
@@ -46,6 +49,13 @@ python3 -m unittest discover -s scripts/tests
 # each must dump without a trap, crash, hang or incomplete output
 scripts/build --release
 READ_FONTS_PROFILE=release scripts/check-robustness
+# Native shaping (6,090 pinned cases, no known failures)
+silk test --release --manifest-path harfrust/silk.toml --root src/tests.silk
+silk build --release --manifest-path hr_shape/silk.toml
+build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --suite harfrust/tests/shaping.bin
+build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --regressions
+scripts/check-shaping-trace
+scripts/check-shaping-malformed
 ```
 
 The comparisons against the Rust read-fonts the port started from are slower
@@ -75,6 +85,11 @@ build/llvm/x86_64-unknown-linux-gnu/release/font_dump path/to/font.ttf
 
 The output format is described in [docs/dump-format.md](docs/dump-format.md).
 
+The shaping [validation and performance guide](harfrust/README.md) documents
+the Rust differential harness and benchmark reproduction. The current local
+shaping baseline is **8.38× Rust wall time** across seven checksum-matched
+workloads (geometric mean); Roboto instruction count is **14.29× Rust**.
+
 ## Generated code
 
 `scripts/generate` regenerates table accessors from the upstream codegen grammar
@@ -91,4 +106,4 @@ append handwritten `tables/*_impl.silk` files to their table's module.
 ## License
 
 Available under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE),
-following fontations. The submodules keep their own notices and font licenses.
+following fontations. The harfrust port uses its upstream [MIT license](harfrust/LICENSE). The submodules keep their own notices and font licenses.

@@ -68,3 +68,39 @@ jobs:
             build/*.json.gz
             build/malformed-failures/
           if-no-files-found: ignore
+
+  shaping:
+    name: Shaping differential and performance baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: ./.github/actions/setup-silk
+      - run: silk build --release --manifest-path hr_shape/silk.toml
+      - run: cargo build --locked --release --manifest-path scripts/rust-hr-shape/Cargo.toml --target-dir build/harfrust-rust
+      - name: Rust shaping harness
+        run: |
+          cargo fmt --manifest-path scripts/rust-hr-shape/Cargo.toml --check
+          cargo clippy --locked --manifest-path scripts/rust-hr-shape/Cargo.toml --target-dir build/harfrust-rust --all-targets -- -D warnings
+      - name: Shaping comparisons
+        run: scripts/compare-shaping | tee build/shaping-comparison.txt
+      - name: Corrupted shaping corpus
+        if: ${{ !cancelled() }}
+        run: scripts/check-shaping-malformed --all-fonts --mutations-per-font 16 | tee build/shaping-malformed.txt
+      - name: Pinned workloads and checksums
+        if: ${{ !cancelled() }}
+        run: scripts/bench-shaping | tee build/shaping-benchmark.txt
+      - name: Upload shaping results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaping-baseline
+          path: |
+            build/shaping-*.txt
+            build/shaping-malformed-failures/
+          if-no-files-found: ignore
