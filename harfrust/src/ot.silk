@@ -56,6 +56,9 @@ struct Context<'a, 's> {
   /// Where each rule set's second input values start in `ruleSeconds` (`OtPlan.ruleSecondStarts`).
   ruleSecondStarts: &'s [u32],
   ruleSeconds: &'s [u32],
+  /// The plan's cached subtables, and where each lookup's start (`OtPlan.lookupSubtables`).
+  subtables: &'s [LookupSubtable],
+  lookupSubtables: &'s [u64],
   /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
   coverageValues: &'s [u16],
   /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
@@ -234,6 +237,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
+    subtables: List<LookupSubtable>.asSlice(&plan.subtables),
+    lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -504,6 +509,8 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
+    subtables: List<LookupSubtable>.asSlice(&plan.subtables),
+    lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
@@ -2179,14 +2186,24 @@ effect fn contextual<F: FontFuncs>(
           "",
         )
 
-        // Nested lookups are not cached in the plan; they parse their subtables in place.
-        let uncached: [LookupSubtable; 0] = []
+        // The plan caches the lookups contextual rules apply; any others parse their subtables
+        // in place.
+        let mut nestedSubtables = Slice.view(context.subtables, 0, 0)
+        if nestedIndex < context.lookupSubtables.length
+          && context.lookupSubtables[nestedIndex] != u64.MAX {
+          let packed = context.lookupSubtables[nestedIndex]
+          nestedSubtables = Slice.view(
+            context.subtables,
+            u64.toUsize(u64.shiftRight(packed, 32)),
+            u64.toUsize(packed & 0xffffffff),
+          )
+        }
         let applied = run applyLookup(
           font,
           &mut context,
           &mut buffer,
           nested,
-          &uncached,
+          nestedSubtables,
           atAction,
           first,
           last,
