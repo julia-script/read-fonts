@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 110M | 65.3M | 1.68× |
-| Roboto / English words | 150M | 87.9M | 1.71× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,206M | 789M | 1.53× |
-| Noto Nastaliq Urdu / Persian words | 1,022M | 847M | 1.21× |
-| Noto Sans Devanagari / Hindi words | 349M | 225M | 1.55× |
-| Amiri / Persian Little Prince | 580M | 374M | 1.55× |
-| Source Serif Variable / react-dom | 1,384M | 1,004M | 1.38× |
+| Roboto / English Little Prince | 109M | 65.3M | 1.67× |
+| Roboto / English words | 147M | 87.9M | 1.67× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,203M | 789M | 1.52× |
+| Noto Nastaliq Urdu / Persian words | 1,015M | 847M | 1.20× |
+| Noto Sans Devanagari / Hindi words | 339M | 225M | 1.51× |
+| Amiri / Persian Little Prince | 576M | 374M | 1.54× |
+| Source Serif Variable / react-dom | 1,379M | 1,004M | 1.37× |
 
-The geometric mean is **1.51×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.49×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -209,7 +209,9 @@ rule whose glyph before the match cannot fit is rejected before the backtrack wa
 each single-input rule's first lookahead value, checked against the glyph after the match;
 both checks run in the loop that skips rules by their second input, so a rejected rule is
 never read. Subtables a glyph cannot start a match in are skipped in a loop of their own,
-bounded by the slice length so it needs no index checks.
+bounded by the slice length so it needs no index checks. Plans record where each group of
+steps sharing a lookup ends, and the buffer's glyph digest is kept across shaper pauses that
+only reorder glyphs.
 Format 3 rules keep digests of their second input, first backtrack and first lookahead
 coverages, so most failing rules are ruled out from the glyphs on either side of the first
 one before the rest of the rule is read or any coverage is searched. Kerning reads expanded pair

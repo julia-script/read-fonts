@@ -325,40 +325,48 @@ fn setForm(buffer: &mut Buffer, start: usize, end: usize, form: u32) -> () {
   }
 }
 
+/// Runs the shaper's work between lookup stages. Returns whether it may have changed which
+/// glyphs the buffer holds, rather than only their order or properties.
 pub effect fn pause<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   buffer: &mut Buffer,
   plan: &OtPlan,
   stage: u32,
   features: &[Feature],
-) -> ()
+) -> bool
   ! OutOfMemoryError
   ? &mut Allocator {
   let kind = buffer.shaper
+  let mut changed = false
   if stage == 2 && arabic.usesScript(buffer.script) {
     arabic.recordStretch(&mut buffer, plan)
   }
   if buffer.script == 0x41726162 && stage == 11 {
     arabic.fallback(font, &mut buffer, plan, features)
+    changed = true
   }
   if kind == 1 && stage == 2
     && (run trace.message(font, &buffer.*, "start reordering indic initial")) {
     run indic.initial(font, &mut buffer, plan)
+    changed = true
     drop run trace.message(font, &buffer.*, "end reordering indic initial")
   }
   if kind == 1 && stage == 13
     && (run trace.message(font, &buffer.*, "start reordering indic final")) {
     indic.final(font, &mut buffer)
+    changed = true
     drop run trace.message(font, &buffer.*, "end reordering indic final")
   }
   if kind == 2 && stage == 1 && (run trace.message(font, &buffer.*, "start reordering khmer")) {
     run dotted(font, &mut buffer, 1, 11, 14)
     khmer(&mut buffer)
+    changed = true
     drop run trace.message(font, &buffer.*, "end reordering khmer")
   }
   if kind == 3 && stage == 2 && (run trace.message(font, &buffer.*, "start reordering myanmar")) {
     run dotted(font, &mut buffer, 2, 11, 255)
     myanmar(&mut buffer)
+    changed = true
     drop run trace.message(font, &buffer.*, "end reordering myanmar")
   }
   if kind == 4 && stage == 3 {
@@ -370,6 +378,7 @@ pub effect fn pause<F: FontFuncs>(
   if kind == 4 && stage == 5 && (run trace.message(font, &buffer.*, "start reordering USE")) {
     run dotted(font, &mut buffer, 8, 1, 18)
     reorderUse(&mut buffer)
+    changed = true
     drop run trace.message(font, &buffer.*, "end reordering USE")
   }
   if kind == 4 && (stage == 2 || stage == 3) {
@@ -389,6 +398,7 @@ pub effect fn pause<F: FontFuncs>(
       i = i + 1
     }
   }
+  return changed
 }
 
 pub effect fn dotted<F: FontFuncs>(
