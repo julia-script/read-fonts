@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 195M | 65.3M | 2.99× |
-| Roboto / English words | 264M | 87.9M | 3.00× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,541M | 789M | 1.95× |
-| Noto Nastaliq Urdu / Persian words | 1,450M | 847M | 1.71× |
-| Noto Sans Devanagari / Hindi words | 526M | 225M | 2.33× |
-| Amiri / Persian Little Prince | 828M | 374M | 2.21× |
-| Source Serif Variable / react-dom | 2,057M | 1,004M | 2.05× |
+| Roboto / English Little Prince | 192M | 65.3M | 2.94× |
+| Roboto / English words | 261M | 87.9M | 2.97× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,537M | 789M | 1.95× |
+| Noto Nastaliq Urdu / Persian words | 1,444M | 847M | 1.70× |
+| Noto Sans Devanagari / Hindi words | 515M | 225M | 2.29× |
+| Amiri / Persian Little Prince | 827M | 374M | 2.21× |
+| Source Serif Variable / react-dom | 2,019M | 1,004M | 2.01× |
 
-The geometric mean is **2.28×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.25×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -189,7 +189,8 @@ U+0000 to U+00FF to glyphs once instead of on every call; Indic consonant
 position probes check a digest of each probed feature's lookups before setting
 up a lookup, and vowel constraints are checked only against the script's own
 pairs; per-call scratch lists are sized once instead of grown glyph by glyph; text is decoded and added to the buffer in one pass, and
-the right-to-left script check is a generated match. The remaining gap is mostly per-glyph table walking that harfrust
+the right-to-left script check is a generated match. Format 4 character maps
+are searched through arrays located once per font. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences

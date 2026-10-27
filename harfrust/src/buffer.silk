@@ -594,8 +594,8 @@ impl Buffer {
     let mut i: usize = 0
     while i < glyphs.length {
       let cluster = glyphs[i].info.cluster
-      let mut end = i
-      let mut flags: u32 = 0
+      let mut end = i + 1
+      let mut flags = glyphs[i].info.flags
       while end < glyphs.length && glyphs[end].info.cluster == cluster {
         flags = flags | glyphs[end].info.flags
         end = end + 1
