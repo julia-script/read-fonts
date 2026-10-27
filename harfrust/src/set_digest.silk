@@ -109,58 +109,32 @@ fn bit(glyph: u32, shift: u32) -> u64 with Intrinsic.inlineAlways() {
   return u64.shiftLeft(1, u32.toU64(u32.shiftRight(glyph, shift) & 63))
 }
 
-pub fn lookupDigest(layout: View, index: u16, positioning: bool) -> SetDigest {
-  let list = View.layoutList(&layout, 2)
-  let mut width: usize = 2
-  if View.u16(&layout, 0) == 1 && View.u16(&layout, 2) >= 2 && View.u32(&layout, 22) != 0 {
-    width = 4
-  }
-  if index >= View.u16(&list, 0) {
-    return SetDigest.new()
-  }
-  let lookup = View.offset(&list, 2 + u16.toUsize(index) * width, width)
-  let lookupKind = View.u16(&lookup, 0)
-  let count = u16.toUsize(View.u16(&lookup, 4))
-  let mut digest = SetDigest.new()
-  let mut i: usize = 0
-  while i < count {
-    let mut table = View.offset16(&lookup, 6 + i * 2)
-    let mut kind = lookupKind
-    if (!positioning && kind == 7) || (positioning && kind == 9) {
-      if View.u16(&table, 0) != 1 {
-        i = i + 1
-        continue
+/// Where a subtable's first-glyph coverage lives, after extension resolution.
+pub fn subtableCoverage<'a>(table: View<'a>, kind: u16, positioning: bool) -> View<'a> {
+  let format = View.u16(&table, 0)
+  let contextual = (!positioning && (kind == 5 || kind == 6))
+    || (positioning && (kind == 7 || kind == 8))
+  let chained = (!positioning && kind == 6) || (positioning && kind == 8)
+  let mut coverageAt: usize = 2
+  let mut coverageWidth: usize = 2
+  if contextual {
+    if format == 3 || format == 6 {
+      coverageAt = 6
+      if format == 6 {
+        coverageWidth = 3
       }
-      kind = View.u16(&table, 2)
-      table = View.offset32(&table, 4)
-    }
-    let format = View.u16(&table, 0)
-    let contextual = (!positioning && (kind == 5 || kind == 6))
-      || (positioning && (kind == 7 || kind == 8))
-    let chained = (!positioning && kind == 6) || (positioning && kind == 8)
-    let mut coverageAt: usize = 2
-    let mut coverageWidth: usize = 2
-    if contextual {
-      if format == 3 || format == 6 {
-        coverageAt = 6
-        if format == 6 {
-          coverageWidth = 3
-        }
-        if chained {
-          coverageAt = 6 + u16.toUsize(View.u16(&table, 2)) * coverageWidth
-        }
-      } else if format >= 4 {
-        coverageWidth = 4
+      if chained {
+        coverageAt = 6 + u16.toUsize(View.u16(&table, 2)) * coverageWidth
       }
-    } else if positioning {
-      if (kind <= 2 && format >= 3) || (kind >= 3 && format >= 2) {
-        coverageWidth = 4
-      }
-    } else if (kind == 1 && format >= 3) || (kind >= 2 && format >= 2) {
+    } else if format >= 4 {
       coverageWidth = 4
     }
-    SetDigest.addCoverage(&mut digest, View.offset(&table, coverageAt, coverageWidth))
-    i = i + 1
+  } else if positioning {
+    if (kind <= 2 && format >= 3) || (kind >= 3 && format >= 2) {
+      coverageWidth = 4
+    }
+  } else if (kind == 1 && format >= 3) || (kind >= 2 && format >= 2) {
+    coverageWidth = 4
   }
-  return digest
+  return View.offset(&table, coverageAt, coverageWidth)
 }
