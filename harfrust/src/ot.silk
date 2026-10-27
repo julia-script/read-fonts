@@ -13,7 +13,7 @@ import preprocess
 import scale { Scale, add, sub, clamp }
 import direction { Direction }
 import font_types.lib { F2Dot14, F48Dot16 }
-import read_fonts.lib { ReadError }
+import read_fonts.lib { ReadError, FontData }
 import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.ownership { Copy }
@@ -26,6 +26,7 @@ import silk.i16
 import silk.i32
 import silk.i64
 import silk.usize
+import silk.u8
 
 struct Context<'a, 's> {
   savedInput: List<Glyph>,
@@ -1175,6 +1176,8 @@ fn nextExpected(
   classes: Classes,
   contextual: bool,
 ) -> Option<usize> {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let syllable = glyphs[start].syllable
   let mut i = start
   while true {
     if backward {
@@ -1184,16 +1187,15 @@ fn nextExpected(
       i = i - 1
     } else {
       i = i + 1
-      if i >= Buffer.len(buffer) {
+      if i >= glyphs.length {
         return Option<usize>.None
       }
     }
-    let item = List<Glyph>.get(&buffer.glyphs, i)
-    if context.restrictSyllable
-      && item.syllable != List<Glyph>.get(&buffer.glyphs, start).syllable {
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != syllable {
       return Option<usize>.None
     }
-    if ignored(context, lookup, &item) {
+    if ignored(context, lookup, item) {
       continue
     }
     if matches(table, pos, kind, classes, item.info.glyphId) {
@@ -1206,6 +1208,204 @@ fn nextExpected(
     }
     return Option<usize>.some(i)
   }
+}
+
+/// Where a rule's lookahead and actions sit, and whether its action records fit in the rule.
+struct RuleTail {
+  aheadPos: usize,
+  aheadCount: usize,
+  actionPos: usize,
+  actionCount: usize,
+  valid: bool,
+}
+
+/// Reads the rest of a rule from `pos`, just past its input values. Unchained rules store the
+/// action count before the input, so the caller passes it in.
+fn ruleTail(
+  rule: View,
+  pos: usize,
+  chained: bool,
+  actionCount: usize,
+  width: usize,
+) -> RuleTail with Intrinsic.inline() {
+  let mut at = pos
+  let mut aheadPos: usize = 0
+  let mut aheadCount: usize = 0
+  let mut actions = actionCount
+  if chained {
+    aheadCount = u16.toUsize(View.u16(&rule, at))
+    aheadPos = at + 2
+    at = at + 2 + aheadCount * width
+    actions = u16.toUsize(View.u16(&rule, at))
+    at = at + 2
+  }
+  return RuleTail {
+    aheadPos: aheadPos,
+    aheadCount: aheadCount,
+    actionPos: at,
+    actionCount: actions,
+    valid: actions <= 64 && offset(at, actions, 4) <= View.len(&rule),
+  }
+}
+
+/// Skips the rules of a format 1 or 2 rule set whose second input value cannot match, exactly as
+/// the full loop in `contextual` would reject them, and returns the first rule that needs the
+/// full match. Positions are read from the rule set directly, without a view per rule.
+fn skipRules(
+  context: &mut Context,
+  buffer: &mut Buffer,
+  ruleSet: View,
+  from: usize,
+  count: usize,
+  offsetWidth: usize,
+  chained: bool,
+  width: usize,
+  found: bool,
+  secondValue: u32,
+  at: usize,
+  secondEnd: usize,
+) -> usize {
+  if offsetWidth == 2 && width == 2 {
+    return skipRules16(
+      &mut context,
+      &mut buffer,
+      ruleSet,
+      from,
+      count,
+      chained,
+      found,
+      secondValue,
+      at,
+      secondEnd,
+    )
+  }
+  let length = View.len(&ruleSet)
+  let mut index = from
+  while index < count && context.budget != 0 {
+    let start = u32.toUsize(
+      View.uint(
+        &ruleSet,
+        usize.wrappingAdd(2, usize.wrappingMultiply(index, offsetWidth)),
+        offsetWidth,
+      ),
+    )
+    let mut pos = start
+    if chained {
+      let backCount = u16.toUsize(View.u16(&ruleSet, pos))
+      pos = usize.wrappingAdd(pos, usize.wrappingAdd(2, usize.wrappingMultiply(backCount, width)))
+    }
+    let inputCount = u16.toUsize(View.u16(&ruleSet, pos))
+    pos = usize.wrappingAdd(pos, 2)
+    let mut actionCount: usize = 0
+    if !chained {
+      actionCount = u16.toUsize(View.u16(&ruleSet, pos))
+      pos = usize.wrappingAdd(pos, 2)
+    }
+
+    // A missing rule reads as zero inputs, which the full loop skips without marking.
+    if start == 0 || start > length || inputCount < 2 || inputCount > 64
+      || (found && View.uint(&ruleSet, pos, width) == secondValue) {
+      return index
+    }
+    context.budget = context.budget - 1
+    if (buffer.flags & 64) != 0 {
+      let rule = View.tail(&ruleSet, start)
+      let end = usize.wrappingAdd(pos - start, usize.wrappingMultiply(inputCount - 1, width))
+      if ruleTail(rule, end, chained, actionCount, width).valid {
+        Buffer.unsafeToConcat(&mut buffer, at, secondEnd)
+      }
+    }
+    index = index + 1
+  }
+  return index
+}
+
+/// `skipRules` for the common 16-bit rule sets, reading the bytes without width dispatch.
+fn skipRules16(
+  context: &mut Context,
+  buffer: &mut Buffer,
+  ruleSet: View,
+  from: usize,
+  count: usize,
+  chained: bool,
+  found: bool,
+  secondValue: u32,
+  at: usize,
+  secondEnd: usize,
+) -> usize {
+  let bytes = FontData.asBytes(&ruleSet.data)
+
+  // The budget and flags stay in locals so the loop does not reload them through the references.
+  let marks = (buffer.flags & 64) != 0
+  let mut budget = context.budget
+  let mut index = from
+  while index < count && budget != 0 {
+    let start = read16(bytes, 2 + index * 2)
+    let mut pos = start
+    if chained {
+      pos = pos + 2 + read16(bytes, pos) * 2
+    }
+    let inputCount = read16(bytes, pos)
+    pos = pos + 2
+    let mut actionCount: usize = 0
+    if !chained {
+      actionCount = read16(bytes, pos)
+      pos = pos + 2
+    }
+    if start == 0 || start > bytes.length || inputCount < 2 || inputCount > 64
+      || (found && usize.toU32(read16(bytes, pos)) == secondValue) {
+      break
+    }
+    budget = budget - 1
+    if marks {
+      let end = pos - start + (inputCount - 1) * 2
+      if ruleTail(View.tail(&ruleSet, start), end, chained, actionCount, 2).valid {
+        Buffer.unsafeToConcat(&mut buffer, at, secondEnd)
+      }
+    }
+    index = index + 1
+  }
+  context.budget = budget
+  return index
+}
+
+/// A big-endian u16 at `at` as a usize, or 0 past the end, like `View.u16`.
+fn read16(bytes: &[u8], at: usize) -> usize with Intrinsic.inlineAlways() {
+  if at >= bytes.length || bytes.length - at < 2 {
+    return 0
+  }
+  return u8.toUsize(bytes[at]) * 256 + u8.toUsize(bytes[at + 1])
+}
+
+/// The first glyph after `at` that input matching compares with a rule's second value.
+struct InputSecond {
+  found: bool,
+  index: usize,
+  glyph: u32,
+  skippable: bool,
+}
+
+fn inputSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) -> InputSecond {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let mut i = at + 1
+  while i < glyphs.length {
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != glyphs[at].syllable {
+      break
+    }
+    if !ignored(context, lookup, item) {
+      return InputSecond {
+        found: true,
+        index: i,
+        glyph: item.info.glyphId,
+        skippable: item.ignorable && !item.substituted && (!item.hidden || context.positioning)
+          && (item.codepoint != 0x200c || context.positioning)
+          && (item.codepoint != 0x200d || context.autoZwj),
+      }
+    }
+    i = i + 1
+  }
+  return InputSecond { found: false, index: at, glyph: 0, skippable: false }
 }
 
 fn matchOutside(
@@ -1317,6 +1517,22 @@ effect fn contextual<F: FontFuncs>(
   if chained && rawFormat == 6 {
     return no()
   }
+
+  // Format 3 has a single rule, which most glyphs fail on its first input coverage. Check that
+  // before the general setup, spending the same budget the rule loop would.
+  let mut firstMatched = false
+  if rawFormat == 3 && context.budget != 0 && buffer.successful {
+    let mut inputPos: usize = 6
+    if chained {
+      inputPos = 6 + u16.toUsize(View.u16(&table, 2)) * 2
+    }
+    let first = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
+    if !matches(table, inputPos, 2, noClasses(&context.*), first) {
+      context.budget = context.budget - 1
+      return no()
+    }
+    firstMatched = true
+  }
   let mut format = rawFormat
   let mut offsetWidth: usize = 2
   let mut header: usize = 4
@@ -1382,6 +1598,23 @@ effect fn contextual<F: FontFuncs>(
     count = u16.toUsize(View.u16(&ruleSet, 0))
   }
 
+  // Rules in formats 1 and 2 mostly fail on their second input value. The glyph that value is
+  // compared with does not depend on the rule unless it is a default ignorable that matching may
+  // skip, so find it once and reject such rules without walking the buffer.
+  let mut second = InputSecond { found: false, index: at, glyph: 0, skippable: true }
+  if format != 3 {
+    second = inputSecond(&context.*, &buffer.*, lookup, at)
+  }
+  let mut secondValue = second.glyph
+  if kind == 1 {
+    secondValue = classOf(&classes, second.glyph)
+  }
+  let quickReject = format != 3 && !second.skippable
+  let mut secondEnd = at + 1
+  if second.found {
+    secondEnd = second.index + 1
+  }
+
   // Matched input positions live in this nesting depth's slot of the context's scratch list, so
   // each application neither zeroes nor copies a 64-entry array.
   let base = depth * 64
@@ -1390,6 +1623,25 @@ effect fn contextual<F: FontFuncs>(
   }
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
+    if quickReject {
+      ruleIndex = skipRules(
+        &mut context,
+        &mut buffer,
+        ruleSet,
+        ruleIndex,
+        count,
+        ruleOffsetWidth,
+        chained,
+        width,
+        second.found,
+        secondValue,
+        at,
+        secondEnd,
+      )
+      if ruleIndex >= count || context.budget == 0 {
+        break
+      }
+    }
     context.budget = context.budget - 1
     let mut rule = table
     let mut pos: usize = 2
@@ -1417,22 +1669,26 @@ effect fn contextual<F: FontFuncs>(
       stored = stored - 1
     }
     pos = pos + stored * width
-    let mut aheadPos: usize = 0
-    let mut aheadCount: usize = 0
-    if chained {
-      aheadCount = u16.toUsize(View.u16(&rule, pos))
-      aheadPos = pos + 2
-      pos = pos + 2 + aheadCount * width
-      actionCount = u16.toUsize(View.u16(&rule, pos))
-      pos = pos + 2
-    }
-    let actionPos = pos
-    if inputCount == 0 || inputCount > 64 || actionCount > 64
-      || offset(actionPos, actionCount, 4) > View.len(&rule) {
+    if quickReject && inputCount > 1 && inputCount <= 64
+      && (!second.found || View.uint(&rule, inputPos, width) != secondValue) {
+      // Only buffers that track unsafe-to-concat need the rest of the rule, to skip marking
+      // for rules the full path would reject as malformed.
+      if (buffer.flags & 64) != 0 && ruleTail(rule, pos, chained, actionCount, width).valid {
+        Buffer.unsafeToConcat(&mut buffer, at, secondEnd)
+      }
       ruleIndex = ruleIndex + 1
       continue
     }
-    if format == 3 && !matches(rule, inputPos, kind, classes, glyph) {
+    let tail = ruleTail(rule, pos, chained, actionCount, width)
+    let aheadPos = tail.aheadPos
+    let aheadCount = tail.aheadCount
+    let actionPos = tail.actionPos
+    actionCount = tail.actionCount
+    if inputCount == 0 || inputCount > 64 || !tail.valid {
+      ruleIndex = ruleIndex + 1
+      continue
+    }
+    if format == 3 && !firstMatched && !matches(rule, inputPos, kind, classes, glyph) {
       ruleIndex = ruleIndex + 1
       continue
     }
