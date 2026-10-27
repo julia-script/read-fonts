@@ -201,12 +201,9 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
     return F48Dot16.toF32(GlyphMetrics.hAdvanceExact(self, glyph))
   }
 
-  pub fn hAdvanceExact(self: &Self, glyph: GlyphId) -> F48Dot16 {
+  pub fn hAdvanceExact(self: &Self, glyph: GlyphId) -> F48Dot16 with Intrinsic.inlineAlways() {
     if metricsEmpty(&self.hMetrics) {
-      if let Maybe<&'a CffFontRef<'a>>.Some { value: font } = self.standalone {
-        return cffAdvance(font, self.coords, glyph, self.count)
-      }
-      return F48Dot16.fromI32(u16.toI32(self.upem) / 2)
+      return GlyphMetrics.hAdvanceWithoutMetrics(self, glyph)
     }
     if GlyphId.toU32(glyph) >= self.count {
       return F48Dot16.zero()
@@ -215,6 +212,18 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
     if self.coords.length == 0 {
       return base
     }
+    return GlyphMetrics.hAdvanceVaried(self, glyph, base)
+  }
+
+  fn hAdvanceWithoutMetrics(self: &Self, glyph: GlyphId) -> F48Dot16 {
+    if let Maybe<&'a CffFontRef<'a>>.Some { value: font } = self.standalone {
+      return cffAdvance(font, self.coords, glyph, self.count)
+    }
+    return F48Dot16.fromI32(u16.toI32(self.upem) / 2)
+  }
+
+  // The variable-font part of hAdvanceExact, out of line so the static path stays small.
+  fn hAdvanceVaried(self: &Self, glyph: GlyphId, base: F48Dot16) -> F48Dot16 {
     let mut delta = F48Dot16.zero()
     if let Maybe<Hvar<'a>>.Some { value } = self.hvar {
       delta = Hvar.advanceDelta(&value, glyph, self.coords)

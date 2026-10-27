@@ -507,9 +507,18 @@ fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
   groups: ComputedArray<'a, (), T>,
   cp: u32,
 ) -> Option<Cmap12Group> with Intrinsic.inlineAlways() {
-  let records = ComputedArray<'a, (), T>.itemsBytes(&groups)
+  return findGroupIn(
+    ComputedArray<'a, (), T>.itemsBytes(&groups),
+    ComputedArray<'a, (), T>.len(&groups),
+    cp,
+  )
+}
+
+fn findGroupIn(records: &[u8], count: usize, cp: u32) -> Option<
+  Cmap12Group
+> with Intrinsic.inlineAlways() {
   let mut lo: usize = 0
-  let mut hi = ComputedArray<'a, (), T>.len(&groups)
+  let mut hi = count
   if hi == 0 || records.length < usize.wrappingMultiply(hi, 12) {
     return Option<Cmap12Group>.None
   }
@@ -651,6 +660,66 @@ impl<'a, T> Cmap1213Iter<'a, T> {
       }
     }
     return Option<CmapMapping>.None
+  }
+}
+
+/// The group records of a format 12 or 13 subtable, located once so repeated lookups skip
+/// re-reading the subtable header.
+pub struct GroupMap<'a> {
+  records: &'a [u8],
+  count: usize,
+  constant: bool,
+}
+
+impl<'a> Copy for GroupMap<'a> {}
+
+impl<'a> GroupMap<'a> {
+  pub fn empty() -> Self {
+    return Self { records: b"", count: 0, constant: false }
+  }
+
+  pub fn map(self: &Self, cp: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
+    let group = match move findGroupIn(self.records, self.count, cp) {
+      Option<Cmap12Group>.Some { value } => value
+      _ => {
+        return Option<GlyphId>.None
+      }
+    }
+    if self.constant {
+      return Option<GlyphId>.some(GlyphId.new(group.startGlyph))
+    }
+    return Option<GlyphId>.some(
+      GlyphId.new(u32.wrappingAdd(group.startGlyph, u32.wrappingSubtract(cp, group.startCode))),
+    )
+  }
+}
+
+impl<'a> CmapSubtable<'a> {
+  /// The group records of a format 12 or 13 subtable, or `None` for other formats.
+  pub fn groupMap(self: &Self) -> Option<GroupMap<'a>> {
+    return match &self.* {
+      CmapSubtable<'a>.Format12 { value } => {
+        let groups = Cmap12<'a>.groups(&value)
+        Option<GroupMap<'a>>.some(
+          GroupMap<'a> {
+            records: ComputedArray<'a, (), SequentialMapGroup<'a>>.itemsBytes(&groups),
+            count: ComputedArray<'a, (), SequentialMapGroup<'a>>.len(&groups),
+            constant: false,
+          },
+        )
+      }
+      CmapSubtable<'a>.Format13 { value } => {
+        let groups = Cmap13<'a>.groups(&value)
+        Option<GroupMap<'a>>.some(
+          GroupMap<'a> {
+            records: ComputedArray<'a, (), ConstantMapGroup<'a>>.itemsBytes(&groups),
+            count: ComputedArray<'a, (), ConstantMapGroup<'a>>.len(&groups),
+            constant: true,
+          },
+        )
+      }
+      _ => Option<GroupMap<'a>>.None
+    }
   }
 }
 
