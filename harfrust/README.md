@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 398M | 65.3M | 6.09× |
-| Roboto / English words | 546M | 87.9M | 6.21× |
-| Noto Nastaliq Urdu / Persian Little Prince | 2,188M | 789M | 2.77× |
-| Noto Nastaliq Urdu / Persian words | 2,198M | 847M | 2.60× |
-| Noto Sans Devanagari / Hindi words | 885M | 225M | 3.93× |
-| Amiri / Persian Little Prince | 1,110M | 374M | 2.97× |
-| Source Serif Variable / react-dom | 4,122M | 1,004M | 4.10× |
+| Roboto / English Little Prince | 367M | 65.3M | 5.62× |
+| Roboto / English words | 518M | 87.9M | 5.89× |
+| Noto Nastaliq Urdu / Persian Little Prince | 2,191M | 789M | 2.78× |
+| Noto Nastaliq Urdu / Persian words | 2,204M | 847M | 2.60× |
+| Noto Sans Devanagari / Hindi words | 888M | 225M | 3.94× |
+| Amiri / Persian Little Prince | 1,112M | 374M | 2.97× |
+| Source Serif Variable / react-dom | 4,132M | 1,004M | 4.11× |
 
-The geometric mean is **3.87×**, down from 11.25× for the initial port. Plans
+The geometric mean is **3.80×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -163,7 +163,9 @@ of each contextual rule set's second input values, so a rule set none of whose
 rules can match is skipped whole; each subtable's starting coverage is expanded
 in the plan, so lookups skip uncovered subtables without a call and pass the
 coverage index to the ones they apply; each subtable's class definitions are
-resolved once in the plan instead of per glyph. The remaining gap is mostly per-glyph table walking that harfrust
+resolved once in the plan instead of per glyph; plans keep a digest of each
+ligature set's second components, so a set none of whose ligatures can match is
+rejected without walking it. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
