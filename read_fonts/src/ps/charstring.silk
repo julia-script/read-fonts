@@ -68,16 +68,19 @@ impl<'a> CharstringContext<'a> for CffContext<'a> {
     return run Effect.result(cffSeac(self, baseCode, accentCode))
   }
 
-  fn globalSubr(self: &Self, index: i32) -> Result<&'a [u8], Error> {
+  fn globalSubr(self: &Self, index: i32) -> Result<&'a [u8], Error> with Intrinsic.inlineAlways() {
     return subrAt(&self.globalSubrs, index)
   }
 
-  fn subr(self: &Self, index: i32) -> Result<&'a [u8], Error> {
+  fn subr(self: &Self, index: i32) -> Result<&'a [u8], Error> with Intrinsic.inlineAlways() {
     return subrAt(&self.subrs, index)
   }
 }
 
-fn subrAt<'a>(index: &Index<'a>, encoded: i32) -> Result<&'a [u8], Error> {
+fn subrAt<'a>(index: &Index<'a>, encoded: i32) -> Result<
+  &'a [u8],
+  Error
+> with Intrinsic.inlineAlways() {
   // Wider arithmetic prevents a malformed signed index from overflowing.
   let raw = i32.toI64(encoded) + i32.toI64(Index.subrBias(index))
   if raw < 0 {
@@ -222,7 +225,7 @@ impl CommandSink for ControlBoundsSink {
   fn close(self: &mut Self) {}
 }
 
-struct Evaluator<'a, 'c> {
+struct Evaluator<'a, 'c, 's> {
   isType1: bool,
   blend: Option<BlendState<'a, 'c>>,
   isOpen: bool,
@@ -235,7 +238,7 @@ struct Evaluator<'a, 'c> {
   y: Fixed,
   sbx: Fixed,
   wx: Fixed,
-  stack: Stack,
+  stack: &'s mut Stack,
   stackIx: usize,
   inSeac: bool,
   opsDone: u32,
@@ -245,8 +248,13 @@ struct Evaluator<'a, 'c> {
   heapBuildChar: List<Fixed>,
 }
 
-impl<'a, 'c> Evaluator<'a, 'c> {
-  fn new(kind: CharstringKind, blend: Option<BlendState<'a, 'c>>, widthOnly: bool) -> Self {
+impl<'a, 'c, 's> Evaluator<'a, 'c, 's> {
+  fn new(
+    kind: CharstringKind,
+    blend: Option<BlendState<'a, 'c>>,
+    widthOnly: bool,
+    stack: &'s mut Stack,
+  ) -> Self with Intrinsic.inlineAlways() {
     return Self {
       isType1: kind == CharstringKind.Type1,
       blend: move blend,
@@ -260,7 +268,7 @@ impl<'a, 'c> Evaluator<'a, 'c> {
       y: Fixed.zero(),
       sbx: Fixed.zero(),
       wx: Fixed.zero(),
-      stack: Stack.new(),
+      stack: move stack,
       stackIx: 0,
       inSeac: false,
       opsDone: 0,
@@ -326,7 +334,10 @@ effect fn evaluateImpl<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
   widthOnly: bool,
 ) -> Option<Fixed>
   ! Error {
-  let mut state = Evaluator.new(CharstringContext.kind(context), move blend, widthOnly)
+  // The stack lives outside the evaluator: building it as a field copies it
+  // through a temporary (silk-lang/silk#2444).
+  let mut stack = Stack.new()
+  let mut state = Evaluator.new(CharstringContext.kind(context), move blend, widthOnly, &mut stack)
   let ended = run evalProgram(&mut state, context, &mut sink, data, 0)
   if !state.isType1 && !ended {
     let mut cursor = FontData.cursor(&FontData.new(data))
@@ -344,8 +355,8 @@ effect fn evaluateImpl<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
   return Option<Fixed>.None
 }
 
-effect fn evalProgram<'a, 'c, 'd, C: CharstringContext<'a>, S: CommandSink>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn evalProgram<'a, 'c, 's, 'd, C: CharstringContext<'a>, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
   context: &C,
   sink: &mut S,
   data: &'d [u8],
@@ -394,19 +405,19 @@ effect fn evalProgram<'a, 'c, 'd, C: CharstringContext<'a>, S: CommandSink>(
   return ended
 }
 
-fn ensureOpen<'a, 'c, S: CommandSink>(state: &mut Evaluator<'a, 'c>, sink: &mut S) {
+fn ensureOpen<'a, 'c, 's, S: CommandSink>(state: &mut Evaluator<'a, 'c, 's>, sink: &mut S) {
   if !state.isOpen {
     CommandSink.moveTo(&mut sink, Fixed.zero(), Fixed.zero())
     state.isOpen = true
   }
 }
 
-fn emitLine<'a, 'c, S: CommandSink>(state: &mut Evaluator<'a, 'c>, sink: &mut S) {
+fn emitLine<'a, 'c, 's, S: CommandSink>(state: &mut Evaluator<'a, 'c, 's>, sink: &mut S) {
   ensureOpen(&mut state, &mut sink)
   CommandSink.lineTo(&mut sink, state.x, state.y)
 }
 
-fn startContour<'a, 'c, S: CommandSink>(state: &mut Evaluator<'a, 'c>, sink: &mut S) {
+fn startContour<'a, 'c, 's, S: CommandSink>(state: &mut Evaluator<'a, 'c, 's>, sink: &mut S) {
   if state.isOpen {
     CommandSink.close(&mut sink)
   } else {
@@ -426,8 +437,8 @@ enum PointMode {
   MaybeDxDy,
 }
 
-effect fn emitCurves<'a, 'c, S: CommandSink>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn emitCurves<'a, 'c, 's, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
   sink: &mut S,
   modes: &[PointMode],
   lastDelta: bool,
@@ -438,70 +449,71 @@ effect fn emitCurves<'a, 'c, S: CommandSink>(
   let mut count: usize = 0
   let mut points: [Point<Fixed>; 2] = [Point<Fixed> { x: Fixed.zero(), y: Fixed.zero() }; 2]
   ensureOpen(&mut state, &mut sink)
+
+  // The pen position and stack index stay in locals: they would otherwise be
+  // stored field by field and reloaded together on every point, which defeats
+  // store forwarding.
+  let mut x = state.x
+  let mut y = state.y
+  let mut stackIx = state.stackIx
   let mut i: usize = 0
   while i < modes.length {
     let mode = modes[i]
     let mut used: usize = 1
-    let delta = run take(Stack.getFixed(&state.stack, state.stackIx))
+    let delta = run take(Stack.getFixed(&state.stack, stackIx))
     match mode {
       PointMode.DxDy => {
-        state.x = state.x + delta
-        state.y = state.y + run take(Stack.getFixed(&state.stack, state.stackIx + 1))
+        x = x + delta
+        y = y + run take(Stack.getFixed(&state.stack, stackIx + 1))
         used = 2
       }
       PointMode.XDy => {
-        state.y = state.y + delta
+        y = y + delta
       }
       PointMode.DxY => {
-        state.x = state.x + delta
+        x = x + delta
       }
       PointMode.DxInitialY => {
-        state.x = state.x + delta
-        state.y = initialY
+        x = x + delta
+        y = initialY
       }
       PointMode.DLargerCoordDist => {
-        if Fixed.toBits(Fixed.abs(state.x - initialX))
-          > Fixed.toBits(Fixed.abs(state.y - initialY)) {
-          state.x = state.x + delta
-          state.y = initialY
+        if Fixed.toBits(Fixed.abs(x - initialX)) > Fixed.toBits(Fixed.abs(y - initialY)) {
+          x = x + delta
+          y = initialY
         } else {
-          state.y = state.y + delta
-          state.x = initialX
+          y = y + delta
+          x = initialX
         }
       }
       PointMode.DxMaybeDy => {
-        state.x = state.x + delta
+        x = x + delta
         if lastDelta {
-          state.y = state.y + run take(Stack.getFixed(&state.stack, state.stackIx + 1))
+          y = y + run take(Stack.getFixed(&state.stack, stackIx + 1))
           used = 2
         }
       }
       PointMode.MaybeDxDy => {
-        state.y = state.y + delta
+        y = y + delta
         if lastDelta {
-          state.x = state.x + run take(Stack.getFixed(&state.stack, state.stackIx + 1))
+          x = x + run take(Stack.getFixed(&state.stack, stackIx + 1))
           used = 2
         }
       }
     }
-    state.stackIx = state.stackIx + used
+    stackIx = stackIx + used
     if count == 2 {
-      CommandSink.curveTo(
-        &mut sink,
-        points[0].x,
-        points[0].y,
-        points[1].x,
-        points[1].y,
-        state.x,
-        state.y,
-      )
+      CommandSink.curveTo(&mut sink, points[0].x, points[0].y, points[1].x, points[1].y, x, y)
       count = 0
     } else {
-      points[count] = Point<Fixed> { x: state.x, y: state.y }
+      points[count] = Point<Fixed> { x: x, y: y }
       count = count + 1
     }
     i = i + 1
   }
+  state.x = x
+  state.y = y
+  state.stackIx = stackIx
 }
 
 enum Operator {
@@ -648,8 +660,8 @@ impl Operator {
   }
 }
 
-effect fn evalOp<'a, 'c, 'd, C: CharstringContext<'a>, S: CommandSink>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn evalOp<'a, 'c, 's, 'd, C: CharstringContext<'a>, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
   context: &C,
   sink: &mut S,
   op: Operator,
@@ -1092,8 +1104,8 @@ fn fixedSqrt(value: Fixed) -> Fixed {
   }
 }
 
-effect fn handleSeac<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn handleSeac<'a, 'c, 's, C: CharstringContext<'a>, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
   context: &C,
   sink: &mut S,
   explicit: bool,
@@ -1159,7 +1171,10 @@ effect fn handleSeac<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
   state.inSeac = false
 }
 
-effect fn handleFlex<'a, 'c, S: CommandSink>(state: &mut Evaluator<'a, 'c>, sink: &mut S) -> ()
+effect fn handleFlex<'a, 'c, 's, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
+  sink: &mut S,
+) -> ()
   ! Error {
   let finalY = run take(Stack.popFixed(&mut state.stack))
   let finalX = run take(Stack.popFixed(&mut state.stack))
@@ -1191,8 +1206,8 @@ effect fn handleFlex<'a, 'c, S: CommandSink>(state: &mut Evaluator<'a, 'c>, sink
   run take(Stack.push<Fixed>(&mut state.stack, finalY))
 }
 
-effect fn handleOtherSubr<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn handleOtherSubr<'a, 'c, 's, C: CharstringContext<'a>, S: CommandSink>(
+  state: &mut Evaluator<'a, 'c, 's>,
   context: &C,
   sink: &mut S,
 ) -> ()
@@ -1246,8 +1261,8 @@ effect fn handleOtherSubr<'a, 'c, C: CharstringContext<'a>, S: CommandSink>(
   }
 }
 
-effect fn handleBuildChar<'a, 'c, C: CharstringContext<'a>>(
-  state: &mut Evaluator<'a, 'c>,
+effect fn handleBuildChar<'a, 'c, 's, C: CharstringContext<'a>>(
+  state: &mut Evaluator<'a, 'c, 's>,
   context: &C,
   subr: i32,
   count: usize,
@@ -1337,7 +1352,7 @@ effect fn resizeBuildChar(list: &mut List<Fixed>, count: usize) -> ()
   }
 }
 
-effect fn ensureBuildChar<'a, 'c>(state: &mut Evaluator<'a, 'c>, count: usize) -> ()
+effect fn ensureBuildChar<'a, 'c, 's>(state: &mut Evaluator<'a, 'c, 's>, count: usize) -> ()
   ! Error {
   if state.buildCharCount == count {
     return
@@ -1358,14 +1373,14 @@ effect fn ensureBuildChar<'a, 'c>(state: &mut Evaluator<'a, 'c>, count: usize) -
   state.buildCharCount = count
 }
 
-fn buildCharGet<'a, 'c>(state: &Evaluator<'a, 'c>, index: usize) -> Fixed {
+fn buildCharGet<'a, 'c, 's>(state: &Evaluator<'a, 'c, 's>, index: usize) -> Fixed {
   if state.buildCharCount <= 32 {
     return state.inlineBuildChar[index]
   }
   return List<Fixed>.asSlice(&state.heapBuildChar)[index]
 }
 
-fn buildCharSet<'a, 'c>(state: &mut Evaluator<'a, 'c>, index: usize, value: Fixed) {
+fn buildCharSet<'a, 'c, 's>(state: &mut Evaluator<'a, 'c, 's>, index: usize, value: Fixed) {
   if state.buildCharCount <= 32 {
     state.inlineBuildChar[index] = value
   } else {
@@ -1684,8 +1699,12 @@ fn noBlendCs() -> Option<BlendState<'static, 'static>> {
   return Option<BlendState<'static, 'static>>.None
 }
 
-fn testEvaluator(kind: CharstringKind) -> Evaluator<'static, 'static> {
-  return Evaluator.new(kind, noBlendCs(), false)
+fn testEvaluator<'s>(kind: CharstringKind, stack: &'s mut Stack) -> Evaluator<
+  'static,
+  'static,
+  's
+> {
+  return Evaluator.new(kind, noBlendCs(), false, move stack)
 }
 
 effect fn checkCommand(capture: &TestCapture, index: usize, kind: u8, coords: &[Fixed]) -> ()
@@ -1710,8 +1729,8 @@ effect fn evalTest(data: &[u8], kind: CharstringKind) -> TestCapture
   return move capture
 }
 
-effect fn operatorTest<'w>(
-  state: &mut Evaluator<'static, 'static>,
+effect fn operatorTest<'w, 's>(
+  state: &mut Evaluator<'static, 'static, 's>,
   ctx: &TestContext<'w>,
   sink: &mut TestCapture,
   op: Operator,
@@ -1721,7 +1740,7 @@ effect fn operatorTest<'w>(
   drop run mustCs(run Effect.result(evalOp(&mut state, ctx, &mut sink, op, &mut cursor, 0)))
 }
 
-effect fn pushInts(state: &mut Evaluator<'static, 'static>, values: &[i32]) -> ()
+effect fn pushInts<'s>(state: &mut Evaluator<'static, 'static, 's>, values: &[i32]) -> ()
   ! AssertionError<'static> {
   let mut i: usize = 0
   while i < values.length {
@@ -2207,7 +2226,8 @@ test effect fn allPathOps()
 
 test effect fn coordsRemainingAvoidOverflow()
   ! AssertionError<'static> {
-  let mut state = testEvaluator(CharstringKind.Type2)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type2, &mut stack)
   let ctx = TestContext.plain(CharstringKind.Type2)
   let mut capture = TestCapture.new()
   run pushInts(&mut state, &[0, 0])
@@ -2240,7 +2260,8 @@ test effect fn operationLimit()
 
 test effect fn opDiv()
   ! AssertionError<'static> {
-  let mut state = testEvaluator(CharstringKind.Type2)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type2, &mut stack)
   let ctx = TestContext.plain(CharstringKind.Type2)
   let mut capture = TestCapture.new()
   run mustCs(Stack.push<Fixed>(&mut state.stack, Fixed.fromF64(512.5)))
@@ -2255,7 +2276,8 @@ test effect fn opDiv()
 
 test effect fn opDivType1LargeInt()
   ! AssertionError<'static> {
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   let ctx = TestContext.plain(CharstringKind.Type1)
   let mut capture = TestCapture.new()
   run pushInts(&mut state, &[32001, 2])
@@ -2269,7 +2291,8 @@ test effect fn opDivType1LargeInt()
 
 effect fn checkSbw(op: Operator, kind: CharstringKind) -> ()
   ! AssertionError<'static> {
-  let mut state = testEvaluator(kind)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(kind, &mut stack)
   let ctx = TestContext.plain(kind)
   let mut capture = TestCapture.new()
   run mustCs(Stack.push<Fixed>(&mut state.stack, Fixed.fromF64(42.5)))
@@ -2312,7 +2335,8 @@ test effect fn opHsbwType2NoEffect()
 
 test effect fn opCallothersubrFlex()
   ! AssertionError<'static> {
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   let ctx = TestContext.plain(CharstringKind.Type1)
   let mut sink = TestCapture.new()
   run pushInts(&mut state, &[0, 1])
@@ -2479,8 +2503,8 @@ test effect fn scaledTransformSink()
   }
 }
 
-effect fn otherSubrTest<'w>(
-  state: &mut Evaluator<'static, 'static>,
+effect fn otherSubrTest<'w, 's>(
+  state: &mut Evaluator<'static, 'static, 's>,
   ctx: &TestContext<'w>,
   args: &[i32],
 ) -> ()
@@ -2490,8 +2514,8 @@ effect fn otherSubrTest<'w>(
   run operatorTest(&mut state, ctx, &mut sink, Operator.CallOtherSubr)
 }
 
-fn otherSubrFails<'w>(
-  state: &mut Evaluator<'static, 'static>,
+fn otherSubrFails<'w, 's>(
+  state: &mut Evaluator<'static, 'static, 's>,
   ctx: &TestContext<'w>,
   args: &[i32],
 ) -> bool {
@@ -2508,7 +2532,7 @@ fn otherSubrFails<'w>(
   }
 }
 
-effect fn checkStack(state: &Evaluator<'static, 'static>, expected: &[Fixed]) -> ()
+effect fn checkStack<'s>(state: &Evaluator<'static, 'static, 's>, expected: &[Fixed]) -> ()
   ! AssertionError<'static> {
   run Testing.expect(Stack.len(&state.stack) == expected.length, "operand stack length")
   let mut i: usize = 0
@@ -2529,7 +2553,8 @@ test effect fn mmBlend()
     weights: Option<&[Fixed]>.some(&weights),
     buildLen: 8,
   }
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   run otherSubrTest(&mut state, &ctx, &[1, 0, 2, 3, 4, -8, 6, 15])
   run checkStack(&state, &[Fixed.fromF64(3.5), Fixed.fromI32(-9)])
 }
@@ -2545,12 +2570,14 @@ test effect fn othersubrArithmetic()
   let mut index: i32 = 20
   let expected: [f64; 4] = [9.0, 5.0, 14.0, 3.5]
   while index <= 23 {
-    let mut state = testEvaluator(CharstringKind.Type1)
+    let mut stack = Stack.new()
+    let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
     run otherSubrTest(&mut state, &ctx, &[7, 2, 2, index])
     run checkStack(&state, &[Fixed.fromF64(expected[i32.toUsize(index - 20)])])
     index = index + 1
   }
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   run otherSubrTest(&mut state, &ctx, &[1, 2, 3, 4, 4, 27])
   run checkStack(&state, &[Fixed.one()])
   Stack.clear(&mut state.stack)
@@ -2571,7 +2598,8 @@ test effect fn othersubrBuildCharArray()
     weights: Option<&[Fixed]>.some(&weights),
     buildLen: 8,
   }
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   run otherSubrTest(&mut state, &ctx, &[5, 3, 2, 24])
   run checkStack(&state, &[])
   run otherSubrTest(&mut state, &ctx, &[3, 1, 25])
@@ -2595,7 +2623,8 @@ test effect fn othersubrBuildCharArray()
     weights: Option<&[Fixed]>.some(&weights),
     buildLen: 64,
   }
-  let mut heapState = testEvaluator(CharstringKind.Type1)
+  let mut heapStack = Stack.new()
+  let mut heapState = testEvaluator(CharstringKind.Type1, &mut heapStack)
   run otherSubrTest(&mut heapState, &large, &[7, 63, 2, 24])
   run otherSubrTest(&mut heapState, &large, &[63, 1, 25])
   run checkStack(&heapState, &[Fixed.fromI32(7)])
@@ -2604,7 +2633,8 @@ test effect fn othersubrBuildCharArray()
 test effect fn othersubrsWithoutABlendFail()
   ! AssertionError<'static> {
   let ctx = TestContext.plain(CharstringKind.Type1)
-  let mut state = testEvaluator(CharstringKind.Type1)
+  let mut stack = Stack.new()
+  let mut state = testEvaluator(CharstringKind.Type1, &mut stack)
   run Testing.expect(
     otherSubrFails(&mut state, &ctx, &[1, 2, 2, 14])
       && otherSubrFails(&mut state, &ctx, &[0, 1, 19])
