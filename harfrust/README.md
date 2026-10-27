@@ -147,11 +147,11 @@ builds. Lower is better.
 | Roboto / English words | 127M | 87.9M | 1.44× |
 | Noto Nastaliq Urdu / Persian Little Prince | 1,168M | 789M | 1.48× |
 | Noto Nastaliq Urdu / Persian words | 988M | 847M | 1.17× |
-| Noto Sans Devanagari / Hindi words | 308M | 225M | 1.37× |
+| Noto Sans Devanagari / Hindi words | 301M | 225M | 1.34× |
 | Amiri / Persian Little Prince | 517M | 374M | 1.38× |
 | Source Serif Variable / react-dom | 1,211M | 1,004M | 1.21× |
 
-The geometric mean is **1.35×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.34×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
