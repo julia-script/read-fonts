@@ -104,6 +104,11 @@ fn gdefClasses<'a, 's>(
   }
 }
 
+/// The GDEF glyph class of `glyph`, using the plan's expansion when it has one.
+pub fn gdefGlyphClass<'a>(plan: &OtPlan<'a>, gdef: View<'a>, glyph: u32) -> u32 {
+  return classOf(&gdefClasses(plan, gdef, 0, plan.glyphClasses), glyph)
+}
+
 fn classOf(classes: &Classes, glyph: u32) -> u32 with Intrinsic.inlineAlways() {
   if classes.values.length == 0 {
     return View.class(&classes.view, glyph)
