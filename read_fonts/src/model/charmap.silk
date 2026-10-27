@@ -20,7 +20,8 @@ import tables.cmap {
   Cmap4Segment,
   Cmap12,
   Cmap12Group,
-  GroupMap
+  GroupMap,
+  SegmentMap
 }
 import tables.name { MacRomanMapping }
 import tables.maxp { SelectedMaxp }
@@ -228,6 +229,9 @@ struct UnicodeSubtables<'a> {
   // through `groups`.
   direct: bool,
   groups: GroupMap<'a>,
+  // The same for a format 4 subtable, through `segments`.
+  direct4: bool,
+  segments: SegmentMap<'a>,
 }
 
 impl<'a> Copy for UnicodeSubtables<'a> {}
@@ -241,6 +245,8 @@ impl<'a> UnicodeSubtables<'a> {
       isMacRoman: false,
       direct: false,
       groups: GroupMap<'a>.empty(),
+      direct4: false,
+      segments: SegmentMap<'a>.empty(),
     }
     if let MaybeCmap<'a>.Some { table } = cmap {
       if let Option<BestCmapSubtable<'a>>.Some { value } = Cmap.bestSubtable(&table) {
@@ -252,6 +258,12 @@ impl<'a> UnicodeSubtables<'a> {
         ) {
           result.groups = groups
           result.direct = !result.isSymbol && !result.isMacRoman
+        }
+        if let Option<SegmentMap<'a>>.Some { value: segments } = CmapSubtable.segmentMap(
+          &value.subtable,
+        ) {
+          result.segments = segments
+          result.direct4 = !result.isSymbol && !result.isMacRoman
         }
       }
       if let Option<SelectedUvsSubtable<'a>>.Some { value } = Cmap.uvsSubtable(&table) {
@@ -280,6 +292,9 @@ impl<'a> UnicodeSubtables<'a> {
   fn map(self: &Self, codepoint: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     if self.direct {
       return nonzero(GroupMap.map(&self.groups, codepoint))
+    }
+    if self.direct4 {
+      return nonzero(SegmentMap.map(&self.segments, codepoint))
     }
     if !MaybeSubtable.present(&self.subtable) {
       return Option<GlyphId>.None

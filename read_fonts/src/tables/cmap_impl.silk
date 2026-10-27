@@ -694,6 +694,91 @@ impl<'a> GroupMap<'a> {
   }
 }
 
+/// The arrays of a format 4 subtable, located once so repeated lookups skip re-reading the
+/// subtable header. Lookups match `Cmap4.mapCodepoint`.
+pub struct SegmentMap<'a> {
+  starts: &'a [u8],
+  ends: &'a [u8],
+  deltas: &'a [u8],
+  offsets: &'a [u8],
+  glyphs: &'a [u8],
+  count: usize,
+}
+
+impl<'a> Copy for SegmentMap<'a> {}
+
+impl<'a> SegmentMap<'a> {
+  pub fn empty() -> Self {
+    return Self { starts: b"", ends: b"", deltas: b"", offsets: b"", glyphs: b"", count: 0 }
+  }
+
+  pub fn map(self: &Self, codepoint: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
+    if codepoint > 65535 || self.count == 0 {
+      return Option<GlyphId>.None
+    }
+    let cp = u32.toU16(codepoint)
+
+    // The same probes as Cmap4.findSegment; `count` is at most both arrays' lengths.
+    let limit = usize.wrappingSubtract(usize.wrappingMultiply(self.count, 2), 2)
+    let startBytes = Slice.view<u8>(self.starts, 0, limit + 2)
+    let endBytes = Slice.view<u8>(self.ends, 0, limit + 2)
+    let mut lo: usize = 0
+    let mut hi = self.count
+    while lo < hi {
+      let i = usize.wrappingAdd(lo, (hi - lo) / 2)
+      let at = usize.wrappingMultiply(i, 2)
+      if at > limit {
+        return Option<GlyphId>.None
+      }
+      let start = readU16(startBytes, at)
+      if cp < start {
+        hi = i
+      } else if cp > readU16(endBytes, at) {
+        lo = usize.wrappingAdd(i, 1)
+      } else {
+        return SegmentMap.lookup(self, cp, i, start)
+      }
+    }
+    return Option<GlyphId>.None
+  }
+
+  // Cmap4.lookupGlyphId over the located arrays.
+  fn lookup(self: &Self, codepoint: u16, index: usize, startCode: u16) -> Option<
+    GlyphId
+  > with Intrinsic.inlineAlways() {
+    let at = index * 2
+    if at + 2 > self.deltas.length || at + 2 > self.offsets.length {
+      return Option<GlyphId>.None
+    }
+    let delta = u16.toI32(readU16(self.deltas, at))
+    let mut signed = delta
+    if delta >= 32768 {
+      signed = delta - 65536
+    }
+    let rangeOffset = u16.toUsize(readU16(self.offsets, at))
+    if rangeOffset == 0 {
+      return Option<GlyphId>.some(GlyphId.new(u16.toU32(wrappedDelta(codepoint, signed))))
+    }
+    let offset = match move usize.checkedSubtract(
+      rangeOffset / 2 + u16.toUsize(codepoint - startCode),
+      self.offsets.length / 2 - index,
+    ) {
+      Option<usize>.Some { value } => value
+      _ => {
+        return Option<GlyphId>.None
+      }
+    }
+    if offset >= self.glyphs.length / 2 {
+      return Option<GlyphId>.None
+    }
+    let gid = readU16(self.glyphs, offset * 2)
+    if gid == 0 {
+      return Option<GlyphId>.None
+    }
+    return Option<GlyphId>.some(GlyphId.new(u16.toU32(wrappedDelta(gid, signed))))
+  }
+}
+
 impl<'a> CmapSubtable<'a> {
   /// The group records of a format 12 or 13 subtable, or `None` for other formats.
   pub fn groupMap(self: &Self) -> Option<GroupMap<'a>> {
@@ -719,6 +804,34 @@ impl<'a> CmapSubtable<'a> {
         )
       }
       _ => Option<GroupMap<'a>>.None
+    }
+  }
+
+  /// The arrays of a format 4 subtable, or `None` for other formats.
+  pub fn segmentMap(self: &Self) -> Option<SegmentMap<'a>> {
+    return match &self.* {
+      CmapSubtable<'a>.Format4 { value } => {
+        let starts = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.startCode(&value))
+        let ends = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.endCode(&value))
+        let mut count = u16.toUsize(Cmap4<'a>.segCountX2(&value)) / 2
+        if starts.length / 2 < count {
+          count = starts.length / 2
+        }
+        if ends.length / 2 < count {
+          count = ends.length / 2
+        }
+        Option<SegmentMap<'a>>.some(
+          SegmentMap<'a> {
+            starts: starts,
+            ends: ends,
+            deltas: ScalarArray<'a, i16>.bytes(&Cmap4<'a>.idDelta(&value)),
+            offsets: ScalarArray<'a, u16>.bytes(&Cmap4<'a>.idRangeOffsets(&value)),
+            glyphs: ScalarArray<'a, u16>.bytes(&Cmap4<'a>.glyphIdArray(&value)),
+            count: count,
+          },
+        )
+      }
+      _ => Option<SegmentMap<'a>>.None
     }
   }
 }
