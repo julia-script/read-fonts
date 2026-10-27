@@ -118,15 +118,25 @@ impl Glyph {
   }
 
   pub fn new(cp: u32, cluster: u32) -> Self {
+    // Below U+0300 every code point has combining class 0, U+00AD is the only default
+    // ignorable and none is hidden, so the table lookups can be skipped.
+    let mut combiningClass: u8 = 0
+    let mut ignorable = cp == 0xad
+    let mut hidden = false
+    if cp >= 0x300 {
+      combiningClass = unicode.modifiedCombiningClass(cp)
+      ignorable = unicode.isDefaultIgnorable(cp)
+      hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
+        || (cp >= 0xe0020 && cp <= 0xe007f)
+    }
     return Self {
       info: GlyphInfo { glyphId: cp, cluster: cluster, flags: 0 },
       position: GlyphPosition.zero(),
       codepoint: cp,
       glyphClass: 0,
-      combiningClass: unicode.modifiedCombiningClass(cp),
-      ignorable: unicode.isDefaultIgnorable(cp),
-      hidden: cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
-        || (cp >= 0xe0020 && cp <= 0xe007f),
+      combiningClass: combiningClass,
+      ignorable: ignorable,
+      hidden: hidden,
       selectorFallback: false,
       continuation: false,
       fraction: 0,
