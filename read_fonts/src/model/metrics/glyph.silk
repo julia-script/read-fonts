@@ -18,7 +18,8 @@ import model.optional { Maybe }
 import model.glyph { GlyphSource, GlyphSourceOrder, GlyphSources }
 import model.error { Error }
 import table_provider { TableProvider, GlyfLoca }
-import tables.hmtx { GlyphMetricRecords }
+import tables.hmtx { GlyphMetricRecords, LongMetric }
+import array { ComputedArray }
 import tables.glyf { Glyph }
 import tables.loca { Loca, LocaGlyph }
 import tables.gvar { SelectedGvar }
@@ -40,6 +41,8 @@ import silk.list { List }
 import silk.i16
 import silk.i64
 import silk.u16
+import silk.u32
+import silk.u8
 import silk.f32
 import silk.f64
 
@@ -48,6 +51,8 @@ pub struct GlyphMetrics<'a, 'c> {
   varc: Maybe<VarcOutlines<'a>>,
   bitmaps: BitmapSources<'a>,
   hMetrics: GlyphMetricRecords<'a>,
+  // The hMetrics long records, 4 bytes each with the u16 advance first, for hAdvanceExact.
+  hRecords: &'a [u8],
   vMetrics: GlyphMetricRecords<'a>,
   outlines: Maybe<GlyfLoca<'a>>,
   gvar: Maybe<SelectedGvar<'a>>,
@@ -118,12 +123,16 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
         gvar = Maybe<SelectedGvar<'a>>.fromResult(TableProvider.selectedGvar(provider))
       }
     }
+    let hMetrics = TableProvider.hGlyphMetricRecords(provider)
+      |> Result<GlyphMetricRecords<'a>, ReadError>.unwrapOr(GlyphMetricRecords.default())
     return Self {
       colors: ColorSources.read(provider),
       varc: varc,
       bitmaps: BitmapSources.new(provider),
-      hMetrics: TableProvider.hGlyphMetricRecords(provider)
-        |> Result<GlyphMetricRecords<'a>, ReadError>.unwrapOr(GlyphMetricRecords.default()),
+      hMetrics: hMetrics,
+      hRecords: ComputedArray<'a, (), LongMetric<'a>>.itemsBytes(
+        &GlyphMetricRecords.longMetrics(&hMetrics),
+      ),
       vMetrics: TableProvider.vGlyphMetricRecords(provider)
         |> Result<GlyphMetricRecords<'a>, ReadError>.unwrapOr(GlyphMetricRecords.default()),
       outlines: Maybe<GlyfLoca<'a>>.fromResult(
@@ -154,6 +163,7 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
       varc: Maybe<VarcOutlines<'a>>.None,
       bitmaps: BitmapSources.empty(),
       hMetrics: GlyphMetricRecords.default(),
+      hRecords: Slice.view<u8>(b"", 0, 0),
       vMetrics: GlyphMetricRecords.default(),
       outlines: Maybe<GlyfLoca<'a>>.None,
       gvar: Maybe<SelectedGvar<'a>>.None,
@@ -202,13 +212,22 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
   }
 
   pub fn hAdvanceExact(self: &Self, glyph: GlyphId) -> F48Dot16 with Intrinsic.inlineAlways() {
-    if metricsEmpty(&self.hMetrics) {
+    let records = self.hRecords.length / 4
+    if records == 0 {
       return GlyphMetrics.hAdvanceWithoutMetrics(self, glyph)
     }
     if GlyphId.toU32(glyph) >= self.count {
       return F48Dot16.zero()
     }
-    let base = F48Dot16.fromI32(statedAdvance(&self.hMetrics, glyph, self.count))
+
+    // Glyphs past the last long record repeat its advance.
+    let mut index = u32.toUsize(GlyphId.toU32(glyph))
+    if index >= records {
+      index = records - 1
+    }
+    let at = index * 4
+    let advance = u32.shiftLeft(u8.toU32(self.hRecords[at]), 8) | u8.toU32(self.hRecords[at + 1])
+    let base = F48Dot16.fromI32(u32.toI32(advance))
     if self.coords.length == 0 {
       return base
     }
