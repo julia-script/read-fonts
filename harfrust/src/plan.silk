@@ -82,6 +82,9 @@ pub struct LookupSubtable {
   /// glyph's advance, which is how kerning is stored; 3 or 4 when the advance also has a
   /// device or variation record; 0 otherwise.
   pub kern: u8,
+  /// For a 16-bit format 3 contextual subtable, where its digests start in
+  /// `OtPlan.contextDigests`; `usize.MAX` otherwise.
+  pub contextDigests: usize,
 }
 
 impl Copy for LookupSubtable {}
@@ -203,6 +206,9 @@ pub struct OtPlan<'a> {
   /// glyphs; full when the set is malformed.
   pub pairDigests: List<SetDigest>,
   pub coverageValues: List<u16>,
+  /// Three digests per 16-bit format 3 contextual subtable: its second input coverage, its
+  /// first backtrack coverage and its first lookahead coverage, each full when there is none.
+  pub contextDigests: List<SetDigest>,
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
   pub markAttachClasses: ClassTable,
@@ -334,6 +340,11 @@ impl<'a> OtPlan<'a> {
         } else {
           second = SetDigest.full()
         }
+        let mut contextDigests = usize.MAX
+        if contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3 {
+          contextDigests = List<SetDigest>.length(&self.contextDigests)
+          run self.addFormat3Digests(table, kind == 6 || kind == 8)
+        }
         let coverageStart = List<u16>.length(&self.coverageValues)
         let mut coverageFirst: u32 = 0
         if expand {
@@ -357,6 +368,7 @@ impl<'a> OtPlan<'a> {
             classes: [noClassTable(); 3],
             classesResolved: false,
             kern: kernFormat(table, kind, self.positioning),
+            contextDigests: contextDigests,
           },
         )
         i = i + 1
@@ -380,6 +392,51 @@ impl<'a> OtPlan<'a> {
       List<SetDigest>.set(&mut self.lookupSeconds, slot, second)
     }
     return CachedLookup { digest: digest, second: second, lookupOffset: lookupOffset }
+  }
+
+  /// Appends the `contextDigests` of a 16-bit format 3 contextual subtable. Coverages are found
+  /// the way `ot.matches` finds them, so a glyph a digest rules out is one matching rejects.
+  effect fn addFormat3Digests(self: &mut Self, table: View<'a>, chained: bool) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let mut pos: usize = 2
+    let mut backCount: usize = 0
+    if chained {
+      backCount = u16.toUsize(View.u16(&table, 2))
+      pos = 4 + backCount * 2
+    }
+    let inputCount = u16.toUsize(View.u16(&table, pos))
+    pos = pos + 2
+    if !chained {
+      pos = pos + 2
+    }
+    let mut input = SetDigest.full()
+    if inputCount >= 2 {
+      input = SetDigest.new()
+      SetDigest.addCoverage(
+        &mut input,
+        View.tail(&table, u32.toUsize(View.uint(&table, pos + 2, 2))),
+      )
+    }
+    let mut back = SetDigest.full()
+    if backCount != 0 {
+      back = SetDigest.new()
+      SetDigest.addCoverage(&mut back, View.tail(&table, u32.toUsize(View.uint(&table, 4, 2))))
+    }
+    let mut ahead = SetDigest.full()
+    if chained {
+      let aheadAt = pos + inputCount * 2
+      if View.u16(&table, aheadAt) != 0 {
+        ahead = SetDigest.new()
+        SetDigest.addCoverage(
+          &mut ahead,
+          View.tail(&table, u32.toUsize(View.uint(&table, aheadAt + 2, 2))),
+        )
+      }
+    }
+    run List<SetDigest>.append(&mut self.contextDigests, input)
+    run List<SetDigest>.append(&mut self.contextDigests, back)
+    run List<SetDigest>.append(&mut self.contextDigests, ahead)
   }
 
   /// Caches the lookups that contextual subtables apply, so nested lookups skip uncovered
@@ -641,6 +698,7 @@ impl<'a> OtPlan<'a> {
       lookupSeconds: List<SetDigest>.make(),
       pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
+      contextDigests: List<SetDigest>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       direction: Direction.LeftToRight,
