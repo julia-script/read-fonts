@@ -6,7 +6,7 @@ import silk.option { Option }
 import silk.result { Result }
 
 pub effect fn take<T>(result: Result<T, Error>) -> T
-  ! Error {
+  ! Error with Intrinsic.inlineAlways() {
   return match move result {
     Result<T, Error>.Success { value } => move value
     Result<T, Error>.Failure { error } => {
@@ -16,7 +16,7 @@ pub effect fn take<T>(result: Result<T, Error>) -> T
 }
 
 pub effect fn takeRead<T>(result: Result<T, ReadError>) -> T
-  ! Error {
+  ! Error with Intrinsic.inlineAlways() {
   return match move result {
     Result<T, ReadError>.Success { value } => move value
     Result<T, ReadError>.Failure { error } => {
@@ -26,7 +26,7 @@ pub effect fn takeRead<T>(result: Result<T, ReadError>) -> T
 }
 
 pub effect fn require<T>(option: Option<T>, error: Error) -> T
-  ! Error {
+  ! Error with Intrinsic.inlineAlways() {
   return match move option {
     Option<T>.Some { value } => move value
     _ => {

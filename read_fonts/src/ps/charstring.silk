@@ -7,7 +7,7 @@ import ps.cff.v1 { Cff }
 import ps.cff.blend { BlendState }
 import ps.cff.stack { Stack }
 import ps.encoding { PredefinedEncoding }
-import ps.num { parseInt }
+import ps.num { readInt }
 import ps.read { take, takeRead, require }
 import ps.transform { FontMatrix, Transform }
 import font_data { FontData, Cursor }
@@ -352,7 +352,7 @@ effect fn evalProgram<'a, 'c, 'd, C: CharstringContext<'a>, S: CommandSink>(
     state.opsDone = state.opsDone + 1
     let byte = run takeRead(Cursor<'d>.read<u8>(&mut cursor))
     if byte == 28 || (byte >= 32 && byte <= 254) {
-      run take(Stack.push<i32>(&mut state.stack, run take(parseInt(&mut cursor, byte))))
+      run take(Stack.push<i32>(&mut state.stack, run readInt(&mut cursor, byte)))
     } else if byte == 255 {
       let bits = run takeRead(Cursor<'d>.read<i32>(&mut cursor))
       if state.isType1 {

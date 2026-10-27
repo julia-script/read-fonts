@@ -2,7 +2,7 @@
 // PostScript DICT tokenization and operator/operand decoding.
 import ps.cff.stack { Number, Stack, FixedValues }
 import ps.cff.blend { BlendState }
-import ps.num { parseInt, BcdComponents }
+import ps.num { readInt, BcdComponents }
 import ps.string { Sid }
 import ps.hinting { Blues, StemSnaps }
 import ps.transform { ScaledFontMatrix }
@@ -187,7 +187,7 @@ effect fn parseToken<'a>(cursor: &mut Cursor<'a>) -> Token
   }
   if b0 == 28 || b0 == 29 || (b0 >= 32 && b0 <= 254) {
     return Token.Operand {
-      number: Number.I32 { value: run take(parseInt(&mut cursor, b0)) },
+      number: Number.I32 { value: run readInt(&mut cursor, b0) },
       bcd: Option<BcdComponents>.None,
     }
   }
@@ -321,7 +321,7 @@ impl<'a, 'c> Entries<'a, 'c> {
       let b0 = run takeRead(Cursor<'a>.read<u8>(&mut self.cursor))
       if b0 == 28 || b0 == 29 || (b0 >= 32 && b0 <= 254) {
         self.hasBcd = false
-        let value = run take(parseInt(&mut self.cursor, b0))
+        let value = run readInt(&mut self.cursor, b0)
         run take(Stack.push(&mut self.stack, value))
         continue
       }

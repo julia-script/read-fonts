@@ -22,12 +22,23 @@ pub fn rawByteLen<T: Scalar>() -> usize {
   return Scalar.rawByteLen()
 }
 
-pub fn readScalar<T: Scalar>(bytes: &[u8]) -> Option<T> {
+pub fn readScalar<T: Scalar>(bytes: &[u8]) -> Option<T> with Intrinsic.inlineAlways() {
   return Scalar.read(bytes)
 }
 
 pub fn writeScalar<T: Scalar>(value: T, bytes: &mut [u8]) -> bool {
   return Scalar.write(move value, move bytes)
+}
+
+// Big-endian reads of exactly 1, 2, 4 or 8 bytes; callers check the length first.
+fn be16(bytes: &[u8]) -> u16 with Intrinsic.inlineAlways() {
+  return u32.toU16(u32.shiftLeft(u8.toU32(bytes[0]), 8) | u8.toU32(bytes[1]))
+}
+
+fn be32(bytes: &[u8]) -> u32 with Intrinsic.inlineAlways() {
+  return u32.shiftLeft(u8.toU32(bytes[0]), 24) | u32.shiftLeft(u8.toU32(bytes[1]), 16)
+    | u32.shiftLeft(u8.toU32(bytes[2]), 8)
+    | u8.toU32(bytes[3])
 }
 
 fn unsigned(bytes: &[u8]) -> u64 {
@@ -55,11 +66,11 @@ impl Scalar for u8 {
     return 1
   }
 
-  fn read(bytes: &[u8]) -> Option<u8> {
+  fn read(bytes: &[u8]) -> Option<u8> with Intrinsic.inlineAlways() {
     if bytes.length != 1 {
       return Option<u8>.None
     }
-    return Option<u8>.some(u64.toU8(unsigned(bytes)))
+    return Option<u8>.some(bytes[0])
   }
 
   fn write(value: u8, bytes: &mut [u8]) -> bool {
@@ -76,11 +87,11 @@ impl Scalar for u16 {
     return 2
   }
 
-  fn read(bytes: &[u8]) -> Option<u16> {
+  fn read(bytes: &[u8]) -> Option<u16> with Intrinsic.inlineAlways() {
     if bytes.length != 2 {
       return Option<u16>.None
     }
-    return Option<u16>.some(u64.toU16(unsigned(bytes)))
+    return Option<u16>.some(be16(bytes))
   }
 
   fn write(value: u16, bytes: &mut [u8]) -> bool {
@@ -97,11 +108,11 @@ impl Scalar for u32 {
     return 4
   }
 
-  fn read(bytes: &[u8]) -> Option<u32> {
+  fn read(bytes: &[u8]) -> Option<u32> with Intrinsic.inlineAlways() {
     if bytes.length != 4 {
       return Option<u32>.None
     }
-    return Option<u32>.some(u64.toU32(unsigned(bytes)))
+    return Option<u32>.some(be32(bytes))
   }
 
   fn write(value: u32, bytes: &mut [u8]) -> bool {
@@ -118,7 +129,7 @@ impl Scalar for u64 {
     return 8
   }
 
-  fn read(bytes: &[u8]) -> Option<u64> {
+  fn read(bytes: &[u8]) -> Option<u64> with Intrinsic.inlineAlways() {
     if bytes.length != 8 {
       return Option<u64>.None
     }
@@ -139,11 +150,11 @@ impl Scalar for i8 {
     return 1
   }
 
-  fn read(bytes: &[u8]) -> Option<i8> {
+  fn read(bytes: &[u8]) -> Option<i8> with Intrinsic.inlineAlways() {
     if bytes.length != 1 {
       return Option<i8>.None
     }
-    return Option<i8>.some(cast.u8ToI8(u64.toU8(unsigned(bytes))))
+    return Option<i8>.some(cast.u8ToI8(bytes[0]))
   }
 
   fn write(value: i8, bytes: &mut [u8]) -> bool {
@@ -160,11 +171,11 @@ impl Scalar for i16 {
     return 2
   }
 
-  fn read(bytes: &[u8]) -> Option<i16> {
+  fn read(bytes: &[u8]) -> Option<i16> with Intrinsic.inlineAlways() {
     if bytes.length != 2 {
       return Option<i16>.None
     }
-    return Option<i16>.some(cast.u16ToI16(u64.toU16(unsigned(bytes))))
+    return Option<i16>.some(cast.u16ToI16(be16(bytes)))
   }
 
   fn write(value: i16, bytes: &mut [u8]) -> bool {
@@ -181,11 +192,11 @@ impl Scalar for i32 {
     return 4
   }
 
-  fn read(bytes: &[u8]) -> Option<i32> {
+  fn read(bytes: &[u8]) -> Option<i32> with Intrinsic.inlineAlways() {
     if bytes.length != 4 {
       return Option<i32>.None
     }
-    return Option<i32>.some(cast.u32ToI32(u64.toU32(unsigned(bytes))))
+    return Option<i32>.some(cast.u32ToI32(be32(bytes)))
   }
 
   fn write(value: i32, bytes: &mut [u8]) -> bool {
@@ -202,7 +213,7 @@ impl Scalar for i64 {
     return 8
   }
 
-  fn read(bytes: &[u8]) -> Option<i64> {
+  fn read(bytes: &[u8]) -> Option<i64> with Intrinsic.inlineAlways() {
     if bytes.length != 8 {
       return Option<i64>.None
     }
