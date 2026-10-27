@@ -1,12 +1,11 @@
 # hr_wasm
 
 harfrust shaping and read_fonts glyph outlines, built for `wasm32-unknown-unknown`, with a
-TypeScript wrapper (`js/`) and a browser demo (`demo/`).
+TypeScript wrapper (`js/`).
 
 ```sh
 SILK_CLANG=$(scripts/install-llvm) scripts/build-wasm   # writes hr_wasm/js/dist/harfrust.wasm
 cd hr_wasm/js && npm ci && npm test                     # compares against native hr_shape output
-cd hr_wasm/demo && npm ci && npm run dev                # Foldkit app at http://localhost:5173
 ```
 
 Linking needs `wasm-ld` on `PATH` (`apt-get install lld`); the clang from `scripts/install-llvm`

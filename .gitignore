@@ -4,5 +4,3 @@ __pycache__/
 *.pyc
 node_modules/
 hr_wasm/js/dist/
-hr_wasm/demo/dist/
-hr_wasm/demo/public/
