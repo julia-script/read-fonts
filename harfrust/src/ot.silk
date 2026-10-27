@@ -1048,7 +1048,7 @@ effect fn substitute<F: FontFuncs>(
       let mut matched: usize = 1
       let mut cursor = at
       while matched < components {
-        match move nextExpected(
+        let found = nextExpected(
           &context.*,
           &buffer.*,
           lookup,
@@ -1059,17 +1059,13 @@ effect fn substitute<F: FontFuncs>(
           matchKind,
           noClasses(&context.*),
           false,
-        ) {
-          Option<usize>.Some { value } => {
-            cursor = value
-          }
-          _ => {
-            break
-          }
+        )
+        if found == NOT_FOUND {
+          break
         }
+        cursor = found & (MISMATCH - 1)
         let item = List<Glyph>.get(&buffer.glyphs, cursor)
-        if item.info.glyphId != View.uint(&ligature, 2 + matched * width, width)
-          || enabled(&context.*, &item, first, last) == 0
+        if (found & MISMATCH) != 0 || enabled(&context.*, &item, first, last) == 0
           || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
           break
         }
@@ -1302,6 +1298,12 @@ fn matches(table: View, pos: usize, kind: u32, classes: Classes, glyph: u32) -> 
   return glyph == expected
 }
 
+/// `nextExpected` results: no glyph to compare, or this bit on the index of a glyph that does
+/// not match.
+const NOT_FOUND: usize = 18446744073709551615
+
+const MISMATCH: usize = 9223372036854775808
+
 fn nextExpected(
   context: &Context,
   buffer: &Buffer,
@@ -1313,39 +1315,40 @@ fn nextExpected(
   kind: u32,
   classes: Classes,
   contextual: bool,
-) -> Option<usize> {
+) -> usize {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let syllable = glyphs[start].syllable
   let mut i = start
   while true {
     if backward {
       if i == 0 {
-        return Option<usize>.None
+        return NOT_FOUND
       }
       i = i - 1
     } else {
       i = i + 1
       if i >= glyphs.length {
-        return Option<usize>.None
+        return NOT_FOUND
       }
     }
     let item = &glyphs[i]
     if context.restrictSyllable && item.syllable != syllable {
-      return Option<usize>.None
+      return NOT_FOUND
     }
     if ignored(context, lookup, item) {
       continue
     }
     if matches(table, pos, kind, classes, item.info.glyphId) {
-      return Option<usize>.some(i)
+      return i
     }
     if item.ignorable && !item.substituted && (!item.hidden || context.positioning)
       && (item.codepoint != 0x200c || context.positioning || (contextual && context.autoZwnj))
       && (item.codepoint != 0x200d || contextual || context.autoZwj) {
       continue
     }
-    return Option<usize>.some(i)
+    return i | MISMATCH
   }
+  return NOT_FOUND
 }
 
 /// Where a rule's lookahead and actions sit, and whether its action records fit in the rule.
@@ -1607,7 +1610,7 @@ fn matchOutside(
   let mut cursor = at
   let mut i: usize = 0
   while i < count {
-    match move nextExpected(
+    let found = nextExpected(
       context,
       buffer,
       lookup,
@@ -1618,23 +1621,11 @@ fn matchOutside(
       kind,
       classes,
       true,
-    ) {
-      Option<usize>.Some { value } => {
-        cursor = value
-      }
-      _ => {
-        return false
-      }
-    }
-    if !matches(
-      table,
-      pos + i * matchWidth(kind),
-      kind,
-      classes,
-      List<Glyph>.get(&buffer.glyphs, cursor).info.glyphId,
-    ) {
+    )
+    if found == NOT_FOUND || (found & MISMATCH) != 0 {
       return false
     }
+    cursor = found
     i = i + 1
   }
   return true
@@ -1655,7 +1646,7 @@ fn outsideEdge(
   let mut cursor = at
   let mut i: usize = 0
   while i < count && i < 64 {
-    match move nextExpected(
+    let found = nextExpected(
       context,
       buffer,
       lookup,
@@ -1666,14 +1657,11 @@ fn outsideEdge(
       kind,
       classes,
       true,
-    ) {
-      Option<usize>.Some { value } => {
-        cursor = value
-      }
-      _ => {
-        break
-      }
+    )
+    if found == NOT_FOUND {
+      break
     }
+    cursor = found & (MISMATCH - 1)
     i = i + 1
   }
   return cursor
@@ -1920,7 +1908,7 @@ effect fn contextual<F: FontFuncs>(
       if format == 3 {
         index = n
       }
-      match move nextExpected(
+      let found = nextExpected(
         &context.*,
         &buffer.*,
         lookup,
@@ -1931,17 +1919,13 @@ effect fn contextual<F: FontFuncs>(
         kind,
         classes,
         false,
-      ) {
-        Option<usize>.Some { value } => {
-          cursor = value
-        }
-        _ => {
-          break
-        }
+      )
+      if found == NOT_FOUND {
+        break
       }
+      cursor = found & (MISMATCH - 1)
       let item = List<Glyph>.get(&buffer.glyphs, cursor)
-      if !matches(rule, inputPos + index * width, kind, classes, item.info.glyphId)
-        || enabled(&context.*, &item, first, last) == 0
+      if (found & MISMATCH) != 0 || enabled(&context.*, &item, first, last) == 0
         || !compatibleComponents(&context.*, &buffer.*, lookup, at, &item) {
         break
       }
