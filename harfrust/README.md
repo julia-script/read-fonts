@@ -132,29 +132,30 @@ under `build/shaping-malformed-failures/` and uploaded by CI.
 
 ## Performance
 
-Measured 2026-10-27 on AMD EPYC 9V74, Linux x86_64, Silk
-`0.1.0-dev.20+10a8c67813a1`, Clang 22.1.8, Rust 1.99.1, release builds. Both twins reuse fonts,
-buffers and shape plans, process the same pinned text, and check identical
-glyph/cluster/position checksums. Times are median seconds for three iterations,
-three process samples; lower is better. CI uses Clang 18, so these local ratios
-are a baseline rather than a CI timing guarantee.
+`scripts/bench-shaping` mirrors harfrust's `benches/shaping.rs` workloads. Both
+twins reuse fonts, buffers and shape plans, process the same pinned text, and
+check identical glyph/cluster/position checksums. Wall times for the Rust twin
+are tens of milliseconds and too noisy to compare, so the ratios below are
+callgrind instruction counts for one iteration
+(`scripts/bench-shaping --callgrind --iterations 1 --samples 1`), Silk
+`0.1.0-dev.20+10a8c67813a1` with Clang 18 against Rust 1.99.1, both release
+builds. Lower is better.
 
-| Font / text | Silk | Rust | Silk / Rust |
+| Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 0.216924 | 0.024095 | 9.00× |
-| Roboto / English words | 0.331908 | 0.024680 | 13.45× |
-| Noto Nastaliq Urdu / Persian Little Prince | 2.282800 | 0.236676 | 9.65× |
-| Noto Nastaliq Urdu / Persian words | 2.771220 | 0.284115 | 9.75× |
-| Noto Sans Devanagari / Hindi words | 0.496323 | 0.085468 | 5.81× |
-| Amiri / Persian Little Prince | 0.810347 | 0.135937 | 5.96× |
-| Source Serif Variable / react-dom | 1.966560 | 0.267408 | 7.35× |
+| Roboto / English Little Prince | 629M | 65.3M | 9.63× |
+| Roboto / English words | 1,052M | 87.9M | 11.96× |
+| Noto Nastaliq Urdu / Persian Little Prince | 4,951M | 789M | 6.27× |
+| Noto Nastaliq Urdu / Persian words | 5,089M | 847M | 6.01× |
+| Noto Sans Devanagari / Hindi words | 1,578M | 225M | 7.01× |
+| Amiri / Persian Little Prince | 1,635M | 374M | 4.37× |
+| Source Serif Variable / react-dom | 7,442M | 1,004M | 7.41× |
 
-The geometric mean is **8.38×**. For Roboto/Little Prince, callgrind measured
-**927.65 million Silk instructions / 64.90 million Rust = 14.29×**. Before
-coverage digests and direct binary-search coverage/class access, the same cached
-workload used 3.876 billion Silk instructions (59.73× Rust): a 76% reduction.
-Performance remains below Rust; optimizing it further should preserve the
-current differential and regression gates.
+The geometric mean is **7.18×**, down from 11.25× for the initial port. Plans
+cache each lookup's subtables with per-subtable digests and expand class
+definitions into per-glyph tables; ligature sets reject candidates by their
+second component. The remaining gap is mostly per-glyph table walking that
+harfrust precomputes (coverage lookups, value records) and per-call setup.
 
 ## Known differences
 
