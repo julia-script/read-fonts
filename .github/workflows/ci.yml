@@ -104,7 +104,7 @@ jobs:
           if-no-files-found: ignore
 
   wasm:
-    name: WebAssembly shaping and demo
+    name: WebAssembly shaping
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -116,7 +116,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: hr_wasm/*/package-lock.json
+          cache-dependency-path: hr_wasm/js/package-lock.json
       - name: Install wasm-ld
         run: sudo apt-get update && sudo apt-get install -y lld
       - name: Build hr_wasm for wasm32
@@ -127,10 +127,3 @@ jobs:
           npm ci
           npm run typecheck
           npm test
-      - name: Demo typechecks, lints and builds
-        working-directory: hr_wasm/demo
-        run: |
-          npm ci
-          npm run typecheck
-          npm run lint
-          npm run build
