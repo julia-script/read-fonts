@@ -9,6 +9,9 @@ cd hr_wasm/js && npm ci && npm test                     # compares against nativ
 cd hr_wasm/demo && npm ci && npm run dev                # Foldkit app at http://localhost:5173
 ```
 
+Linking needs `wasm-ld` on `PATH` (`apt-get install lld`); the clang from `scripts/install-llvm`
+does not include it.
+
 ## JavaScript
 
 ```ts

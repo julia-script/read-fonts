@@ -117,6 +117,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: hr_wasm/*/package-lock.json
+      - name: Install wasm-ld
+        run: sudo apt-get update && sudo apt-get install -y lld
       - name: Build hr_wasm for wasm32
         run: scripts/build-wasm
       - name: JS wrapper matches native shaping
