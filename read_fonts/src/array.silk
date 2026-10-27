@@ -35,6 +35,11 @@ impl<'a, T> ScalarArray<'a, T> {
     return FontData.isEmpty(&self.data)
   }
 
+  /// Returns the raw big-endian bytes of all elements. For hot loops that decode in place.
+  pub fn bytes(self: &Self) -> &'a [u8] {
+    return FontData.asBytes(&self.data)
+  }
+
   pub fn get(self: &Self, index: usize) -> Option<T> {
     if index >= ScalarArray<T>.len(self) {
       return Option<T>.None
@@ -158,6 +163,12 @@ impl<'a, Args, T> ComputedArray<'a, Args, T> {
       self.start + index * self.itemLen,
       self.itemLen,
     )
+  }
+
+  /// Returns the raw bytes of all items, `len() * itemLength()` bytes.
+  pub fn itemsBytes(self: &Self) -> &'a [u8] {
+    // new/representableLen keep start + count * itemLen within the data.
+    return Slice.view<u8>(FontData.asBytes(&self.data), self.start, self.count * self.itemLen)
   }
 
   pub fn get(self: &Self, index: usize) -> Result<T, ReadError> {

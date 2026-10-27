@@ -2,6 +2,7 @@
 // Handwritten algorithms; concatenated into the generated type module.
 import font { FontRef }
 import tables.maxp { SelectedMaxp }
+import silk.slice { Slice }
 
 pub union MapVariant {
   UseDefault,
@@ -131,31 +132,28 @@ impl<'a> Cmap4<'a> {
   }
 
   fn findSegment(self: &Self, cp: u16) -> Option<Cmap4Segment> {
+    let starts = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.startCode(self))
+    let ends = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.endCode(self))
     let mut lo: usize = 0
     let mut hi = u16.toUsize(Cmap4<'a>.segCountX2(self)) / 2
-    let starts = Cmap4<'a>.startCode(self)
-    let ends = Cmap4<'a>.endCode(self)
+    if starts.length / 2 < hi {
+      hi = starts.length / 2
+    }
+    if ends.length / 2 < hi {
+      hi = ends.length / 2
+    }
     let mut first: u16 = 0
     let mut last: u16 = 65535
     while lo < hi {
-      let i = lo + (hi - lo) / 2
-      let start = match move ScalarArray<'a, u16>.get(&starts, i) {
-        Option<u16>.Some { value } => value
-        _ => {
-          return Option<Cmap4Segment>.None
-        }
-      }
-      let end = match move ScalarArray<'a, u16>.get(&ends, i) {
-        Option<u16>.Some { value } => value
-        _ => {
-          return Option<Cmap4Segment>.None
-        }
-      }
+      // i < hi <= the array lengths, so the probes are in bounds and the arithmetic cannot wrap.
+      let i = usize.wrappingAdd(lo, (hi - lo) / 2)
+      let start = readU16(starts, usize.wrappingMultiply(i, 2))
+      let end = readU16(ends, usize.wrappingMultiply(i, 2))
       if cp < start {
         hi = i
         last = u32.toU16(min32(u16.toU32(last), u16.toU32(u16.saturatingSubtract(start, 1))))
       } else if cp > end {
-        lo = i + 1
+        lo = usize.wrappingAdd(i, 1)
         first = u32.toU16(max32(u16.toU32(first), u16.toU32(u16.saturatingAdd(end, 1))))
       } else {
         return Option<Cmap4Segment>.some(
@@ -476,6 +474,11 @@ fn groupIsConstant<T: AnyMapGroup>() -> bool {
   return AnyMapGroup.isConstant()
 }
 
+// Reads a big-endian u16 at `at`.
+fn readU16(bytes: &[u8], at: usize) -> u16 with Intrinsic.inlineAlways() {
+  return u32.toU16(u32.shiftLeft(u8.toU32(bytes[at]), 8) | u8.toU32(bytes[at + 1]))
+}
+
 // Reads a big-endian u32 at a constant offset of a fixed-size record.
 fn readU32(bytes: &[u8], at: usize) -> u32 with Intrinsic.inlineAlways() {
   return u32.shiftLeft(u8.toU32(bytes[at]), 24) | u32.shiftLeft(u8.toU32(bytes[at + 1]), 16)
@@ -489,23 +492,25 @@ fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
   groups: ComputedArray<'a, (), T>,
   cp: u32,
 ) -> Option<Cmap12Group> with Intrinsic.inlineAlways() {
+  let records = ComputedArray<'a, (), T>.itemsBytes(&groups)
   let mut lo: usize = 0
   let mut hi = ComputedArray<'a, (), T>.len(&groups)
+  if records.length < usize.wrappingMultiply(hi, 12) {
+    return Option<Cmap12Group>.None
+  }
   let mut first: u32 = 0
   let mut last: u32 = 4294967295
   while lo < hi {
-    let i = lo + (hi - lo) / 2
-    let group = ComputedArray<'a, (), T>.itemBytes(&groups, i)
-    if group.length < 12 {
-      return Option<Cmap12Group>.None
-    }
+    // i < hi and hi * 12 <= records.length, so the arithmetic cannot wrap.
+    let i = usize.wrappingAdd(lo, (hi - lo) / 2)
+    let group = Slice.view<u8>(records, usize.wrappingMultiply(i, 12), 12)
     let start = readU32(group, 0)
     let end = readU32(group, 4)
     if cp < start {
       hi = i
       last = min32(last, u32.saturatingSubtract(start, 1))
     } else if cp > end {
-      lo = i + 1
+      lo = usize.wrappingAdd(i, 1)
       first = max32(first, u32.saturatingAdd(end, 1))
     } else {
       return Option<Cmap12Group>.some(
@@ -736,7 +741,7 @@ impl<'a> CmapSubtable<'a> {
     }
   }
 
-  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> {
+  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     return match &self.* {
       CmapSubtable<'a>.Format0 { value } => Cmap0<'a>.mapCodepoint(&value, cp)
       CmapSubtable<'a>.Format4 { value } => Cmap4<'a>.mapCodepoint(&value, cp)
