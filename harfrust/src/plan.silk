@@ -188,6 +188,9 @@ pub struct OtPlan<'a> {
   /// The first backtrack value of each rule, alongside `ruleSeconds`, or `RULE_STOP` for a rule
   /// that is not chained, has no backtrack, or is malformed.
   pub ruleBacks: List<u32>,
+  /// The first lookahead value of each chained rule with a single input, alongside
+  /// `ruleSeconds`, or `RULE_STOP` for any other rule.
+  pub ruleAheads: List<u32>,
   /// For each lookup index, its first subtable in `subtables` in the high 32 bits and its
   /// subtable count in the low ones, or `u64.MAX` when the plan has not cached it. Nested
   /// lookups use these.
@@ -489,6 +492,14 @@ impl<'a> OtPlan<'a> {
         back = usize.toU32(read16(bytes, start + 2))
       }
       run List<u32>.append(&mut self.ruleBacks, back)
+
+      // A single input stores no input values, so the lookahead count follows the input count.
+      let mut ahead = RULE_STOP
+      if chained && start != 0 && inputCount == 1 && countPos + 6 <= bytes.length
+        && read16(bytes, countPos + 2) != 0 {
+        ahead = usize.toU32(read16(bytes, countPos + 4))
+      }
+      run List<u32>.append(&mut self.ruleAheads, ahead)
       index = index + 1
     }
   }
@@ -624,6 +635,7 @@ impl<'a> OtPlan<'a> {
       ruleSecondStarts: List<u32>.make(),
       ruleSeconds: List<u32>.make(),
       ruleBacks: List<u32>.make(),
+      ruleAheads: List<u32>.make(),
       lookupSubtables: List<u64>.make(),
       lookupOffsets: List<usize>.make(),
       lookupSeconds: List<SetDigest>.make(),
