@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 112M | 65.3M | 1.71× |
-| Roboto / English words | 153M | 87.9M | 1.74× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,377M | 789M | 1.75× |
-| Noto Nastaliq Urdu / Persian words | 1,214M | 847M | 1.43× |
-| Noto Sans Devanagari / Hindi words | 373M | 225M | 1.66× |
-| Amiri / Persian Little Prince | 700M | 374M | 1.87× |
-| Source Serif Variable / react-dom | 1,428M | 1,004M | 1.42× |
+| Roboto / English Little Prince | 110M | 65.3M | 1.69× |
+| Roboto / English words | 151M | 87.9M | 1.71× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,371M | 789M | 1.74× |
+| Noto Nastaliq Urdu / Persian words | 1,200M | 847M | 1.42× |
+| Noto Sans Devanagari / Hindi words | 361M | 225M | 1.60× |
+| Amiri / Persian Little Prince | 695M | 374M | 1.86× |
+| Source Serif Variable / react-dom | 1,411M | 1,004M | 1.40× |
 
-The geometric mean is **1.65×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.62×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -185,7 +185,7 @@ shaping call borrows them instead of copying them; lookups that contextual
 rules apply are cached in the plan too, once per lookup, so nested lookups skip
 uncovered subtables the same way; a ligature set whose first glyph ends the
 buffer skips its longer ligatures without trying to match them, and fonts map
-U+0000 to U+00FF to glyphs once instead of on every call; Indic consonant
+U+0000 to U+2FFF to glyphs once, straight from sorted cmap ranges, instead of on every call; Indic consonant
 position probes check a digest of each probed feature's lookups before setting
 up a lookup, and vowel constraints are checked only against the script's own
 pairs; per-call scratch lists are sized once instead of grown glyph by glyph; text is decoded and added to the buffer in one pass, and
