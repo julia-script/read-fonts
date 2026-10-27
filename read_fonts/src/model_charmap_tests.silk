@@ -9,7 +9,8 @@ import model.charmap {
   UnicodeVariants,
   UnicodeVariant,
   Encodings,
-  Codes
+  Codes,
+  EncodingMapper
 }
 import generated_model_fixtures {
   tinos,
@@ -457,12 +458,17 @@ test effect fn selectableMappingsAreFixedSizeAndKeepRecordIdentity() -> ()
       "selected subtable mapping",
     )
     let mut codes = Charmap.codes(&charmap, encoding)
+    let mapper = Charmap.encodingMapper(&charmap, encoding)
     let mut count: usize = 0
     while count < 3 {
       if let Option<CmapMapping>.Some { value } = Codes.next(&mut codes) {
         run Testing.expect(
           gid(Charmap.mapCode(&charmap, encoding, value.codepoint)) == GlyphId.toU32(value.glyph),
           "selected codes",
+        )
+        run Testing.expect(
+          gid(EncodingMapper.map(&mapper, value.codepoint)) == GlyphId.toU32(value.glyph),
+          "encoding mapper codes",
         )
       }
       count = count + 1

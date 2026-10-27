@@ -474,22 +474,26 @@ impl<'a> Charmap<'a> {
     return Encodings<'a> { map: self.*, index: 0, phase: 0 }
   }
 
+  /// Maps one code. To map many codes in the same encoding, use [`Charmap.encodingMapper`], which
+  /// looks the subtable up once.
   pub fn mapCode(self: &Self, encoding: Encoding, code: u32) -> Option<GlyphId> {
+    return EncodingMapper.map(&Charmap.encodingMapper(self, encoding), code)
+  }
+
+  /// Returns a mapper for `encoding` that gives the same results as [`Charmap.mapCode`].
+  pub fn encodingMapper(self: &Self, encoding: Encoding) -> EncodingMapper<'a> {
     if let MaybeCff<'a>.Some { table } = self.native {
-      if &encoding != &Encoding.standaloneCffNative(CffEncoding.predefined(&table)) || code > 255 {
-        return Option<GlyphId>.None
+      return EncodingMapper<'a> {
+        table: MaybeEncodingTable<'a>.None,
+        native: self.native,
+        nativeMatches: &encoding == &Encoding.standaloneCffNative(CffEncoding.predefined(&table)),
       }
-      return nonzero(CffEncoding.map(&table, u32.toU8(code)))
     }
+    let mut table = MaybeEncodingTable<'a>.None
     if let Option<EncodingTable<'a>>.Some { value } = Charmap.table(self, encoding) {
-      if let Option<GlyphId>.Some { value: glyph } = nonzero(
-        MaybeSubtable.map(&value.delta, code),
-      ) {
-        return Option<GlyphId>.some(glyph)
-      }
-      return nonzero(CmapSubtable.mapCodepoint(&value.subtable, code))
+      table = MaybeEncodingTable<'a>.Some { table: value }
     }
-    return Option<GlyphId>.None
+    return EncodingMapper<'a> { table: table, native: MaybeCff<'a>.None, nativeMatches: false }
   }
 
   pub fn codes(self: &Self, encoding: Encoding) -> Codes<'a> {
@@ -709,6 +713,43 @@ impl<'a> UnicodeVariants<'a> {
     }
   }
 }
+
+/// Maps codes in one encoding, with its subtables looked up once. Made by
+/// [`Charmap.encodingMapper`].
+pub struct EncodingMapper<'a> {
+  table: MaybeEncodingTable<'a>,
+  native: MaybeCff<'a>,
+  nativeMatches: bool,
+}
+
+impl<'a> Copy for EncodingMapper<'a> {}
+
+impl<'a> EncodingMapper<'a> {
+  pub fn map(self: &Self, code: u32) -> Option<GlyphId> {
+    if let MaybeCff<'a>.Some { table } = self.native {
+      if !self.nativeMatches || code > 255 {
+        return Option<GlyphId>.None
+      }
+      return nonzero(CffEncoding.map(&table, u32.toU8(code)))
+    }
+    if let MaybeEncodingTable<'a>.Some { table } = self.table {
+      if let Option<GlyphId>.Some { value: glyph } = nonzero(
+        MaybeSubtable.map(&table.delta, code),
+      ) {
+        return Option<GlyphId>.some(glyph)
+      }
+      return nonzero(CmapSubtable.mapCodepoint(&table.subtable, code))
+    }
+    return Option<GlyphId>.None
+  }
+}
+
+union MaybeEncodingTable<'a> {
+  None,
+  Some { table: EncodingTable<'a> },
+}
+
+impl<'a> Copy for MaybeEncodingTable<'a> {}
 
 struct EncodingTable<'a> {
   encoding: Encoding,
