@@ -5,7 +5,7 @@ import view { View, offset }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
-import plan { OtPlan, LookupStep, LookupSubtable, featureValue }
+import plan { OtPlan, LookupStep, LookupSubtable, ClassTable, featureValue }
 import feature { Feature }
 import arabic
 import complex
@@ -47,6 +47,75 @@ struct Context<'a, 's> {
   restrictSyllable: bool,
   // Ligature component positions, reused so each candidate ligature skips a 512-byte memset.
   positions: [usize; 64],
+  classTables: &'s [ClassTable],
+  classValues: &'s [u16],
+  glyphClasses: Classes<'a, 's>,
+  markAttachClasses: Classes<'a, 's>,
+}
+
+/// A class definition, expanded to one class per glyph when the plan holds it.
+struct Classes<'a, 's> {
+  view: View<'a>,
+  first: u32,
+  values: &'s [u16],
+}
+
+impl<'a, 's> Copy for Classes<'a, 's> {}
+
+fn noClasses<'a, 's>(context: &Context<'a, 's>) -> Classes<'a, 's> {
+  return Classes { view: View.empty(), first: 0, values: Slice.view(context.classValues, 0, 0) }
+}
+
+/// Finds the plan's expansion of the class definition `view`, which must lie in the layout table.
+fn classesFor<'a, 's>(context: &Context<'a, 's>, view: View<'a>) -> Classes<'a, 's> {
+  let offset = View.len(&context.table) - View.len(&view)
+  let tables = context.classTables
+  let mut lo: usize = 0
+  let mut hi = tables.length
+  while lo < hi {
+    let mid = lo + (hi - lo) / 2
+    if tables[mid].offset < offset {
+      lo = mid + 1
+    } else {
+      hi = mid
+    }
+  }
+  if lo < tables.length && tables[lo].offset == offset {
+    let table = tables[lo]
+    return Classes {
+      view: view,
+      first: table.first,
+      values: Slice.view(context.classValues, table.start, table.count),
+    }
+  }
+  return Classes { view: view, first: 0, values: Slice.view(context.classValues, 0, 0) }
+}
+
+fn gdefClasses<'a, 's>(
+  plan: &'s OtPlan<'a>,
+  gdef: View<'a>,
+  list: usize,
+  table: ClassTable,
+) -> Classes<'a, 's,> {
+  return Classes {
+    view: View.gdefList(&gdef, list),
+    first: table.first,
+    values: Slice.view(List<u16>.asSlice(&plan.classValues), table.start, table.count),
+  }
+}
+
+fn classOf(classes: &Classes, glyph: u32) -> u32 with Intrinsic.inlineAlways() {
+  if classes.values.length == 0 {
+    return View.class(&classes.view, glyph)
+  }
+  if glyph < classes.first {
+    return 0
+  }
+  let index = u32.toUsize(glyph - classes.first)
+  if index >= classes.values.length {
+    return 0
+  }
+  return u16.toU32(classes.values[index])
 }
 
 struct Lookup<'a> {
@@ -112,6 +181,10 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     shaper: buffer.shaper,
     restrictSyllable: false,
     positions: [0; 64],
+    classTables: List<ClassTable>.asSlice(&plan.classTables),
+    classValues: List<u16>.asSlice(&plan.classValues),
+    glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
+    markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
   }
   let mut step: usize = 0
   let mut stage: u32 = 0
@@ -125,9 +198,15 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   if steps.length > 0 && steps[steps.length - 1].stage + 1 > stageLimit {
     stageLimit = steps[steps.length - 1].stage + 1
   }
+
+  // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
+  // glyph walk. Positioning never changes glyphs, so only substitution refreshes it.
+  let mut glyphDigest = SetDigest.new()
+  let mut digestStale = true
   while stage < stageLimit && context.budget != 0 && buffer.successful {
     if !plan.positioning {
       run complex.pause(font, &mut buffer, plan, stage, features)
+      digestStale = true
     }
     context.restrictSyllable = !plan.positioning && buffer.shaper != 0
     while step < steps.length && steps[step].stage == stage && context.budget != 0
@@ -178,12 +257,20 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         steps[step].firstSubtable,
         steps[step].subtableCount,
       )
-      if lookup.kind == 8 && !context.positioning {
+      if digestStale {
+        glyphDigest = bufferDigest(&buffer.*)
+        digestStale = false
+      }
+      if !SetDigest.mayIntersect(&steps[step].digest, &glyphDigest) {
+        // Nothing in the buffer is covered.
+      } else if lookup.kind == 8 && !context.positioning {
+        digestStale = true
         let mut i = Buffer.len(&buffer.*)
         while i > 0 && context.budget != 0 && buffer.successful {
           i = i - 1
-          if SetDigest.mayHave(&steps[step].digest, List<Glyph>.get(&buffer.glyphs, i).info.glyphId)
-            && enabled(&context, &List<Glyph>.get(&buffer.glyphs, i), step, end) > 0 {
+          let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+          if SetDigest.mayHave(&steps[step].digest, glyph.info.glyphId)
+            && enabled(&context, glyph, step, end) > 0 {
             drop run applyLookup(
               font,
               &mut context,
@@ -201,8 +288,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         let mut i: usize = 0
         while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
           let mut result = no()
-          if SetDigest.mayHave(&steps[step].digest, List<Glyph>.get(&buffer.glyphs, i).info.glyphId)
-            && enabled(&context, &List<Glyph>.get(&buffer.glyphs, i), step, end) > 0 {
+          let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+          if SetDigest.mayHave(&steps[step].digest, glyph.info.glyphId)
+            && enabled(&context, glyph, step, end) > 0 {
             result = run applyLookup(
               font,
               &mut context,
@@ -216,6 +304,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
             )
           }
           if result.yes {
+            if !context.positioning {
+              digestStale = true
+            }
             i = result.next
           } else {
             i = i + 1
@@ -223,6 +314,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         }
       }
       if !buffer.successful && context.haveSavedInput {
+        digestStale = true
         buffer.glyphs = move context.savedInput
         context.savedInput = List<Glyph>.make()
         context.haveSavedInput = false
@@ -243,6 +335,17 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     buffer.successful = false
   }
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
+}
+
+fn bufferDigest(buffer: &Buffer) -> SetDigest {
+  let mut digest = SetDigest.new()
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let mut i: usize = 0
+  while i < glyphs.length {
+    SetDigest.add(&mut digest, glyphs[i].info.glyphId)
+    i = i + 1
+  }
+  return digest
 }
 
 fn getLookup<'a, 's>(context: &Context<'a, 's>, index: u16) -> Lookup<'a> {
@@ -292,6 +395,10 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     shaper: 0,
     restrictSyllable: false,
     positions: [0; 64],
+    classTables: List<ClassTable>.asSlice(&plan.classTables),
+    classValues: List<u16>.asSlice(&plan.classValues),
+    glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
+    markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
   }
   let mut i: usize = 0
   while i < steps.length {
@@ -398,7 +505,7 @@ fn ignored(context: &Context, lookup: Lookup, glyph: &Glyph) -> bool {
       return !hasCoverage(coverage, glyph.info.glyphId)
     }
     if (lookup.flags & 0xff00) != 0 {
-      return View.class(&View.gdefList(&context.gdef, 3), glyph.info.glyphId)
+      return classOf(&context.markAttachClasses, glyph.info.glyphId)
         != u16.toU32(lookup.flags / 256)
     }
   }
@@ -544,9 +651,8 @@ fn setGlyph(
   if multiplied {
     item.multiplied = true
   }
-  let classes = View.gdefList(&context.gdef, 0)
-  if View.len(&classes) > 0 {
-    item.glyphClass = View.class(&classes, glyphId)
+  if View.len(&context.glyphClasses.view) > 0 {
+    item.glyphClass = classOf(&context.glyphClasses, glyphId)
   }
 
   List<Glyph>.set(&mut buffer.glyphs, at, item)
@@ -776,7 +882,7 @@ effect fn substitute<F: FontFuncs>(
           ligature,
           2 + matched * width,
           matchKind,
-          View.empty(),
+          noClasses(&context.*),
           false,
         ) {
           Option<usize>.Some { value } => {
@@ -905,7 +1011,7 @@ effect fn substitute<F: FontFuncs>(
       at,
       true,
       matchKind,
-      View.empty(),
+      noClasses(&context.*),
     )
       || !matchOutside(
       &context.*,
@@ -917,7 +1023,7 @@ effect fn substitute<F: FontFuncs>(
       at,
       false,
       matchKind,
-      View.empty(),
+      noClasses(&context.*),
     ) {
       return no()
     }
@@ -1010,13 +1116,13 @@ fn matchWidth(kind: u32) -> usize {
   return 2
 }
 
-fn matches(table: View, pos: usize, kind: u32, classes: View, glyph: u32) -> bool {
+fn matches(table: View, pos: usize, kind: u32, classes: Classes, glyph: u32) -> bool {
   let expected = View.uint(&table, pos, matchWidth(kind))
   if (kind & 3) == 2 {
     return hasCoverage(View.tail(&table, u32.toUsize(expected)), glyph)
   }
   if (kind & 3) == 1 {
-    return View.class(&classes, glyph) == expected
+    return classOf(&classes, glyph) == expected
   }
   return glyph == expected
 }
@@ -1030,7 +1136,7 @@ fn nextExpected(
   table: View,
   pos: usize,
   kind: u32,
-  classes: View,
+  classes: Classes,
   contextual: bool,
 ) -> Option<usize> {
   let mut i = start
@@ -1076,7 +1182,7 @@ fn matchOutside(
   at: usize,
   backward: bool,
   kind: u32,
-  classes: View,
+  classes: Classes,
 ) -> bool {
   if count > 64 || offset(pos, count, matchWidth(kind)) > View.len(&table) {
     return false
@@ -1127,7 +1233,7 @@ fn outsideEdge(
   at: usize,
   backward: bool,
   kind: u32,
-  classes: View,
+  classes: Classes,
 ) -> usize {
   let mut cursor = at
   let mut i: usize = 0
@@ -1189,9 +1295,9 @@ effect fn contextual<F: FontFuncs>(
   }
   let glyph = List<Glyph>.get(&buffer.glyphs, at).info.glyphId
   let mut ruleSet = View.tail(&table, View.len(&table))
-  let mut classes = View.tail(&table, View.len(&table))
-  let mut backClasses = View.tail(&table, View.len(&table))
-  let mut aheadClasses = View.tail(&table, View.len(&table))
+  let mut classes = noClasses(&context.*)
+  let mut backClasses = noClasses(&context.*)
+  let mut aheadClasses = noClasses(&context.*)
   let mut kind: u32 = 0
   if format == 1 || format == 2 {
     let coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyph) {
@@ -1204,16 +1310,19 @@ effect fn contextual<F: FontFuncs>(
     let mut countPos = header
     if format == 2 {
       kind = 1
-      classes = View.offset(&table, header, coverageWidth)
+      classes = classesFor(&context.*, View.offset(&table, header, coverageWidth))
       countPos = header + coverageWidth
       if chained {
         backClasses = classes
-        classes = View.offset(&table, header + coverageWidth, coverageWidth)
-        aheadClasses = View.offset(&table, header + coverageWidth * 2, coverageWidth)
+        classes = classesFor(&context.*, View.offset(&table, header + coverageWidth, coverageWidth))
+        aheadClasses = classesFor(
+          &context.*,
+          View.offset(&table, header + coverageWidth * 2, coverageWidth),
+        )
         countPos = header + coverageWidth * 3
         countWidth = 2
       }
-      index = u32.toUsize(View.class(&classes, glyph))
+      index = u32.toUsize(classOf(&classes, glyph))
     }
     if index >= u32.toUsize(View.uint(&table, countPos, countWidth)) {
       return no()
@@ -1236,6 +1345,9 @@ effect fn contextual<F: FontFuncs>(
   if format != 3 {
     count = u16.toUsize(View.u16(&ruleSet, 0))
   }
+
+  // Matched input positions; each rule overwrites the entries it uses.
+  let mut positions: [usize; 64] = [0; 64]
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
     context.budget = context.budget - 1
@@ -1284,7 +1396,6 @@ effect fn contextual<F: FontFuncs>(
       ruleIndex = ruleIndex + 1
       continue
     }
-    let mut positions: [usize; 64] = [0; 64]
     positions[0] = at
     let mut n: usize = 1
     let mut cursor = at
@@ -1661,10 +1772,16 @@ effect fn position<F: FontFuncs>(
       pos = pos + width
     } else if format == 2 {
       let c1 = u32.toUsize(
-        View.class(&View.offset(&table, header + 4, coverageWidth), item.info.glyphId),
+        classOf(
+          &classesFor(context, View.offset(&table, header + 4, coverageWidth)),
+          item.info.glyphId,
+        ),
       )
       let c2 = u32.toUsize(
-        View.class(&View.offset(&table, header + 4 + coverageWidth, coverageWidth), right),
+        classOf(
+          &classesFor(context, View.offset(&table, header + 4 + coverageWidth, coverageWidth)),
+          right,
+        ),
       )
       let count2 = u16.toUsize(View.u16(&table, header + 6 + coverageWidth * 2))
       if c1 >= u16.toUsize(View.u16(&table, header + 4 + coverageWidth * 2)) || c2 >= count2 {
