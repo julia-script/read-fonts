@@ -93,13 +93,26 @@ impl Stack {
     return Result<(), Error>.succeed(())
   }
 
-  pub fn push<T: IntoNumber>(self: &mut Self, number: T) -> Result<(), Error> {
-    if self.top == 513 {
+  pub fn push<T: IntoNumber>(self: &mut Self, number: T) -> Result<
+    (),
+    Error
+  > with Intrinsic.inlineAlways() {
+    let index = self.top
+    if index >= 513 {
       return Result<(), Error>.failResult(Error.LimitExceeded)
     }
-    let index = self.top
-    self.top = self.top + 1
-    return Stack.set<Number>(&mut self, index, intoNumber(move number))
+    match intoNumber(move number) {
+      Number.I32 { value } => {
+        self.values[index] = value
+        self.valueIsFixed[index] = false
+      }
+      Number.Fixed { value } => {
+        self.values[index] = Fixed.toBits(value)
+        self.valueIsFixed[index] = true
+      }
+    }
+    self.top = index + 1
+    return Result<(), Error>.succeed(())
   }
 
   pub fn set<T: IntoNumber>(self: &mut Self, index: usize, number: T) -> Result<(), Error> {
