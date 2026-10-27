@@ -1,5 +1,6 @@
 //! Prepared borrowed font tables with owned variation coordinates per shaper.
 import read_fonts.model.metrics.glyph { GlyphMetrics }
+import silk.slice { Slice }
 import read_fonts.model.metrics {
   ScaledGlyphMetrics,
   NoExtents,
@@ -33,6 +34,9 @@ pub struct ShaperData<'a> {
   pub gdef: View<'a>,
   pub upem: u16,
   pub symbolPage: u16,
+  /// Backs the empty coordinate slice of default-instance metrics. An empty array literal
+  /// cannot be borrowed for 'static (compiler-bugs/011).
+  noCoords: [F2Dot14; 1],
 }
 
 impl<'a> ShaperData<'a> {
@@ -57,6 +61,7 @@ impl<'a> ShaperData<'a> {
       gpos: table(font, 0x47504f53),
       gdef: table(font, 0x47444546),
       upem: upem,
+      noCoords: [F2Dot14.zero()],
     }
   }
 
@@ -112,6 +117,9 @@ pub struct ConfiguredShaper<'a, 's, F> {
   pub scale: Scale,
   pub pointSize: f32,
   pub funcs: F,
+  /// Metrics at the default instance. Building them looks up a dozen tables, which costs more
+  /// than shaping a short line, so shaping without variations reuses these.
+  defaultGlyphMetrics: GlyphMetrics<'a, 's>,
 }
 
 impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
@@ -126,6 +134,7 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
       scale: Scale.identity(),
       pointSize: 0.0,
       funcs: move funcs,
+      defaultGlyphMetrics: GlyphMetrics.new(&data.font, Slice.view(&data.noCoords, 0, 0)),
     }
   }
 
@@ -495,6 +504,12 @@ fn flipExtents(value: Option<GlyphExtents<i32>>) -> Option<GlyphExtents<i32>> {
 fn defaultMetrics<'a, 's, 'c, F: FontFuncs>(
   font: &'c ConfiguredShaper<'a, 's, F>,
 ) -> ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents> {
+  if List<F2Dot14>.length(&font.coords) == 0 {
+    return ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.new(
+      font.defaultGlyphMetrics,
+      font.scale,
+    )
+  }
   return ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.new(
     GlyphMetrics.new(&font.data.font, List<F2Dot14>.asSlice(&font.coords)),
     font.scale,
@@ -582,6 +597,7 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
       scale: self.scale,
       pointSize: self.pointSize,
       funcs: move funcs,
+      defaultGlyphMetrics: self.defaultGlyphMetrics,
     }
   }
 

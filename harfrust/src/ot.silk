@@ -256,7 +256,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         || tag == 0x6d736574) {
         context.autoZwj = false
       }
-      let lookup = getLookup(&context, steps[step].index)
+      let lookup = lookupAt(&context, steps[step].lookupOffset)
       let subtables = Slice.view(
         List<LookupSubtable>.asSlice(&plan.subtables),
         steps[step].firstSubtable,
@@ -353,6 +353,17 @@ fn bufferDigest(buffer: &Buffer) -> SetDigest {
   return digest
 }
 
+/// The lookup at a plan step's cached offset.
+fn lookupAt<'a, 's>(context: &Context<'a, 's>, offset: usize) -> Lookup<'a> {
+  let table = View.tail(&context.table, offset)
+  return Lookup {
+    table: table,
+    kind: View.u16(&table, 0),
+    flags: View.u16(&table, 2),
+    markSet: View.u16(&table, 6 + u16.toUsize(View.u16(&table, 4)) * 2),
+  }
+}
+
 fn getLookup<'a, 's>(context: &Context<'a, 's>, index: u16) -> Lookup<'a> {
   let list = View.layoutList(&context.table, 2)
   let mut width: usize = 2
@@ -408,7 +419,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
   let mut i: usize = 0
   while i < steps.length {
     if steps[i].tag == tag {
-      let lookup = getLookup(&context, steps[i].index)
+      let lookup = lookupAt(&context, steps[i].lookupOffset)
       if glyphs.length > 1 && lookup.kind <= 3 {
         i = i + 1
         continue
