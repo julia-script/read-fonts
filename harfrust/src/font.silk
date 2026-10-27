@@ -761,17 +761,21 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
   pub fn defaultNominalGlyphs(self: &Self, glyphs: &mut NominalGlyphs) -> usize {
     // Code points in the data's table need no cache; the first one outside it switches to
     // the cached loop.
+    let table = &self.data.bmpGlyphs
+    let start = glyphs.start
+    let count = glyphs.end - start
+    let slots = Slice.viewMut(&mut glyphs.glyphs, start, count)
     let mut i: usize = 0
-    while i < NominalGlyphs.len(&glyphs.*) {
-      let cp = NominalGlyphs.codepoint(&glyphs.*, i)
-      if cp >= 12288 || self.data.bmpGlyphs[u32.toUsize(cp)] == 0xffff {
+    while i < slots.length {
+      let cp = slots[i].codepoint
+      if cp >= 12288 || table[u32.toUsize(cp)] == 0xffff {
         return ConfiguredShaper.cachedNominalGlyphs(self, move glyphs, i)
       }
-      let glyph = u16.toU32(self.data.bmpGlyphs[u32.toUsize(cp)])
+      let glyph = u16.toU32(table[u32.toUsize(cp)])
       if glyph == 0 {
         break
       }
-      NominalGlyphs.set(&mut glyphs, i, glyph)
+      slots[i].info.glyphId = glyph
       i = i + 1
     }
     return i
