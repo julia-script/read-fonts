@@ -619,6 +619,7 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
       ConfiguredShaper.glyphHAdvances(self.font, &mut advances)
       return
     }
+
     // The scaled metrics are found once for the whole run.
     let scaled = Metrics.scaled(self)
     let mut i: usize = 0
