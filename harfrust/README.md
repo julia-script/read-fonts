@@ -143,19 +143,21 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 577M | 65.3M | 8.83× |
-| Roboto / English words | 702M | 87.9M | 7.98× |
-| Noto Nastaliq Urdu / Persian Little Prince | 4,940M | 789M | 6.26× |
-| Noto Nastaliq Urdu / Persian words | 4,790M | 847M | 5.66× |
-| Noto Sans Devanagari / Hindi words | 947M | 225M | 4.21× |
-| Amiri / Persian Little Prince | 1,621M | 374M | 4.34× |
-| Source Serif Variable / react-dom | 6,510M | 1,004M | 6.48× |
+| Roboto / English Little Prince | 523M | 65.3M | 8.01× |
+| Roboto / English words | 665M | 87.9M | 7.56× |
+| Noto Nastaliq Urdu / Persian Little Prince | 4,894M | 789M | 6.20× |
+| Noto Nastaliq Urdu / Persian words | 4,850M | 847M | 5.73× |
+| Noto Sans Devanagari / Hindi words | 968M | 225M | 4.30× |
+| Amiri / Persian Little Prince | 1,444M | 374M | 3.86× |
+| Source Serif Variable / react-dom | 5,425M | 1,004M | 5.40× |
 
-The geometric mean is **6.05×**, down from 11.25× for the initial port. Plans
+The geometric mean is **5.69×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
-second component; shapers reuse default-instance metrics across calls. The remaining gap is mostly per-glyph table walking that
-harfrust precomputes (coverage lookups, value records) and per-call setup.
+second component; shapers reuse default-instance metrics across calls; 16-bit
+coverage tables are searched directly and value records are applied field by
+field. The remaining gap is mostly per-glyph table walking that harfrust
+precomputes and per-call setup.
 
 ## Known differences
 

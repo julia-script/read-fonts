@@ -148,7 +148,55 @@ impl<'a> View<'a> {
   }
 
   pub fn coverage(self: &Self, glyph: u32) -> Option<u32> {
-    let format = View.u16(self, 0)
+    let bytes = FontData.asBytes(&self.data)
+    if bytes.length < 4 {
+      return Option<u32>.None
+    }
+    let format = be16(bytes, 0)
+
+    // 16-bit formats, which nearly every font uses, search the bytes directly. Counts are
+    // at most 65535, so the index arithmetic below cannot overflow.
+    if format == 1 {
+      let count = u16.toUsize(be16(bytes, 2))
+      if count > (bytes.length - 4) / 2 {
+        return Option<u32>.None
+      }
+      let mut lo: usize = 0
+      let mut hi = count
+      while lo < hi {
+        let mid = usize.wrappingAdd(lo, hi) / 2
+        let start = u16.toU32(be16(bytes, usize.wrappingAdd(4, usize.wrappingMultiply(mid, 2))))
+        if glyph < start {
+          hi = mid
+        } else if glyph == start {
+          return Option<u32>.some(usize.toU32(mid))
+        } else {
+          lo = mid + 1
+        }
+      }
+      return Option<u32>.None
+    }
+    if format == 2 {
+      let count = u16.toUsize(be16(bytes, 2))
+      if count > (bytes.length - 4) / 6 {
+        return Option<u32>.None
+      }
+      let mut lo: usize = 0
+      let mut hi = count
+      while lo < hi {
+        let mid = usize.wrappingAdd(lo, hi) / 2
+        let at = usize.wrappingAdd(4, usize.wrappingMultiply(mid, 6))
+        let start = u16.toU32(be16(bytes, at))
+        if glyph < start {
+          hi = mid
+        } else if glyph <= u16.toU32(be16(bytes, at + 2)) {
+          return Option<u32>.some(u16.toU32(be16(bytes, at + 4)) + glyph - start)
+        } else {
+          lo = mid + 1
+        }
+      }
+      return Option<u32>.None
+    }
     if format < 1 || format > 4 {
       return Option<u32>.None
     }
@@ -231,6 +279,11 @@ impl<'a> View<'a> {
     }
     return 0
   }
+}
+
+/// A big-endian u16 at `at`; the caller has checked that two bytes are there.
+fn be16(bytes: &[u8], at: usize) -> u16 with Intrinsic.inlineAlways() {
+  return u16.shiftLeft(u8.toU16(bytes[at]), 8) | u8.toU16(bytes[at + 1])
 }
 
 pub fn offset(base: usize, index: usize, size: usize) -> usize with Intrinsic.inlineAlways() {
