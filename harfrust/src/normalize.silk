@@ -82,6 +82,7 @@ pub effect fn normalize<F: FontFuncs>(
           }
         }
       }
+
       // A glyph that stays one glyph is mapped in place until the output list is needed.
       let length = Buffer.len(&buffer.*)
       if i + 1 >= length
@@ -313,8 +314,7 @@ fn decompositionFor(cp: u32, shaper: u32) -> unicode.Decomposition {
   if shaper == 1 && (cp == 0x0931 || cp == 0x09dc || cp == 0x09dd || cp == 0x0b94) {
     parts.first = 0
   }
-  if shaper == 2
-    && (cp == 0x17be || cp == 0x17bf || cp == 0x17c0 || cp == 0x17c4 || cp == 0x17c5) {
+  if shaper == 2 && (cp == 0x17be || cp == 0x17bf || cp == 0x17c0 || cp == 0x17c4 || cp == 0x17c5) {
     parts.first = 0x17c1
     parts.second = cp
   }
