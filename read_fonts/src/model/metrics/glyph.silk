@@ -54,8 +54,8 @@ pub struct GlyphMetrics<'a, 'c> {
   hvar: Maybe<Hvar<'a>>,
   vvar: Maybe<Vvar<'a>>,
   vorg: Maybe<Vorg<'a>>,
-  cff: Maybe<FontData<'a>>,
-  cff2: Maybe<FontData<'a>>,
+  cff: Maybe<CffFontRef<'a>>,
+  cff2: Maybe<CffFontRef<'a>>,
   standalone: Maybe<&'a CffFontRef<'a>>,
   coords: &'c [F2Dot14],
   count: u32,
@@ -90,13 +90,20 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
     let varc = VarcOutlines.read(provider)
     let global = Metrics.fromSfnt(provider, coords)
     let baseGlobal = Metrics.fromSfntWithVariations(provider, coords, false)
-    let mut cff = Maybe<FontData<'a>>.None
+
+    // Parsed once here: per-glyph queries would otherwise re-parse the CFF header and top dict.
+    let upem = u16.toI32(global.unitsPerEm)
+    let mut cff = Maybe<CffFontRef<'a>>.None
     if let Result<Cff<'a>, ReadError>.Success { value } = TableProvider.cff(provider) {
-      cff = Maybe<FontData<'a>>.Some { value: Cff.offsetData(&value) }
+      cff = Maybe<CffFontRef<'a>>.fromResult(
+        CffFontRef.new(FontData.asBytes(&Cff.offsetData(&value)), 0, Option<i32>.some(upem)),
+      )
     }
-    let mut cff2 = Maybe<FontData<'a>>.None
+    let mut cff2 = Maybe<CffFontRef<'a>>.None
     if let Result<Cff2<'a>, ReadError>.Success { value } = TableProvider.cff2(provider) {
-      cff2 = Maybe<FontData<'a>>.Some { value: Cff2.offsetData(&value) }
+      cff2 = Maybe<CffFontRef<'a>>.fromResult(
+        CffFontRef.new(FontData.asBytes(&Cff2.offsetData(&value)), 0, Option<i32>.some(upem)),
+      )
     }
     let mut gvar = Maybe<SelectedGvar<'a>>.None
     let mut hvar = Maybe<Hvar<'a>>.None
@@ -153,8 +160,8 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
       hvar: Maybe<Hvar<'a>>.None,
       vvar: Maybe<Vvar<'a>>.None,
       vorg: Maybe<Vorg<'a>>.None,
-      cff: Maybe<FontData<'a>>.None,
-      cff2: Maybe<FontData<'a>>.None,
+      cff: Maybe<CffFontRef<'a>>.None,
+      cff2: Maybe<CffFontRef<'a>>.None,
       standalone: Maybe<&'a CffFontRef<'a>>.Some { value: font },
       coords: coords,
       count: global.numGlyphs,
@@ -496,21 +503,14 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
         if source == GlyphSource.Cff2 {
           data = self.cff2
         }
-        if let Maybe<FontData<'a>>.Some { value } = data {
-          let font = CffFontRef.new(
-            FontData.asBytes(&value),
-            0,
-            Option<i32>.some(u16.toI32(self.upem)),
-          )
-          if let Result<CffFontRef<'a>, Error>.Success { value: parsed } = move font {
-            baseTaken = true
-            if let Option<GlyphExtents<F48Dot16>>.Some { value: extents } = cffExtents(
-              &parsed,
-              self.coords,
-              glyph,
-            ) {
-              return Option<GlyphExtents<F48Dot16>>.some(extents)
-            }
+        if let Maybe<CffFontRef<'a>>.Some { value: parsed } = data {
+          baseTaken = true
+          if let Option<GlyphExtents<F48Dot16>>.Some { value: extents } = cffExtents(
+            &parsed,
+            self.coords,
+            glyph,
+          ) {
+            return Option<GlyphExtents<F48Dot16>>.some(extents)
           }
         }
       }
