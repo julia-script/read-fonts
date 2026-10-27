@@ -38,6 +38,7 @@ import silk.testing { Testing, AssertionError }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.effect { Effect }
 import silk.u64
+import silk.u16
 import silk.u32
 import silk.usize
 
@@ -684,4 +685,47 @@ effect fn snapshotBody() -> ()
     unsafe Atomic.load<u32>(counter, MemoryOrder.Relaxed) == 1,
     "repeated lookup never recalls source",
   )
+}
+
+test effect fn filledUnicodeTableMatchesScalarLookups() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run fillBody() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+effect fn fillBody() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let fonts = [
+    tinos(),
+    cmap12Font(),
+    cmap14Font(),
+    cmapSymbolFont(),
+    cmap6Font(),
+    vazirmatn(),
+    notoEmoji(),
+    notoSansJp(),
+  ]
+  let mut filled: usize = 0
+  let mut i: usize = 0
+  while i < fonts.length {
+    let charmap = run map(fonts[i])
+    let mut table: [u16; 12288] = [0xffff; 12288]
+    if Charmap.fillUnicode(&charmap, &mut table) {
+      filled = filled + 1
+      let mut cp: usize = 0
+      while cp < table.length {
+        let mut expected = gid(Charmap.mapUnicode(&charmap, usize.toU32(cp)))
+        if expected > 0xffff {
+          expected = 0xffff
+        }
+        run Testing.expect(u16.toU32(table[cp]) == expected, "filled glyph")
+        cp = cp + 1
+      }
+    } else {
+      run Testing.expect(table[0x41] == 0xffff, "an unfilled table is unchanged")
+    }
+    i = i + 1
+  }
+  run Testing.expect(filled >= 2, "format 4 and 12 subtables fill")
 }

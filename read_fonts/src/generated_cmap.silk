@@ -3647,6 +3647,54 @@ impl<'a> GroupMap<'a> {
       GlyphId.new(u32.wrappingAdd(group.startGlyph, u32.wrappingSubtract(cp, group.startCode))),
     )
   }
+
+  /// Writes the glyph `map` gives each code point below `out.length` into `out`, as 0 when
+  /// unmapped and 0xFFFF when the glyph does not fit in 16 bits. Returns false, leaving `out`
+  /// unchanged, unless the groups are sorted and disjoint, which makes the walk match the
+  /// binary search.
+  pub fn fill(self: &Self, out: &mut [u16]) -> bool {
+    if self.records.length < usize.wrappingMultiply(self.count, 12)
+      || self.count > self.records.length {
+      return false
+    }
+    let mut i: usize = 0
+    while i < self.count {
+      let start = readU32(self.records, i * 12)
+      let end = readU32(self.records, i * 12 + 4)
+      if start > end || (i > 0 && start <= readU32(self.records, i * 12 - 8)) {
+        return false
+      }
+      i = i + 1
+    }
+    let mut cp: usize = 0
+    while cp < out.length {
+      out[cp] = 0
+      cp = cp + 1
+    }
+    i = 0
+    while i < self.count {
+      let start = readU32(self.records, i * 12)
+      if u32.toUsize(start) >= out.length {
+        break
+      }
+      let mut last = u32.toUsize(readU32(self.records, i * 12 + 4))
+      if last >= out.length {
+        last = out.length - 1
+      }
+      let first = readU32(self.records, i * 12 + 8)
+      let mut code = u32.toUsize(start)
+      while code <= last {
+        let mut glyph = first
+        if !self.constant {
+          glyph = u32.wrappingAdd(first, usize.toU32(code) - start)
+        }
+        out[code] = u32.toU16(min32(glyph, 0xffff))
+        code = code + 1
+      }
+      i = i + 1
+    }
+    return true
+  }
 }
 
 /// The arrays of a format 4 subtable, located once so repeated lookups skip re-reading the
@@ -3695,6 +3743,54 @@ impl<'a> SegmentMap<'a> {
       }
     }
     return Option<GlyphId>.None
+  }
+
+  /// Writes the glyph `map` gives each code point below `out.length` into `out`, as 0 when
+  /// unmapped. Returns false, leaving `out` unchanged, unless the segments are sorted and
+  /// disjoint, which makes the walk match the binary search.
+  pub fn fill(self: &Self, out: &mut [u16]) -> bool {
+    let size = usize.wrappingMultiply(self.count, 2)
+    if self.count > self.starts.length || size > self.starts.length || size > self.ends.length {
+      return false
+    }
+    let mut i: usize = 0
+    while i < self.count {
+      let start = readU16(self.starts, i * 2)
+      if start > readU16(self.ends, i * 2) || (i > 0 && start <= readU16(self.ends, i * 2 - 2)) {
+        return false
+      }
+      i = i + 1
+    }
+    let mut cp: usize = 0
+    while cp < out.length {
+      out[cp] = 0
+      cp = cp + 1
+    }
+    i = 0
+    while i < self.count {
+      let start = readU16(self.starts, i * 2)
+      if u16.toUsize(start) >= out.length {
+        break
+      }
+      let mut last = u16.toUsize(readU16(self.ends, i * 2))
+      if last >= out.length {
+        last = out.length - 1
+      }
+      let mut code = u16.toUsize(start)
+      while code <= last {
+        if let Option<GlyphId>.Some { value } = SegmentMap.lookup(
+          self,
+          usize.toU16(code),
+          i,
+          start,
+        ) {
+          out[code] = u32.toU16(GlyphId.toU32(value))
+        }
+        code = code + 1
+      }
+      i = i + 1
+    }
+    return true
   }
 
   // Cmap4.lookupGlyphId over the located arrays.

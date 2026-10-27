@@ -424,6 +424,23 @@ impl<'a> Charmap<'a> {
     return self.base.isMacRoman || self.delta.isMacRoman
   }
 
+  /// Writes `mapUnicode`'s glyph for each code point below `out.length` into `out`, as 0 when
+  /// unmapped and 0xFFFF when the glyph does not fit in 16 bits, for a single format 4, 12 or
+  /// 13 Unicode subtable whose ranges are sorted and disjoint. Returns false, leaving `out`
+  /// unchanged, for any other mapping.
+  pub fn fillUnicode(self: &Self, out: &mut [u16]) -> bool {
+    if self.delta.direct || self.delta.direct4 || MaybeSubtable.present(&self.delta.subtable) {
+      return false
+    }
+    if self.base.direct {
+      return GroupMap.fill(&self.base.groups, move out)
+    }
+    if self.base.direct4 {
+      return SegmentMap.fill(&self.base.segments, move out)
+    }
+    return false
+  }
+
   pub fn mapUnicode(self: &Self, codepoint: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     if let Option<GlyphId>.Some { value } = UnicodeSubtables.map(&self.delta, codepoint) {
       return Option<GlyphId>.some(value)
