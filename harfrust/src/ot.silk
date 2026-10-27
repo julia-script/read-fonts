@@ -57,6 +57,7 @@ struct Context<'a, 's> {
   ruleSecondStarts: &'s [u32],
   ruleSeconds: &'s [u32],
   ruleBacks: &'s [u32],
+  ruleAheads: &'s [u32],
   /// The plan's cached subtables, and where each lookup's start (`OtPlan.lookupSubtables`).
   subtables: &'s [LookupSubtable],
   lookupSubtables: &'s [u64],
@@ -239,6 +240,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
+    ruleAheads: List<u32>.asSlice(&plan.ruleAheads),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -535,6 +537,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
+    ruleAheads: List<u32>.asSlice(&plan.ruleAheads),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -746,38 +749,49 @@ effect fn applyLookup<F: FontFuncs>(
   let mut second = SECOND_UNKNOWN
   let mut i: usize = 0
   while i < count && context.budget != 0 && buffer.successful {
-    context.budget = context.budget - 1
     let mut table = View.empty()
     let mut kind = lookup.kind
     let mut known: u32 = 0
     if cached {
-      if !SetDigest.mayHave(&subtables[i].digest, glyph) {
-        i = i + 1
-        continue
-      }
-
-      // An expanded coverage rejects an uncovered glyph without calling the subtable, which
-      // would reject it first thing.
-      // A covered glyph's index is passed on so the subtable does not search for it again.
-      let sub = &subtables[i]
-      if sub.coverageCount != 0 {
-        if glyph >= sub.coverageFirst
-          && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
-          known = u16.toU32(
-            context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
-          )
-        }
-        if known == 0 {
-          if sub.missSpends && context.budget != 0 {
-            context.budget = context.budget - 1
+      // Subtables the glyph cannot start a match in are skipped in a loop of their own, which
+      // keeps the budget in a local; nothing they skip changes `buffer.successful`.
+      let mut budget = context.budget
+      let mut found = false
+      while i < count && budget != 0 {
+        budget = budget - 1
+        let sub = &subtables[i]
+        if SetDigest.mayHave(&sub.digest, glyph) {
+          // An expanded coverage rejects an uncovered glyph without calling the subtable,
+          // which would reject it first thing. A covered glyph's index is passed on so the
+          // subtable does not search for it again.
+          if sub.coverageCount == 0 {
+            found = true
+            break
           }
-          i = i + 1
-          continue
+          if glyph >= sub.coverageFirst
+            && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+            known = u16.toU32(
+              context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
+            )
+          }
+          if known != 0 {
+            found = true
+            break
+          }
+          if sub.missSpends && budget != 0 {
+            budget = budget - 1
+          }
         }
+        i = i + 1
+      }
+      context.budget = budget
+      if !found {
+        return no()
       }
       table = View.tail(&context.table, subtables[i].offset)
       kind = subtables[i].kind
     } else {
+      context.budget = context.budget - 1
       table = View.offset16(&lookup.table, 6 + i * 2)
       let extension = (!context.positioning && kind == 7) || (context.positioning && kind == 9)
       if extension {
@@ -1699,7 +1713,7 @@ fn inputSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) ->
   return InputSecond { found: false, index: at, glyph: 0, skippable: false }
 }
 
-/// `backtrackFirst` results besides a value: not looked for yet, no glyph, or a glyph that
+/// `outsideFirst` results besides a value: not looked for yet, no glyph, or a glyph that
 /// matching may skip when it does not match, which leaves each rule to the full check.
 const BACK_UNKNOWN: u64 = 0x300000000
 
@@ -1707,21 +1721,33 @@ const BACK_NONE: u64 = 0x200000000
 
 const BACK_SKIPPABLE: u64 = 0x100000000
 
-/// The value for `kind` of the glyph a rule's first backtrack value is compared with: the first
-/// one before `at` that matching does not ignore.
-fn backtrackFirst(
+/// The value for `kind` of the glyph a rule's first backtrack value (or, forward, a single-input
+/// rule's first lookahead value) is compared with: the first one before (or after) `at` that
+/// matching does not ignore.
+fn outsideFirst(
   context: &Context,
   buffer: &Buffer,
   lookup: Lookup,
   at: usize,
+  backward: bool,
   kind: u32,
   classes: Classes,
 ) -> u64 {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let syllable = glyphs[at].syllable
   let mut i = at
-  while i > 0 {
-    i = i - 1
+  while true {
+    if backward {
+      if i == 0 {
+        return BACK_NONE
+      }
+      i = i - 1
+    } else {
+      i = i + 1
+      if i >= glyphs.length {
+        return BACK_NONE
+      }
+    }
     let item = &glyphs[i]
     if context.restrictSyllable && item.syllable != syllable {
       break
@@ -2080,17 +2106,46 @@ effect fn contextual<F: FontFuncs>(
 
   // Likewise the plan keeps each chained rule's first backtrack value, which is compared with
   // the glyph before the first one; that glyph is found when a rule first needs it.
+  // Single-input rules' first lookahead values are compared with the glyph after the first.
   let mut backs = Slice.view(context.ruleBacks, 0, 0)
+  let mut aheads = Slice.view(context.ruleAheads, 0, 0)
   if chained && seconds.length != 0 {
     backs = Slice.view(context.ruleBacks, u32.toUsize(starts[ruleSetIndex]), count)
+    aheads = Slice.view(context.ruleAheads, u32.toUsize(starts[ruleSetIndex]), count)
   }
   let mut back: u64 = BACK_UNKNOWN
+  let mut ahead: u64 = BACK_UNKNOWN
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
     if seconds.length != 0 {
+      // A rule the loop below would look at is skipped here too when its first backtrack value
+      // rules it out, which the check below would do after reading the rule for the same budget.
       let mut budget = context.budget
-      while ruleIndex < count && budget != 0 && seconds[ruleIndex] != target
-        && seconds[ruleIndex] != RULE_STOP {
+      while ruleIndex < count && budget != 0 {
+        let value = seconds[ruleIndex]
+        if value == target || value == RULE_STOP {
+          if backs.length == 0 {
+            break
+          }
+          let mut rejected = false
+          if backs[ruleIndex] != RULE_STOP {
+            if back == BACK_UNKNOWN {
+              back = outsideFirst(&context.*, &buffer.*, lookup, at, true, kind, backClasses)
+            }
+            rejected = back == BACK_NONE
+              || (back < BACK_SKIPPABLE && back != u32.toU64(backs[ruleIndex]))
+          }
+          if !rejected && aheads[ruleIndex] != RULE_STOP {
+            if ahead == BACK_UNKNOWN {
+              ahead = outsideFirst(&context.*, &buffer.*, lookup, at, false, kind, aheadClasses)
+            }
+            rejected = ahead == BACK_NONE
+              || (ahead < BACK_SKIPPABLE && ahead != u32.toU64(aheads[ruleIndex]))
+          }
+          if !rejected {
+            break
+          }
+        }
         budget = budget - 1
         ruleIndex = ruleIndex + 1
       }
@@ -2156,7 +2211,7 @@ effect fn contextual<F: FontFuncs>(
     }
     if backs.length != 0 && backs[ruleIndex] != RULE_STOP {
       if back == BACK_UNKNOWN {
-        back = backtrackFirst(&context.*, &buffer.*, lookup, at, kind, backClasses)
+        back = outsideFirst(&context.*, &buffer.*, lookup, at, true, kind, backClasses)
       }
       if back == BACK_NONE || (back < BACK_SKIPPABLE && back != u32.toU64(backs[ruleIndex])) {
         ruleIndex = ruleIndex + 1
