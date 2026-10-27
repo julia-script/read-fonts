@@ -58,6 +58,7 @@ struct Context<'a, 's> {
   ruleSeconds: &'s [u32],
   ruleBacks: &'s [u32],
   ruleAheads: &'s [u32],
+  contextDigests: &'s [SetDigest],
   /// The plan's cached subtables, and where each lookup's start (`OtPlan.lookupSubtables`).
   subtables: &'s [LookupSubtable],
   lookupSubtables: &'s [u64],
@@ -241,6 +242,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
     ruleAheads: List<u32>.asSlice(&plan.ruleAheads),
+    contextDigests: List<SetDigest>.asSlice(&plan.contextDigests),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -538,6 +540,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
     ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
     ruleAheads: List<u32>.asSlice(&plan.ruleAheads),
+    contextDigests: List<SetDigest>.asSlice(&plan.contextDigests),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -1768,6 +1771,18 @@ fn outsideFirst(
   return BACK_NONE
 }
 
+/// A cached 16-bit format 3 contextual subtable's `contextDigests`, or none.
+fn format3Digests<'a, 's>(
+  context: &Context<'a, 's>,
+  subtables: &[LookupSubtable],
+  index: usize,
+) -> &'s [SetDigest] {
+  if index < subtables.length && subtables[index].contextDigests != usize.MAX {
+    return Slice.view(context.contextDigests, subtables[index].contextDigests, 3)
+  }
+  return Slice.view(context.contextDigests, 0, 0)
+}
+
 /// Whether the rule loop in `contextual` would reject the 16-bit format 3 rule at `at`, whose
 /// first input glyph is known to match. It makes the same checks in the same order.
 fn format3Fails(
@@ -1779,6 +1794,7 @@ fn format3Fails(
   first: usize,
   last: usize,
   chained: bool,
+  digests: &[SetDigest],
 ) -> bool {
   let classes = noClasses(context)
   let mut pos: usize = 2
@@ -1797,6 +1813,31 @@ fn format3Fails(
     pos = pos + 2
   }
   let inputPos = pos
+
+  // The plan's digests rule out most failing rules from the glyphs next to the first one,
+  // before the rest of the rule is read or any coverage is searched: the second input, or the
+  // first lookahead of a single input, and the first backtrack.
+  if digests.length == 3 {
+    let next = outsideFirst(context, buffer, lookup, at, false, 2, classes)
+    let mut nextDigest = &digests[0]
+    if inputCount == 1 {
+      nextDigest = &digests[2]
+    }
+    if next == BACK_NONE
+      && (inputCount > 1 || (chained && View.u16(&table, pos + inputCount * 2) != 0)) {
+      return true
+    }
+    if next < BACK_SKIPPABLE && !SetDigest.mayHave(nextDigest, u64.toU32(next)) {
+      return true
+    }
+    if backCount != 0 {
+      let back = outsideFirst(context, buffer, lookup, at, true, 2, classes)
+      if back == BACK_NONE
+        || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.toU32(back))) {
+        return true
+      }
+    }
+  }
   let tail = ruleTail(table, pos + inputCount * 2, chained, actionCount, 2)
   if inputCount == 0 || inputCount > 64 || !tail.valid {
     return true
@@ -1963,7 +2004,17 @@ effect fn contextual<F: FontFuncs>(
   // Most format 3 rules whose first input matches still fail. Without unsafe-to-concat tracking
   // a failed rule only spends its budget unit, so check the rule before the general setup.
   if rawFormat == 3 && (buffer.flags & 64) == 0 && context.budget != 0 && buffer.successful
-    && format3Fails(&context.*, &buffer.*, lookup, table, at, first, last, chained) {
+    && format3Fails(
+      &context.*,
+      &buffer.*,
+      lookup,
+      table,
+      at,
+      first,
+      last,
+      chained,
+      format3Digests(&context.*, subtables, subtableIndex),
+    ) {
     context.budget = context.budget - 1
     return no()
   }

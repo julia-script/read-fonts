@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 111M | 65.3M | 1.69× |
-| Roboto / English words | 151M | 87.9M | 1.72× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,226M | 789M | 1.55× |
-| Noto Nastaliq Urdu / Persian words | 1,045M | 847M | 1.23× |
-| Noto Sans Devanagari / Hindi words | 359M | 225M | 1.60× |
-| Amiri / Persian Little Prince | 682M | 374M | 1.82× |
-| Source Serif Variable / react-dom | 1,406M | 1,004M | 1.40× |
+| Roboto / English Little Prince | 111M | 65.3M | 1.70× |
+| Roboto / English words | 152M | 87.9M | 1.72× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,228M | 789M | 1.56× |
+| Noto Nastaliq Urdu / Persian words | 1,047M | 847M | 1.24× |
+| Noto Sans Devanagari / Hindi words | 352M | 225M | 1.56× |
+| Amiri / Persian Little Prince | 590M | 374M | 1.58× |
+| Source Serif Variable / react-dom | 1,407M | 1,004M | 1.40× |
 
-The geometric mean is **1.56×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.53×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -208,7 +208,10 @@ definitions for format 2. Plans also keep each rule's first backtrack value, so 
 rule whose glyph before the match cannot fit is rejected before the backtrack walk, and
 each single-input rule's first lookahead value, checked against the glyph after the match;
 both checks run in the loop that skips rules by their second input, so a rejected rule is
-never read. Subtables a glyph cannot start a match in are skipped in a loop of their own. Kerning reads expanded pair
+never read. Subtables a glyph cannot start a match in are skipped in a loop of their own.
+Format 3 rules keep digests of their second input, first backtrack and first lookahead
+coverages, so most failing rules are ruled out from the glyphs on either side of the first
+one before the rest of the rule is read or any coverage is searched. Kerning reads expanded pair
 classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
