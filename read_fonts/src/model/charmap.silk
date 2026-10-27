@@ -19,7 +19,8 @@ import tables.cmap {
   Cmap4,
   Cmap4Segment,
   Cmap12,
-  Cmap12Group
+  Cmap12Group,
+  GroupMap
 }
 import tables.name { MacRomanMapping }
 import tables.maxp { SelectedMaxp }
@@ -223,6 +224,10 @@ struct UnicodeSubtables<'a> {
   variants: MaybeUvs<'a>,
   isSymbol: bool,
   isMacRoman: bool,
+  // A format 12/13 subtable with no symbol or Mac Roman remapping maps straight
+  // through `groups`.
+  direct: bool,
+  groups: GroupMap<'a>,
 }
 
 impl<'a> Copy for UnicodeSubtables<'a> {}
@@ -234,12 +239,20 @@ impl<'a> UnicodeSubtables<'a> {
       variants: MaybeUvs<'a>.None,
       isSymbol: false,
       isMacRoman: false,
+      direct: false,
+      groups: GroupMap<'a>.empty(),
     }
     if let MaybeCmap<'a>.Some { table } = cmap {
       if let Option<BestCmapSubtable<'a>>.Some { value } = Cmap.bestSubtable(&table) {
         result.subtable = MaybeSubtable<'a>.Some { table: value.subtable }
         result.isSymbol = EncodingRecord.isSymbol(&value.record)
         result.isMacRoman = EncodingRecord.isMacRoman(&value.record)
+        if let Option<GroupMap<'a>>.Some { value: groups } = CmapSubtable.groupMap(
+          &value.subtable,
+        ) {
+          result.groups = groups
+          result.direct = !result.isSymbol && !result.isMacRoman
+        }
       }
       if let Option<SelectedUvsSubtable<'a>>.Some { value } = Cmap.uvsSubtable(&table) {
         result.variants = MaybeUvs<'a>.Some { table: value.subtable }
@@ -264,7 +277,17 @@ impl<'a> UnicodeSubtables<'a> {
     return Option<u32>.some(codepoint)
   }
 
-  fn map(self: &Self, codepoint: u32) -> Option<GlyphId> {
+  fn map(self: &Self, codepoint: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
+    if self.direct {
+      return nonzero(GroupMap.map(&self.groups, codepoint))
+    }
+    if !MaybeSubtable.present(&self.subtable) {
+      return Option<GlyphId>.None
+    }
+    return UnicodeSubtables.mapSlow(self, codepoint)
+  }
+
+  fn mapSlow(self: &Self, codepoint: u32) -> Option<GlyphId> {
     let code = match move UnicodeSubtables.code(self, codepoint) {
       Option<u32>.Some { value } => value
       _ => {
@@ -386,7 +409,7 @@ impl<'a> Charmap<'a> {
     return self.base.isMacRoman || self.delta.isMacRoman
   }
 
-  pub fn mapUnicode(self: &Self, codepoint: u32) -> Option<GlyphId> {
+  pub fn mapUnicode(self: &Self, codepoint: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     if let Option<GlyphId>.Some { value } = UnicodeSubtables.map(&self.delta, codepoint) {
       return Option<GlyphId>.some(value)
     }

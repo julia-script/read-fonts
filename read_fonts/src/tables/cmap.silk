@@ -32,6 +32,7 @@ pub import generated_cmap {
   CmapIterLimits,
   Cmap4Segment,
   Cmap12Group,
+  GroupMap,
   Cmap0Iter,
   Cmap4Iter,
   Cmap6Iter,
