@@ -55,6 +55,9 @@ jobs:
       - name: Speed
         if: ${{ !cancelled() }}
         run: scripts/benchmark --report build/benchmark-report.json
+      - name: Library speed
+        if: ${{ !cancelled() }}
+        run: scripts/bench-library
       - name: Upload reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

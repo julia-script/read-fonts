@@ -62,7 +62,7 @@ impl<'a> Loca<'a> {
 
   pub fn len(self: &Self) -> usize {
     return usize.saturatingSubtract(
-      match self.* {
+      match &self.* {
         Loca<'a>.Short { data } => ScalarArray<u16>.len(&data)
         Loca<'a>.Long { data } => ScalarArray<u32>.len(&data)
       },
@@ -75,7 +75,7 @@ impl<'a> Loca<'a> {
   }
 
   pub fn getRaw(self: &Self, index: usize) -> Option<u32> {
-    return match self.* {
+    return match &self.* {
       Loca<'a>.Short { data } => match move ScalarArray<u16>.get(&data, index) {
         Option<u16>.Some { value } => Option<u32>.some(u16.toU32(value) * 2)
         _ => Option<u32>.None

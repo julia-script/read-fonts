@@ -175,7 +175,7 @@ impl<'a> CoverageFormat2<'a> {
 
 impl<'a> CoverageTable<'a> {
   pub fn intersects(self: &Self, glyphs: &IntSet<GlyphId>) -> bool {
-    match self.* {
+    match &self.* {
       CoverageTable<'a>.Format1 { value } => {
         return CoverageFormat1<'a>.intersects(&value, glyphs)
       }
@@ -216,7 +216,7 @@ impl<'a> CoverageTable<'a> {
   pub effect fn intersectSet(self: &Self, glyphs: &IntSet<GlyphId>) -> IntSet<GlyphId>
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       CoverageTable<'a>.Format1 { value } => {
         return run CoverageFormat1<'a>.intersectSet(&value, glyphs)
       }
@@ -640,7 +640,7 @@ impl<'a> ClassDef<'a> {
   pub effect fn intersectClasses(self: &Self, glyphs: &IntSet<GlyphId>) -> IntSet<u32>
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         return run widenClasses(run ClassDefFormat1<'a>.intersectClasses(&value, glyphs))
       }
@@ -673,7 +673,7 @@ impl<'a> ClassDef<'a> {
   >
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         if class > 65535 {
           return IntSet<GlyphId>.empty()
@@ -714,7 +714,7 @@ impl<'a> ClassDef<'a> {
   pub effect fn intersectsClassGlyphs(self: &Self, glyphs: &IntSet<GlyphId>, class: u32) -> bool
     ! OutOfMemoryError
     ? &mut Allocator {
-    match self.* {
+    match &self.* {
       ClassDef<'a>.Format1 { value } => {
         if class > 65535 {
           return false

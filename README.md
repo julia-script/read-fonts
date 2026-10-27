@@ -11,6 +11,8 @@ outlines and bounds.
 - `font_types/`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
 - `read_fonts/`: borrowed parsing, generated tables, integer sets and the font model.
 - `font_dump/`: CLI that prints every parsed field of a font as text.
+- `font_bench/`: library workloads (cmap lookups, glyf decoding, hmtx advances) timed
+  against a Rust twin in `scripts/rust-font-dump/src/bin/font-bench.rs`.
 - `tools/font-codegen-silk/`: the upstream codegen grammar parser with Silk backends.
 - `scripts/`: code generation, the test corpus harness, and the Rust baseline dumper.
 - `upstream/`, `test-data/harfrust/`: read-only submodules with the pinned
@@ -58,6 +60,7 @@ scripts/compare
 scripts/check-{core,table,layout,variation,aat,cff,model,misc-table}-fixtures
 scripts/check-malformed --report build/malformed-report.json.gz
 scripts/benchmark --report build/benchmark-report.json
+scripts/bench-library   # library only, no dump output; checksums must match Rust
 ```
 
 Checks run on every core; set `READ_FONTS_JOBS` to change that. `--fonts FILE`

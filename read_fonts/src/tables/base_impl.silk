@@ -189,7 +189,7 @@ impl<'a> Axis<'a> {
 
 impl<'a> BaseCoord<'a> {
   pub fn device(self: &Self) -> Option<DeviceOrVariationIndex<'a>> {
-    return match self.* {
+    return match &self.* {
       BaseCoord<'a>.Format3 { value } => baseFlatten(BaseCoordFormat3.device(&value))
       _ => Option<DeviceOrVariationIndex<'a>>.None
     }

@@ -51,7 +51,7 @@ impl<'a> Index<'a> {
   }
 
   pub fn count(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       Index<'a>.Empty => 0
       Index<'a>.Format1 { value } => u16.toU32(Index1.count(&value))
       Index<'a>.Format2 { value } => Index2.count(&value)
@@ -70,7 +70,7 @@ impl<'a> Index<'a> {
   }
 
   pub fn sizeInBytes(self: &Self) -> Option<usize> {
-    return match self.* {
+    return match &self.* {
       Index<'a>.Empty => Option<usize>.some(0)
       Index<'a>.Format1 { value } => Index1.sizeInBytes(&value)
       Index<'a>.Format2 { value } => Index2.sizeInBytes(&value)
@@ -78,7 +78,7 @@ impl<'a> Index<'a> {
   }
 
   pub fn getOffset(self: &Self, index: usize) -> Option<usize> {
-    return match self.* {
+    return match &self.* {
       Index<'a>.Empty => Option<usize>.None
       Index<'a>.Format1 { value } => Index1.getOffset(&value, index)
       Index<'a>.Format2 { value } => Index2.getOffset(&value, index)
@@ -86,7 +86,7 @@ impl<'a> Index<'a> {
   }
 
   pub fn get(self: &Self, index: usize) -> Option<&'a [u8]> {
-    return match self.* {
+    return match &self.* {
       Index<'a>.Empty => Option<&'a [u8]>.None
       Index<'a>.Format1 { value } => Index1.get(&value, index)
       Index<'a>.Format2 { value } => Index2.get(&value, index)
@@ -94,7 +94,7 @@ impl<'a> Index<'a> {
   }
 
   pub fn offSize(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       Index<'a>.Empty => 0
       Index<'a>.Format1 { value } => Index1.offSize(&value)
       Index<'a>.Format2 { value } => Index2.offSize(&value)

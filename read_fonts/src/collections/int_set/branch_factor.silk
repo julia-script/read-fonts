@@ -11,7 +11,7 @@ pub enum BranchFactor {
 
 impl BranchFactor {
   pub fn arity(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 2
       BranchFactor.Four => 4
       BranchFactor.Eight => 8
@@ -20,7 +20,7 @@ impl BranchFactor {
   }
 
   pub fn maxHeight(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 31
       BranchFactor.Four => 16
       BranchFactor.Eight => 11
@@ -29,7 +29,7 @@ impl BranchFactor {
   }
 
   pub fn nodeSizeLog2(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 1
       BranchFactor.Four => 2
       BranchFactor.Eight => 3
@@ -38,7 +38,7 @@ impl BranchFactor {
   }
 
   pub fn byteMask(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 3
       BranchFactor.Four => 15
       _ => 255
@@ -53,7 +53,7 @@ impl BranchFactor {
   }
 
   pub fn nodesPerByte(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 4
       BranchFactor.Four => 2
       _ => 1
@@ -68,7 +68,7 @@ impl BranchFactor {
   }
 
   pub fn bitId(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       BranchFactor.Two => 0
       BranchFactor.Four => 1
       BranchFactor.Eight => 2

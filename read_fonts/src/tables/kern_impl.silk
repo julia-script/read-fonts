@@ -43,7 +43,7 @@ impl<'a> Kern<'a> {
   }
 
   pub fn subtables(self: &Self) -> Subtables<'a> {
-    return match self.* {
+    return match &self.* {
       Kern<'a>.Ot { value } => Subtables<'a> {
         data: ScalarArray<u8>.offsetData(&OtKern.subtableData(&value)),
         isAat: false,
@@ -156,7 +156,7 @@ impl<'a> Subtable<'a> {
   }
 
   pub fn isVertical(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       Subtable<'a>.Ot { value } => OtSubtable.coverage(&value) & 1 == 0
       Subtable<'a>.Aat { value } => AatSubtable.coverage(&value) & 32768 != 0
     }
@@ -167,28 +167,28 @@ impl<'a> Subtable<'a> {
   }
 
   pub fn isCrossStream(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       Subtable<'a>.Ot { value } => OtSubtable.coverage(&value) & 4 != 0
       Subtable<'a>.Aat { value } => AatSubtable.coverage(&value) & 16384 != 0
     }
   }
 
   pub fn isVariable(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       Subtable<'a>.Ot { value } => false
       Subtable<'a>.Aat { value } => AatSubtable.coverage(&value) & 8192 != 0
     }
   }
 
   pub fn isStateMachine(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       Subtable<'a>.Ot { value } => u16.shiftRight(OtSubtable.coverage(&value), 8) == 1
       Subtable<'a>.Aat { value } => AatSubtable.coverage(&value) & 255 == 1
     }
   }
 
   pub fn kind(self: &Self) -> Result<SubtableKind<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       Subtable<'a>.Ot { value } => SubtableKind<'a>.readWithArgs(
         ScalarArray<u8>.offsetData(&OtSubtable.data(&value)),
         ReadArgs2<u8, bool> {

@@ -1027,7 +1027,7 @@ impl<'a> ClipBox<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.offsetData(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.offsetData(&value)
     }
@@ -1035,7 +1035,7 @@ impl<'a> ClipBox<'a> {
 
   /// Set to 1.
   pub fn format(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.format(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.format(&value)
     }
@@ -1043,7 +1043,7 @@ impl<'a> ClipBox<'a> {
 
   /// Minimum x of clip box.
   pub fn xMin(self: &Self) -> FWord {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.xMin(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.xMin(&value)
     }
@@ -1051,7 +1051,7 @@ impl<'a> ClipBox<'a> {
 
   /// Minimum y of clip box.
   pub fn yMin(self: &Self) -> FWord {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.yMin(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.yMin(&value)
     }
@@ -1059,7 +1059,7 @@ impl<'a> ClipBox<'a> {
 
   /// Maximum x of clip box.
   pub fn xMax(self: &Self) -> FWord {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.xMax(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.xMax(&value)
     }
@@ -1067,7 +1067,7 @@ impl<'a> ClipBox<'a> {
 
   /// Maximum y of clip box.
   pub fn yMax(self: &Self) -> FWord {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => ClipBoxFormat1<'a>.yMax(&value)
       ClipBox<'a>.Format2 { value } => ClipBoxFormat2<'a>.yMax(&value)
     }
@@ -1082,14 +1082,14 @@ impl<'a> FontRead<'a, ()> for ClipBox<'a> {
 
 impl<'a> MinByteRange<'a> for ClipBox<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       ClipBox<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       ClipBox<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       ClipBox<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -2344,7 +2344,7 @@ impl<'a> Paint<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       Paint<'a>.ColrLayers { value } => PaintColrLayers<'a>.offsetData(&value)
       Paint<'a>.Solid { value } => PaintSolid<'a>.offsetData(&value)
       Paint<'a>.VarSolid { value } => PaintVarSolid<'a>.offsetData(&value)
@@ -2387,7 +2387,7 @@ impl<'a> Paint<'a> {
 
   /// Set to 1.
   pub fn format(self: &Self) -> u8 {
-    return match self.* {
+    return match &self.* {
       Paint<'a>.ColrLayers { value } => PaintColrLayers<'a>.format(&value)
       Paint<'a>.Solid { value } => PaintSolid<'a>.format(&value)
       Paint<'a>.VarSolid { value } => PaintVarSolid<'a>.format(&value)
@@ -2437,7 +2437,7 @@ impl<'a> FontRead<'a, ()> for Paint<'a> {
 
 impl<'a> MinByteRange<'a> for Paint<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       Paint<'a>.ColrLayers { value } => MinByteRange.minByteRange(&value)
       Paint<'a>.Solid { value } => MinByteRange.minByteRange(&value)
       Paint<'a>.VarSolid { value } => MinByteRange.minByteRange(&value)
@@ -2475,7 +2475,7 @@ impl<'a> MinByteRange<'a> for Paint<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       Paint<'a>.ColrLayers { value } => MinByteRange.minTableBytes(&value)
       Paint<'a>.Solid { value } => MinByteRange.minTableBytes(&value)
       Paint<'a>.VarSolid { value } => MinByteRange.minTableBytes(&value)

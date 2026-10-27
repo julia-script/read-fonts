@@ -510,7 +510,7 @@ impl<'a> SubstitutionLookup<'a> {
   }
 
   pub fn ofUnitType(self: &Self) -> Lookup<'a, ()> {
-    return match self.* {
+    return match &self.* {
       SubstitutionLookup<'a>.Single { value } => Lookup<'a, SingleSubst<'a>>.ofUnitType(&value)
       SubstitutionLookup<'a>.Multiple { value } => Lookup<'a, MultipleSubst<'a>>.ofUnitType(&value)
       SubstitutionLookup<'a>.Alternate { value } => Lookup<'a, AlternateSubst<'a>>.ofUnitType(
@@ -626,7 +626,7 @@ impl<'a> SingleSubst<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       SingleSubst<'a>.Format1 { value } => SingleSubstFormat1<'a>.offsetData(&value)
       SingleSubst<'a>.Format2 { value } => SingleSubstFormat2<'a>.offsetData(&value)
       SingleSubst<'a>.Format3 { value } => SingleSubstFormat3<'a>.offsetData(&value)
@@ -636,7 +636,7 @@ impl<'a> SingleSubst<'a> {
 
   /// Format identifier: format = 1
   pub fn substFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SingleSubst<'a>.Format1 { value } => SingleSubstFormat1<'a>.substFormat(&value)
       SingleSubst<'a>.Format2 { value } => SingleSubstFormat2<'a>.substFormat(&value)
       SingleSubst<'a>.Format3 { value } => SingleSubstFormat3<'a>.substFormat(&value)
@@ -653,7 +653,7 @@ impl<'a> FontRead<'a, ()> for SingleSubst<'a> {
 
 impl<'a> MinByteRange<'a> for SingleSubst<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       SingleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       SingleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       SingleSubst<'a>.Format3 { value } => MinByteRange.minByteRange(&value)
@@ -662,7 +662,7 @@ impl<'a> MinByteRange<'a> for SingleSubst<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       SingleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       SingleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       SingleSubst<'a>.Format3 { value } => MinByteRange.minTableBytes(&value)
@@ -1969,7 +1969,7 @@ impl<'a> ExtensionSubtable<'a> {
   }
 
   pub fn ofUnitType(self: &Self) -> ExtensionSubstFormat1<'a, ()> {
-    return match self.* {
+    return match &self.* {
       ExtensionSubtable<'a>.Single { value } => ExtensionSubstFormat1<
         'a,
         SingleSubst<'a>
@@ -3571,7 +3571,7 @@ impl<'a> MultipleSubst<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.offsetData(&value)
       MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.offsetData(&value)
     }
@@ -3579,7 +3579,7 @@ impl<'a> MultipleSubst<'a> {
 
   /// Format identifier: format = 1
   pub fn substFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.substFormat(&value)
       MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.substFormat(&value)
     }
@@ -3594,14 +3594,14 @@ impl<'a> FontRead<'a, ()> for MultipleSubst<'a> {
 
 impl<'a> MinByteRange<'a> for MultipleSubst<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       MultipleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       MultipleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -3664,7 +3664,7 @@ impl<'a> AlternateSubst<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       AlternateSubst<'a>.Format1 { value } => AlternateSubstFormat1<'a>.offsetData(&value)
       AlternateSubst<'a>.Format2 { value } => AlternateSubstFormat2<'a>.offsetData(&value)
     }
@@ -3672,7 +3672,7 @@ impl<'a> AlternateSubst<'a> {
 
   /// Format identifier: format = 1
   pub fn substFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       AlternateSubst<'a>.Format1 { value } => AlternateSubstFormat1<'a>.substFormat(&value)
       AlternateSubst<'a>.Format2 { value } => AlternateSubstFormat2<'a>.substFormat(&value)
     }
@@ -3687,14 +3687,14 @@ impl<'a> FontRead<'a, ()> for AlternateSubst<'a> {
 
 impl<'a> MinByteRange<'a> for AlternateSubst<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       AlternateSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       AlternateSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       AlternateSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       AlternateSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -3757,7 +3757,7 @@ impl<'a> LigatureSubst<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       LigatureSubst<'a>.Format1 { value } => LigatureSubstFormat1<'a>.offsetData(&value)
       LigatureSubst<'a>.Format2 { value } => LigatureSubstFormat2<'a>.offsetData(&value)
     }
@@ -3765,7 +3765,7 @@ impl<'a> LigatureSubst<'a> {
 
   /// Format identifier: format = 1
   pub fn substFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       LigatureSubst<'a>.Format1 { value } => LigatureSubstFormat1<'a>.substFormat(&value)
       LigatureSubst<'a>.Format2 { value } => LigatureSubstFormat2<'a>.substFormat(&value)
     }
@@ -3780,14 +3780,14 @@ impl<'a> FontRead<'a, ()> for LigatureSubst<'a> {
 
 impl<'a> MinByteRange<'a> for LigatureSubst<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       LigatureSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       LigatureSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       LigatureSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       LigatureSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -3850,7 +3850,7 @@ impl<'a> ReverseChainSingleSubst<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<
         'a
       >.offsetData(&value)
@@ -3862,7 +3862,7 @@ impl<'a> ReverseChainSingleSubst<'a> {
 
   /// Format identifier: format = 1
   pub fn substFormat(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<
         'a
       >.substFormat(&value)
@@ -3874,7 +3874,7 @@ impl<'a> ReverseChainSingleSubst<'a> {
 
   /// Number of glyphs in the backtrack sequence.
   pub fn backtrackGlyphCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<
         'a
       >.backtrackGlyphCount(&value)
@@ -3886,7 +3886,7 @@ impl<'a> ReverseChainSingleSubst<'a> {
 
   /// Number of glyphs in lookahead sequence.
   pub fn lookaheadGlyphCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => ReverseChainSingleSubstFormat1<
         'a
       >.lookaheadGlyphCount(&value)
@@ -3905,14 +3905,14 @@ impl<'a> FontRead<'a, ()> for ReverseChainSingleSubst<'a> {
 
 impl<'a> MinByteRange<'a> for ReverseChainSingleSubst<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => MinByteRange.minByteRange(&value)
       ReverseChainSingleSubst<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
     }
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       ReverseChainSingleSubst<'a>.Format1 { value } => MinByteRange.minTableBytes(&value)
       ReverseChainSingleSubst<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
     }
@@ -4263,7 +4263,7 @@ impl<'a> SubstitutionLookup<'a> {
 
 impl<'a> MultipleSubst<'a> {
   pub fn coverage(self: &Self) -> Result<CoverageTable<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       MultipleSubst<'a>.Format1 { value } => MultipleSubstFormat1<'a>.coverage(&value)
       MultipleSubst<'a>.Format2 { value } => MultipleSubstFormat2<'a>.coverage(&value)
     }

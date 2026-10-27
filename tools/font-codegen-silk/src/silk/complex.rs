@@ -376,7 +376,7 @@ impl Context<'_> {
             let target = format!("{inner}<'a, {}<'a>>", v.typ);
             writeln!(out,"      {} => {{ return match move {target}.read(data) {{ Result<{target}, ReadError>.Success {{ value }} => Result<Self, ReadError>.succeed({name}<'a>.{} {{ value: value }}) Result<{target}, ReadError>.Failure {{ error }} => Result<Self, ReadError>.failResult(error) }} }}",v.type_id,v.name).unwrap();
         }
-        writeln!(out,"      _ => {{ return Result<Self, ReadError>.failResult(ReadError.InvalidFormat {{ value: u16.toI64(discriminant) }}) }}\n    }}\n  }}\n  pub fn ofUnitType(self: &Self) -> {inner}<'a, ()> {{ return match self.* {{").unwrap();
+        writeln!(out,"      _ => {{ return Result<Self, ReadError>.failResult(ReadError.InvalidFormat {{ value: u16.toI64(discriminant) }}) }}\n    }}\n  }}\n  pub fn ofUnitType(self: &Self) -> {inner}<'a, ()> {{ return match &self.* {{").unwrap();
         for v in &group.variants {
             writeln!(
                 out,
@@ -398,7 +398,7 @@ impl Context<'_> {
             ] {
                 writeln!(out, "    if {test} {{ return match move {target}<'a>.read(data) {{ Result<{target}<'a>, ReadError>.Success {{ value }} => Result<Self, ReadError>.succeed(Glyph<'a>.{variant} {{ value: value }}) Result<{target}<'a>, ReadError>.Failure {{ error }} => Result<Self, ReadError>.failResult(error) }} }}").unwrap();
             }
-            writeln!(out, "    return Result<Self, ReadError>.failResult(ReadError.OutOfBounds)\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match self.* {{ Glyph<'a>.Simple {{ value }} => SimpleGlyph.offsetData(&value) Glyph<'a>.Composite {{ value }} => CompositeGlyph.offsetData(&value) }} }}\n}}\nimpl<'a> FontRead<'a, ()> for Glyph<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return Glyph<'a>.read(data) }} }}").unwrap();
+            writeln!(out, "    return Result<Self, ReadError>.failResult(ReadError.OutOfBounds)\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match &self.* {{ Glyph<'a>.Simple {{ value }} => SimpleGlyph.offsetData(&value) Glyph<'a>.Composite {{ value }} => CompositeGlyph.offsetData(&value) }} }}\n}}\nimpl<'a> FontRead<'a, ()> for Glyph<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return Glyph<'a>.read(data) }} }}").unwrap();
             return Ok(());
         }
         if format.name != "DeviceOrVariationIndex" {
@@ -415,7 +415,7 @@ impl Context<'_> {
         ] {
             writeln!(out,"    if {test} {{ return match move {target}<'a>.read(data) {{ Result<{target}<'a>, ReadError>.Success {{ value }} => Result<Self, ReadError>.succeed({name}<'a>.{target} {{ value: value }}) Result<{target}<'a>, ReadError>.Failure {{ error }} => Result<Self, ReadError>.failResult(error) }} }}").unwrap();
         }
-        writeln!(out,"    return Result<Self, ReadError>.failResult(ReadError.OutOfBounds)\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match self.* {{ {name}<'a>.Device {{ value }} => Device<'a>.offsetData(&value) {name}<'a>.VariationIndex {{ value }} => VariationIndex<'a>.offsetData(&value) }} }}\n}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}").unwrap();
+        writeln!(out,"    return Result<Self, ReadError>.failResult(ReadError.OutOfBounds)\n  }}\n  pub fn offsetData(self: &Self) -> FontData<'a> {{ return match &self.* {{ {name}<'a>.Device {{ value }} => Device<'a>.offsetData(&value) {name}<'a>.VariationIndex {{ value }} => VariationIndex<'a>.offsetData(&value) }} }}\n}}\nimpl<'a> FontRead<'a, ()> for {name}<'a> {{ fn readWithArgs(data: FontData<'a>, args: ()) -> Result<Self, ReadError> {{ return {name}<'a>.read(data) }} }}").unwrap();
         Ok(())
     }
     pub(super) fn computed_record(&self, out: &mut String, record: &Record) -> syn::Result<()> {

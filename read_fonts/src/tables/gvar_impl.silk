@@ -147,21 +147,21 @@ impl<'a> Copy for SelectedGvar<'a> {}
 
 impl<'a> SelectedGvar<'a> {
   pub fn glyphCount(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => u16.toU32(Gvar.glyphCount(&table))
       SelectedGvar<'a>.Extended { table } => Uint24.toU32(GvarExtended.glyphCount(&table))
     }
   }
 
   pub fn isExtended(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Extended { table } => true
       _ => false
     }
   }
 
   pub fn sharedTuples(self: &Self) -> Result<SharedTuples<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.sharedTuples(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.sharedTuples(&table)
     }
@@ -396,56 +396,56 @@ pub fn glyphVariationDataWithFormat<'a>(
 
 impl<'a> SelectedGvar<'a> {
   pub fn version(self: &Self) -> MajorMinor {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.version(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.version(&table)
     }
   }
 
   pub fn axisCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.axisCount(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.axisCount(&table)
     }
   }
 
   pub fn sharedTupleCount(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.sharedTupleCount(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.sharedTupleCount(&table)
     }
   }
 
   pub fn sharedTuplesOffset(self: &Self) -> Offset32 {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.sharedTuplesOffset(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.sharedTuplesOffset(&table)
     }
   }
 
   pub fn flags(self: &Self) -> GvarFlags {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.flags(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.flags(&table)
     }
   }
 
   pub fn glyphVariationDataArrayOffset(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.glyphVariationDataArrayOffset(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.glyphVariationDataArrayOffset(&table)
     }
   }
 
   pub fn glyphVariationDataOffsets(self: &Self) -> ComputedArray<'a, GvarFlags, U16Or32> {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.glyphVariationDataOffsets(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.glyphVariationDataOffsets(&table)
     }
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       SelectedGvar<'a>.Original { table } => Gvar.offsetData(&table)
       SelectedGvar<'a>.Extended { table } => GvarExtended.offsetData(&table)
     }

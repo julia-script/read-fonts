@@ -463,7 +463,7 @@ impl<'a> Lookup10<'a> {
 
 impl<'a> Lookup<'a> {
   pub fn value<T: LookupValue + Scalar + Copy>(self: &Self, index: u16) -> Result<T, ReadError> {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => Lookup0<'a>.value<T>(&value, index)
       Lookup<'a>.Format2 { value } => Lookup2<'a>.value<T>(&value, index)
       Lookup<'a>.Format4 { value } => Lookup4<'a>.value<T>(&value, index)

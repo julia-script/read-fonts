@@ -179,21 +179,21 @@ fn nonzero(input: Option<GlyphId>) -> Option<GlyphId> {
 
 impl<'a> MaybeSubtable<'a> {
   fn map(self: &Self, code: u32) -> Option<GlyphId> {
-    return match self.* {
+    return match &self.* {
       MaybeSubtable<'a>.Some { table } => CmapSubtable.mapCodepoint(&table, code)
       _ => Option<GlyphId>.None
     }
   }
 
   fn present(self: &Self) -> bool {
-    return match self.* {
+    return match &self.* {
       MaybeSubtable<'a>.Some { table } => true
       _ => false
     }
   }
 
   fn iter(self: &Self, limits: CmapIterLimits) -> CmapSubtableIter<'a> {
-    return match self.* {
+    return match &self.* {
       MaybeSubtable<'a>.Some { table } => CmapSubtable.iterWithLimits(&table, limits)
       _ => CmapSubtableIter<'a>.None
     }
@@ -202,14 +202,14 @@ impl<'a> MaybeSubtable<'a> {
 
 impl<'a> MaybeUvs<'a> {
   fn map(self: &Self, code: u32, selector: u32) -> Option<MapVariant> {
-    return match self.* {
+    return match &self.* {
       MaybeUvs<'a>.Some { table } => UvsSubtable.mapVariant(&table, code, selector)
       _ => Option<MapVariant>.None
     }
   }
 
   fn iter(self: &Self, limits: CmapIterLimits) -> Option<UvsSubtableIter<'a>> {
-    return match self.* {
+    return match &self.* {
       MaybeUvs<'a>.Some { table } => Option<UvsSubtableIter<'a>>.some(
         UvsSubtable.iterWithLimits(&table, limits),
       )

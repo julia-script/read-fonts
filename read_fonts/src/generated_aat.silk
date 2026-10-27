@@ -144,7 +144,7 @@ impl<'a> Lookup<'a> {
   }
 
   pub fn offsetData(self: &Self) -> FontData<'a> {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => Lookup0<'a>.offsetData(&value)
       Lookup<'a>.Format2 { value } => Lookup2<'a>.offsetData(&value)
       Lookup<'a>.Format4 { value } => Lookup4<'a>.offsetData(&value)
@@ -156,7 +156,7 @@ impl<'a> Lookup<'a> {
 
   /// Format number is set to 0.
   pub fn format(self: &Self) -> u16 {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => Lookup0<'a>.format(&value)
       Lookup<'a>.Format2 { value } => Lookup2<'a>.format(&value)
       Lookup<'a>.Format4 { value } => Lookup4<'a>.format(&value)
@@ -175,7 +175,7 @@ impl<'a> FontRead<'a, ()> for Lookup<'a> {
 
 impl<'a> MinByteRange<'a> for Lookup<'a> {
   fn minByteRange(self: &Self) -> ByteRange {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => MinByteRange.minByteRange(&value)
       Lookup<'a>.Format2 { value } => MinByteRange.minByteRange(&value)
       Lookup<'a>.Format4 { value } => MinByteRange.minByteRange(&value)
@@ -186,7 +186,7 @@ impl<'a> MinByteRange<'a> for Lookup<'a> {
   }
 
   fn minTableBytes(self: &Self) -> &'a [u8] {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => MinByteRange.minTableBytes(&value)
       Lookup<'a>.Format2 { value } => MinByteRange.minTableBytes(&value)
       Lookup<'a>.Format4 { value } => MinByteRange.minTableBytes(&value)
@@ -2135,7 +2135,7 @@ impl<'a> Lookup10<'a> {
 
 impl<'a> Lookup<'a> {
   pub fn value<T: LookupValue + Scalar + Copy>(self: &Self, index: u16) -> Result<T, ReadError> {
-    return match self.* {
+    return match &self.* {
       Lookup<'a>.Format0 { value } => Lookup0<'a>.value<T>(&value, index)
       Lookup<'a>.Format2 { value } => Lookup2<'a>.value<T>(&value, index)
       Lookup<'a>.Format4 { value } => Lookup4<'a>.value<T>(&value, index)

@@ -29,7 +29,7 @@ impl Display for Error {
   effect fn display(self: &Self, formatter: &mut Formatter) -> ()
     ! WriterError
     ? &mut Writer {
-    let message = match self.* {
+    let message = match &self.* {
       Error.Malformed => "font data was malformed"
       Error.MissingResource => "a required part of the font was missing"
       Error.InvalidOperation => "a program in the font did something invalid"
@@ -44,7 +44,7 @@ impl Debug for Error {
   effect fn debug(self: &Self, formatter: &mut Formatter) -> ()
     ! WriterError
     ? &mut Writer {
-    let message = match self.* {
+    let message = match &self.* {
       Error.Malformed => "Malformed"
       Error.MissingResource => "MissingResource"
       Error.InvalidOperation => "InvalidOperation"

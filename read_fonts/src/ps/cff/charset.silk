@@ -236,7 +236,7 @@ impl<'a> Copy for FormatRanges<'a> {}
 
 impl<'a> RangeSource for FormatRanges<'a> {
   fn rangeAt(self: &Self, index: usize) -> Option<RangeValues> {
-    return match self.* {
+    return match &self.* {
       FormatRanges<'a>.Format1 { value } => match move ComputedArray<'a, (), Range1<'a>>.get(
         &value,
         index,

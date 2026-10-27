@@ -1,0 +1,8 @@
+[package]
+name = "font_bench"
+version = "0.1.0"
+silk-version = "0.1.0-dev.20+10a8c67813a1"
+
+[dependencies]
+font_types = { path = "../font_types" }
+read_fonts = { path = "../read_fonts" }

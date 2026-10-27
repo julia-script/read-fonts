@@ -173,14 +173,14 @@ impl<'a> Copy for SelectedLigCaretList<'a> {}
 
 impl<'a> SelectedLigCaretList<'a> {
   pub fn coverage(self: &Self) -> Result<CoverageTable<'a>, ReadError> {
-    return match self.* {
+    return match &self.* {
       SelectedLigCaretList<'a>.Original { value } => LigCaretList<'a>.coverage(&value)
       SelectedLigCaretList<'a>.Extended { value } => LigCaretList2<'a>.coverage(&value)
     }
   }
 
   pub fn ligGlyphCount(self: &Self) -> u32 {
-    return match self.* {
+    return match &self.* {
       SelectedLigCaretList<'a>.Original { value } => u16.toU32(
         LigCaretList<'a>.ligGlyphCount(&value),
       )
@@ -191,7 +191,7 @@ impl<'a> SelectedLigCaretList<'a> {
   }
 
   pub fn ligGlyphs(self: &Self) -> LayoutOffsetArray<'a, LigGlyph<'a>> {
-    return match self.* {
+    return match &self.* {
       SelectedLigCaretList<'a>.Original { value } => LayoutOffsetArray<'a, LigGlyph<'a>>.Offset16 {
         value: LigCaretList<'a>.ligGlyphs(&value)
       }
