@@ -2528,18 +2528,9 @@ effect fn kern<F: FontFuncs>(
     }
     value = View.i16(&values, 4 + lo * stride)
   } else {
-    let c1 = u32.toUsize(
-      classOf(
-        &subtableClasses(context, subtables, subtableIndex, 0, View.offset16(&table, 8)),
-        left,
-      ),
-    )
-    let c2 = u32.toUsize(
-      classOf(
-        &subtableClasses(context, subtables, subtableIndex, 1, View.offset16(&table, 10)),
-        right,
-      ),
-    )
+    let sub = &subtables[subtableIndex]
+    let c1 = u32.toUsize(pairClass(context, sub, 0, &table, 8, left))
+    let c2 = u32.toUsize(pairClass(context, sub, 1, &table, 10, right))
     let count2 = u16.toUsize(View.u16(&table, 14))
     if c1 >= u16.toUsize(View.u16(&table, 12)) || c2 >= count2 {
       return no()
@@ -2566,6 +2557,33 @@ effect fn kern<F: FontFuncs>(
   }
   drop run trace.pair(font, &buffer.*, "tried kerning glyphs at ", at, ",", secondAt, "")
   return yes(secondAt)
+}
+
+/// The class of `glyph` in the class definition at offset `at` of a pair subtable, read from
+/// the plan's expansion when there is one.
+fn pairClass(
+  context: &Context,
+  sub: &LookupSubtable,
+  n: usize,
+  table: &View,
+  at: usize,
+  glyph: u32,
+) -> u32 with Intrinsic.inlineAlways() {
+  if !sub.classesResolved {
+    return classOf(&classesFor(context, View.offset16(&table, at)), glyph)
+  }
+  let expanded = &sub.classes[n]
+  if expanded.count == 0 {
+    return View.class(&View.offset16(&table, at), glyph)
+  }
+  if glyph < expanded.first {
+    return 0
+  }
+  let index = u32.toUsize(glyph - expanded.first)
+  if index >= expanded.count {
+    return 0
+  }
+  return u16.toU32(context.classValues[expanded.start + index])
 }
 
 effect fn position<F: FontFuncs>(
