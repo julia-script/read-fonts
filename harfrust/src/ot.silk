@@ -732,6 +732,7 @@ effect fn applyLookup<F: FontFuncs>(
     glyph = List<Glyph>.get(&buffer.glyphs, at).info.glyphId
   }
 
+  let mut second = SECOND_UNKNOWN
   let mut i: usize = 0
   while i < count && context.budget != 0 && buffer.successful {
     context.budget = context.budget - 1
@@ -806,6 +807,20 @@ effect fn applyLookup<F: FontFuncs>(
         last,
         depth,
         kind == 6 || kind == 8,
+      )
+    } else if context.positioning && known != 0 && subtables[i].kern != 0
+      && (subtables[i].kern <= 2 || !context.variable) {
+      result = run kern(
+        font,
+        &context.*,
+        &mut buffer,
+        lookup,
+        table,
+        subtables,
+        i,
+        known,
+        at,
+        &mut second,
       )
     } else if context.positioning {
       result = run position(
@@ -2423,6 +2438,126 @@ fn anchor(context: &Context, table: View) -> Anchor {
     y = y + deviceDelta(context, View.offset16(&table, 8))
   }
   return Anchor { x: Scale.xf(&context.scale, x), y: Scale.yf(&context.scale, y), valid: true }
+}
+
+/// `kern`'s shared second glyph before it is looked for, and when there is none.
+const SECOND_UNKNOWN: usize = 18446744073709551615
+
+const SECOND_NONE: usize = 18446744073709551614
+
+/// Applies a 16-bit kerning-only pair subtable (`LookupSubtable.kern`) whose first glyph's
+/// coverage index is `known - 1`. An advance device adds nothing without variation
+/// coordinates, so callers pass subtables with one only then. The second glyph is found once per lookup application and
+/// shared through `second` by the lookup's other kerning subtables. Results and buffer flags
+/// match `position`.
+effect fn kern<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &Context,
+  buffer: &mut Buffer,
+  lookup: Lookup,
+  table: View,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
+  known: u32,
+  at: usize,
+  second: &mut usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  if second.* == SECOND_UNKNOWN {
+    second.* = match move next(context, &buffer.*, lookup, at, false) {
+      Option<usize>.Some { value } => value
+      _ => SECOND_NONE
+    }
+  }
+  let secondAt = second.*
+  if secondAt == SECOND_NONE {
+    return no()
+  }
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let left = glyphs[at].info.glyphId
+  let right = glyphs[secondAt].info.glyphId
+  let coverage = u32.toUsize(known - 1)
+  let mut value: i16 = 0
+  let kind = subtables[subtableIndex].kern
+  let mut size: usize = 2
+  if kind >= 3 {
+    size = 4
+  }
+  if kind == 1 || kind == 3 {
+    if coverage >= u16.toUsize(View.u16(&table, 8)) {
+      return no()
+    }
+    if coverage < subtables[subtableIndex].pairSets
+      && !SetDigest.mayHave(
+        &context.pairDigests[subtables[subtableIndex].pairDigests + coverage],
+        right,
+      ) {
+      Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+      return no()
+    }
+
+    // Each record is a second glyph and the first glyph's advance, with its device offset.
+    let values = View.offset16(&table, 10 + coverage * 2)
+    let records = u16.toUsize(View.u16(&values, 0))
+    let stride = 2 + size
+    let mut lo: usize = 0
+    let mut hi = records
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      if u16.toU32(View.u16(&values, 2 + mid * stride)) < right {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    if lo >= records || u16.toU32(View.u16(&values, 2 + lo * stride)) != right {
+      Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+      return no()
+    }
+    if 4 + lo * stride + size > View.len(&values) {
+      return no()
+    }
+    value = View.i16(&values, 4 + lo * stride)
+  } else {
+    let c1 = u32.toUsize(
+      classOf(
+        &subtableClasses(context, subtables, subtableIndex, 0, View.offset16(&table, 8)),
+        left,
+      ),
+    )
+    let c2 = u32.toUsize(
+      classOf(
+        &subtableClasses(context, subtables, subtableIndex, 1, View.offset16(&table, 10)),
+        right,
+      ),
+    )
+    let count2 = u16.toUsize(View.u16(&table, 14))
+    if c1 >= u16.toUsize(View.u16(&table, 12)) || c2 >= count2 {
+      return no()
+    }
+    let pos = 16 + (c1 * count2 + c2) * size
+    if pos + size > View.len(&table) {
+      return no()
+    }
+    value = View.i16(&table, pos)
+  }
+  drop run trace.pair(font, &buffer.*, "try kerning glyphs at ", at, ",", secondAt, "")
+  let kerned = value != 0 && Direction.isHorizontal(buffer.direction)
+  if kerned {
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    slots[at].position.xAdvance = add(
+      slots[at].position.xAdvance,
+      Scale.x(&context.scale, i16.toI32(value)),
+    )
+    Buffer.unsafeToBreak(&mut buffer, at, secondAt + 1)
+  }
+  Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+  if kerned {
+    drop run trace.pair(font, &buffer.*, "kerned glyphs at ", at, ",", secondAt, "")
+  }
+  drop run trace.pair(font, &buffer.*, "tried kerning glyphs at ", at, ",", secondAt, "")
+  return yes(secondAt)
 }
 
 effect fn position<F: FontFuncs>(
