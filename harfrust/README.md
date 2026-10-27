@@ -145,9 +145,9 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 112M | 65.3M | 1.71× |
 | Roboto / English words | 153M | 87.9M | 1.74× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,378M | 789M | 1.75× |
-| Noto Nastaliq Urdu / Persian words | 1,215M | 847M | 1.43× |
-| Noto Sans Devanagari / Hindi words | 378M | 225M | 1.68× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,377M | 789M | 1.75× |
+| Noto Nastaliq Urdu / Persian words | 1,214M | 847M | 1.43× |
+| Noto Sans Devanagari / Hindi words | 373M | 225M | 1.66× |
 | Amiri / Persian Little Prince | 700M | 374M | 1.87× |
 | Source Serif Variable / react-dom | 1,428M | 1,004M | 1.42× |
 
@@ -196,7 +196,8 @@ that the mark is the second half of some composition. Text entirely below U+0300
 the mark scans in normalization, and flag propagation skips flagless single-glyph
 clusters; ASCII text fills the buffer in a plain loop, and horizontal advances are
 read straight from the hmtx bytes; glyph properties are set in place, and normalization
-maps single glyphs without copying them. Kerning-only 16-bit pair subtables
+maps single glyphs without copying them and composes only marks that can be the second
+half of a composition. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
 and a lookup's subtables share one search for the second glyph. Plans keep a digest of the glyphs that can follow the first one in each lookup's
 ligatures and pairs, so a lookup none of whose second glyphs is in the buffer is skipped

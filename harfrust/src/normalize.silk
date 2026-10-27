@@ -190,13 +190,13 @@ pub effect fn normalize<F: FontFuncs>(
     // Sorting is bounded like Harfrust's MAX_COMBINING_MARKS (32).
     i = 0
     while i < Buffer.len(&buffer.*) {
-      if List<Glyph>.get(&buffer.glyphs, i).combiningClass == 0 {
+      if List<Glyph>.asSlice(&buffer.glyphs)[i].combiningClass == 0 {
         i = i + 1
         continue
       }
       let mut end = i + 1
       while end < Buffer.len(&buffer.*)
-        && List<Glyph>.get(&buffer.glyphs, end).combiningClass != 0 {
+        && List<Glyph>.asSlice(&buffer.glyphs)[end].combiningClass != 0 {
         end = end + 1
       }
       if end - i <= 32 {
@@ -243,12 +243,17 @@ pub effect fn normalize<F: FontFuncs>(
     return
   }
   let mut starter: usize = 0
+
+  // Only a mark that is the second half of some composition can compose, besides the
+  // Hebrew fallback and the Bengali nukta special case below.
+  let hebrew = !buffer.dumber && buffer.script == 0x48656272 && !hasGposMark
   i = 1
   while i < Buffer.len(&buffer.*) {
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
     let cp = glyphs[i].codepoint
     let combiningClass = glyphs[i].combiningClass
-    if isMark(cp) && (glyphs[i - 1].combiningClass < combiningClass || i == starter + 1) {
+    if (hebrew || cp == 0x09bc || unicode.composesAsSecond(cp)) && isMark(cp)
+      && (glyphs[i - 1].combiningClass < combiningClass || i == starter + 1) {
       let baseCp = glyphs[starter].codepoint
       let mut composed: u32 = 0
 

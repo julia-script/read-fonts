@@ -122,6 +122,11 @@ pub fn decomposeRaw(cp: u32) -> Decomposition {
   }
 }
 
+/// Whether `cp` is the second code point of some canonical composition.
+pub fn composesAsSecond(cp: u32) -> bool {
+  return Data.composesAsSecond(cp)
+}
+
 pub fn composeRaw(a: u32, b: u32) -> u32 {
   if a >= 0x1100 && a < 0x1113 && b >= 0x1161 && b < 0x1176 {
     return 0xac00 + (a - 0x1100) * 588 + (b - 0x1161) * 28
