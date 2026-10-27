@@ -1,7 +1,7 @@
 //! Bounded OpenType lookup execution. Subtables borrow checked font views.
 import silk.slice { Slice }
 import trace
-import view { View, read16, offset }
+import view { View, read16, offset, valueSize }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
@@ -55,6 +55,8 @@ struct Context<'a, 's> {
   ruleDigests: &'s [u64],
   /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
   coverageValues: &'s [u16],
+  /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
+  pairDigests: &'s [SetDigest],
   /// Contextual input positions, 64 per lookup nesting depth.
   positionStack: List<usize>,
   glyphClasses: Classes<'a, 's>,
@@ -221,6 +223,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
+    pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -475,6 +478,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
+    pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -2091,15 +2095,6 @@ effect fn contextual<F: FontFuncs>(
   return no()
 }
 
-/// Bytes in a value record: two per bit set in the low byte of its format. The bits are
-/// counted in parallel, since this runs for every pair adjustment.
-fn valueSize(format: u16) -> usize with Intrinsic.inline() {
-  let bits = format & 255
-  let pairs = bits - ((bits / 2) & 0x55)
-  let nibbles = (pairs & 0x33) + ((pairs / 4) & 0x33)
-  return u16.toUsize((nibbles + nibbles / 16) & 15) * 2
-}
-
 fn readVarStore<'a>(gdef: View<'a>, coordCount: usize) -> Option<ItemVariationStore<'a>> {
   if coordCount == 0 {
     return Option<ItemVariationStore<'a>>.None
@@ -2301,6 +2296,16 @@ effect fn position<F: FontFuncs>(
       if coverage >= u32.toUsize(View.uint(&table, header + 4, width)) {
         return no()
       }
+
+      // The plan's digest of the pair set's second glyphs rejects most pairs without a search.
+      if subtableIndex < subtables.length && coverage < subtables[subtableIndex].pairSets
+        && !SetDigest.mayHave(
+        &context.pairDigests[subtables[subtableIndex].pairDigests + coverage],
+        right,
+      ) {
+        Buffer.unsafeToConcat(&mut buffer, at, second + 1)
+        return no()
+      }
       values = View.offset(&table, header + 4 + width + coverage * width, width)
       let mut lo: usize = 0
       let mut hi = u32.toUsize(View.uint(&values, 0, width))
@@ -2356,10 +2361,24 @@ effect fn position<F: FontFuncs>(
       return no()
     }
     drop run trace.pair(font, &buffer.*, "try kerning glyphs at ", at, ",", second, "")
-    adjustValue(context, &mut buffer, at, values, pos, vf1)
-    adjustValue(context, &mut buffer, second, values, pos + size1, vf2)
-    let kerned = hasValue(context, values, pos, vf1, buffer.direction)
-      || hasValue(context, values, pos + size1, vf2, buffer.direction)
+    let mut kerned = false
+    if vf1 == 4 && vf2 == 0 {
+      // Kerning only adjusts the first glyph's advance.
+      let value = View.i16(&values, pos)
+      if value != 0 && Direction.isHorizontal(buffer.direction) {
+        let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+        glyphs[at].position.xAdvance = add(
+          glyphs[at].position.xAdvance,
+          Scale.x(&context.scale, i16.toI32(value)),
+        )
+        kerned = true
+      }
+    } else {
+      adjustValue(context, &mut buffer, at, values, pos, vf1)
+      adjustValue(context, &mut buffer, second, values, pos + size1, vf2)
+      kerned = hasValue(context, values, pos, vf1, buffer.direction)
+        || hasValue(context, values, pos + size1, vf2, buffer.direction)
+    }
     if kerned {
       Buffer.unsafeToBreak(&mut buffer, at, second + 1)
     }
