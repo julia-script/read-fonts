@@ -53,6 +53,8 @@ struct Context<'a, 's> {
   classValues: &'s [u16],
   /// Per rule set digests of contextual subtables' second input values (`OtPlan.ruleDigests`).
   ruleDigests: &'s [u64],
+  /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
+  coverageValues: &'s [u16],
   /// Contextual input positions, 64 per lookup nesting depth.
   positionStack: List<usize>,
   glyphClasses: Classes<'a, 's>,
@@ -198,6 +200,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
+    coverageValues: List<u16>.asSlice(&plan.coverageValues),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -451,6 +454,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
+    coverageValues: List<u16>.asSlice(&plan.coverageValues),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -641,10 +645,31 @@ effect fn applyLookup<F: FontFuncs>(
     context.budget = context.budget - 1
     let mut table = View.empty()
     let mut kind = lookup.kind
+    let mut known: u32 = 0
     if cached {
       if !SetDigest.mayHave(&subtables[i].digest, glyph) {
         i = i + 1
         continue
+      }
+
+      // An expanded coverage rejects an uncovered glyph without calling the subtable, which
+      // would reject it first thing.
+      // A covered glyph's index is passed on so the subtable does not search for it again.
+      let sub = &subtables[i]
+      if sub.coverageCount != 0 {
+        if glyph >= sub.coverageFirst
+          && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+          known = u16.toU32(
+            context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
+          )
+        }
+        if known == 0 {
+          if sub.missSpends && context.budget != 0 {
+            context.budget = context.budget - 1
+          }
+          i = i + 1
+          continue
+        }
       }
       table = View.tail(&context.table, subtables[i].offset)
       kind = subtables[i].kind
@@ -674,6 +699,7 @@ effect fn applyLookup<F: FontFuncs>(
         lookup,
         table,
         digests,
+        known,
         at,
         first,
         last,
@@ -681,9 +707,20 @@ effect fn applyLookup<F: FontFuncs>(
         kind == 6 || kind == 8,
       )
     } else if context.positioning {
-      result = run position(font, &context.*, &mut buffer, lookup, table, kind, at)
+      result = run position(font, &context.*, &mut buffer, lookup, table, kind, known, at)
     } else {
-      result = run substitute(font, &mut context, &mut buffer, lookup, table, kind, at, first, last)
+      result = run substitute(
+        font,
+        &mut context,
+        &mut buffer,
+        lookup,
+        table,
+        kind,
+        known,
+        at,
+        first,
+        last,
+      )
     }
     if result.yes {
       return result
@@ -725,6 +762,7 @@ effect fn substitute<F: FontFuncs>(
   lookup: Lookup,
   table: View,
   kind: u16,
+  known: u32,
   at: usize,
   first: usize,
   last: usize,
@@ -742,13 +780,16 @@ effect fn substitute<F: FontFuncs>(
     header = 6
     coverageWidth = 4
   }
-  let coverage = match move View.coverage(
-    &View.offset(&table, 2, coverageWidth),
-    glyph.info.glyphId,
-  ) {
-    Option<u32>.Some { value } => u32.toUsize(value)
-    _ => {
-      return no()
+  let mut coverage = usize.wrappingSubtract(u32.toUsize(known), 1)
+  if known == 0 {
+    coverage = match move View.coverage(
+      &View.offset(&table, 2, coverageWidth),
+      glyph.info.glyphId,
+    ) {
+      Option<u32>.Some { value } => u32.toUsize(value)
+      _ => {
+        return no()
+      }
     }
   }
   let mut format = rawFormat
@@ -1582,6 +1623,7 @@ effect fn contextual<F: FontFuncs>(
   lookup: Lookup,
   table: View,
   digests: &[u64],
+  known: u32,
   at: usize,
   first: usize,
   last: usize,
@@ -1599,7 +1641,9 @@ effect fn contextual<F: FontFuncs>(
   // Format 3 has a single rule, which most glyphs fail on its first input coverage. Check that
   // before the general setup, spending the same budget the rule loop would.
   let mut firstMatched = false
-  if rawFormat == 3 && context.budget != 0 && buffer.successful {
+  if rawFormat == 3 && known != 0 {
+    firstMatched = true
+  } else if rawFormat == 3 && context.budget != 0 && buffer.successful {
     let mut inputPos: usize = 6
     if chained {
       inputPos = 6 + u16.toUsize(View.u16(&table, 2)) * 2
@@ -1631,10 +1675,13 @@ effect fn contextual<F: FontFuncs>(
   let mut kind: u32 = 0
   let mut ruleSetIndex: usize = 0
   if format == 1 || format == 2 {
-    let coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyph) {
-      Option<u32>.Some { value } => u32.toUsize(value)
-      _ => {
-        return no()
+    let mut coverage = usize.wrappingSubtract(u32.toUsize(known), 1)
+    if known == 0 {
+      coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyph) {
+        Option<u32>.Some { value } => u32.toUsize(value)
+        _ => {
+          return no()
+        }
       }
     }
     let mut index = coverage
@@ -2118,6 +2165,7 @@ effect fn position<F: FontFuncs>(
   lookup: Lookup,
   table: View,
   kind: u16,
+  known: u32,
   at: usize,
 ) -> Applied
   ! OutOfMemoryError
@@ -2140,10 +2188,13 @@ effect fn position<F: FontFuncs>(
       format = 1
     }
   }
-  let coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyphId) {
-    Option<u32>.Some { value } => u32.toUsize(value)
-    _ => {
-      return no()
+  let mut coverage = usize.wrappingSubtract(u32.toUsize(known), 1)
+  if known == 0 {
+    coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyphId) {
+      Option<u32>.Some { value } => u32.toUsize(value)
+      _ => {
+        return no()
+      }
     }
   }
   if kind == 1 {

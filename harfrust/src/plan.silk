@@ -50,6 +50,15 @@ pub struct LookupSubtable {
   /// This subtable's rule set digests in `OtPlan.ruleDigests`; `ruleSets` is 0 without them.
   pub ruleDigests: usize,
   pub ruleSets: usize,
+  /// The coverage of the glyph a match starts at, expanded into `OtPlan.coverageValues` from
+  /// glyph `coverageFirst`: one entry per glyph, the coverage index plus one, or 0 when the glyph
+  /// is not covered. `coverageCount` is 0 when the coverage is not expanded.
+  pub coverageFirst: u32,
+  pub coverageStart: usize,
+  pub coverageCount: usize,
+  /// Whether applying the subtable to an uncovered glyph spends a unit of budget, as a format 3
+  /// contextual subtable does.
+  pub missSpends: bool,
 }
 
 impl Copy for LookupSubtable {}
@@ -68,6 +77,9 @@ impl Copy for ClassTable {}
 /// Expanded class definitions, enough for every contextual and pair subtable of a large font.
 const MAX_CLASS_VALUES: usize = 4194304
 
+/// The most glyphs one expanded coverage spans; wider coverages are searched instead.
+const MAX_COVERAGE_SPAN: usize = 8192
+
 pub struct OtPlan<'a> {
   pub table: View<'a>,
   pub steps: List<LookupStep>,
@@ -78,6 +90,7 @@ pub struct OtPlan<'a> {
   /// For each rule set of a 16-bit format 1 or 2 contextual subtable, a bit per second input
   /// value (mod 64) of its rules; all bits when a rule has no second value or is malformed.
   pub ruleDigests: List<u64>,
+  pub coverageValues: List<u16>,
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
   pub markAttachClasses: ClassTable,
@@ -138,6 +151,8 @@ impl<'a> OtPlan<'a> {
         SetDigest.include(&mut digest, &subtableDigest)
         let ruleDigests = List<u64>.length(&self.ruleDigests)
         run self.addRuleDigests(table, kind)
+        let coverageStart = List<u16>.length(&self.coverageValues)
+        let coverageFirst = run self.expandCoverage(table, kind)
         run List<LookupSubtable>.append(
           &mut self.subtables,
           // Every view derived by offsets runs to the end of the layout table.
@@ -147,6 +162,10 @@ impl<'a> OtPlan<'a> {
             digest: subtableDigest,
             ruleDigests: ruleDigests,
             ruleSets: List<u64>.length(&self.ruleDigests) - ruleDigests,
+            coverageFirst: coverageFirst,
+            coverageStart: coverageStart,
+            coverageCount: List<u16>.length(&self.coverageValues) - coverageStart,
+            missSpends: contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3,
           },
         )
         i = i + 1
@@ -198,6 +217,99 @@ impl<'a> OtPlan<'a> {
     }
   }
 
+  /// Expands the starting coverage of a subtable whose functions reject an uncovered glyph
+  /// before anything else, so `applyLookup` can skip it without a call. Only 16-bit subtable and
+  /// coverage formats with a nonzero coverage offset are expanded, over at most
+  /// `MAX_COVERAGE_SPAN` glyphs. Each entry is what `View.coverage` returns for that glyph.
+  /// Returns the first glyph; nothing is appended when the coverage is not expanded.
+  effect fn expandCoverage(self: &mut Self, table: View<'a>, kind: u16) -> u32
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let format = View.u16(&table, 0)
+    let mut plain = format == 1
+    if contextualKind(kind, self.positioning) {
+      plain = format >= 1 && format <= 3
+    } else if kind <= 2 {
+      plain = format == 1 || format == 2
+    } else if (self.positioning && kind > 6) || (!self.positioning && kind != 8 && kind > 4) {
+      plain = false
+    }
+    if !plain {
+      return 0
+    }
+    let coverageAt = offset16At(table, kind, self.positioning)
+    if View.u16(&table, coverageAt) == 0 {
+      return 0
+    }
+    let coverage = View.offset16(&table, coverageAt)
+    let coverageFormat = View.u16(&coverage, 0)
+    let count = u16.toUsize(View.u16(&coverage, 2))
+    let mut entrySize: usize = 2
+    if coverageFormat == 2 {
+      entrySize = 6
+    } else if coverageFormat != 1 {
+      return 0
+    }
+
+    // View.coverage rejects a count its table cannot hold; such a coverage is not expanded.
+    if count == 0 || View.len(&coverage) < 4 || count > (View.len(&coverage) - 4) / entrySize {
+      return 0
+    }
+
+    // Entries are filled straight from the table, which matches View.coverage's binary search
+    // only when the glyphs (or ranges) are sorted and disjoint; anything else is not expanded.
+    let first = u16.toU32(View.u16(&coverage, 4))
+    let mut last = first
+    let mut i: usize = 0
+    while i < count {
+      let start = u16.toU32(View.u16(&coverage, 4 + i * entrySize))
+      let mut end = start
+      if coverageFormat == 2 {
+        end = u16.toU32(View.u16(&coverage, 6 + i * entrySize))
+      }
+      if end < start || (i > 0 && start <= last) {
+        return 0
+      }
+
+      // Indexes are stored plus one in 16 bits.
+      if coverageFormat == 2
+        && u16.toU32(View.u16(&coverage, 8 + i * entrySize)) + (end - start) >= 65535 {
+        return 0
+      }
+      last = end
+      i = i + 1
+    }
+    let span = u32.toUsize(last - first) + 1
+    let base = List<u16>.length(&self.coverageValues)
+    if span > MAX_COVERAGE_SPAN || base > MAX_CLASS_VALUES || span > MAX_CLASS_VALUES - base {
+      return 0
+    }
+    let mut n: usize = 0
+    while n < span {
+      run List<u16>.append(&mut self.coverageValues, 0)
+      n = n + 1
+    }
+    let values = List<u16>.asMutSlice(&mut self.coverageValues)
+    i = 0
+    while i < count {
+      let start = u16.toU32(View.u16(&coverage, 4 + i * entrySize))
+      let mut end = start
+      let mut index = i
+      if coverageFormat == 2 {
+        end = u16.toU32(View.u16(&coverage, 6 + i * entrySize))
+        index = u16.toUsize(View.u16(&coverage, 8 + i * entrySize))
+      }
+      let mut glyph = start
+      while glyph <= end {
+        values[base + u32.toUsize(glyph - first)] = usize.toU16(index + 1)
+        index = index + 1
+        glyph = glyph + 1
+      }
+      i = i + 1
+    }
+    return first
+  }
+
   /// An empty plan over a GSUB or GPOS table; `addStep` adds lookups to it.
   pub fn forTable(table: View<'a>, positioning: bool) -> Self {
     return Self {
@@ -207,6 +319,7 @@ impl<'a> OtPlan<'a> {
       classTables: List<ClassTable>.make(),
       classValues: List<u16>.make(),
       ruleDigests: List<u64>.make(),
+      coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       direction: Direction.LeftToRight,
@@ -752,4 +865,20 @@ fn ruleSetDigest(ruleSet: View, chained: bool) -> u64 {
     index = index + 1
   }
   return digest
+}
+
+fn contextualKind(kind: u16, positioning: bool) -> bool {
+  return (!positioning && (kind == 5 || kind == 6)) || (positioning && (kind == 7 || kind == 8))
+}
+
+/// Where a 16-bit subtable keeps the 16-bit offset of the coverage its match starts at: after
+/// the backtrack offsets of a chained format 3 subtable, at 6 for an unchained one, else at 2.
+fn offset16At(table: View, kind: u16, positioning: bool) -> usize {
+  if contextualKind(kind, positioning) && View.u16(&table, 0) == 3 {
+    if kind == 6 || kind == 8 {
+      return 6 + u16.toUsize(View.u16(&table, 2)) * 2
+    }
+    return 6
+  }
+  return 2
 }
