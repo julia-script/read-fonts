@@ -243,6 +243,15 @@ impl<'a, 'c, 'e, S, V, E> ScaledGlyphMetrics<'a, 'c, 'e, S, V, E> {
     }
   }
 
+  /// The unscaled metrics these scale.
+  pub fn exact(self: &Self) -> &GlyphMetrics<'a, 'c> {
+    return &self.metrics
+  }
+
+  pub fn scaling(self: &Self) -> &S {
+    return &self.scale
+  }
+
   pub fn withLineExtents(self: Self, line: Option<LineExtents<V>>) -> Self {
     return Self {
       metrics: self.metrics,

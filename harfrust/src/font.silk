@@ -18,7 +18,7 @@ import read_fonts.model.name.glyph { GlyphNameMap, GlyphName }
 import read_fonts.model.variation { Variation }
 import read_fonts.tables.fvar { Fvar, UserCoordinate }
 import read_fonts.tables.avar { Avar }
-import font_types.lib { Tag, GlyphId, Fixed, F2Dot14 }
+import font_types.lib { Tag, GlyphId, Fixed, F2Dot14, F48Dot16 }
 import silk.option { Option }
 import silk.result { Result }
 import silk.list { List }
@@ -623,6 +623,32 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
     // The scaled metrics are found once for the whole run.
     let scaled = Metrics.scaled(self)
     let mut i: usize = 0
+
+    // At the identity scale whole-unit advances pass through unchanged, and
+    // only negative ones are clamped.
+    if Scale.same(
+      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.scaling(scaled),
+      &Scale.identity(),
+    )
+      && Scale.same(&self.font.scale, &Scale.identity()) {
+      let exact = ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.exact(scaled)
+      while i < Advances.len(&advances.*) {
+        let glyph = Advances.glyph(&advances.*, i)
+        let value = GlyphMetrics.hAdvanceExact(exact, glyph)
+        let mut advance: i32 = 0
+        if (F48Dot16.toBits(value) & 65535) == 0 {
+          advance = F48Dot16.toI32(value)
+        } else {
+          advance = Scale.xf(&self.font.scale, F48Dot16.toF32(value))
+        }
+        if advance < 0 {
+          advance = 0
+        }
+        Advances.set(&mut advances, i, advance)
+        i = i + 1
+      }
+      return
+    }
     while i < Advances.len(&advances.*) {
       let glyph = Advances.glyph(&advances.*, i)
       let advance = ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.hAdvance(
