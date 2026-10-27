@@ -336,6 +336,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         glyphDigest = bufferDigest(&buffer.*)
         digestStale = false
       }
+      let everywhere = enabledEverywhere(&context, step, end)
       if !stepMayApply(&steps[step], &glyphDigest, &buffer.*) {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
@@ -345,7 +346,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           i = i - 1
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
           if SetDigest.mayHave(&steps[step].digest, glyph.info.glyphId)
-            && enabled(&context, glyph, step, end) > 0 {
+            && (everywhere || enabled(&context, glyph, step, end) > 0) {
             drop run applyLookup(
               font,
               &mut context,
@@ -368,7 +369,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           }
           let mut result = no()
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-          if enabled(&context, glyph, step, end) > 0 {
+          if everywhere || enabled(&context, glyph, step, end) > 0 {
             result = run applyLookup(
               font,
               &mut context,
@@ -638,6 +639,23 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
     i = i + 1
   }
   return result
+}
+
+/// Whether `enabled` is nonzero for every glyph: without user features, a required step or a
+/// plain step with a nonzero value enables the lookup whatever the glyph.
+fn enabledEverywhere(context: &Context, first: usize, last: usize) -> bool {
+  if context.features.length != 0 {
+    return false
+  }
+  let mut i = first
+  while i < last {
+    let step = &context.steps[i]
+    if step.required || (step.plain && step.value != 0) {
+      return true
+    }
+    i = i + 1
+  }
+  return false
 }
 
 /// Whether `lookup` skips `glyph` by its GDEF class. The class checks are inlined into every
