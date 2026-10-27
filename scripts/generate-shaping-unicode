@@ -50,7 +50,8 @@ def generate():
         modified = re.sub(rf"\b{module}::(\w+)", lambda m: constants[m[1]], modified)
     out.append(byte_function("modifiedClasses", bytes(numbers(modified))))
     rtl = (SOURCE / "direction.rs").read_text().split("// Unicode-1.1 additions", 1)[1].split("=>", 1)[0]
-    out.append(byte_function("rtlScripts", b"".join(scripts[n].encode() for n in re.findall(r"Script::(\w+)", rtl))))
+    arms = "".join(f"    0x{scripts[n].encode().hex()} => true\n" for n in re.findall(r"Script::(\w+)", rtl))
+    out.append(f"pub fn isRtlScript(script: u32) -> bool {{\n  return match script {{\n{arms}    _ => false\n  }}\n}}\n")
     emoji = (SOURCE / "unicode/emoji_table.rs").read_text()
     out.append(byte_function("emoji", bytes(numbers(array(emoji, "emoji_u8")))))
     arabic = (SOURCE / "ot/shaper/arabic_table.rs").read_text()

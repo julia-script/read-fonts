@@ -14,6 +14,7 @@ import silk.allocator { Allocator, OutOfMemoryError }
 import silk.char
 import silk.usize
 import silk.u32
+import silk.u8
 
 pub enum ContentType {
   None,
@@ -117,18 +118,48 @@ impl Glyph {
     return Glyph.ligNumComps(self)
   }
 
-  pub fn new(cp: u32, cluster: u32) -> Self {
+  pub fn new(cp: u32, cluster: u32) -> Self with Intrinsic.inlineAlways() {
     // Below U+0300 every code point has combining class 0, U+00AD is the only default
     // ignorable and none is hidden, so the table lookups can be skipped.
-    let mut combiningClass: u8 = 0
-    let mut ignorable = cp == 0xad
-    let mut hidden = false
     if cp >= 0x300 {
-      combiningClass = unicode.modifiedCombiningClass(cp)
-      ignorable = unicode.isDefaultIgnorable(cp)
-      hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
-        || (cp >= 0xe0020 && cp <= 0xe007f)
+      return Glyph.withProperties(cp, cluster)
     }
+    return Glyph.make(cp, cluster, 0, cp == 0xad, false)
+  }
+
+  fn setCodepoint(self: &mut Self, cp: u32, cluster: u32) -> () with Intrinsic.inlineAlways() {
+    self.info.glyphId = cp
+    self.info.cluster = cluster
+    self.codepoint = cp
+    if cp >= 0x300 {
+      let full = Glyph.withProperties(cp, cluster)
+      self.combiningClass = full.combiningClass
+      self.ignorable = full.ignorable
+      self.hidden = full.hidden
+    } else if cp == 0xad {
+      self.ignorable = true
+    }
+  }
+
+  fn withProperties(cp: u32, cluster: u32) -> Self {
+    let hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
+      || (cp >= 0xe0020 && cp <= 0xe007f)
+    return Glyph.make(
+      cp,
+      cluster,
+      unicode.modifiedCombiningClass(cp),
+      unicode.isDefaultIgnorable(cp),
+      hidden,
+    )
+  }
+
+  fn make(
+    cp: u32,
+    cluster: u32,
+    combiningClass: u8,
+    ignorable: bool,
+    hidden: bool,
+  ) -> Self with Intrinsic.inlineAlways() {
     return Self {
       info: GlyphInfo { glyphId: cp, cluster: cluster, flags: 0 },
       position: GlyphPosition.zero(),
@@ -307,16 +338,60 @@ impl Buffer {
     ! OutOfMemoryError
     ? &mut Allocator {
     self.contentType = ContentType.Unicode
-    let mut cursor = String.scalarCursor()
+
+    // Every scalar starts with a non-continuation byte, so the glyphs can be added in one
+    // step and filled in place instead of appended one at a time.
+    let bytes = String.utf8Bytes(text)
+    let mut count: usize = 0
+    let mut j: usize = 0
+    while j < bytes.length {
+      if (bytes[j] & 0xc0) != 0x80 {
+        count = count + 1
+      }
+      j = j + 1
+    }
+    let base = List<Glyph>.length(&self.glyphs)
+    run List<Glyph>.appendRepeated(&mut self.glyphs, Glyph.new(0, 0), count)
+    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+    let mut k = base
+    let mut offset: usize = 0
     let mut index: u32 = 0
-    while let Option<ScalarStep>.Some { value: step } = String.nextScalar(text, move cursor) {
+    while offset < bytes.length {
+      let first = bytes[offset]
+      let mut cp = u8.toU32(first)
+      let mut width: usize = 1
+      if first >= 0x80 {
+        // The same decoding as String.nextScalar, which also stops at a non-scalar value.
+        if first <= 0xdf {
+          cp = (cp - 192) * 64 + (u8.toU32(bytes[offset + 1]) - 128)
+          width = 2
+        } else if first <= 0xef {
+          cp = (cp - 224) * 4096 + (u8.toU32(bytes[offset + 1]) - 128) * 64
+            + (u8.toU32(bytes[offset + 2]) - 128)
+          width = 3
+        } else {
+          cp = (cp - 240) * 262144 + (u8.toU32(bytes[offset + 1]) - 128) * 4096
+            + (u8.toU32(bytes[offset + 2]) - 128) * 64
+            + (u8.toU32(bytes[offset + 3]) - 128)
+          width = 4
+        }
+        if cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) {
+          break
+        }
+      }
       let mut cluster = index
       if utf8Clusters {
-        cluster = usize.toU32(String.scalarByteOffset(&step))
+        cluster = usize.toU32(offset)
       }
-      run Buffer.add(&mut self, char.toU32(String.scalarValue(&step)), cluster)
-      cursor = String.nextCursor(move step)
+
+      // Slots already hold Glyph.new(0, 0); only the code point dependent fields change.
+      Glyph.setCodepoint(&mut slots[k], cp, cluster)
+      k = k + 1
+      offset = offset + width
       index = u32.saturatingAdd(index, 1)
+    }
+    if k < slots.length {
+      List<Glyph>.truncate(&mut self.glyphs, k)
     }
   }
 
