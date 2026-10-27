@@ -102,3 +102,35 @@ jobs:
           name: shaping-failures
           path: build/shaping-malformed-failures/
           if-no-files-found: ignore
+
+  wasm:
+    name: WebAssembly shaping and demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-silk
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hr_wasm/*/package-lock.json
+      - name: Install wasm-ld
+        run: sudo apt-get update && sudo apt-get install -y lld
+      - name: Build hr_wasm for wasm32
+        run: scripts/build-wasm
+      - name: JS wrapper matches native shaping
+        working-directory: hr_wasm/js
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: Demo typechecks, lints and builds
+        working-directory: hr_wasm/demo
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build

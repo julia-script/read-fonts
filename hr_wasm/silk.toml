@@ -1,0 +1,9 @@
+[package]
+name = "hr_wasm"
+version = "0.1.0"
+silk-version = "0.1.0-dev.22+5cd5bc433c4e"
+
+[dependencies]
+harfrust = { path = "../harfrust" }
+font_types = { path = "../font_types" }
+read_fonts = { path = "../read_fonts" }

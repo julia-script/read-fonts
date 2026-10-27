@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "harfrust-wasm": [
+        "../js/src/index.ts"
+      ],
+      "harfrust-wasm/effect": [
+        "../js/src/effect.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
