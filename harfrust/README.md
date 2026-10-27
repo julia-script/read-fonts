@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 310M | 65.3M | 4.75× |
-| Roboto / English words | 460M | 87.9M | 5.23× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,961M | 789M | 2.48× |
-| Noto Nastaliq Urdu / Persian words | 1,956M | 847M | 2.31× |
-| Noto Sans Devanagari / Hindi words | 835M | 225M | 3.71× |
-| Amiri / Persian Little Prince | 961M | 374M | 2.57× |
-| Source Serif Variable / react-dom | 3,748M | 1,004M | 3.73× |
+| Roboto / English Little Prince | 287M | 65.3M | 4.40× |
+| Roboto / English words | 430M | 87.9M | 4.88× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,945M | 789M | 2.46× |
+| Noto Nastaliq Urdu / Persian words | 1,932M | 847M | 2.28× |
+| Noto Sans Devanagari / Hindi words | 831M | 225M | 3.69× |
+| Amiri / Persian Little Prince | 944M | 374M | 2.53× |
+| Source Serif Variable / react-dom | 3,438M | 1,004M | 3.42× |
 
-The geometric mean is **3.38×**, down from 11.25× for the initial port. Plans
+The geometric mean is **3.25×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -169,7 +169,9 @@ rejected without walking it; pair sets keep a digest of their second glyphs, and
 kerning-only pair subtables adjust the advance directly; steps whose features
 have no per-glyph conditions skip those checks; context matching compares each
 glyph with its expected value once, and the common GDEF class checks for skipped
-glyphs are inlined into every glyph walk. The remaining gap is mostly per-glyph table walking that harfrust
+glyphs are inlined into every glyph walk; normalization keeps glyphs mapped in
+place instead of copying them to a new list, and GDEF classes are assigned in one
+pass. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences

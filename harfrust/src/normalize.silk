@@ -41,7 +41,11 @@ pub effect fn normalize<F: FontFuncs>(
       drop run trace.message(font, &buffer.*, "end decompose")
       return
     }
+
+    // Glyphs mapped in place stay in the buffer until the first glyph that needs more work;
+    // only then is the output list started, with everything before it.
     let mut output = List<Glyph>.make()
+    let mut materialized = false
     let mut i: usize = 0
     while i < Buffer.len(&buffer.*) {
       if buffer.shaper == 0 {
@@ -66,6 +70,9 @@ pub effect fn normalize<F: FontFuncs>(
             mapped = end - i
           }
           let last = i + mapped
+          if !materialized {
+            i = last
+          }
           while i < last {
             run List<Glyph>.append(&mut output, List<Glyph>.get(&buffer.glyphs, i))
             i = i + 1
@@ -74,6 +81,14 @@ pub effect fn normalize<F: FontFuncs>(
             continue
           }
         }
+      }
+      if !materialized {
+        let mut kept: usize = 0
+        while kept < i {
+          run List<Glyph>.append(&mut output, List<Glyph>.get(&buffer.glyphs, kept))
+          kept = kept + 1
+        }
+        materialized = true
       }
       let item = List<Glyph>.get(&buffer.glyphs, i)
       if i + 1 < Buffer.len(&buffer.*) {
@@ -143,7 +158,9 @@ pub effect fn normalize<F: FontFuncs>(
       }
       i = i + 1
     }
-    buffer.glyphs = move output
+    if materialized {
+      buffer.glyphs = move output
+    }
     drop run trace.message(font, &buffer.*, "end decompose")
   } else {
     let mut n: usize = 0
