@@ -1,0 +1,21 @@
+//! Tests read the pinned corpus in place; no font binaries are copied or embedded.
+import silk.native_host_input { NativeHostInput }
+import silk.host_input { HostInputError }
+import silk.filesystem { Path, FileSystem, FileError }
+import silk.os_filesystem { OsFileSystem }
+import silk.bytes { Bytes }
+import silk.string { String }
+import silk.effect { Effect }
+import silk.allocator { Allocator, OutOfMemoryError }
+
+pub effect fn read(name: string) -> Bytes
+  ! FileError | HostInputError | OutOfMemoryError
+  ? &mut Allocator {
+  let cwd = run NativeHostInput.workingDirectory()
+  let root = run Path.fromBytes(Bytes.asSlice(&cwd))
+  let mut relative = run String.copy("test-data/harfrust/harfrust/")
+  run String.append(&mut relative, name)
+  let path = run Path.resolve(&root, String.view(&relative))
+  let mut files = run OsFileSystem.make("/")
+  return run FileSystem.readFile(&path) |> Effect.provideMut<FileSystem>(&mut files)
+}

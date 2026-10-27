@@ -1,0 +1,652 @@
+//! Prepared borrowed font tables with owned variation coordinates per shaper.
+import read_fonts.model.metrics.glyph { GlyphMetrics }
+import read_fonts.model.metrics {
+  ScaledGlyphMetrics,
+  NoExtents,
+  GlyphExtents,
+  GlyphExtentsProvider
+}
+import view { View }
+import generated_unicode as Data
+import silk.u32
+import scale { Scale, sub }
+import read_fonts.lib { FontRef, FontData, ReadError, TableProvider }
+import read_fonts.model.charmap { Charmap }
+import read_fonts.model.name.glyph { GlyphNameMap, GlyphName }
+import read_fonts.model.variation { Variation }
+import read_fonts.tables.fvar { Fvar, UserCoordinate }
+import read_fonts.tables.avar { Avar }
+import font_types.lib { Tag, GlyphId, Fixed, F2Dot14 }
+import silk.option { Option }
+import silk.result { Result }
+import silk.list { List }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.u16
+import silk.f32
+
+pub struct ShaperData<'a> {
+  pub font: FontRef<'a>,
+  pub charmap: Charmap<'a>,
+  pub names: GlyphNameMap<'a>,
+  pub gsub: View<'a>,
+  pub gpos: View<'a>,
+  pub gdef: View<'a>,
+  pub upem: u16,
+  pub symbolPage: u16,
+}
+
+impl<'a> ShaperData<'a> {
+  pub fn new(font: &FontRef<'a>) -> Self {
+    let head = table(font, 0x68656164)
+    let mut upem = View.u16(&head, 18)
+    if upem == 0 {
+      upem = 1000
+    }
+    let os2 = table(font, 0x4f532f32)
+    let charmap = Charmap.new(font)
+    let mut symbolPage: u16 = 0
+    if Charmap.unicodeIsSymbol(&charmap) && View.u16(&os2, 0) == 0 {
+      symbolPage = View.u16(&os2, 62) & 65280
+    }
+    return Self {
+      symbolPage: symbolPage,
+      font: font.*,
+      charmap: Charmap.new(font),
+      names: GlyphNameMap.new(font),
+      gsub: table(font, 0x47535542),
+      gpos: table(font, 0x47504f53),
+      gdef: table(font, 0x47444546),
+      upem: upem,
+    }
+  }
+
+  /// Default shaping font; avoids static calls through a specialized alias (compiler-bugs/009).
+  pub fn shaper<'s>(self: &'s Self) -> ConfiguredShaper<'a, 's, DefaultFontFuncs> {
+    return ConfiguredShaper<'a, 's, DefaultFontFuncs>.withFuncs(self, DefaultFontFuncs {})
+  }
+
+  pub fn nominalGlyph(self: &Self, cp: u32) -> u32 {
+    let glyph = GlyphId.toU32(
+      Charmap.mapUnicode(&self.charmap, cp) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+    )
+    if glyph != 0 || (self.symbolPage != 0xb200 && self.symbolPage != 0xb300) {
+      return glyph
+    }
+    let data = View.bytes(Data.arabicSymbol())
+    let mut lo: usize = 0
+    let mut hi = View.len(&data) / 8
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      if View.u32(&data, mid * 8) < cp {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    if lo * 8 < View.len(&data) && View.u32(&data, lo * 8) == cp {
+      let mut column: usize = 4
+      if self.symbolPage == 0xb300 {
+        column = 6
+      }
+      let mapped = u16.toU32(View.u16(&data, lo * 8 + column))
+      if mapped != 0 {
+        return GlyphId.toU32(
+          Charmap.mapUnicode(&self.charmap, mapped) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+        )
+      }
+    }
+    return 0
+  }
+
+  pub fn variationGlyph(self: &Self, cp: u32, selector: u32) -> u32 {
+    return GlyphId.toU32(
+      Charmap.mapUnicodeVariant(&self.charmap, cp, selector)
+        |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+    )
+  }
+}
+
+pub struct ConfiguredShaper<'a, 's, F> {
+  pub data: &'s ShaperData<'a>,
+  pub coords: List<F2Dot14>,
+  pub scale: Scale,
+  pub pointSize: f32,
+  pub funcs: F,
+}
+
+impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
+  pub fn new(data: &'s ShaperData<'a>) -> ConfiguredShaper<'a, 's, DefaultFontFuncs> {
+    return ConfiguredShaper<'a, 's, DefaultFontFuncs>.withFuncs(data, DefaultFontFuncs {})
+  }
+
+  pub fn withFuncs(data: &'s ShaperData<'a>, funcs: F) -> Self {
+    return Self {
+      data: data,
+      coords: List<F2Dot14>.make(),
+      scale: Scale.identity(),
+      pointSize: 0.0,
+      funcs: move funcs,
+    }
+  }
+
+  pub fn setScale(self: &mut Self, x: i32, y: i32) -> () {
+    self.scale = Scale.new(x, y, u16.toI32(self.data.upem))
+  }
+
+  pub effect fn setVariations(self: &mut Self, variations: &[Variation]) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    List<F2Dot14>.clear(&mut self.coords)
+    if let Result<Fvar<'a>, ReadError>.Success { value: fvar } = TableProvider.fvar(
+      &self.data.font,
+    ) {
+      let mut i: usize = 0
+      let count = u16.toUsize(Fvar.axisCount(&fvar))
+      while i < count {
+        run List<F2Dot14>.append(&mut self.coords, F2Dot14.zero())
+        i = i + 1
+      }
+      let mut user = List<UserCoordinate>.make()
+      i = 0
+      while i < variations.length {
+        run List<UserCoordinate>.append(
+          &mut user,
+          UserCoordinate {
+            tag: variations[i].tag,
+            value: Fixed.fromF64(f32.toF64(variations[i].value)),
+          },
+        )
+        i = i + 1
+      }
+      let avar = match move TableProvider.avar(&self.data.font) {
+        Result<Avar<'a>, ReadError>.Success { value } => Option<Avar<'a>>.some(value)
+        _ => Option<Avar<'a>>.None
+      }
+      run Fvar.userToNormalized(
+        &fvar,
+        move avar,
+        List<UserCoordinate>.asSlice(&user),
+        List<F2Dot14>.asMutSlice(&mut self.coords),
+      )
+    }
+  }
+}
+
+pub struct DefaultFontFuncs {}
+
+impl FontFuncs for DefaultFontFuncs {
+  fn isDefault(self: &Self) -> bool {
+    return true
+  }
+}
+
+pub type Shaper<'a, 's> = ConfiguredShaper<'a, 's, DefaultFontFuncs>
+
+pub type ShaperFont<'a, 's> = Shaper<'a, 's>
+
+pub fn table<'a>(font: &FontRef<'a>, tag: u32) -> View<'a> {
+  return View.new(
+    FontRef.tableData(font, Tag.fromU32(tag)) |> Option<FontData<'a>>.unwrapOr(FontData.new(b"")),
+  )
+}
+
+/// Callbacks return values in the configured scale, with a negative Y-up height.
+/// Silk interfaces are statically dispatched: construct ConfiguredShaper.withFuncs.
+// Keep the bound on consuming methods: compiler-bugs/007, silk-lang/silk#2397.
+pub interface FontFuncs {
+  /// Enable message callbacks; the default specialization removes tracing overhead.
+  fn tracing(self: &Self) -> bool {
+    return false
+  }
+
+  /// Start messages can suppress an operation. Other return values are informational.
+  effect fn message(
+    self: &Self,
+    font: &ConfiguredShaper<Self>,
+    buffer: &Buffer,
+    message: string,
+  ) -> bool
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return true
+  }
+
+  fn isDefault(self: &Self) -> bool {
+    return false
+  }
+
+  fn nominalGlyph(self: &Self, font: &ConfiguredShaper<Self>, cp: u32) -> Option<GlyphId> {
+    return ConfiguredShaper.defaultNominalGlyph(font, cp)
+  }
+
+  fn nominalGlyphs(
+    self: &Self,
+    font: &ConfiguredShaper<Self>,
+    glyphs: &mut NominalGlyphs,
+  ) -> usize {
+    let mut i: usize = 0
+    while i < NominalGlyphs.len(&glyphs.*) {
+      let glyph = match move FontFuncs.nominalGlyph(
+        self,
+        font,
+        NominalGlyphs.codepoint(&glyphs.*, i),
+      ) {
+        Option<GlyphId>.Some { value } => GlyphId.toU32(value)
+        _ => {
+          break
+        }
+      }
+      NominalGlyphs.set(&mut glyphs, i, glyph)
+      i = i + 1
+    }
+    return i
+  }
+
+  fn variationGlyph(self: &Self, font: &ConfiguredShaper<Self>, cp: u32, selector: u32) -> Option<
+    GlyphId
+  > {
+    return ConfiguredShaper.defaultVariationGlyph(font, cp, selector)
+  }
+
+  fn glyphHAdvance(self: &Self, font: &ConfiguredShaper<Self>, glyph: GlyphId) -> i32 {
+    return ConfiguredShaper.defaultGlyphHAdvance(font, glyph)
+  }
+
+  fn glyphHAdvances(self: &Self, font: &ConfiguredShaper<Self>, advances: &mut Advances) -> () {
+    let mut i: usize = 0
+    while i < Advances.len(&advances.*) {
+      let glyph = Advances.glyph(&advances.*, i)
+      Advances.set(&mut advances, i, FontFuncs.glyphHAdvance(self, font, glyph))
+      i = i + 1
+    }
+  }
+
+  fn glyphVAdvance(self: &Self, font: &ConfiguredShaper<Self>, glyph: GlyphId) -> i32 {
+    return ConfiguredShaper.defaultGlyphVAdvance(font, glyph)
+  }
+
+  effect fn glyphVOrigin(self: &Self, font: &ConfiguredShaper<Self>, glyph: GlyphId) -> [i32; 2]
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return run ConfiguredShaper.defaultGlyphVOrigin(font, glyph)
+  }
+
+  effect fn glyphExtents(self: &Self, font: &ConfiguredShaper<Self>, glyph: GlyphId) -> Option<
+    GlyphExtents<i32>
+  >
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return run ConfiguredShaper.defaultGlyphExtents(font, glyph)
+  }
+}
+
+import buffer { Buffer, Glyph }
+
+/// The original codepoints and writable glyph IDs for a consecutive run.
+pub struct NominalGlyphs<'b> {
+  glyphs: &'b mut [Glyph],
+  start: usize,
+  end: usize,
+}
+
+impl<'b> NominalGlyphs<'b> {
+  pub fn new(glyphs: &'b mut [Glyph], start: usize, end: usize) -> Self {
+    let mut first = start
+    let mut last = end
+    if last > glyphs.length {
+      last = glyphs.length
+    }
+    if first > last {
+      first = last
+    }
+    return Self { glyphs: &mut glyphs, start: first, end: last }
+  }
+
+  pub fn len(self: &Self) -> usize {
+    return self.end - self.start
+  }
+
+  pub fn isEmpty(self: &Self) -> bool {
+    return self.end == self.start
+  }
+
+  pub fn codepoint(self: &Self, index: usize) -> u32 {
+    return self.glyphs[self.start + index].codepoint
+  }
+
+  pub fn set(self: &mut Self, index: usize, glyph: u32) -> () {
+    self.glyphs[self.start + index].info.glyphId = glyph
+  }
+}
+
+/// Glyph IDs paired with writable horizontal advances.
+pub struct Advances<'b> {
+  pub glyphs: &'b mut [Glyph],
+}
+
+impl<'b> Advances<'b> {
+  pub fn len(self: &Self) -> usize {
+    return self.glyphs.length
+  }
+
+  pub fn isEmpty(self: &Self) -> bool {
+    return self.glyphs.length == 0
+  }
+
+  pub fn glyph(self: &Self, index: usize) -> GlyphId {
+    return GlyphId.new(self.glyphs[index].info.glyphId)
+  }
+
+  pub fn set(self: &mut Self, index: usize, value: i32) -> () {
+    self.glyphs[index].position.xAdvance = value
+  }
+}
+
+impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
+  pub fn nominalGlyph<F: FontFuncs>(self: &Self, cp: u32) -> Option<GlyphId> {
+    return FontFuncs.nominalGlyph(&self.funcs, self, cp)
+  }
+
+  pub fn nominalGlyphs<F: FontFuncs>(self: &Self, glyphs: &mut NominalGlyphs) -> usize {
+    return FontFuncs.nominalGlyphs(&self.funcs, self, &mut glyphs)
+  }
+
+  pub fn variationGlyph<F: FontFuncs>(self: &Self, cp: u32, selector: u32) -> Option<GlyphId> {
+    return FontFuncs.variationGlyph(&self.funcs, self, cp, selector)
+  }
+
+  pub fn defaultNominalGlyph<F: FontFuncs>(self: &Self, cp: u32) -> Option<GlyphId> {
+    let glyph = ShaperData.nominalGlyph(self.data, cp)
+    if glyph == 0 {
+      return Option<GlyphId>.None
+    }
+    return Option<GlyphId>.some(GlyphId.new(glyph))
+  }
+
+  pub fn defaultVariationGlyph<F: FontFuncs>(self: &Self, cp: u32, selector: u32) -> Option<
+    GlyphId
+  > {
+    return Charmap.mapUnicodeVariant(&self.data.charmap, cp, selector)
+  }
+
+  pub fn glyphFor<F: FontFuncs>(self: &Self, cp: u32) -> u32 {
+    return GlyphId.toU32(
+      ConfiguredShaper.nominalGlyph(self, cp) |> Option<GlyphId>.unwrapOr(GlyphId.new(4294967295)),
+    )
+  }
+
+  pub fn variationFor<F: FontFuncs>(self: &Self, cp: u32, selector: u32) -> u32 {
+    return GlyphId.toU32(
+      ConfiguredShaper.variationGlyph(self, cp, selector)
+        |> Option<GlyphId>.unwrapOr(GlyphId.new(4294967295)),
+    )
+  }
+
+  pub fn glyphOrNotdef<F: FontFuncs>(self: &Self, cp: u32) -> u32 {
+    return GlyphId.toU32(
+      ConfiguredShaper.nominalGlyph(self, cp) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
+    )
+  }
+
+  pub fn glyphHAdvance<F: FontFuncs>(self: &Self, glyph: GlyphId) -> i32 {
+    return FontFuncs.glyphHAdvance(&self.funcs, self, glyph)
+  }
+
+  pub fn glyphHAdvances<F: FontFuncs>(self: &Self, advances: &mut Advances) -> () {
+    FontFuncs.glyphHAdvances(&self.funcs, self, &mut advances)
+  }
+
+  pub fn glyphVAdvance<F: FontFuncs>(self: &Self, glyph: GlyphId) -> i32 {
+    return FontFuncs.glyphVAdvance(&self.funcs, self, glyph)
+  }
+
+  pub effect fn glyphVOrigin<F: FontFuncs>(self: &Self, glyph: GlyphId) -> [i32; 2]
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return run FontFuncs.glyphVOrigin(&self.funcs, self, glyph)
+  }
+
+  pub effect fn glyphExtents<F: FontFuncs>(self: &Self, glyph: GlyphId) -> Option<GlyphExtents<i32>>
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return run FontFuncs.glyphExtents(&self.funcs, self, glyph)
+  }
+
+  pub fn defaultGlyphHAdvance<F: FontFuncs>(self: &Self, glyph: GlyphId) -> i32 {
+    return Scale.clampXAdvance(
+      &self.scale,
+      ScaledGlyphMetrics.hAdvance(&defaultMetrics(self), glyph),
+    )
+  }
+
+  pub fn defaultGlyphVAdvance<F: FontFuncs>(self: &Self, glyph: GlyphId) -> i32 {
+    return sub(
+      0,
+      Scale.clampYAdvance(&self.scale, ScaledGlyphMetrics.vAdvance(&defaultMetrics(self), glyph)),
+    )
+  }
+
+  pub effect fn defaultGlyphExtents<F: FontFuncs>(self: &Self, glyph: GlyphId) -> Option<
+    GlyphExtents<i32>
+  >
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    return flipExtents(run ScaledGlyphMetrics.extents(&defaultMetrics(self), glyph))
+  }
+
+  pub effect fn defaultGlyphVOrigin<F: FontFuncs>(self: &Self, glyph: GlyphId) -> [i32; 2]
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let metrics = defaultMetrics(self)
+    let x = ConfiguredShaper.glyphHAdvance(self, glyph) / 2
+    if FontFuncs.isDefault(&self.funcs) {
+      return [x, run ScaledGlyphMetrics.vOriginY(&metrics, glyph)]
+    }
+    let supplied = FixedExtents {
+      value: flipExtents(run ConfiguredShaper.glyphExtents(self, glyph)),
+    }
+    let custom = ScaledGlyphMetrics.withGlyphExtents(metrics, Option<&FixedExtents>.some(&supplied))
+    return [x, run ScaledGlyphMetrics.vOriginY(&custom, glyph)]
+  }
+
+  pub effect fn setNormalizedCoords<F: FontFuncs>(self: &mut Self, coords: &[F2Dot14]) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    List<F2Dot14>.clear(&mut self.coords)
+    let mut i: usize = 0
+    while i < coords.length {
+      run List<F2Dot14>.append(&mut self.coords, coords[i])
+      i = i + 1
+    }
+  }
+
+  pub fn normalizedCoords<F: FontFuncs>(self: &Self) -> &[F2Dot14] {
+    return List<F2Dot14>.asSlice(&self.coords)
+  }
+}
+
+struct FixedExtents {
+  value: Option<GlyphExtents<i32>>,
+}
+
+impl GlyphExtentsProvider<i32> for FixedExtents {
+  fn extents(self: &Self, glyph: GlyphId) -> Option<GlyphExtents<i32>> {
+    return match &self.value {
+      Option<GlyphExtents<i32>>.Some { value } => Option<GlyphExtents<i32>>.some(value)
+      _ => Option<GlyphExtents<i32>>.None
+    }
+  }
+}
+
+fn flipExtents(value: Option<GlyphExtents<i32>>) -> Option<GlyphExtents<i32>> {
+  return match move value {
+    Option<GlyphExtents<i32>>.Some { value: bounds } => Option<GlyphExtents<i32>>.some(
+      GlyphExtents<i32> {
+        xBearing: bounds.xBearing,
+        yBearing: bounds.yBearing,
+        width: bounds.width,
+        height: sub(0, bounds.height),
+      },
+    )
+    _ => Option<GlyphExtents<i32>>.None
+  }
+}
+
+fn defaultMetrics<'a, 's, 'c, F: FontFuncs>(
+  font: &'c ConfiguredShaper<'a, 's, F>,
+) -> ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents> {
+  return ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.new(
+    GlyphMetrics.new(&font.data.font, List<F2Dot14>.asSlice(&font.coords)),
+    font.scale,
+  )
+}
+
+pub struct Metrics<'a, 's, 'c, F: FontFuncs> {
+  inner: ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>,
+  font: &'c ConfiguredShaper<'a, 's, F>,
+}
+
+impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
+  pub fn hAdvance(self: &Self, glyph: GlyphId) -> i32 {
+    if !FontFuncs.isDefault(&self.font.funcs) {
+      return ConfiguredShaper.glyphHAdvance(self.font, glyph)
+    }
+    return Scale.clampXAdvance(
+      &self.font.scale,
+      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.hAdvance(&self.inner, glyph),
+    )
+  }
+
+  pub fn hAdvances(self: &Self, advances: &mut Advances) -> () {
+    if !FontFuncs.isDefault(&self.font.funcs) {
+      ConfiguredShaper.glyphHAdvances(self.font, &mut advances)
+      return
+    }
+    let mut i: usize = 0
+    while i < Advances.len(&advances.*) {
+      let glyph = Advances.glyph(&advances.*, i)
+      Advances.set(&mut advances, i, Metrics.hAdvance(self, glyph))
+      i = i + 1
+    }
+  }
+
+  pub fn vAdvance(self: &Self, glyph: GlyphId) -> i32 {
+    if !FontFuncs.isDefault(&self.font.funcs) {
+      return sub(0, ConfiguredShaper.glyphVAdvance(self.font, glyph))
+    }
+    return Scale.clampYAdvance(
+      &self.font.scale,
+      ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vAdvance(&self.inner, glyph),
+    )
+  }
+
+  pub effect fn vOrigin(self: &Self, glyph: GlyphId) -> [i32; 2]
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if !FontFuncs.isDefault(&self.font.funcs) {
+      return run ConfiguredShaper.glyphVOrigin(self.font, glyph)
+    }
+    return [
+      Metrics.hAdvance(self, glyph) / 2,
+      run ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.vOriginY(&self.inner, glyph),
+    ]
+  }
+
+  pub effect fn extents(self: &Self, glyph: GlyphId) -> Option<GlyphExtents<i32>>
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if !FontFuncs.isDefault(&self.font.funcs) {
+      return flipExtents(run ConfiguredShaper.glyphExtents(self.font, glyph))
+    }
+    return run ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.extents(
+      &self.inner,
+      glyph,
+    )
+  }
+}
+
+pub fn metrics<'a, 's, 'c, F: FontFuncs>(font: &'c ConfiguredShaper<'a, 's, F>) -> Metrics<
+  'a,
+  's,
+  'c,
+  F
+> {
+  return Metrics { inner: defaultMetrics(font), font: font }
+}
+
+impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
+  pub fn withFontFuncs<G: FontFuncs>(self: Self, funcs: G) -> ConfiguredShaper<'a, 's, G> {
+    return ConfiguredShaper<'a, 's, G> {
+      data: self.data,
+      coords: move self.coords,
+      scale: self.scale,
+      pointSize: self.pointSize,
+      funcs: move funcs,
+    }
+  }
+
+  pub fn setFontFuncs(self: &mut Self, funcs: F) -> () {
+    self.funcs = move funcs
+  }
+
+  pub fn setScaleUniform(self: &mut Self, size: i32) -> () {
+    ConfiguredShaper.setScale(&mut self, size, size)
+  }
+
+  pub fn withScale(self: Self, x: i32, y: i32) -> Self {
+    let mut result = move self
+    ConfiguredShaper.setScale(&mut result, x, y)
+    return move result
+  }
+
+  pub fn unitsPerEm(self: &Self) -> u16 {
+    return self.data.upem
+  }
+
+  pub fn glyphName(self: &Self, glyph: GlyphId) -> Option<GlyphName> {
+    return GlyphNameMap.glyphName(&self.data.names, glyph)
+  }
+
+  pub fn defaultNominalGlyphs<F: FontFuncs>(self: &Self, glyphs: &mut NominalGlyphs) -> usize {
+    let mut i: usize = 0
+    while i < NominalGlyphs.len(&glyphs.*) {
+      let glyph = match move ConfiguredShaper.defaultNominalGlyph(
+        self,
+        NominalGlyphs.codepoint(&glyphs.*, i),
+      ) {
+        Option<GlyphId>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      NominalGlyphs.set(&mut glyphs, i, GlyphId.toU32(glyph))
+      i = i + 1
+    }
+    return i
+  }
+
+  pub fn defaultGlyphHAdvances<F: FontFuncs>(self: &Self, advances: &mut Advances) -> () {
+    let prepared = defaultMetrics(self)
+    let mut i: usize = 0
+    while i < Advances.len(&advances.*) {
+      let glyph = Advances.glyph(&advances.*, i)
+      let value = Scale.clampXAdvance(&self.scale, ScaledGlyphMetrics.hAdvance(&prepared, glyph))
+      Advances.set(&mut advances, i, value)
+      i = i + 1
+    }
+  }
+}
+
+impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
+  pub fn hasGlyph<F: FontFuncs>(self: &Self, cp: u32) -> bool {
+    return match move ConfiguredShaper.nominalGlyph(self, cp) {
+      Option<GlyphId>.Some { value } => true
+      _ => false
+    }
+  }
+
+  /// The scalar cache uses MAX for misses; custom fonts may also return MAX.
+  pub fn mappedGlyphExists<F: FontFuncs>(self: &Self, cp: u32, glyph: u32) -> bool {
+    return glyph != 4294967295 || ConfiguredShaper.hasGlyph(self, cp)
+  }
+}

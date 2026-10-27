@@ -73,3 +73,32 @@ jobs:
           name: robustness-failures
           path: build/robustness-failures/
           if-no-files-found: ignore
+
+  shaping:
+    name: Native Silk shaping
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-silk
+      - name: Library unit tests
+        run: silk test --release --manifest-path harfrust/silk.toml --root src/tests.silk
+      - name: Build the shaping runner once
+        run: silk build --release --manifest-path hr_shape/silk.toml
+      - name: Pinned shaping cases
+        run: build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --suite harfrust/tests/shaping.bin
+      - name: Long-input regressions
+        run: build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --regressions
+      - name: Tracing integration
+        run: scripts/check-shaping-trace
+      - name: Malformed input smoke checks
+        run: scripts/check-shaping-malformed
+      - name: Upload failing shaping inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaping-failures
+          path: build/shaping-malformed-failures/
+          if-no-files-found: ignore

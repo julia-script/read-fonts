@@ -20,3 +20,5 @@ workaround, and report it upstream. Never patch or vendor the compiler.
 
 All eight still reproduce, with the same output, on `0.1.0-dev.20+10a8c67813a1`
 (checked 2026-10-26).
+
+- [009 — specialized alias constructor](009-specialized-alias/README.md): an associated call through a specialized alias rejects a valid argument; use the explicit nominal owner. Reported as silk-lang/silk#2412.
