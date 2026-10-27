@@ -132,10 +132,13 @@ impl Glyph {
     self.info.cluster = cluster
     self.codepoint = cp
     if cp >= 0x300 {
-      let full = Glyph.withProperties(cp, cluster)
-      self.combiningClass = full.combiningClass
-      self.ignorable = full.ignorable
-      self.hidden = full.hidden
+      // The slot starts with ignorable and hidden unset; below U+17B4 only U+034F and
+      // U+061C are either.
+      self.combiningClass = unicode.modifiedCombiningClass(cp)
+      if cp >= 0x17b4 || cp == 0x34f || cp == 0x61c {
+        self.ignorable = unicode.isDefaultIgnorable(cp)
+        self.hidden = Glyph.isHidden(cp)
+      }
     } else if cp == 0xad {
       self.ignorable = true
     }
@@ -147,9 +150,13 @@ impl Glyph {
     self.codepoint = cp
   }
 
-  fn withProperties(cp: u32, cluster: u32) -> Self {
-    let hidden = cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
+  fn isHidden(cp: u32) -> bool with Intrinsic.inlineAlways() {
+    return cp == 0x34f || (cp >= 0x180b && cp <= 0x180d) || cp == 0x180f
       || (cp >= 0xe0020 && cp <= 0xe007f)
+  }
+
+  fn withProperties(cp: u32, cluster: u32) -> Self {
+    let hidden = Glyph.isHidden(cp)
     return Glyph.make(
       cp,
       cluster,
