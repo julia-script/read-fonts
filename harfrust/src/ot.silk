@@ -1937,18 +1937,24 @@ effect fn contextual<F: FontFuncs>(
       if format == 3 {
         index = n
       }
-      let found = nextExpected(
-        &context.*,
-        &buffer.*,
-        lookup,
-        cursor,
-        false,
-        rule,
-        inputPos + index * width,
-        kind,
-        classes,
-        false,
-      )
+
+      // A rule that got past the quick reject stores the second glyph's value, so the walk
+      // would stop at the glyph `inputSecond` already found.
+      let mut found = second.index
+      if n != 1 || !quickReject || !second.found {
+        found = nextExpected(
+          &context.*,
+          &buffer.*,
+          lookup,
+          cursor,
+          false,
+          rule,
+          inputPos + index * width,
+          kind,
+          classes,
+          false,
+        )
+      }
       if found == NOT_FOUND {
         break
       }

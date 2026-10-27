@@ -145,13 +145,13 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 255M | 65.3M | 3.91× |
 | Roboto / English words | 388M | 87.9M | 4.41× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,876M | 789M | 2.38× |
-| Noto Nastaliq Urdu / Persian words | 1,905M | 847M | 2.25× |
-| Noto Sans Devanagari / Hindi words | 785M | 225M | 3.48× |
-| Amiri / Persian Little Prince | 919M | 374M | 2.46× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,801M | 789M | 2.28× |
+| Noto Nastaliq Urdu / Persian words | 1,817M | 847M | 2.15× |
+| Noto Sans Devanagari / Hindi words | 783M | 225M | 3.48× |
+| Amiri / Persian Little Prince | 926M | 374M | 2.48× |
 | Source Serif Variable / react-dom | 2,683M | 1,004M | 2.67× |
 
-The geometric mean is **2.98×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.95×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -176,7 +176,8 @@ and single-glyph cluster merges are skipped; the default character mapping cache
 recent codepoints within each batch; lookups that cover no glyph in the buffer
 are skipped before any setup, and AAT tables are found once per font; multiple
 and ligature substitutions move the rest of the buffer once instead of once per
-glyph. The remaining gap is mostly per-glyph table walking that harfrust
+glyph, and contextual rules reuse the second input glyph found for the quick
+reject instead of walking to it again. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
