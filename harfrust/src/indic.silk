@@ -5,6 +5,7 @@ import plan { OtPlan }
 import complex { consonant, moveGlyph, dotted }
 import syllable
 import ot
+import set_digest { SetDigest }
 import unicode
 import view { View }
 import silk.list { List }
@@ -88,15 +89,29 @@ fn mask(buffer: &mut Buffer, at: usize, bits: u32) -> () {
   List<Glyph>.set(&mut buffer.glyphs, at, item)
 }
 
+/// Digests of the features that consonant positions and reph forms probe, gathered once per
+/// call so most probes are rejected without scanning the plan.
+struct Probes {
+  blwf: SetDigest,
+  vatu: SetDigest,
+  pstf: SetDigest,
+  pref: SetDigest,
+  rphf: SetDigest,
+}
+
 effect fn probe<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   plan: &OtPlan,
   tag: u32,
+  digest: &SetDigest,
   a: u32,
   b: u32,
 ) -> bool
   ! OutOfMemoryError
   ? &mut Allocator {
+  if !SetDigest.mayHave(digest, a) {
+    return false
+  }
   return (run ot.wouldSubstitute(font, plan, tag, &[a, b]))
 }
 
@@ -109,19 +124,27 @@ pub effect fn initial<F: FontFuncs>(
   ? &mut Allocator {
   let v = ConfiguredShaper.glyphFor(font, virama(buffer.script))
   let old = oldSpec(font, buffer.script)
+  let probes = Probes {
+    blwf: ot.featureDigest(plan, 0x626c7766),
+    vatu: ot.featureDigest(plan, 0x76617475),
+    pstf: ot.featureDigest(plan, 0x70737466),
+    pref: ot.featureDigest(plan, 0x70726566),
+    rphf: ot.featureDigest(plan, 0x72706866),
+  }
   let mut i: usize = 0
   while i < Buffer.len(&buffer.*) {
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
     if ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v) && item.order == 4 {
       let c = item.info.glyphId
-      if (run probe(font, plan, 0x626c7766, v, c)) || (run probe(font, plan, 0x626c7766, c, v))
-        || (run probe(font, plan, 0x76617475, v, c))
-        || (run probe(font, plan, 0x76617475, c, v)) {
+      if (run probe(font, plan, 0x626c7766, &probes.blwf, v, c))
+        || (run probe(font, plan, 0x626c7766, &probes.blwf, c, v))
+        || (run probe(font, plan, 0x76617475, &probes.vatu, v, c))
+        || (run probe(font, plan, 0x76617475, &probes.vatu, c, v)) {
         item.order = 8
-      } else if (run probe(font, plan, 0x70737466, v, c))
-        || (run probe(font, plan, 0x70737466, c, v))
-        || (run probe(font, plan, 0x70726566, v, c))
-        || (run probe(font, plan, 0x70726566, c, v)) {
+      } else if (run probe(font, plan, 0x70737466, &probes.pstf, v, c))
+        || (run probe(font, plan, 0x70737466, &probes.pstf, c, v))
+        || (run probe(font, plan, 0x70726566, &probes.pref, v, c))
+        || (run probe(font, plan, 0x70726566, &probes.pref, c, v)) {
         item.order = 11
       }
       List<Glyph>.set(&mut buffer.glyphs, i, item)
@@ -134,7 +157,7 @@ pub effect fn initial<F: FontFuncs>(
     let end = syllable.next(&buffer.*, start)
     let kind = List<Glyph>.get(&buffer.glyphs, start).syllable & 15
     if kind != 3 && kind != 5 {
-      run initialSyllable(font, &mut buffer, plan, start, end, old)
+      run initialSyllable(font, &mut buffer, plan, &probes, start, end, old)
     }
     start = end
   }
@@ -144,6 +167,7 @@ effect fn initialSyllable<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   buffer: &mut Buffer,
   plan: &OtPlan,
+  probes: &Probes,
   start: usize,
   end: usize,
   old: bool,
@@ -171,7 +195,7 @@ effect fn initialSyllable<F: FontFuncs>(
     let a = List<Glyph>.get(&buffer.glyphs, start).info.glyphId
     let b = List<Glyph>.get(&buffer.glyphs, start + 1).info.glyphId
     let c = List<Glyph>.get(&buffer.glyphs, start + 2).info.glyphId
-    if (run probe(font, plan, 0x72706866, a, b))
+    if (run probe(font, plan, 0x72706866, &probes.rphf, a, b))
       || (explicit && (run ot.wouldSubstitute(font, plan, 0x72706866, &[a, b, c]))) {
       limit = start + 2
       while limit < end && joiner(&List<Glyph>.asSlice(&buffer.glyphs)[limit]) {
@@ -410,6 +434,7 @@ effect fn initialSyllable<F: FontFuncs>(
       font,
       plan,
       0x70726566,
+      &probes.pref,
       List<Glyph>.get(&buffer.glyphs, i).info.glyphId,
       List<Glyph>.get(&buffer.glyphs, i + 1).info.glyphId,
     )) {

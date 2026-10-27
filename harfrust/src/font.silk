@@ -44,6 +44,9 @@ pub struct ShaperData<'a> {
   /// Backs the empty coordinate slice of default-instance metrics. An empty array literal
   /// cannot be borrowed for 'static (compiler-bugs/011).
   noCoords: [F2Dot14; 1],
+  /// Nominal glyphs for U+0000 to U+00FF, mapped once, since most text maps these codepoints
+  /// over and over.
+  latinGlyphs: [u32; 256],
 }
 
 impl<'a> ShaperData<'a> {
@@ -59,7 +62,7 @@ impl<'a> ShaperData<'a> {
     if Charmap.unicodeIsSymbol(&charmap) && View.u16(&os2, 0) == 0 {
       symbolPage = View.u16(&os2, 62) & 65280
     }
-    return Self {
+    let mut data = Self {
       symbolPage: symbolPage,
       font: font.*,
       charmap: Charmap.new(font),
@@ -74,7 +77,14 @@ impl<'a> ShaperData<'a> {
       kern: table(font, 0x6b65726e),
       upem: upem,
       noCoords: [F2Dot14.zero()],
+      latinGlyphs: [0; 256],
     }
+    let mut cp: u32 = 0
+    while cp < 256 {
+      data.latinGlyphs[u32.toUsize(cp)] = ShaperData.mapNominal(&data, cp)
+      cp = cp + 1
+    }
+    return move data
   }
 
   /// The default shaping font for this data.
@@ -83,6 +93,13 @@ impl<'a> ShaperData<'a> {
   }
 
   pub fn nominalGlyph(self: &Self, cp: u32) -> u32 {
+    if cp < 256 {
+      return self.latinGlyphs[u32.toUsize(cp)]
+    }
+    return ShaperData.mapNominal(self, cp)
+  }
+
+  fn mapNominal(self: &Self, cp: u32) -> u32 {
     let glyph = GlyphId.toU32(
       Charmap.mapUnicode(&self.charmap, cp) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)),
     )

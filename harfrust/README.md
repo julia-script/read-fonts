@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 204M | 65.3M | 3.12× |
-| Roboto / English words | 298M | 87.9M | 3.39× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,553M | 789M | 1.97× |
-| Noto Nastaliq Urdu / Persian words | 1,517M | 847M | 1.79× |
-| Noto Sans Devanagari / Hindi words | 714M | 225M | 3.17× |
-| Amiri / Persian Little Prince | 834M | 374M | 2.23× |
-| Source Serif Variable / react-dom | 2,143M | 1,004M | 2.13× |
+| Roboto / English Little Prince | 195M | 65.3M | 2.99× |
+| Roboto / English words | 264M | 87.9M | 3.00× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,552M | 789M | 1.97× |
+| Noto Nastaliq Urdu / Persian words | 1,514M | 847M | 1.79× |
+| Noto Sans Devanagari / Hindi words | 594M | 225M | 2.64× |
+| Amiri / Persian Little Prince | 833M | 374M | 2.23× |
+| Source Serif Variable / react-dom | 2,057M | 1,004M | 2.05× |
 
-The geometric mean is **2.47×**, down from 11.25× for the initial port. Plans
+The geometric mean is **2.34×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -183,8 +183,12 @@ them; format 3 rules are checked before the
 general rule setup; shapers keep their default-instance metrics scaled, so a
 shaping call borrows them instead of copying them; lookups that contextual
 rules apply are cached in the plan too, once per lookup, so nested lookups skip
-uncovered subtables the same way; text is decoded and added to the buffer in
-one pass, and the right-to-left script check is a generated match. The remaining gap is mostly per-glyph table walking that harfrust
+uncovered subtables the same way; a ligature set whose first glyph ends the
+buffer skips its longer ligatures without trying to match them, and fonts map
+U+0000 to U+00FF to glyphs once instead of on every call; Indic consonant
+position probes check a digest of each probed feature's lookups before setting
+up a lookup; text is decoded and added to the buffer in one pass, and the
+right-to-left script check is a generated match. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
