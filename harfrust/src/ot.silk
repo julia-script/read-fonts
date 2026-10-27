@@ -886,6 +886,17 @@ effect fn substitute<F: FontFuncs>(
     }
     let mut i: usize = 0
     while i < count && context.budget != 0 && buffer.successful {
+      if haveSecond && width == 2 {
+        let skipped = skipLigatures16(&mut context, set, i, count, second)
+        if skipped.marked && !skippedAny {
+          Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+          skippedAny = true
+        }
+        i = skipped.index
+        if i >= count || context.budget == 0 {
+          break
+        }
+      }
       context.budget = context.budget - 1
       let ligature = View.offset(&set, 2 + i * width, width)
       let components = u16.toUsize(View.u16(&ligature, width))
@@ -1367,6 +1378,44 @@ fn skipRules16(
   }
   context.budget = budget
   return index
+}
+
+struct SkippedLigatures {
+  index: usize,
+  marked: bool,
+}
+
+/// Skips the ligatures of a 16-bit ligature set that the full loop in `substitute` would reject
+/// without matching: malformed ones, and ones whose second component is not `second`. Returns
+/// the first ligature that needs matching and whether a skipped one would have marked the span.
+fn skipLigatures16(
+  context: &mut Context,
+  set: View,
+  from: usize,
+  count: usize,
+  second: u32,
+) -> SkippedLigatures {
+  let bytes = FontData.asBytes(&set.data)
+  let mut budget = context.budget
+  let mut marked = false
+  let mut index = from
+  while index < count && budget != 0 {
+    let start = read16(bytes, 2 + index * 2)
+    let mut components: usize = 0
+    if start != 0 && start <= bytes.length {
+      components = read16(bytes, start + 2)
+    }
+    if components != 0 && components <= 64 {
+      if components == 1 || usize.toU32(read16(bytes, start + 4)) == second {
+        break
+      }
+      marked = true
+    }
+    budget = budget - 1
+    index = index + 1
+  }
+  context.budget = budget
+  return SkippedLigatures { index: index, marked: marked }
 }
 
 /// A big-endian u16 at `at` as a usize, or 0 past the end, like `View.u16`.
@@ -1883,14 +1932,13 @@ effect fn contextual<F: FontFuncs>(
   return no()
 }
 
-fn valueSize(format: u16) -> usize {
-  let mut n: usize = 0
-  let mut bits = format & 255
-  while bits != 0 {
-    n = n + u16.toUsize(bits & 1)
-    bits = bits / 2
-  }
-  return n * 2
+/// Bytes in a value record: two per bit set in the low byte of its format. The bits are
+/// counted in parallel, since this runs for every pair adjustment.
+fn valueSize(format: u16) -> usize with Intrinsic.inline() {
+  let bits = format & 255
+  let pairs = bits - ((bits / 2) & 0x55)
+  let nibbles = (pairs & 0x33) + ((pairs / 4) & 0x33)
+  return u16.toUsize((nibbles + nibbles / 16) & 15) * 2
 }
 
 fn readVarStore<'a>(gdef: View<'a>, coordCount: usize) -> Option<ItemVariationStore<'a>> {
@@ -2030,7 +2078,7 @@ effect fn position<F: FontFuncs>(
 ) -> Applied
   ! OutOfMemoryError
   ? &mut Allocator {
-  let item = List<Glyph>.get(&buffer.glyphs, at)
+  let glyphId = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
   let rawFormat = View.u16(&table, 0)
   let wide = ((kind == 1 || kind == 2) && (rawFormat == 3 || rawFormat == 4))
     || (kind >= 3 && rawFormat == 2)
@@ -2048,10 +2096,7 @@ effect fn position<F: FontFuncs>(
       format = 1
     }
   }
-  let coverage = match move View.coverage(
-    &View.offset(&table, 2, coverageWidth),
-    item.info.glyphId,
-  ) {
+  let coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyphId) {
     Option<u32>.Some { value } => u32.toUsize(value)
     _ => {
       return no()
@@ -2111,10 +2156,7 @@ effect fn position<F: FontFuncs>(
       pos = pos + width
     } else if format == 2 {
       let c1 = u32.toUsize(
-        classOf(
-          &classesFor(context, View.offset(&table, header + 4, coverageWidth)),
-          item.info.glyphId,
-        ),
+        classOf(&classesFor(context, View.offset(&table, header + 4, coverageWidth)), glyphId),
       )
       let c2 = u32.toUsize(
         classOf(
@@ -2190,7 +2232,7 @@ effect fn position<F: FontFuncs>(
       at,
       "",
     )
-    let mut right = item
+    let mut right = List<Glyph>.get(&buffer.glyphs, at)
     if buffer.direction == Direction.LeftToRight {
       left.position.xAdvance = add(exit.x, left.position.xOffset)
       let d = add(entry.x, right.position.xOffset)
@@ -2299,6 +2341,7 @@ effect fn position<F: FontFuncs>(
       }
       break
     }
+    let item = List<Glyph>.get(&buffer.glyphs, at)
     let baseGlyph = List<Glyph>.get(&buffer.glyphs, base)
     if kind == 6 {
       if item.ligatureId == baseGlyph.ligatureId {
