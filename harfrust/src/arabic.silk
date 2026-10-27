@@ -136,9 +136,9 @@ pub fn setup(buffer: &mut Buffer) -> () {
     let at = (state * 6 + kind) * 3
     let prevAction = states[at]
     if prevAction != 7 && previous < Buffer.len(&buffer.*) {
-      let mut prev = List<Glyph>.get(&buffer.glyphs, previous)
-      prev.form = actionTag(prevAction)
-      List<Glyph>.set(&mut buffer.glyphs, previous, prev)
+      let updated = actionTag(prevAction)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[previous].form = updated
       Buffer.safeToInsertTatweel(&mut buffer, previous, i + 1)
     }
     if prevAction == 7 || previous >= Buffer.len(&buffer.*) {
@@ -164,9 +164,9 @@ pub fn setup(buffer: &mut Buffer) -> () {
       let action = states[(state * 6 + kind) * 3]
       let length = Buffer.len(&buffer.*)
       if action != 7 && previous < length {
-        let mut item = List<Glyph>.get(&buffer.glyphs, previous)
-        item.form = actionTag(action)
-        List<Glyph>.set(&mut buffer.glyphs, previous, item)
+        let updated = actionTag(action)
+        let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+        slots[previous].form = updated
         Buffer.safeToInsertTatweel(&mut buffer, previous, length)
       } else if state >= 2 && state <= 5 && previous < length {
         Buffer.unsafeToConcat(&mut buffer, previous, length)

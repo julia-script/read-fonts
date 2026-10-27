@@ -294,9 +294,8 @@ pub effect fn setup(buffer: &mut Buffer) -> ()
 fn setForm(buffer: &mut Buffer, start: usize, end: usize, form: u32) -> () {
   let mut i = start
   while i < end {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    item.form = form
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    slots[i].form = form
     i = i + 1
   }
 }
@@ -351,9 +350,8 @@ pub effect fn pause<F: FontFuncs>(
   if kind == 4 && (stage == 2 || stage == 3) {
     let mut i: usize = 0
     while i < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, i)
-      item.substituted = false
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[i].substituted = false
       i = i + 1
     }
   }
@@ -361,9 +359,8 @@ pub effect fn pause<F: FontFuncs>(
     || (kind == 1 && stage == 14) {
     let mut i: usize = 0
     while i < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, i)
-      item.syllable = 0
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[i].syllable = 0
       i = i + 1
     }
   }

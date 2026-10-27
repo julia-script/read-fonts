@@ -163,8 +163,9 @@ effect fn execute<'a, 's, F: FontFuncs>(
   }
   let classes = View.gdefList(&font.data.gdef, 0)
   i = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
+  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  while i < glyphs.length {
+    let item = &mut glyphs[i]
     if View.len(&classes) > 0 {
       item.glyphClass = ot.gdefGlyphClass(substitutions, font.data.gdef, item.info.glyphId)
     } else {
@@ -173,7 +174,6 @@ effect fn execute<'a, 's, F: FontFuncs>(
         item.glyphClass = 3
       }
     }
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
     i = i + 1
   }
   buffer.contentType = ContentType.Glyphs
@@ -208,8 +208,18 @@ effect fn execute<'a, 's, F: FontFuncs>(
     let mut advances = Advances { glyphs: List<Glyph>.asMutSlice(&mut buffer.glyphs) }
     Metrics.hAdvances(&metrics, &mut advances)
   }
+
+  // Horizontal runs leave most glyphs as they are, so only the rest are copied out and back.
+  let vertical = !Direction.isHorizontal(buffer.direction)
+  let zeroShaperMarks = zeroMarks && (buffer.shaper == 3 || buffer.shaper == 4)
   i = 0
   while i < Buffer.len(&buffer.*) {
+    let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+    if !vertical && (current.spaceFallback == 0 || current.substituted)
+      && (!zeroShaperMarks || current.glyphClass != 3) {
+      i = i + 1
+      continue
+    }
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
     let glyph = GlyphId.new(item.info.glyphId)
     if !Direction.isHorizontal(buffer.direction) {
@@ -287,24 +297,27 @@ effect fn execute<'a, 's, F: FontFuncs>(
   if applyKern {
     run aat_kern.kern(font, &mut buffer, features)
   }
+  let zeroBaseMarks = zeroMarks && buffer.shaper == 0 && buffer.script != 0x48616e67
+    && buffer.script != 0x51616167
+  let zeroIgnorables = (buffer.flags & 4) == 0
+  let horizontalRun = Direction.isHorizontal(buffer.direction)
   i = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if zeroMarks && item.glyphClass == 3 && buffer.shaper == 0 && buffer.script != 0x48616e67
-      && buffer.script != 0x51616167 {
+  let positioned = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  while i < positioned.length {
+    let item = &mut positioned[i]
+    if zeroBaseMarks && item.glyphClass == 3 {
       item.position.xAdvance = 0
       item.position.yAdvance = 0
     }
-    if item.ignorable && !item.substituted && (buffer.flags & 4) == 0 {
+    if zeroIgnorables && item.ignorable && !item.substituted {
       item.position.xAdvance = 0
       item.position.yAdvance = 0
-      if Direction.isHorizontal(buffer.direction) {
+      if horizontalRun {
         item.position.xOffset = 0
       } else {
         item.position.yOffset = 0
       }
     }
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
     i = i + 1
   }
   aat.tracking(font, &mut buffer, features, pointSize)
@@ -327,6 +340,11 @@ effect fn execute<'a, 's, F: FontFuncs>(
   }
   i = 0
   while i < Buffer.len(&buffer.*) {
+    let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+    if !current.selectorFallback && (!current.ignorable || current.substituted) {
+      i = i + 1
+      continue
+    }
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
     if item.selectorFallback {
       if let Option<u32>.Some { value } = &buffer.notFoundVariationSelectorGlyph {

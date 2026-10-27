@@ -78,9 +78,8 @@ fn matra(item: &Glyph) -> bool {
 }
 
 fn setOrder(buffer: &mut Buffer, at: usize, order: u8) -> () {
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  item.order = order
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  slots[at].order = order
 }
 
 fn mask(buffer: &mut Buffer, at: usize, bits: u32) -> () {
@@ -291,9 +290,9 @@ effect fn initialSyllable<F: FontFuncs>(
   }
   i = start
   while i < end {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    item.attach = usize.toI32(i - start)
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
+    let updated = usize.toI32(i - start)
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    slots[i].attach = updated
     i = i + 1
   }
   i = start + 1

@@ -179,9 +179,9 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
         let end = List<usize>.get(&indices, i32.toUsize(te))
         i = start
         while i < end {
-          let mut glyph = List<Glyph>.get(&buffer.glyphs, i)
-          glyph.syllable = serial * 16 + u8.toU32(arg)
-          List<Glyph>.set(&mut buffer.glyphs, i, glyph)
+          let updated = serial * 16 + u8.toU32(arg)
+          let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+          slots[i].syllable = updated
           i = i + 1
         }
         serial = serial + 1
