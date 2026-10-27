@@ -92,7 +92,9 @@ pub struct Cmap4Segment {
 impl Copy for Cmap4Segment {}
 
 impl<'a> Cmap4<'a> {
-  pub fn mapCodepoint(self: &Self, codepoint: u32) -> Option<GlyphId> {
+  pub fn mapCodepoint(self: &Self, codepoint: u32) -> Option<
+    GlyphId
+  > with Intrinsic.inlineAlways() {
     if codepoint > 65535 {
       return Option<GlyphId>.None
     }
@@ -131,7 +133,7 @@ impl<'a> Cmap4<'a> {
     return move glyph
   }
 
-  fn findSegment(self: &Self, cp: u16) -> Option<Cmap4Segment> {
+  fn findSegment(self: &Self, cp: u16) -> Option<Cmap4Segment> with Intrinsic.inlineAlways() {
     let starts = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.startCode(self))
     let ends = ScalarArray<'a, u16>.bytes(&Cmap4<'a>.endCode(self))
     let mut lo: usize = 0
@@ -142,13 +144,26 @@ impl<'a> Cmap4<'a> {
     if ends.length / 2 < hi {
       hi = ends.length / 2
     }
+    if hi == 0 {
+      return Option<Cmap4Segment>.None
+    }
+
+    // Every probe starts at or below `limit` in both arrays; checking that once lets the
+    // per-byte bounds checks fold away.
+    let limit = usize.wrappingSubtract(usize.wrappingMultiply(hi, 2), 2)
+    let startBytes = Slice.view<u8>(starts, 0, limit + 2)
+    let endBytes = Slice.view<u8>(ends, 0, limit + 2)
     let mut first: u16 = 0
     let mut last: u16 = 65535
     while lo < hi {
       // i < hi <= the array lengths, so the probes are in bounds and the arithmetic cannot wrap.
       let i = usize.wrappingAdd(lo, (hi - lo) / 2)
-      let start = readU16(starts, usize.wrappingMultiply(i, 2))
-      let end = readU16(ends, usize.wrappingMultiply(i, 2))
+      let at = usize.wrappingMultiply(i, 2)
+      if at > limit {
+        return Option<Cmap4Segment>.None
+      }
+      let start = readU16(startBytes, at)
+      let end = readU16(endBytes, at)
       if cp < start {
         hi = i
         last = u32.toU16(min32(u16.toU32(last), u16.toU32(u16.saturatingSubtract(start, 1))))
@@ -495,15 +510,23 @@ fn findGroup<'a, T: FontReadAt<'a, ()> + ComputeSize<()> + AnyMapGroup>(
   let records = ComputedArray<'a, (), T>.itemsBytes(&groups)
   let mut lo: usize = 0
   let mut hi = ComputedArray<'a, (), T>.len(&groups)
-  if records.length < usize.wrappingMultiply(hi, 12) {
+  if hi == 0 || records.length < usize.wrappingMultiply(hi, 12) {
     return Option<Cmap12Group>.None
   }
+
+  // Every probe starts at or below `limit`; checking that once lets the view's own
+  // bounds check fold away.
+  let limit = records.length - 12
   let mut first: u32 = 0
   let mut last: u32 = 4294967295
   while lo < hi {
     // i < hi and hi * 12 <= records.length, so the arithmetic cannot wrap.
     let i = usize.wrappingAdd(lo, (hi - lo) / 2)
-    let group = Slice.view<u8>(records, usize.wrappingMultiply(i, 12), 12)
+    let at = usize.wrappingMultiply(i, 12)
+    if at > limit {
+      return Option<Cmap12Group>.None
+    }
+    let group = Slice.view<u8>(records, at, 12)
     let start = readU32(group, 0)
     let end = readU32(group, 4)
     if cp < start {
@@ -656,7 +679,7 @@ impl<'a> Cmap12<'a> {
 }
 
 impl<'a> Cmap12<'a> {
-  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> {
+  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     return mapGroup<SequentialMapGroup<'a>>(Cmap12<'a>.groups(self), cp)
   }
 
@@ -692,7 +715,7 @@ impl<'a> Cmap12Iter<'a> {
 }
 
 impl<'a> Cmap13<'a> {
-  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> {
+  pub fn mapCodepoint(self: &Self, cp: u32) -> Option<GlyphId> with Intrinsic.inlineAlways() {
     return mapGroup<ConstantMapGroup<'a>>(Cmap13<'a>.groups(self), cp)
   }
 
