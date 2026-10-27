@@ -22,7 +22,7 @@ pub effect fn normalize<F: FontFuncs>(
   let mut allSimple = true
   let mut scan: usize = 1
   while scan < Buffer.len(&buffer.*) {
-    if unicode.isMark(List<Glyph>.get(&buffer.glyphs, scan).codepoint) {
+    if isMark(List<Glyph>.asSlice(&buffer.glyphs)[scan].codepoint) {
       allSimple = false
       break
     }
@@ -51,11 +51,11 @@ pub effect fn normalize<F: FontFuncs>(
       if buffer.shaper == 0 {
         let mut end = i
         while end < Buffer.len(&buffer.*) {
-          if unicode.isMark(List<Glyph>.get(&buffer.glyphs, end).codepoint) {
+          if isMark(List<Glyph>.asSlice(&buffer.glyphs)[end].codepoint) {
             break
           }
           if end + 1 < Buffer.len(&buffer.*)
-            && unicode.isMark(List<Glyph>.get(&buffer.glyphs, end + 1).codepoint) {
+            && isMark(List<Glyph>.asSlice(&buffer.glyphs)[end + 1].codepoint) {
             break
           }
           end = end + 1
@@ -120,9 +120,9 @@ pub effect fn normalize<F: FontFuncs>(
         }
       }
       let mut shortest = true
-      if unicode.isMark(item.codepoint)
+      if isMark(item.codepoint)
         || (i + 1 < Buffer.len(&buffer.*)
-          && unicode.isMark(List<Glyph>.get(&buffer.glyphs, i + 1).codepoint)) {
+          && isMark(List<Glyph>.get(&buffer.glyphs, i + 1).codepoint)) {
         shortest = false
       }
       if buffer.shaper != 0 {
@@ -229,7 +229,7 @@ pub effect fn normalize<F: FontFuncs>(
   while i < Buffer.len(&buffer.*) {
     let item = List<Glyph>.get(&buffer.glyphs, i)
     let previous = List<Glyph>.get(&buffer.glyphs, i - 1)
-    if unicode.isMark(item.codepoint)
+    if isMark(item.codepoint)
       && (previous.combiningClass < item.combiningClass || i == starter + 1) {
       let base = List<Glyph>.get(&buffer.glyphs, starter)
       let mut composed = unicode.composeRaw(base.codepoint, item.codepoint)
@@ -237,7 +237,7 @@ pub effect fn normalize<F: FontFuncs>(
         composed = hebrewCompose(base.codepoint, item.codepoint)
       }
       if (buffer.shaper == 1 || buffer.shaper == 2 || buffer.shaper == 4)
-        && unicode.isMark(base.codepoint) {
+        && isMark(base.codepoint) {
         composed = 0
       }
       if buffer.shaper == 1 && base.codepoint == 0x09af && item.codepoint == 0x09bc {
@@ -319,6 +319,11 @@ effect fn decompose<F: FontFuncs>(
   return false
 }
 
+// No code point below U+0300 is a mark, so Latin text skips the category table.
+fn isMark(cp: u32) -> bool with Intrinsic.inlineAlways() {
+  return cp >= 0x300 && unicode.isMark(cp)
+}
+
 pub fn formClusters(buffer: &mut Buffer) -> () {
   let mut start: usize = 0
   let mut previousContinuation = false
@@ -326,9 +331,10 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
   while i <= Buffer.len(&buffer.*) {
     let mut continuation = false
     if i < Buffer.len(&buffer.*) {
-      let cp = List<Glyph>.get(&buffer.glyphs, i).codepoint
-      let prev = List<Glyph>.get(&buffer.glyphs, i - 1).codepoint
-      continuation = unicode.isMark(cp) || cp == 0x200d || (cp >= 0x1f3fb && cp <= 0x1f3ff)
+      let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+      let cp = glyphs[i].codepoint
+      let prev = glyphs[i - 1].codepoint
+      continuation = isMark(cp) || cp == 0x200d || (cp >= 0x1f3fb && cp <= 0x1f3ff)
         || (prev == 0x200d && unicode.isExtendedPictographic(cp))
         || (cp >= 0xe0020 && cp <= 0xe007f)
         || (cp >= 0xff9e && cp <= 0xff9f)
@@ -340,7 +346,10 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
       slots[i].continuation = continuation
     }
     if !continuation {
-      Buffer.mergeGraphemeClusters(&mut buffer, start, i)
+      // A single glyph is already its own cluster.
+      if i - start >= 2 {
+        Buffer.mergeGraphemeClusters(&mut buffer, start, i)
+      }
       start = i
     }
     previousContinuation = continuation
