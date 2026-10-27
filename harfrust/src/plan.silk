@@ -59,9 +59,63 @@ pub struct LookupSubtable {
   /// Whether applying the subtable to an uncovered glyph spends a unit of budget, as a format 3
   /// contextual subtable does.
   pub missSpends: bool,
+  /// The expansions of the subtable's class definitions, in `classDefs` order, once
+  /// `addAllClasses` has resolved them; an unexpanded definition has a count of 0.
+  pub classes: [ClassTable; 3],
+  pub classesResolved: bool,
 }
 
 impl Copy for LookupSubtable {}
+
+fn noClassTable() -> ClassTable {
+  return ClassTable { offset: 0, first: 0, start: 0, count: 0 }
+}
+
+/// The class definitions a class-based contextual or pair subtable reads per glyph: a
+/// contextual subtable's input classes, or a chained one's backtrack, input and lookahead
+/// classes; a pair subtable's first and second glyph classes. `count` is 0 for other subtables.
+pub struct ClassDefs<'a> {
+  pub count: usize,
+  pub views: [View<'a>; 3],
+}
+
+impl<'a> Copy for ClassDefs<'a> {}
+
+pub fn classDefs<'a>(table: View<'a>, kind: u16, positioning: bool) -> ClassDefs<'a> {
+  // An empty view with the table's lifetime; View.empty() would be inferred as 'static here.
+  let none = View.tail(&table, View.len(&table))
+  let mut defs = ClassDefs { count: 0, views: [none, none, none] }
+  let rawFormat = View.u16(&table, 0)
+  if (!positioning && (kind == 5 || kind == 6)) || (positioning && (kind == 7 || kind == 8)) {
+    let chained = kind == 6 || kind == 8
+    let mut header: usize = 4
+    let mut width: usize = 2
+    if rawFormat == 5 {
+      header = 6
+      width = 4
+    } else if rawFormat != 2 {
+      return defs
+    }
+    defs.views[0] = View.offset(&table, header, width)
+    defs.count = 1
+    if chained {
+      defs.views[1] = View.offset(&table, header + width, width)
+      defs.views[2] = View.offset(&table, header + width * 2, width)
+      defs.count = 3
+    }
+  } else if positioning && kind == 2 {
+    if rawFormat == 2 {
+      defs.views[0] = View.offset(&table, 8, 2)
+      defs.views[1] = View.offset(&table, 10, 2)
+      defs.count = 2
+    } else if rawFormat == 4 {
+      defs.views[0] = View.offset(&table, 10, 4)
+      defs.views[1] = View.offset(&table, 14, 4)
+      defs.count = 2
+    }
+  }
+  return defs
+}
 
 /// A class definition expanded to one class per glyph from `first`, kept in
 /// `OtPlan.classValues`. `offset` is the class definition's offset in the layout table.
@@ -166,6 +220,8 @@ impl<'a> OtPlan<'a> {
             coverageStart: coverageStart,
             coverageCount: List<u16>.length(&self.coverageValues) - coverageStart,
             missSpends: contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3,
+            classes: [noClassTable(); 3],
+            classesResolved: false,
           },
         )
         i = i + 1
@@ -363,39 +419,54 @@ impl<'a> OtPlan<'a> {
       }
       index = index + 1
     }
+
+    // Every expansion is in place now, so each cached subtable keeps its own and shaping does
+    // not search classTables per glyph.
+    let mut s: usize = 0
+    while s < List<LookupSubtable>.length(&self.subtables) {
+      let mut sub = List<LookupSubtable>.get(&self.subtables, s)
+      let defs = classDefs(View.tail(&self.table, sub.offset), sub.kind, self.positioning)
+      let mut n: usize = 0
+      while n < defs.count {
+        sub.classes[n] = OtPlan.findClasses(&self, defs.views[n])
+        n = n + 1
+      }
+      sub.classesResolved = true
+      List<LookupSubtable>.set(&mut self.subtables, s, sub)
+      s = s + 1
+    }
   }
 
   /// Expands the class definitions a class-based contextual or pair subtable reads per glyph.
   effect fn addSubtableClasses(self: &mut Self, table: View<'a>, kind: u16) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
-    let rawFormat = View.u16(&table, 0)
-    let contextual = (!self.positioning && (kind == 5 || kind == 6))
-      || (self.positioning && (kind == 7 || kind == 8))
-    if contextual {
-      let chained = (!self.positioning && kind == 6) || (self.positioning && kind == 8)
-      let mut header: usize = 4
-      let mut width: usize = 2
-      if rawFormat == 5 {
-        header = 6
-        width = 4
-      } else if rawFormat != 2 {
-        return
-      }
-      run OtPlan.addClasses(&mut self, View.offset(&table, header, width))
-      if chained {
-        run OtPlan.addClasses(&mut self, View.offset(&table, header + width, width))
-        run OtPlan.addClasses(&mut self, View.offset(&table, header + width * 2, width))
-      }
-    } else if self.positioning && kind == 2 {
-      if rawFormat == 2 {
-        run OtPlan.addClasses(&mut self, View.offset(&table, 8, 2))
-        run OtPlan.addClasses(&mut self, View.offset(&table, 10, 2))
-      } else if rawFormat == 4 {
-        run OtPlan.addClasses(&mut self, View.offset(&table, 10, 4))
-        run OtPlan.addClasses(&mut self, View.offset(&table, 14, 4))
+    let defs = classDefs(table, kind, self.positioning)
+    let mut n: usize = 0
+    while n < defs.count {
+      run OtPlan.addClasses(&mut self, defs.views[n])
+      n = n + 1
+    }
+  }
+
+  /// The expansion of the class definition at `classes`, or a count of 0 when it has none.
+  fn findClasses(self: &Self, classes: View<'a>) -> ClassTable {
+    let offset = View.len(&self.table) - View.len(&classes)
+    let tables = List<ClassTable>.asSlice(&self.classTables)
+    let mut lo: usize = 0
+    let mut hi = tables.length
+    while lo < hi {
+      let mid = lo + (hi - lo) / 2
+      if tables[mid].offset < offset {
+        lo = mid + 1
+      } else {
+        hi = mid
       }
     }
+    if lo < tables.length && tables[lo].offset == offset {
+      return tables[lo]
+    }
+    return noClassTable()
   }
 
   /// Expands the class definition at `classes`, a view into the layout table, unless it is
