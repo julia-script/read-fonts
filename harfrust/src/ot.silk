@@ -56,6 +56,7 @@ struct Context<'a, 's> {
   /// Where each rule set's second input values start in `ruleSeconds` (`OtPlan.ruleSecondStarts`).
   ruleSecondStarts: &'s [u32],
   ruleSeconds: &'s [u32],
+  ruleBacks: &'s [u32],
   /// The plan's cached subtables, and where each lookup's start (`OtPlan.lookupSubtables`).
   subtables: &'s [LookupSubtable],
   lookupSubtables: &'s [u64],
@@ -237,6 +238,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
+    ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -532,6 +534,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     ruleSecondStarts: List<u32>.asSlice(&plan.ruleSecondStarts),
     ruleSeconds: List<u32>.asSlice(&plan.ruleSeconds),
+    ruleBacks: List<u32>.asSlice(&plan.ruleBacks),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
@@ -1696,6 +1699,49 @@ fn inputSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) ->
   return InputSecond { found: false, index: at, glyph: 0, skippable: false }
 }
 
+/// `backtrackFirst` results besides a value: not looked for yet, no glyph, or a glyph that
+/// matching may skip when it does not match, which leaves each rule to the full check.
+const BACK_UNKNOWN: u64 = 0x300000000
+
+const BACK_NONE: u64 = 0x200000000
+
+const BACK_SKIPPABLE: u64 = 0x100000000
+
+/// The value for `kind` of the glyph a rule's first backtrack value is compared with: the first
+/// one before `at` that matching does not ignore.
+fn backtrackFirst(
+  context: &Context,
+  buffer: &Buffer,
+  lookup: Lookup,
+  at: usize,
+  kind: u32,
+  classes: Classes,
+) -> u64 {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let syllable = glyphs[at].syllable
+  let mut i = at
+  while i > 0 {
+    i = i - 1
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != syllable {
+      break
+    }
+    if ignored(context, lookup, item) {
+      continue
+    }
+    if item.ignorable && !item.substituted && (!item.hidden || context.positioning)
+      && (item.codepoint != 0x200c || context.positioning || context.autoZwnj) {
+      return BACK_SKIPPABLE
+    }
+    let mut value = item.info.glyphId
+    if kind == 1 {
+      value = classOf(&classes, value)
+    }
+    return u32.toU64(value)
+  }
+  return BACK_NONE
+}
+
 /// Whether the rule loop in `contextual` would reject the 16-bit format 3 rule at `at`, whose
 /// first input glyph is known to match. It makes the same checks in the same order.
 fn format3Fails(
@@ -2031,6 +2077,14 @@ effect fn contextual<F: FontFuncs>(
   if !second.found {
     target = u32.MAX
   }
+
+  // Likewise the plan keeps each chained rule's first backtrack value, which is compared with
+  // the glyph before the first one; that glyph is found when a rule first needs it.
+  let mut backs = Slice.view(context.ruleBacks, 0, 0)
+  if chained && seconds.length != 0 {
+    backs = Slice.view(context.ruleBacks, u32.toUsize(starts[ruleSetIndex]), count)
+  }
+  let mut back: u64 = BACK_UNKNOWN
   let mut ruleIndex: usize = 0
   while ruleIndex < count && context.budget != 0 && buffer.successful {
     if seconds.length != 0 {
@@ -2099,6 +2153,15 @@ effect fn contextual<F: FontFuncs>(
       }
       ruleIndex = ruleIndex + 1
       continue
+    }
+    if backs.length != 0 && backs[ruleIndex] != RULE_STOP {
+      if back == BACK_UNKNOWN {
+        back = backtrackFirst(&context.*, &buffer.*, lookup, at, kind, backClasses)
+      }
+      if back == BACK_NONE || (back < BACK_SKIPPABLE && back != u32.toU64(backs[ruleIndex])) {
+        ruleIndex = ruleIndex + 1
+        continue
+      }
     }
     let tail = ruleTail(rule, pos, chained, actionCount, width)
     let aheadPos = tail.aheadPos
