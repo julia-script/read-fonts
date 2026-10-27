@@ -161,14 +161,9 @@ effect fn execute<'a, 's, F: FontFuncs>(
   if !buffer.dumber && arabic.usesScript(buffer.script) {
     arabic.setup(&mut buffer)
   }
-  let classes = View.gdefList(&font.data.gdef, 0)
   i = 0
-  if View.len(&classes) > 0 {
-    ot.setGdefGlyphClasses(
-      substitutions,
-      font.data.gdef,
-      List<Glyph>.asMutSlice(&mut buffer.glyphs),
-    )
+  if View.len(&substitutions.glyphClassDef) > 0 {
+    ot.setGdefGlyphClasses(substitutions, List<Glyph>.asMutSlice(&mut buffer.glyphs))
   } else {
     let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
     while i < glyphs.length {

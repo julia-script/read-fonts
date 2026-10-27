@@ -89,8 +89,8 @@ fn mask(buffer: &mut Buffer, at: usize, bits: u32) -> () {
   List<Glyph>.set(&mut buffer.glyphs, at, item)
 }
 
-/// Digests of the features that consonant positions and reph forms probe, gathered once per
-/// call so most probes are rejected without scanning the plan.
+/// Digests of the features that consonant positions and reph forms probe, kept by the plan so
+/// most probes are rejected without scanning it.
 struct Probes {
   blwf: SetDigest,
   vatu: SetDigest,
@@ -108,7 +108,7 @@ effect fn probe<F: FontFuncs>(
   b: u32,
 ) -> bool
   ! OutOfMemoryError
-  ? &mut Allocator {
+  ? &mut Allocator with Intrinsic.inlineAlways() {
   if !SetDigest.mayHave(digest, a) {
     return false
   }
@@ -125,16 +125,17 @@ pub effect fn initial<F: FontFuncs>(
   let v = ConfiguredShaper.glyphFor(font, virama(buffer.script))
   let old = oldSpec(font, buffer.script)
   let probes = Probes {
-    blwf: ot.featureDigest(plan, 0x626c7766),
-    vatu: ot.featureDigest(plan, 0x76617475),
-    pstf: ot.featureDigest(plan, 0x70737466),
-    pref: ot.featureDigest(plan, 0x70726566),
-    rphf: ot.featureDigest(plan, 0x72706866),
+    blwf: plan.probeDigests[0],
+    vatu: plan.probeDigests[1],
+    pstf: plan.probeDigests[2],
+    pref: plan.probeDigests[3],
+    rphf: plan.probeDigests[4],
   }
+  let viramaMapped = ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v)
   let mut i: usize = 0
   while i < Buffer.len(&buffer.*) {
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v) && item.order == 4 {
+    if viramaMapped && item.order == 4 {
       let c = item.info.glyphId
       if (run probe(font, plan, 0x626c7766, &probes.blwf, v, c))
         || (run probe(font, plan, 0x626c7766, &probes.blwf, c, v))

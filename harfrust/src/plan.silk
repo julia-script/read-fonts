@@ -175,6 +175,9 @@ const MAX_COVERAGE_SPAN: usize = 8192
 /// A `ruleSeconds` entry for a rule that no second input value lets the rule loop skip.
 pub const RULE_STOP: u32 = 0x10000
 
+/// The features Indic shaping probes with `ot.wouldSubstitute`, as `OtPlan.probeDigests` keeps them.
+pub const PROBE_TAGS: [u32; 5] = [0x626c7766, 0x76617475, 0x70737466, 0x70726566, 0x72706866]
+
 pub struct OtPlan<'a> {
   pub table: View<'a>,
   pub steps: List<LookupStep>,
@@ -215,6 +218,12 @@ pub struct OtPlan<'a> {
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
   pub markAttachClasses: ClassTable,
+  /// Digests of the lookups of the features Indic consonant positions and reph forms probe:
+  /// `blwf`, `vatu`, `pstf`, `pref` and `rphf`, in `PROBE_TAGS` order.
+  pub probeDigests: [SetDigest; 5],
+  /// The GDEF glyph class and mark attachment class definitions, found once per plan.
+  pub glyphClassDef: View<'a>,
+  pub markAttachClassDef: View<'a>,
   pub direction: Direction,
   pub script: u32,
   pub positioning: bool,
@@ -706,6 +715,9 @@ impl<'a> OtPlan<'a> {
       contextDigests: List<SetDigest>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
+      probeDigests: [SetDigest.new(); 5],
+      glyphClassDef: View.empty(),
+      markAttachClassDef: View.empty(),
       direction: Direction.LeftToRight,
       script: 0,
       positioning: positioning,
@@ -1099,17 +1111,32 @@ impl<'a> OtPlan<'a> {
         steps[i].groupEnd = steps[i + 1].groupEnd
       }
     }
+    let mut probes: [SetDigest; 5] = [SetDigest.new(); 5]
+    let finished = List<LookupStep>.asSlice(&plan.steps)
+    let mut k: usize = 0
+    while k < finished.length {
+      let mut p: usize = 0
+      while p < PROBE_TAGS.length {
+        if finished[k].tag == PROBE_TAGS[p] {
+          SetDigest.include(&mut probes[p], &finished[k].digest)
+        }
+        p = p + 1
+      }
+      k = k + 1
+    }
+    plan.probeDigests = probes
     run OtPlan.cacheNestedLookups(&mut plan)
     run OtPlan.addAllClasses(&mut plan)
-    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
-      &mut plan,
-      View.gdefList(&font.data.gdef, 0),
-    ) {
+    let glyphClassDef = View.gdefList(&font.data.gdef, 0)
+    let markAttachClassDef = View.gdefList(&font.data.gdef, 3)
+    plan.glyphClassDef = glyphClassDef
+    plan.markAttachClassDef = markAttachClassDef
+    if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(&mut plan, glyphClassDef) {
       plan.glyphClasses = value
     }
     if let Option<ClassTable>.Some { value } = run OtPlan.expandClasses(
       &mut plan,
-      View.gdefList(&font.data.gdef, 3),
+      markAttachClassDef,
     ) {
       plan.markAttachClasses = value
     }

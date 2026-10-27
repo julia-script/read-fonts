@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 96.1M | 65.3M | 1.47× |
-| Roboto / English words | 134M | 87.9M | 1.53× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,176M | 789M | 1.49× |
-| Noto Nastaliq Urdu / Persian words | 997M | 847M | 1.18× |
-| Noto Sans Devanagari / Hindi words | 334M | 225M | 1.48× |
-| Amiri / Persian Little Prince | 519M | 374M | 1.39× |
-| Source Serif Variable / react-dom | 1,257M | 1,004M | 1.25× |
+| Roboto / English Little Prince | 95.7M | 65.3M | 1.46× |
+| Roboto / English words | 130M | 87.9M | 1.48× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,171M | 789M | 1.48× |
+| Noto Nastaliq Urdu / Persian words | 990M | 847M | 1.17× |
+| Noto Sans Devanagari / Hindi words | 309M | 225M | 1.37× |
+| Amiri / Persian Little Prince | 520M | 374M | 1.39× |
+| Source Serif Variable / react-dom | 1,249M | 1,004M | 1.24× |
 
-The geometric mean is **1.39×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.37×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -217,7 +217,9 @@ only reorder glyphs.
 Format 3 rules keep digests of their second input, first backtrack and first lookahead
 coverages, so most failing rules are ruled out from the glyphs on either side of the first
 one before the rest of the rule is read or any coverage is searched. A covered format 3 rule that fails
-this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. Kerning reads expanded pair
+this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. Plans find the GDEF class definitions once,
+so a shaping call does not look them up again, and keep the digests Indic consonant position
+probes check. Kerning reads expanded pair
 classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
