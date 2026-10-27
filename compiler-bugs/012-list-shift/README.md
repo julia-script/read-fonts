@@ -9,5 +9,8 @@ about 21 per element moved by insert and 16 by remove. A memmove of the tail wou
 take a few hundred instructions per call.
 
 Harfrust's multiple and ligature substitutions insert into and remove from the glyph
-list, which costs about 250M instructions (8%) on the Noto Nastaliq benchmark. There is
-no workaround without a bulk copy, so the calls stay as they are.
+list, which cost about 250M instructions (13%) on the Noto Nastaliq benchmark. Harfrust
+now moves the tail once per substitution with a slice loop (`Buffer.insertCopies` and
+`Buffer.removeSorted`), which brings that to about 210M; the loop still copies one
+element at a time with bounds checks, about 20 instructions each, where a memmove would
+take a few.
