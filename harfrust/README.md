@@ -199,7 +199,9 @@ read straight from the hmtx bytes; glyph properties are set in place, and normal
 maps single glyphs without copying them and composes only marks that can be the second
 half of a composition. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
-and a lookup's subtables share one search for the second glyph. Plans keep a digest of the glyphs that can follow the first one in each lookup's
+and a lookup's subtables share one search for the second glyph; a format 1 pair set whose digest lacks that glyph is
+rejected before the kerning path is called, and a step group that every glyph enables skips the per-glyph
+feature check. Plans keep a digest of the glyphs that can follow the first one in each lookup's
 ligatures and pairs, so a lookup none of whose second glyphs is in the buffer is skipped
 whole unless the buffer records unsafe-to-concat flags; format 3 contextual subtables add
 their second input or first lookahead coverage to that digest, and format 1 and 2
