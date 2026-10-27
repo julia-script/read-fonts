@@ -282,9 +282,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         digestStale = false
       }
 
-      // A lookup none of whose subtables covers a glyph in the buffer does nothing; without
-      // tracing, it is skipped before any setup.
-      if !SetDigest.mayIntersect(&steps[step].digest, &glyphDigest) && !tracing {
+      // A lookup that cannot match the buffer's glyphs does nothing; without tracing, it is
+      // skipped before any setup.
+      if !stepMayApply(&steps[step], &glyphDigest, &buffer.*) && !tracing {
         step = end
         continue
       }
@@ -333,7 +333,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         glyphDigest = bufferDigest(&buffer.*)
         digestStale = false
       }
-      if !SetDigest.mayIntersect(&steps[step].digest, &glyphDigest) {
+      if !stepMayApply(&steps[step], &glyphDigest, &buffer.*) {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
         digestStale = true
@@ -410,6 +410,14 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     buffer.successful = false
   }
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
+}
+
+/// Whether a step's lookup may apply to the glyphs of `digest`: one of them must start a match,
+/// and unless the buffer records unsafe-to-concat flags, which a rejected pair or ligature sets,
+/// one must be able to follow it.
+fn stepMayApply(step: &LookupStep, digest: &SetDigest, buffer: &Buffer) -> bool {
+  return SetDigest.mayIntersect(&step.digest, digest)
+    && ((buffer.flags & 64) != 0 || SetDigest.mayIntersect(&step.second, digest))
 }
 
 /// The first glyph from `from` that `digest` may hold, or the buffer's length. Kept apart from
