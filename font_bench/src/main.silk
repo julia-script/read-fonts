@@ -28,6 +28,9 @@ fn measure<'a>(workload: string, font: &FontRef<'a>) -> Option<u64> {
   if workload == "glyf" {
     return Option<u64>.some(workloads.glyf(font))
   }
+  if workload == "cff" {
+    return Option<u64>.some(workloads.cff(font))
+  }
   if workload == "hmtx" {
     return Option<u64>.some(workloads.hmtx(font))
   }
@@ -38,7 +41,7 @@ effect fn process() -> i32
   ! HostInputError | OutOfMemoryError | WriterError | FileError
   ? &mut HostInput | &mut Allocator {
   if (run HostInput.argumentCount()) != 3 {
-    run stderr("usage: font_bench cmap|glyf|hmtx FONT\n")
+    run stderr("usage: font_bench cmap|glyf|hmtx|cff FONT\n")
     return 2
   }
   let name = run HostInput.argument(1)
