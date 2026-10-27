@@ -743,6 +743,10 @@ effect fn applyLookup<F: FontFuncs>(
         at,
       )
     } else {
+      let mut digests = Slice.view(context.ruleDigests, 0, 0)
+      if cached {
+        digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
+      }
       result = run substitute(
         font,
         &mut context,
@@ -750,6 +754,7 @@ effect fn applyLookup<F: FontFuncs>(
         lookup,
         table,
         kind,
+        digests,
         known,
         at,
         first,
@@ -796,6 +801,7 @@ effect fn substitute<F: FontFuncs>(
   lookup: Lookup,
   table: View,
   kind: u16,
+  digests: &[u64],
   known: u32,
   at: usize,
   first: usize,
@@ -981,6 +987,17 @@ effect fn substitute<F: FontFuncs>(
         secondAt = value
         haveSecond = true
       }
+    }
+
+    // The plan's digest of the set's second components rejects every ligature at once, as
+    // walking them would.
+    if haveSecond && width == 2 && coverage < digests.length && digests[coverage] != u64.MAX
+      && (digests[coverage] & u64.shiftLeft(1, u32.toU64(second & 63))) == 0 {
+      if context.budget != 0 && buffer.successful {
+        Buffer.unsafeToConcat(&mut buffer, at, secondAt + 1)
+        context.budget = usize.saturatingSubtract(context.budget, count)
+      }
+      return no()
     }
     let mut i: usize = 0
     while i < count && context.budget != 0 && buffer.successful {

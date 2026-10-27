@@ -248,6 +248,21 @@ impl<'a> OtPlan<'a> {
   effect fn addRuleDigests(self: &mut Self, table: View<'a>, kind: u16) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
+    if !self.positioning && kind == 4 {
+      if View.u16(&table, 0) != 1 {
+        return ()
+      }
+      let sets = u16.toUsize(View.u16(&table, 4))
+      let mut index: usize = 0
+      while index < sets {
+        run List<u64>.append(
+          &mut self.ruleDigests,
+          ligatureSetDigest(View.offset(&table, 6 + index * 2, 2)),
+        )
+        index = index + 1
+      }
+      return ()
+    }
     let contextual = (!self.positioning && (kind == 5 || kind == 6))
       || (self.positioning && (kind == 7 || kind == 8))
     if !contextual {
@@ -933,6 +948,28 @@ fn ruleSetDigest(ruleSet: View, chained: bool) -> u64 {
       return u64.MAX
     }
     digest = digest | u64.shiftLeft(1, usize.toU64(read16(bytes, pos) & 63))
+    index = index + 1
+  }
+  return digest
+}
+
+/// A digest of the second components of a 16-bit ligature set's ligatures, or `u64.MAX` when a
+/// ligature is malformed or has a single component, so the set must be walked.
+fn ligatureSetDigest(set: View) -> u64 {
+  let bytes = FontData.asBytes(&set.data)
+  let count = read16(bytes, 0)
+  let mut digest: u64 = 0
+  let mut index: usize = 0
+  while index < count {
+    let start = read16(bytes, 2 + index * 2)
+    if start == 0 || start > bytes.length {
+      return u64.MAX
+    }
+    let components = read16(bytes, start + 2)
+    if components < 2 || components > 64 {
+      return u64.MAX
+    }
+    digest = digest | u64.shiftLeft(1, usize.toU64(read16(bytes, start + 4) & 63))
     index = index + 1
   }
   return digest
