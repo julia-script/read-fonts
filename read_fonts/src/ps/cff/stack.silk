@@ -52,7 +52,7 @@ pub struct Stack {
 }
 
 impl Stack {
-  pub fn new() -> Self {
+  pub fn new() -> Self with Intrinsic.inlineAlways() {
     return Self { values: [0; 513], fixedBits: [0; 9], top: 0 }
   }
 
@@ -192,18 +192,30 @@ impl Stack {
   }
 
   // Caller-owned output replaces Rust's const-generic return array.
-  pub fn fixedArray(self: &Self, firstIndex: usize, output: &mut [Fixed]) -> Result<(), Error> {
+  pub fn fixedArray(self: &Self, firstIndex: usize, output: &mut [Fixed]) -> Result<
+    (),
+    Error
+  > with Intrinsic.inlineAlways() {
+    let mut available: usize = 0
+    if firstIndex < self.top {
+      available = self.top - firstIndex
+    }
+    if available > output.length {
+      available = output.length
+    }
     let mut i: usize = 0
+    while i < available {
+      let index = firstIndex + i
+      let bits = self.values[index]
+      if Stack.isFixed(&self, index) {
+        output[i] = Fixed.fromBits(bits)
+      } else {
+        output[i] = Fixed.fromI32(bits)
+      }
+      i = i + 1
+    }
     while i < output.length {
       output[i] = Fixed.zero()
-      if firstIndex < self.top && i < self.top - firstIndex {
-        let index = firstIndex + i
-        if Stack.isFixed(&self, index) {
-          output[i] = Fixed.fromBits(self.values[index])
-        } else {
-          output[i] = Fixed.fromI32(self.values[index])
-        }
-      }
       i = i + 1
     }
     return Result<(), Error>.succeed(())
