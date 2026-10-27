@@ -1,5 +1,5 @@
 //! Resolve script, language, feature ranges and variation substitutions once per run.
-import view { View, read16, offset }
+import view { View, read16, offset, valueSize }
 import set_digest { SetDigest, subtableCoverage }
 import buffer { Buffer, Glyph }
 import direction { Direction }
@@ -50,6 +50,9 @@ pub struct LookupSubtable {
   /// This subtable's rule set digests in `OtPlan.ruleDigests`; `ruleSets` is 0 without them.
   pub ruleDigests: usize,
   pub ruleSets: usize,
+  /// This subtable's pair set digests in `OtPlan.pairDigests`; `pairSets` is 0 without them.
+  pub pairDigests: usize,
+  pub pairSets: usize,
   /// The coverage of the glyph a match starts at, expanded into `OtPlan.coverageValues` from
   /// glyph `coverageFirst`: one entry per glyph, the coverage index plus one, or 0 when the glyph
   /// is not covered. `coverageCount` is 0 when the coverage is not expanded.
@@ -143,7 +146,11 @@ pub struct OtPlan<'a> {
   pub classValues: List<u16>,
   /// For each rule set of a 16-bit format 1 or 2 contextual subtable, a bit per second input
   /// value (mod 64) of its rules; all bits when a rule has no second value or is malformed.
+  /// Likewise for each ligature set of a 16-bit ligature subtable, by second component.
   pub ruleDigests: List<u64>,
+  /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
+  /// glyphs; full when the set is malformed.
+  pub pairDigests: List<SetDigest>,
   pub coverageValues: List<u16>,
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
@@ -205,6 +212,8 @@ impl<'a> OtPlan<'a> {
         SetDigest.include(&mut digest, &subtableDigest)
         let ruleDigests = List<u64>.length(&self.ruleDigests)
         run self.addRuleDigests(table, kind)
+        let pairDigests = List<SetDigest>.length(&self.pairDigests)
+        run self.addPairDigests(table, kind)
         let coverageStart = List<u16>.length(&self.coverageValues)
         let coverageFirst = run self.expandCoverage(table, kind)
         run List<LookupSubtable>.append(
@@ -216,6 +225,8 @@ impl<'a> OtPlan<'a> {
             digest: subtableDigest,
             ruleDigests: ruleDigests,
             ruleSets: List<u64>.length(&self.ruleDigests) - ruleDigests,
+            pairDigests: pairDigests,
+            pairSets: List<SetDigest>.length(&self.pairDigests) - pairDigests,
             coverageFirst: coverageFirst,
             coverageStart: coverageStart,
             coverageCount: List<u16>.length(&self.coverageValues) - coverageStart,
@@ -284,6 +295,36 @@ impl<'a> OtPlan<'a> {
     while index < sets {
       let ruleSet = View.offset(&table, countPos + 2 + index * 2, 2)
       run List<u64>.append(&mut self.ruleDigests, ruleSetDigest(ruleSet, chained))
+      index = index + 1
+    }
+  }
+
+  /// Appends the digest of each pair set's second glyphs for a 16-bit format 1 pair adjustment
+  /// subtable, so `position` can reject most pairs without searching the set.
+  effect fn addPairDigests(self: &mut Self, table: View<'a>, kind: u16) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if !self.positioning || kind != 2 || View.u16(&table, 0) != 1 {
+      return ()
+    }
+    let record = 2 + valueSize(View.u16(&table, 4)) + valueSize(View.u16(&table, 6))
+    let sets = u16.toUsize(View.u16(&table, 8))
+    let mut index: usize = 0
+    while index < sets {
+      let set = View.offset(&table, 10 + index * 2, 2)
+      let bytes = FontData.asBytes(&set.data)
+      let count = read16(bytes, 0)
+      let mut digest = SetDigest.new()
+      if bytes.length < 2 || count > (bytes.length - 2) / record {
+        digest = SetDigest.full()
+      } else {
+        let mut n: usize = 0
+        while n < count {
+          SetDigest.add(&mut digest, usize.toU32(read16(bytes, 2 + n * record)))
+          n = n + 1
+        }
+      }
+      run List<SetDigest>.append(&mut self.pairDigests, digest)
       index = index + 1
     }
   }
@@ -390,6 +431,7 @@ impl<'a> OtPlan<'a> {
       classTables: List<ClassTable>.make(),
       classValues: List<u16>.make(),
       ruleDigests: List<u64>.make(),
+      pairDigests: List<SetDigest>.make(),
       coverageValues: List<u16>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },

@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 367M | 65.3M | 5.62× |
-| Roboto / English words | 518M | 87.9M | 5.89× |
+| Roboto / English Little Prince | 345M | 65.3M | 5.29× |
+| Roboto / English words | 498M | 87.9M | 5.66× |
 | Noto Nastaliq Urdu / Persian Little Prince | 2,191M | 789M | 2.78× |
-| Noto Nastaliq Urdu / Persian words | 2,204M | 847M | 2.60× |
-| Noto Sans Devanagari / Hindi words | 888M | 225M | 3.94× |
+| Noto Nastaliq Urdu / Persian words | 2,203M | 847M | 2.60× |
+| Noto Sans Devanagari / Hindi words | 887M | 225M | 3.94× |
 | Amiri / Persian Little Prince | 1,112M | 374M | 2.97× |
-| Source Serif Variable / react-dom | 4,132M | 1,004M | 4.11× |
+| Source Serif Variable / react-dom | 4,106M | 1,004M | 4.09× |
 
-The geometric mean is **3.80×**, down from 11.25× for the initial port. Plans
+The geometric mean is **3.75×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -165,7 +165,8 @@ in the plan, so lookups skip uncovered subtables without a call and pass the
 coverage index to the ones they apply; each subtable's class definitions are
 resolved once in the plan instead of per glyph; plans keep a digest of each
 ligature set's second components, so a set none of whose ligatures can match is
-rejected without walking it. The remaining gap is mostly per-glyph table walking that harfrust
+rejected without walking it; pair sets keep a digest of their second glyphs, and
+kerning-only pair subtables adjust the advance directly. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences

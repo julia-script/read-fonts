@@ -291,6 +291,15 @@ fn be16(bytes: &[u8], at: usize) -> u16 with Intrinsic.inlineAlways() {
 }
 
 /// A big-endian u16 at `at` as a usize, or 0 past the end, like `View.u16`.
+/// Bytes in a value record: two per bit set in the low byte of its format. The bits are
+/// counted in parallel, since this runs for every pair adjustment.
+pub fn valueSize(format: u16) -> usize with Intrinsic.inline() {
+  let bits = format & 255
+  let pairs = bits - ((bits / 2) & 0x55)
+  let nibbles = (pairs & 0x33) + ((pairs / 4) & 0x33)
+  return u16.toUsize((nibbles + nibbles / 16) & 15) * 2
+}
+
 pub fn read16(bytes: &[u8], at: usize) -> usize with Intrinsic.inlineAlways() {
   if at >= bytes.length || bytes.length - at < 2 {
     return 0
