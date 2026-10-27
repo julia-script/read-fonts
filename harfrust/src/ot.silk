@@ -63,6 +63,8 @@ struct Context<'a, 's> {
   markAttachClasses: Classes<'a, 's>,
   /// GDEF's variation store, read once; None without variation coordinates, as in harfrust.
   varStore: Option<ItemVariationStore<'a>>,
+  /// Whether variation coordinates are set; without them every device delta is zero.
+  variable: bool,
 }
 
 /// A class definition, expanded to one class per glyph when the plan holds it.
@@ -232,6 +234,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
+    variable: List<F2Dot14>.length(&font.coords) != 0,
   }
   let mut step: usize = 0
   let mut stage: u32 = 0
@@ -487,6 +490,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
+    variable: List<F2Dot14>.length(&font.coords) != 0,
   }
   let mut i: usize = 0
   while i < steps.length {
@@ -2186,7 +2190,7 @@ fn adjustValue(
     }
     cursor = cursor + 2
   }
-  if (format & 240) == 0 {
+  if (format & 240) == 0 || !context.variable {
     return
   }
   if (format & 16) != 0 {
@@ -2380,8 +2384,9 @@ effect fn position<F: FontFuncs>(
     }
     drop run trace.pair(font, &buffer.*, "try kerning glyphs at ", at, ",", second, "")
     let mut kerned = false
-    if vf1 == 4 && vf2 == 0 {
-      // Kerning only adjusts the first glyph's advance.
+    if vf2 == 0 && (vf1 == 4 || (vf1 == 0x44 && !context.variable)) {
+      // Kerning only adjusts the first glyph's advance; an advance device adds nothing without
+      // variation coordinates.
       let value = View.i16(&values, pos)
       if value != 0 && Direction.isHorizontal(buffer.direction) {
         let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
@@ -2723,7 +2728,7 @@ fn hasValue(context: &Context, table: View, pos: usize, format: u16, direction: 
     at = at + 2
   }
   let mut bit: u16 = 16
-  while bit <= 128 && (format & 240) != 0 {
+  while bit <= 128 && (format & 240) != 0 && context.variable {
     if (format & bit) != 0 {
       let applies = (bit != 64 || horizontal) && (bit != 128 || !horizontal)
       if applies && deviceDelta(context, View.offset16(&table, at)) != 0.0 {
