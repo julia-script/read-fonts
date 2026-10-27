@@ -143,13 +143,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 107M | 65.3M | 1.64× |
-| Roboto / English words | 148M | 87.9M | 1.69× |
+| Roboto / English Little Prince | 109M | 65.3M | 1.67× |
+| Roboto / English words | 147M | 87.9M | 1.67× |
 | Noto Nastaliq Urdu / Persian Little Prince | 1,203M | 789M | 1.52× |
-| Noto Nastaliq Urdu / Persian words | 1,020M | 847M | 1.20× |
-| Noto Sans Devanagari / Hindi words | 348M | 225M | 1.55× |
-| Amiri / Persian Little Prince | 578M | 374M | 1.55× |
-| Source Serif Variable / react-dom | 1,356M | 1,004M | 1.35× |
+| Noto Nastaliq Urdu / Persian words | 1,015M | 847M | 1.20× |
+| Noto Sans Devanagari / Hindi words | 339M | 225M | 1.51× |
+| Amiri / Persian Little Prince | 576M | 374M | 1.54× |
+| Source Serif Variable / react-dom | 1,379M | 1,004M | 1.37× |
 
 The geometric mean is **1.49×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -195,7 +195,7 @@ that stays one glyph in place, so Indic text is not copied to a new list. Compos
 that the mark is the second half of some composition. Text entirely below U+0300 skips
 the mark scans in normalization, and flag propagation skips flagless single-glyph
 clusters; ASCII text fills the buffer in a plain loop, and horizontal advances are
-read straight from the hmtx bytes with the scaled metrics found once per run; glyph properties are set in place, and normalization
+read straight from the hmtx bytes; glyph properties are set in place, and normalization
 maps single glyphs without copying them and composes only marks that can be the second
 half of a composition. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
@@ -209,7 +209,9 @@ rule whose glyph before the match cannot fit is rejected before the backtrack wa
 each single-input rule's first lookahead value, checked against the glyph after the match;
 both checks run in the loop that skips rules by their second input, so a rejected rule is
 never read. Subtables a glyph cannot start a match in are skipped in a loop of their own,
-bounded by the slice length so it needs no index checks.
+bounded by the slice length so it needs no index checks. Plans record where each group of
+steps sharing a lookup ends, and the buffer's glyph digest is kept across shaper pauses that
+only reorder glyphs.
 Format 3 rules keep digests of their second input, first backtrack and first lookahead
 coverages, so most failing rules are ruled out from the glyphs on either side of the first
 one before the rest of the rule is read or any coverage is searched. Kerning reads expanded pair

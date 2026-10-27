@@ -47,6 +47,9 @@ pub struct LookupStep {
   /// Whether the step applies to every glyph by its value and the features' ranges alone, with
   /// none of the per-glyph conditions of `ot.enabled`.
   pub plain: bool,
+  /// One past the last of the steps from this one on that share its lookup and stage, which
+  /// `ot.apply` runs together; set once the steps are sorted.
+  pub groupEnd: usize,
 }
 
 impl Copy for LookupStep {}
@@ -260,6 +263,7 @@ impl<'a> OtPlan<'a> {
       second = cached.second
       lookupOffset = cached.lookupOffset
     }
+    let groupEnd = List<LookupStep>.length(&self.steps) + 1
     run List<LookupStep>.append(
       &mut self.steps,
       LookupStep {
@@ -274,6 +278,7 @@ impl<'a> OtPlan<'a> {
         value: value,
         stage: stage,
         plain: plainFeature(tag),
+        groupEnd: groupEnd,
       },
     )
   }
@@ -1083,6 +1088,16 @@ impl<'a> OtPlan<'a> {
       }
       List<LookupStep>.set(&mut plan.steps, j, item)
       i = i + 1
+    }
+    let steps = List<LookupStep>.asMutSlice(&mut plan.steps)
+    i = steps.length
+    while i > 0 {
+      i = i - 1
+      steps[i].groupEnd = i + 1
+      if i + 1 < steps.length && steps[i + 1].index == steps[i].index
+        && steps[i + 1].stage == steps[i].stage {
+        steps[i].groupEnd = steps[i + 1].groupEnd
+      }
     }
     run OtPlan.cacheNestedLookups(&mut plan)
     run OtPlan.addAllClasses(&mut plan)
