@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 125M | 65.3M | 1.91× |
-| Roboto / English words | 169M | 87.9M | 1.92× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1,531M | 789M | 1.94× |
-| Noto Nastaliq Urdu / Persian words | 1,452M | 847M | 1.71× |
-| Noto Sans Devanagari / Hindi words | 429M | 225M | 1.90× |
-| Amiri / Persian Little Prince | 817M | 374M | 2.19× |
-| Source Serif Variable / react-dom | 1,519M | 1,004M | 1.51× |
+| Roboto / English Little Prince | 113M | 65.3M | 1.73× |
+| Roboto / English words | 155M | 87.9M | 1.76× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1,524M | 789M | 1.93× |
+| Noto Nastaliq Urdu / Persian words | 1,448M | 847M | 1.71× |
+| Noto Sans Devanagari / Hindi words | 399M | 225M | 1.77× |
+| Amiri / Persian Little Prince | 705M | 374M | 1.89× |
+| Source Serif Variable / react-dom | 1,452M | 1,004M | 1.45× |
 
-The geometric mean is **1.86×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.74×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -198,7 +198,9 @@ clusters. Kerning-only 16-bit pair subtables
 (including advance devices without variation coordinates) take a dedicated path,
 and a lookup's subtables share one search for the second glyph. Plans keep a digest of the glyphs that can follow the first one in each lookup's
 ligatures and pairs, so a lookup none of whose second glyphs is in the buffer is skipped
-whole unless the buffer records unsafe-to-concat flags. The remaining gap is mostly per-glyph table walking that harfrust
+whole unless the buffer records unsafe-to-concat flags; format 3 contextual subtables add
+their second input or first lookahead coverage to that digest. Kerning reads expanded pair
+classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
