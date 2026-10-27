@@ -1041,10 +1041,14 @@ effect fn substitute<F: FontFuncs>(
     let mut secondAt: usize = 0
     let mut haveSecond = false
     let mut skippedAny = false
+    let mut nothingAfter = false
     if count > 1 {
-      if let Option<usize>.Some { value } = ligatureSecond(&context.*, &buffer.*, lookup, at) {
-        second = List<Glyph>.get(&buffer.glyphs, value).info.glyphId
-        secondAt = value
+      let found = ligatureSecond(&context.*, &buffer.*, lookup, at)
+      if found == NOTHING_AFTER {
+        nothingAfter = true
+      } else if found != NO_SECOND {
+        second = List<Glyph>.asSlice(&buffer.glyphs)[found].info.glyphId
+        secondAt = found
         haveSecond = true
       }
     }
@@ -1076,6 +1080,12 @@ effect fn substitute<F: FontFuncs>(
       let ligature = View.offset(&set, 2 + i * width, width)
       let components = u16.toUsize(View.u16(&ligature, width))
       if components == 0 || components > 64 {
+        i = i + 1
+        continue
+      }
+      if nothingAfter && components > 1 {
+        // Matching would find no second glyph and mark only this one.
+        Buffer.unsafeToConcat(&mut buffer, at, at + 1)
         i = i + 1
         continue
       }
@@ -1311,23 +1321,29 @@ fn compatibleComponents(
 /// The glyph a ligature's second component must match: the next glyph the lookup does not
 /// ignore. None when that glyph may be skipped as default-ignorable, or the syllable ends,
 /// since then each ligature must be matched in full.
-fn ligatureSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) -> Option<usize> {
+/// `ligatureSecond` results besides a glyph index: a glyph that stops matching, and the end of
+/// the buffer (or only ignored glyphs) after the first component.
+const NO_SECOND: usize = 18446744073709551615
+
+const NOTHING_AFTER: usize = 18446744073709551614
+
+fn ligatureSecond(context: &Context, buffer: &Buffer, lookup: Lookup, at: usize) -> usize {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let mut i = at + 1
   while i < glyphs.length {
     let item = &glyphs[i]
     if context.restrictSyllable && item.syllable != glyphs[at].syllable {
-      return Option<usize>.None
+      return NO_SECOND
     }
     if !ignored(context, lookup, item) {
       if item.ignorable && !item.substituted && (!item.hidden || context.positioning) {
-        return Option<usize>.None
+        return NO_SECOND
       }
-      return Option<usize>.some(i)
+      return i
     }
     i = i + 1
   }
-  return Option<usize>.None
+  return NOTHING_AFTER
 }
 
 fn matchWidth(kind: u32) -> usize {
