@@ -1,7 +1,7 @@
 //! Bounded OpenType lookup execution. Subtables borrow checked font views.
 import silk.slice { Slice }
 import trace
-import view { View, offset }
+import view { View, read16, offset }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
@@ -27,6 +27,7 @@ import silk.i32
 import silk.i64
 import silk.usize
 import silk.u8
+import silk.u64
 
 struct Context<'a, 's> {
   savedInput: List<Glyph>,
@@ -50,6 +51,8 @@ struct Context<'a, 's> {
   positions: [usize; 64],
   classTables: &'s [ClassTable],
   classValues: &'s [u16],
+  /// Per rule set digests of contextual subtables' second input values (`OtPlan.ruleDigests`).
+  ruleDigests: &'s [u64],
   /// Contextual input positions, 64 per lookup nesting depth.
   positionStack: List<usize>,
   glyphClasses: Classes<'a, 's>,
@@ -194,6 +197,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
+    ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -299,10 +303,13 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       } else {
         let mut i: usize = 0
         while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
+          i = nextCandidate(List<Glyph>.asSlice(&buffer.glyphs), i, &steps[step].digest)
+          if i >= Buffer.len(&buffer.*) {
+            break
+          }
           let mut result = no()
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-          if SetDigest.mayHave(&steps[step].digest, glyph.info.glyphId)
-            && enabled(&context, glyph, step, end) > 0 {
+          if enabled(&context, glyph, step, end) > 0 {
             result = run applyLookup(
               font,
               &mut context,
@@ -347,6 +354,16 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     buffer.successful = false
   }
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
+}
+
+/// The first glyph from `from` that `digest` may hold, or the buffer's length. Kept apart from
+/// `apply` so the scan over glyphs a lookup cannot start at stays a tight loop.
+fn nextCandidate(glyphs: &[Glyph], from: usize, digest: &SetDigest) -> usize {
+  let mut i = from
+  while i < glyphs.length && !SetDigest.mayHave(digest, glyphs[i].info.glyphId) {
+    i = i + 1
+  }
+  return i
 }
 
 fn bufferDigest(buffer: &Buffer) -> SetDigest {
@@ -433,6 +450,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
+    ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
     glyphClasses: gdefClasses(plan, font.data.gdef, 0, plan.glyphClasses),
     markAttachClasses: gdefClasses(plan, font.data.gdef, 3, plan.markAttachClasses),
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
@@ -645,12 +663,17 @@ effect fn applyLookup<F: FontFuncs>(
     let mut result = no()
     if (!context.positioning && (kind == 5 || kind == 6))
       || (context.positioning && (kind == 7 || kind == 8)) {
+      let mut digests = Slice.view(context.ruleDigests, 0, 0)
+      if cached {
+        digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
+      }
       result = run contextual(
         font,
         &mut context,
         &mut buffer,
         lookup,
         table,
+        digests,
         at,
         first,
         last,
@@ -1351,24 +1374,37 @@ fn skipRules16(
   let mut budget = context.budget
   let mut index = from
   while index < count && budget != 0 {
-    let start = read16(bytes, 2 + index * 2)
-    let mut pos = start
+    // Offsets and counts are at most 65535, so the wrapping arithmetic below cannot wrap.
+    let start = read16(bytes, usize.wrappingAdd(2, usize.wrappingMultiply(index, 2)))
+    if start == 0 || start > bytes.length {
+      break
+    }
+    let mut countPos = start
     if chained {
-      pos = pos + 2 + read16(bytes, pos) * 2
+      countPos = usize.wrappingAdd(
+        countPos,
+        usize.wrappingAdd(2, usize.wrappingMultiply(read16(bytes, countPos), 2)),
+      )
     }
-    let inputCount = read16(bytes, pos)
-    pos = pos + 2
-    let mut actionCount: usize = 0
+    let inputCount = read16(bytes, countPos)
+    if inputCount < 2 || inputCount > 64 {
+      break
+    }
+
+    // Unchained rules keep their action count between the input count and the input values.
+    let mut pos = usize.wrappingAdd(countPos, 2)
     if !chained {
-      actionCount = read16(bytes, pos)
-      pos = pos + 2
+      pos = usize.wrappingAdd(pos, 2)
     }
-    if start == 0 || start > bytes.length || inputCount < 2 || inputCount > 64
-      || (found && usize.toU32(read16(bytes, pos)) == secondValue) {
+    if found && usize.toU32(read16(bytes, pos)) == secondValue {
       break
     }
     budget = budget - 1
     if marks {
+      let mut actionCount: usize = 0
+      if !chained {
+        actionCount = read16(bytes, countPos + 2)
+      }
       let end = pos - start + (inputCount - 1) * 2
       if ruleTail(View.tail(&ruleSet, start), end, chained, actionCount, 2).valid {
         Buffer.unsafeToConcat(&mut buffer, at, secondEnd)
@@ -1416,14 +1452,6 @@ fn skipLigatures16(
   }
   context.budget = budget
   return SkippedLigatures { index: index, marked: marked }
-}
-
-/// A big-endian u16 at `at` as a usize, or 0 past the end, like `View.u16`.
-fn read16(bytes: &[u8], at: usize) -> usize with Intrinsic.inlineAlways() {
-  if at >= bytes.length || bytes.length - at < 2 {
-    return 0
-  }
-  return u8.toUsize(bytes[at]) * 256 + u8.toUsize(bytes[at + 1])
 }
 
 /// The first glyph after `at` that input matching compares with a rule's second value.
@@ -1553,6 +1581,7 @@ effect fn contextual<F: FontFuncs>(
   buffer: &mut Buffer,
   lookup: Lookup,
   table: View,
+  digests: &[u64],
   at: usize,
   first: usize,
   last: usize,
@@ -1600,6 +1629,7 @@ effect fn contextual<F: FontFuncs>(
   let mut backClasses = noClasses(&context.*)
   let mut aheadClasses = noClasses(&context.*)
   let mut kind: u32 = 0
+  let mut ruleSetIndex: usize = 0
   if format == 1 || format == 2 {
     let coverage = match move View.coverage(&View.offset(&table, 2, coverageWidth), glyph) {
       Option<u32>.Some { value } => u32.toUsize(value)
@@ -1628,6 +1658,7 @@ effect fn contextual<F: FontFuncs>(
     if index >= u32.toUsize(View.uint(&table, countPos, countWidth)) {
       return no()
     }
+    ruleSetIndex = index
     ruleSet = View.offset(&table, countPos + countWidth + index * offsetWidth, offsetWidth)
   } else if format == 3 {
     kind = 2
@@ -1662,6 +1693,19 @@ effect fn contextual<F: FontFuncs>(
   let mut secondEnd = at + 1
   if second.found {
     secondEnd = second.index + 1
+  }
+
+  // The plan's digest of the rule set's second input values can rule out every rule at once.
+  // The rule loop would reject each one, spending one budget unit per rule; buffers that track
+  // unsafe-to-concat take the loop, which marks the span.
+  if quickReject && (buffer.flags & 64) == 0 && ruleSetIndex < digests.length
+    && digests[ruleSetIndex] != u64.MAX
+    && (!second.found
+    || (digests[ruleSetIndex] & u64.shiftLeft(1, u32.toU64(secondValue & 63))) == 0) {
+    if context.budget != 0 && buffer.successful {
+      context.budget = usize.saturatingSubtract(context.budget, count)
+    }
+    return no()
   }
 
   // Matched input positions live in this nesting depth's slot of the context's scratch list, so

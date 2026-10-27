@@ -1,5 +1,5 @@
 //! Resolve script, language, feature ranges and variation substitutions once per run.
-import view { View, offset }
+import view { View, read16, offset }
 import set_digest { SetDigest, subtableCoverage }
 import buffer { Buffer, Glyph }
 import direction { Direction }
@@ -11,7 +11,7 @@ import font { ConfiguredShaper, FontFuncs, Shaper }
 import read_fonts.tables.layout { FeatureVariations, LookupVariations }
 import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
 import read_fonts.model.error { Error }
-import read_fonts.lib { ReadError }
+import read_fonts.lib { ReadError, FontData }
 import silk.result { Result }
 import silk.usize
 import font_types.lib { Tag, F2Dot14, F48Dot16 }
@@ -21,6 +21,7 @@ import silk.option { Option }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.u16
 import silk.u32
+import silk.u64
 
 pub struct LookupStep {
   pub digest: SetDigest,
@@ -46,6 +47,9 @@ pub struct LookupSubtable {
   pub offset: usize,
   pub kind: u16,
   pub digest: SetDigest,
+  /// This subtable's rule set digests in `OtPlan.ruleDigests`; `ruleSets` is 0 without them.
+  pub ruleDigests: usize,
+  pub ruleSets: usize,
 }
 
 impl Copy for LookupSubtable {}
@@ -71,6 +75,9 @@ pub struct OtPlan<'a> {
   /// Class definitions of the plan's class-based subtables, sorted by offset.
   pub classTables: List<ClassTable>,
   pub classValues: List<u16>,
+  /// For each rule set of a 16-bit format 1 or 2 contextual subtable, a bit per second input
+  /// value (mod 64) of its rules; all bits when a rule has no second value or is malformed.
+  pub ruleDigests: List<u64>,
   /// GDEF glyph classes and mark attachment classes, when expanded.
   pub glyphClasses: ClassTable,
   pub markAttachClasses: ClassTable,
@@ -129,6 +136,8 @@ impl<'a> OtPlan<'a> {
           )
         }
         SetDigest.include(&mut digest, &subtableDigest)
+        let ruleDigests = List<u64>.length(&self.ruleDigests)
+        run self.addRuleDigests(table, kind)
         run List<LookupSubtable>.append(
           &mut self.subtables,
           // Every view derived by offsets runs to the end of the layout table.
@@ -136,6 +145,8 @@ impl<'a> OtPlan<'a> {
             offset: View.len(&self.table) - View.len(&table),
             kind: kind,
             digest: subtableDigest,
+            ruleDigests: ruleDigests,
+            ruleSets: List<u64>.length(&self.ruleDigests) - ruleDigests,
           },
         )
         i = i + 1
@@ -157,6 +168,36 @@ impl<'a> OtPlan<'a> {
     )
   }
 
+  /// Appends a digest per rule set of a 16-bit format 1 or 2 contextual subtable, so
+  /// `contextual` can skip a rule set none of whose rules can match the next glyph.
+  effect fn addRuleDigests(self: &mut Self, table: View<'a>, kind: u16) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let contextual = (!self.positioning && (kind == 5 || kind == 6))
+      || (self.positioning && (kind == 7 || kind == 8))
+    if !contextual {
+      return ()
+    }
+    let chained = kind == 6 || kind == 8
+    let format = View.u16(&table, 0)
+    let mut countPos: usize = 4
+    if format == 2 {
+      countPos = 6
+      if chained {
+        countPos = 10
+      }
+    } else if format != 1 {
+      return ()
+    }
+    let sets = u16.toUsize(View.u16(&table, countPos))
+    let mut index: usize = 0
+    while index < sets {
+      let ruleSet = View.offset(&table, countPos + 2 + index * 2, 2)
+      run List<u64>.append(&mut self.ruleDigests, ruleSetDigest(ruleSet, chained))
+      index = index + 1
+    }
+  }
+
   /// An empty plan over a GSUB or GPOS table; `addStep` adds lookups to it.
   pub fn forTable(table: View<'a>, positioning: bool) -> Self {
     return Self {
@@ -165,6 +206,7 @@ impl<'a> OtPlan<'a> {
       subtables: List<LookupSubtable>.make(),
       classTables: List<ClassTable>.make(),
       classValues: List<u16>.make(),
+      ruleDigests: List<u64>.make(),
       glyphClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       markAttachClasses: ClassTable { offset: 0, first: 0, start: 0, count: 0 },
       direction: Direction.LeftToRight,
@@ -683,4 +725,31 @@ fn delta(store: &Option<ItemVariationStore>, coords: &[F2Dot14], index: u32) -> 
       |> Option<F48Dot16>.unwrapOr(F48Dot16.zero())
   }
   return Result<f64, Error>.succeed(F48Dot16.toF64(value))
+}
+
+/// The second input values of a rule set's rules, one bit each mod 64. A rule without a second
+/// input value, or one `contextual` would not reject on it, fills every bit.
+fn ruleSetDigest(ruleSet: View, chained: bool) -> u64 {
+  let bytes = FontData.asBytes(&ruleSet.data)
+  let count = read16(bytes, 0)
+  let mut digest: u64 = 0
+  let mut index: usize = 0
+  while index < count {
+    let start = read16(bytes, 2 + index * 2)
+    let mut pos = start
+    if chained {
+      pos = pos + 2 + read16(bytes, pos) * 2
+    }
+    let inputCount = read16(bytes, pos)
+    pos = pos + 2
+    if !chained {
+      pos = pos + 2
+    }
+    if start == 0 || start > bytes.length || inputCount < 2 || inputCount > 64 {
+      return u64.MAX
+    }
+    digest = digest | u64.shiftLeft(1, usize.toU64(read16(bytes, pos) & 63))
+    index = index + 1
+  }
+  return digest
 }
