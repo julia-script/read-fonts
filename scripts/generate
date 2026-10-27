@@ -78,7 +78,7 @@ subprocess.run([str(ROOT / "scripts/generate-model-tables")], check=True)
 subprocess.run([str(ROOT / "scripts/generate-model-fixtures")], check=True)
 subprocess.run([str(ROOT / "scripts/generate-misc-table-fixtures")], check=True)
 
-packages = ["font_types", "read_fonts", "font_dump"]
+packages = ["font_types", "read_fonts", "font_dump", "font_bench"]
 subprocess.run([os.environ.get("SILK", "silk"), "format"] + [str(ROOT / package) for package in packages], check=True,
                stdout=subprocess.DEVNULL)
 if args.check:

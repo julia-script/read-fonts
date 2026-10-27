@@ -270,9 +270,7 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     if args[0] == OsStr::new("--help") {
-        println!(
-            "usage: rust-font-dump FONT\nDump format 9: tables and model APIs."
-        );
+        println!("usage: rust-font-dump FONT\nDump format 9: tables and model APIs.");
         return ExitCode::SUCCESS;
     }
     if args[0] == OsStr::new("--version") {

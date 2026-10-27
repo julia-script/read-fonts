@@ -1,0 +1,119 @@
+//! Library workloads for scripts/bench-library. Each returns a checksum that the Rust
+//! counterpart (scripts/rust-font-dump/src/bin/font-bench.rs) must reproduce.
+import read_fonts.lib { FontRef, ReadError }
+import read_fonts.tables.cmap { Cmap, BestCmapSubtable, CmapSubtable }
+import read_fonts.tables.glyf { Glyf, Glyph, SimpleGlyph, CompositeGlyph, CurvePoint, Component }
+import read_fonts.tables.loca { Loca, LocaGlyph }
+import read_fonts.tables.hmtx { Hmtx }
+import font_types.lib { GlyphId }
+import silk.option { Option }
+import silk.result { Result }
+import silk.u16
+import silk.u32
+import silk.u64
+import silk.i16
+import silk.i32
+import silk.usize
+
+/// Maps every Unicode scalar value through the best cmap subtable.
+pub fn cmap<'a>(font: &FontRef<'a>) -> u64 {
+  let table = match move FontRef.cmap(font) {
+    Result<Cmap<'a>, ReadError>.Success { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let best = match move Cmap.bestSubtable(&table) {
+    Option<BestCmapSubtable<'a>>.Some { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let mut sum: u64 = 0
+  let mut cp: u32 = 0
+  while cp < 0x110000 {
+    if let Option<GlyphId>.Some { value } = CmapSubtable.mapCodepoint(&best.subtable, cp) {
+      sum = u64.wrappingAdd(sum, u32.toU64(GlyphId.toU32(value)))
+    }
+    cp = cp + 1
+  }
+  return sum
+}
+
+/// Decodes every glyf glyph: all points of simple glyphs, all components of composites.
+pub fn glyf<'a>(font: &FontRef<'a>) -> u64 {
+  let loca = match move FontRef.loca(font, Option<bool>.None) {
+    Result<Loca<'a>, ReadError>.Success { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let glyf = match move FontRef.glyf(font) {
+    Result<Glyf<'a>, ReadError>.Success { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let mut sum: u64 = 0
+  let count = Loca.len(&loca)
+  let mut gid: usize = 0
+  while gid < count {
+    if let Option<LocaGlyph<'a>>.Some { value } = Loca.get(
+      &loca,
+      GlyphId.new(usize.toU32(gid)),
+      &glyf,
+    ) {
+      if let LocaGlyph<'a>.Glyph { value: glyph } = value {
+        sum = u64.wrappingAdd(sum, glyphSum(glyph))
+      }
+    }
+    gid = gid + 1
+  }
+  return sum
+}
+
+// Offsets a coordinate so the checksum stays unsigned.
+fn unsigned(value: i16) -> u64 {
+  return i32.toU64(i16.toI32(value) + 32768)
+}
+
+fn glyphSum<'a>(glyph: Glyph<'a>) -> u64 {
+  let mut sum: u64 = 0
+  match glyph {
+    Glyph<'a>.Simple { value } => {
+      let mut points = SimpleGlyph.points(&value)
+      while let Option<CurvePoint>.Some { value: point } = points.next() {
+        sum = u64.wrappingAdd(sum, unsigned(point.x) + unsigned(point.y))
+        if point.onCurve {
+          sum = u64.wrappingAdd(sum, 1)
+        }
+      }
+    }
+    Glyph<'a>.Composite { value } => {
+      let mut components = CompositeGlyph.components(&value)
+      while let Option<Component>.Some { value: component } = components.next() {
+        sum = u64.wrappingAdd(sum, u32.toU64(GlyphId.toU32(component.glyph)))
+      }
+    }
+  }
+  return sum
+}
+
+/// Reads the horizontal advance of every glyph id up to 65535.
+pub fn hmtx<'a>(font: &FontRef<'a>) -> u64 {
+  let table = match move FontRef.hmtx(font) {
+    Result<Hmtx<'a>, ReadError>.Success { value } => value
+    _ => {
+      return 0
+    }
+  }
+  let mut sum: u64 = 0
+  let mut gid: u32 = 0
+  while gid < 65536 {
+    if let Option<u16>.Some { value } = Hmtx.advance(&table, GlyphId.new(gid)) {
+      sum = u64.wrappingAdd(sum, u16.toU64(value))
+    }
+    gid = gid + 1
+  }
+  return sum
+}
