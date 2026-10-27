@@ -26,10 +26,11 @@ pub const BCD_POWER_TENS: [i32; 10] = [
 ]
 
 pub fn parseInt<'a>(cursor: &mut Cursor<'a>, b0: u8) -> Result<i32, Error> {
-  return run Effect.result(parseIntImpl(&mut cursor, b0))
+  return run Effect.result(readInt(&mut cursor, b0))
 }
 
-effect fn parseIntImpl<'a>(cursor: &mut Cursor<'a>, b0: u8) -> i32
+/// Effect form of `parseInt` for hot parsing loops.
+pub effect fn readInt<'a>(cursor: &mut Cursor<'a>, b0: u8) -> i32
   ! Error {
   if b0 >= 32 && b0 <= 246 {
     return u8.toI32(b0) - 139
@@ -304,7 +305,7 @@ effect fn parseFixedDynamicImpl<'a>(cursor: &mut Cursor<'a>) -> DynamicFixed
     return BcdComponents.dynamicallyScaledValue(&components)
   }
   if b0 == 28 || b0 == 29 || (b0 >= 32 && b0 <= 254) {
-    let num = run take(parseInt(&mut cursor, b0))
+    let num = run readInt(&mut cursor, b0)
     if num > 32767 {
       let mut intLen: usize = 10
       let mut i: usize = 5
