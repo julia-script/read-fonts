@@ -434,6 +434,25 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
   let mut i: usize = 1
   while i < count {
     let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+
+    // Glyphs below U+0300 that do not follow a ZWJ each start their own
+    // cluster. When the open cluster has at most one glyph, closing it needs
+    // no merge, so such a run is marked without the general checks.
+    if i - start < 2 {
+      let first = i
+      while i < slots.length && prev != 0x200d && slots[i].codepoint < 0x300 {
+        prev = slots[i].codepoint
+        slots[i].continuation = false
+        i = i + 1
+      }
+      if i > first {
+        start = i - 1
+        previousContinuation = false
+        if i == count {
+          break
+        }
+      }
+    }
     let cp = slots[i].codepoint
     let mut continuation = prev == 0x200d && unicode.isExtendedPictographic(cp)
 
