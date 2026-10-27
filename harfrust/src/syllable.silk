@@ -100,6 +100,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   if length > 1048576 {
     return
   }
+  run List<usize>.reserve(&mut indices, length + 1)
   let mut i: usize = 0
   while i < length {
     let item = List<Glyph>.get(&buffer.glyphs, i)

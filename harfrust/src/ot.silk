@@ -1990,8 +1990,9 @@ effect fn contextual<F: FontFuncs>(
   // Matched input positions live in this nesting depth's slot of the context's scratch list, so
   // each application neither zeroes nor copies a 64-entry array.
   let base = depth * 64
-  while List<usize>.length(&context.positionStack) < base + 64 {
-    run List<usize>.append(&mut context.positionStack, 0)
+  let stackLength = List<usize>.length(&context.positionStack)
+  if stackLength < base + 64 {
+    run List<usize>.appendRepeated(&mut context.positionStack, 0, base + 64 - stackLength)
   }
 
   // The plan keeps each rule's second input value, so rules are skipped by reading those
@@ -2930,13 +2931,15 @@ pub effect fn finishOffsets(buffer: &mut Buffer) -> ()
   }
   let mut xs = List<i64>.make()
   let mut ys = List<i64>.make()
+  run List<i64>.reserveExact(&mut xs, Buffer.len(&buffer.*) + 1)
+  run List<i64>.reserveExact(&mut ys, Buffer.len(&buffer.*) + 1)
   let mut x: i64 = 0
   let mut y: i64 = 0
   let mut i: usize = 0
   while i < Buffer.len(&buffer.*) {
     run List<i64>.append(&mut xs, x)
     run List<i64>.append(&mut ys, y)
-    let pos = List<Glyph>.get(&buffer.glyphs, i).position
+    let pos = &List<Glyph>.asSlice(&buffer.glyphs)[i].position
     x = x + i32.toI64(pos.xAdvance)
     y = y + i32.toI64(pos.yAdvance)
     i = i + 1
