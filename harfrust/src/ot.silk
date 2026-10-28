@@ -449,9 +449,9 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         buffer.idx = 0
       } else if pairs {
         run applyPairsStep(font, &mut context, &mut buffer, &lookup, subtables, step, end)
-      } else if steps[step].format3 && !tracing {
+      } else if steps[step].contextual && !tracing {
         // A short buffer's digest is cheap to refresh, and an exact one skips more lookups.
-        let applied = run applyFormat3Step(
+        let applied = run applyContextStep(
           font,
           &mut context,
           &mut buffer,
@@ -1134,10 +1134,10 @@ effect fn applyLookup<F: FontFuncs>(
   return no()
 }
 
-/// Applies a step whose subtables are all 16-bit format 3 contextual ones at each glyph in turn,
-/// as `applyLookup` would, with the digest checks and their per-subtable setup in the glyph loop.
+/// Applies a step whose subtables are all contextual ones at each glyph in turn, as
+/// `applyLookup` would, with the digest checks and their per-subtable setup in the glyph loop.
 /// Returns whether the lookup applied anywhere.
-effect fn applyFormat3Step<F: FontFuncs>(
+effect fn applyContextStep<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
@@ -1159,7 +1159,7 @@ effect fn applyFormat3Step<F: FontFuncs>(
     let mut result = no()
     let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
     if everywhere || enabled(&context.*, glyph, step, end) != 0 {
-      result = run applyFormat3(font, &mut context, &mut buffer, lookup, subtables, i, step, end)
+      result = run applyContextual(font, &mut context, &mut buffer, lookup, subtables, i, step, end)
     }
     if result.yes {
       applied = true
@@ -1171,10 +1171,10 @@ effect fn applyFormat3Step<F: FontFuncs>(
   return applied
 }
 
-/// `applyLookup` at depth 0 for a lookup whose cached subtables are all 16-bit format 3
-/// contextual ones: the same budget charges, digest and `format3Fails` rejections, and calls of
-/// `contextual`, inlined into `applyFormat3Step`.
-effect fn applyFormat3<F: FontFuncs>(
+/// `applyLookup` at depth 0 for a lookup whose cached subtables are all contextual ones: the
+/// same budget charges, digest and `format3Fails` rejections, and calls of `contextual`, inlined
+/// into `applyContextStep`.
+effect fn applyContextual<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
@@ -1231,7 +1231,8 @@ effect fn applyFormat3<F: FontFuncs>(
     let kind = subtables[i].kind
     let chained = kind == 6 || kind == 8
     if known != 0 && View.u16(&table, 0) == 3 && (buffer.flags & 64) == 0 && context.budget != 0
-      && buffer.successful {
+      && buffer.successful
+      && subtables[i].contextDigests != usize.MAX {
       let digests = Slice.view(context.contextDigests, subtables[i].contextDigests, 3)
       let inputCount = subtables[i].inputCount
       let mut aheadDigest = &digests[0]
