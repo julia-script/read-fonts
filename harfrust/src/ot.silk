@@ -333,6 +333,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         steps[step].subtableCount,
       )
       let everywhere = enabledEverywhere(&context, step, end)
+      let pairs = steps[step].pairs && context.positioning
       if !mayApply {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
@@ -347,7 +348,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
               font,
               &mut context,
               &mut buffer,
-              lookup,
+              &lookup,
               subtables,
               i,
               step,
@@ -365,14 +366,16 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           }
           let mut result = no()
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-          if (everywhere || enabled(&context, glyph, step, end) > 0) && steps[step].pairs {
-            result = run applyPairs(font, &mut context, &mut buffer, lookup, subtables, i)
-          } else if everywhere || enabled(&context, glyph, step, end) > 0 {
+          if !everywhere && enabled(&context, glyph, step, end) == 0 {
+            // The glyph's features leave the step off.
+          } else if pairs {
+            result = run applyPairs(font, &mut context, &mut buffer, &lookup, subtables, i)
+          } else {
             result = run applyLookup(
               font,
               &mut context,
               &mut buffer,
-              lookup,
+              &lookup,
               subtables,
               i,
               step,
@@ -559,7 +562,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        &lookup,
         subtables,
         0,
         i,
@@ -722,7 +725,7 @@ effect fn applyLookup<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
-  lookup: Lookup,
+  lookup: &Lookup,
   subtables: &[LookupSubtable],
   at: usize,
   first: usize,
@@ -736,7 +739,7 @@ effect fn applyLookup<F: FontFuncs>(
     return no()
   }
   if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
-    || ignored(&context.*, lookup, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
     return no()
   }
   context.budget = context.budget - 1
@@ -815,7 +818,7 @@ effect fn applyLookup<F: FontFuncs>(
         && format3Fails(
           &context.*,
           &buffer.*,
-          lookup,
+          lookup.*,
           table,
           at,
           first,
@@ -841,7 +844,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         subtables,
         i,
@@ -859,7 +862,7 @@ effect fn applyLookup<F: FontFuncs>(
       // A format 1 pair set whose digest lacks the second glyph is rejected here, without
       // the call; `kern` would reject it the same way.
       if second == SECOND_UNKNOWN {
-        second = match move next(&context.*, &buffer.*, lookup, at, false) {
+        second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
           Option<usize>.Some { value } => value
           _ => SECOND_NONE
         }
@@ -885,7 +888,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &context.*,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         subtables,
         i,
@@ -902,7 +905,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         kind,
         digests,
@@ -926,14 +929,14 @@ effect fn applyPairs<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
-  lookup: Lookup,
+  lookup: &Lookup,
   subtables: &[LookupSubtable],
   at: usize,
 ) -> Applied
   ! OutOfMemoryError
   ? &mut Allocator {
   if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
-    || ignored(&context.*, lookup, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
     return no()
   }
   let glyph = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
@@ -975,7 +978,7 @@ effect fn applyPairs<F: FontFuncs>(
     let mut result = no()
     if known != 0 && (sub.kern <= 2 || !context.variable) {
       if second == SECOND_UNKNOWN {
-        second = match move next(&context.*, &buffer.*, lookup, at, false) {
+        second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
           Option<usize>.Some { value } => value
           _ => SECOND_NONE
         }
@@ -1009,7 +1012,7 @@ effect fn applyPairs<F: FontFuncs>(
         font,
         &context.*,
         &mut buffer,
-        lookup,
+        lookup.*,
         View.tail(&context.table, sub.offset),
         subtables,
         i,
@@ -2564,7 +2567,7 @@ effect fn contextual<F: FontFuncs>(
           font,
           &mut context,
           &mut buffer,
-          nested,
+          &nested,
           nestedSubtables,
           atAction,
           first,
