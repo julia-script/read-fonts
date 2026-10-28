@@ -4,6 +4,7 @@ import direction { Direction }
 import script { Script }
 import flags { BufferFlags, GlyphFlags }
 import silk.slice { Slice }
+import silk.pointer { Pointer }
 import font_types.lib { GlyphId }
 import unicode
 import silk.list { List }
@@ -478,27 +479,32 @@ impl Buffer {
   pub effect fn insertCopies(self: &mut Self, at: usize, count: usize, item: Glyph) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
-    // A few copies before a long tail move it with `List.insert`, one block move each, which
-    // beats moving the glyphs one at a time.
     let length = Buffer.len(&self.*)
-    if count <= 4 && at + 8 <= length {
-      let mut n: usize = 0
-      while n < count {
-        run List<Glyph>.insert(&mut self.glyphs, at, item)
-        n = n + 1
-      }
-      return
-    }
     run List<Glyph>.appendRepeated(&mut self.glyphs, item, count)
 
-    // The tail moves through a slice that starts at `at`, so the moves need no bounds checks.
+    // The tail moves right once, however many copies are inserted. `moved` traps when `at` is
+    // past the end, so the raw moves stay in bounds; through pointers they need no bounds checks,
+    // which the copy loop over a slice keeps, and LLVM unrolls them into block moves.
+    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
     let moved = length - at
-    let tail = Slice.viewMut(List<Glyph>.asMutSlice(&mut self.glyphs), at, moved + count)
-    let mut i = tail.length
-    while i > count {
-      i = i - 1
-      tail[i] = tail[i - count]
+    match move Pointer.nonNullManyMut<Glyph>(Pointer.fromMutSlice<Glyph>(&mut slots)) {
+      Option<[*]mut Glyph>.Some { value: base } => {
+        unsafe {
+          let source = Pointer.assumeManyMut<Glyph>(Pointer.atMut<Glyph>(base, at))
+          let target = Pointer.assumeManyMut<Glyph>(Pointer.atMut<Glyph>(base, at + count))
+          let mut i = moved
+          while i > 0 {
+            i = i - 1
+            Pointer.write<Glyph>(
+              Pointer.atMut<Glyph>(target, i),
+              Pointer.read<Glyph>(Pointer.atMut<Glyph>(source, i)),
+            )
+          }
+        }
+      }
+      _ => {}
     }
+    let tail = Slice.viewMut(&mut slots, at, count)
     let mut n: usize = 0
     while n < count {
       tail[n] = item
