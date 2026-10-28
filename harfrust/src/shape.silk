@@ -334,25 +334,27 @@ effect fn execute<'a, 's, F: FontFuncs>(
   if !Direction.isForward(buffer.direction) {
     Buffer.reverse(&mut buffer)
   }
-  let mut invisible: u32 = 0
-  let mut haveInvisible = false
-  let invisibleOption = match &buffer.invisibleGlyph {
-    Option<GlyphId>.Some { value } => Option<GlyphId>.some(value)
-    _ => ConfiguredShaper.nominalGlyph(font, 32)
-  }
-  if let Option<GlyphId>.Some { value } = move invisibleOption {
-    invisible = GlyphId.toU32(value)
-    haveInvisible = true
-  }
   i = 0
 
   // Most runs have no selector fallbacks or ignorables, so the first one is found without
-  // copying glyphs out.
+  // copying glyphs out, and the invisible glyph is only looked up when there is one.
   if true {
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
     while i < glyphs.length && !glyphs[i].selectorFallback
       && (!glyphs[i].ignorable || glyphs[i].substituted) {
       i = i + 1
+    }
+  }
+  let mut invisible: u32 = 0
+  let mut haveInvisible = false
+  if i < Buffer.len(&buffer.*) {
+    let invisibleOption = match &buffer.invisibleGlyph {
+      Option<GlyphId>.Some { value } => Option<GlyphId>.some(value)
+      _ => ConfiguredShaper.nominalGlyph(font, 32)
+    }
+    if let Option<GlyphId>.Some { value } = move invisibleOption {
+      invisible = GlyphId.toU32(value)
+      haveInvisible = true
     }
   }
   while i < Buffer.len(&buffer.*) {
