@@ -198,7 +198,14 @@ def generate():
             pairs += [(scripts[m[1]], a,b) for a in firsts for b in seconds]
             pos = end
     pairs.append(('Taml',0xb85,0xbc2))
-    out.append(byte_function('vowelConstraints', b''.join(s.encode()+struct.pack('>II',a,b) for s,a,b in sorted(pairs))))
+    pairs = sorted(pairs)
+    out.append(byte_function('vowelConstraints', b''.join(s.encode()+struct.pack('>II',a,b) for s,a,b in pairs)))
+    # Each script's rows in vowelConstraints, as the script tag and its first and end row.
+    index = bytearray()
+    for script in sorted({s for s, _, _ in pairs}):
+        rows = [i for i, p in enumerate(pairs) if p[0] == script]
+        index += script.encode() + struct.pack('>HH', rows[0], rows[-1] + 1)
+    out.append(byte_function('vowelScripts', bytes(index)))
     (ROOT / 'harfrust/src/generated_machines.silk').write_text(''.join(out))
 
 if __name__ == '__main__': generate()

@@ -195,24 +195,26 @@ pub effect fn preprocess(buffer: &mut Buffer) -> ()
     return
   }
 
-  // The table is sorted by script, so this script's pairs are found once.
+  // The pairs are sorted by script and first code point, and vowelScripts holds each
+  // script's rows.
   let pairs = View.bytes(data.vowelConstraints())
+  let scripts = View.bytes(data.vowelScripts())
   let mut lo: usize = 0
-  while lo + 12 <= View.len(&pairs) && View.u32(&pairs, lo) != buffer.script {
-    lo = lo + 12
+  let mut hi: usize = 0
+  let mut at: usize = 0
+  while at + 8 <= View.len(&scripts) {
+    if View.u32(&scripts, at) == buffer.script {
+      lo = u16.toUsize(View.u16(&scripts, at + 4)) * 12
+      hi = u16.toUsize(View.u16(&scripts, at + 6)) * 12
+      break
+    }
+    at = at + 8
   }
-  let mut hi = lo
   let mut lowest: u32 = u32.MAX
   let mut highest: u32 = 0
-  while hi + 12 <= View.len(&pairs) && View.u32(&pairs, hi) == buffer.script {
-    let first = View.u32(&pairs, hi + 4)
-    if first < lowest {
-      lowest = first
-    }
-    if first > highest {
-      highest = first
-    }
-    hi = hi + 12
+  if lo < hi {
+    lowest = View.u32(&pairs, lo + 4)
+    highest = View.u32(&pairs, hi - 8)
   }
   let devanagari = buffer.script == 0x44657661
   if lo == hi && !devanagari {
