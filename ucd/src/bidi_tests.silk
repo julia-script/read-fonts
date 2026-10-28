@@ -1,0 +1,237 @@
+import bidi {
+  BidiWorkspace,
+  ParagraphDirection,
+  analyze,
+  analyzeClasses,
+  analyzeCodepoints,
+  reorder
+}
+import lib { BidiClass }
+import text { TextAnalysis, TextCursor }
+import silk.list { List }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.testing { Testing, AssertionError }
+import silk.effect { Effect }
+
+fn at(offset: usize) -> TextCursor {
+  return TextCursor { unit: 0, offset: offset }
+}
+
+effect fn sourceRangesAndX9AffinityCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut result = TextAnalysis.uniform(1, 0, 0, false)
+
+  // Alef, BN soft hyphen, Latin: both multibyte scalars retain exact ranges.
+  run analyze(b"\xd7\x90\xc2\xada", ParagraphDirection.Ltr, &mut workspace, &mut result)
+  run Testing.expect(result.levelAt(at(0)) == 1 && result.levelAt(at(4)) == 0, "scalar levels")
+  run Testing.expect(
+    result.removedAt(at(2)) && !result.removedAt(at(4)),
+    "BN is removed without removing bytes",
+  )
+  run Testing.expect(result.levelAt(at(2)) == 1, "X9 inherits preceding resolved affinity")
+  run Testing.expect(result.levels.get(0).end.equal(at(2)), "two-byte Hebrew range")
+  run Testing.expect(result.levels.get(1).end.equal(at(4)), "two-byte BN range")
+  run Testing.expect(result.paragraph.end.equal(TextCursor { unit: 1, offset: 0 }), "canonical EOF")
+}
+
+effect fn l1DoesNotDestroyShapingLevelsCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut result = TextAnalysis.uniform(1, 0, 0, false)
+
+  // RLE + Latin + space + PDF: the trailing suffix resets only unwrapped levels.
+  run analyze(b"\xe2\x80\xaba \xe2\x80\xac", ParagraphDirection.Ltr, &mut workspace, &mut result)
+  run Testing.expect(
+    result.levelAt(at(3)) == 2 && result.unwrappedLevelAt(at(3)) == 2,
+    "Latin embedding",
+  )
+  run Testing.expect(
+    result.levelAt(at(4)) == 1 && result.unwrappedLevelAt(at(4)) == 0,
+    "L1 preserves pre-reset space level",
+  )
+  run Testing.expect(
+    result.removedAt(at(0)) && result.removedAt(at(5)),
+    "explicit controls retain coverage",
+  )
+  run Testing.expect(
+    result.levelAt(at(5)) == 1 && result.unwrappedLevelAt(at(5)) == 0,
+    "PDF affinity and trailing reset",
+  )
+  run Testing.expect(
+    result.levels.get(result.levels.length() - 1).end.equal(TextCursor { unit: 1, offset: 0 }),
+    "removed suffix ends at canonical EOF",
+  )
+}
+
+effect fn paragraphDefaultsAndWorkspaceReuseCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut result = TextAnalysis.uniform(1, 0, 0, false)
+  run analyze(b"\xd7\x90\na", ParagraphDirection.Auto, &mut workspace, &mut result)
+  run Testing.expect(result.level == 1 && result.paragraph.hasStrong, "first paragraph summary")
+  run Testing.expect(result.paragraphs.length() == 2, "all paragraph descriptors")
+  run Testing.expect(
+    result.paragraphs.get(0).end.equal(at(3)),
+    "separator belongs to preceding paragraph",
+  )
+  run Testing.expect(
+    result.paragraphAt(at(3)).level == 0,
+    "second paragraph independent first strong",
+  )
+  run Testing.expect(result.levelAt(at(3)) == 0, "second paragraph overrides first default")
+  result.levels.clear()
+  result.paragraphs.clear()
+  run analyze(b"", ParagraphDirection.Rtl, &mut workspace, &mut result)
+  run Testing.expect(
+    result.level == 1 && !result.paragraph.hasStrong,
+    "empty explicit RTL paragraph",
+  )
+  run Testing.expect(
+    result.levels.length() == 0 && result.paragraphs.length() == 0,
+    "reuse has no stale records",
+  )
+  run analyze(b"123", ParagraphDirection.Auto, &mut workspace, &mut result)
+  run Testing.expect(
+    result.level == 0 && !result.paragraph.hasStrong,
+    "auto defaults LTR without a strong scalar",
+  )
+}
+
+effect fn allWeakClassesAndCanonicalBracketsCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let weak = [
+    BidiClass.AL,
+    BidiClass.EN,
+    BidiClass.ES,
+    BidiClass.EN,
+    BidiClass.CS,
+    BidiClass.AN,
+    BidiClass.ET,
+    BidiClass.EN,
+    BidiClass.NSM,
+  ]
+  let expected: [u8; 9] = [1, 2, 1, 2, 2, 2, 1, 2, 2]
+  let base = run analyzeClasses(&weak, ParagraphDirection.Ltr, &mut workspace)
+  run Testing.expect(base == 0, "explicit base")
+  let mut i: usize = 0
+  while i < expected.length {
+    run Testing.expect(workspace.unwrappedLevel(i) == expected[i], "W1 through W7")
+    i = i + 1
+  }
+
+  // Canonically equivalent opening/closing angle brackets, with an NSM after
+  // the closing bracket. N0c inherits preceding R rather than following L.
+  let scalars: [u32; 6] = [0x5d0, 0x2329, 0x5d1, 0x3009, 0x300, 0x61]
+  let bracketBase = run analyzeCodepoints(&scalars, ParagraphDirection.Ltr, &mut workspace)
+  run Testing.expect(bracketBase == 0, "bracket paragraph base")
+  run Testing.expect(
+    workspace.level(1) == 1 && workspace.level(3) == 1 && workspace.level(4) == 1,
+    "N0 canonical pair and following original NSM",
+  )
+}
+
+effect fn isolateOverflowAndFirstStrongCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut classes = List<BidiClass>.make()
+  let mut i: usize = 0
+  while i < 130 {
+    run classes.append(BidiClass.RLI)
+    i = i + 1
+  }
+  run classes.append(BidiClass.L)
+  i = 0
+  while i < 130 {
+    run classes.append(BidiClass.PDI)
+    i = i + 1
+  }
+  let base = run analyzeClasses(
+    List<BidiClass>.asSlice(&classes),
+    ParagraphDirection.Auto,
+    &mut workspace,
+  )
+  run Testing.expect(base == 0, "P2 ignores isolated strong characters")
+  run Testing.expect(
+    workspace.level(130) == 126,
+    "overflow isolates preserve maximum valid embedding",
+  )
+  run Testing.expect(
+    workspace.unwrappedLevel(260) == 0,
+    "matching PDI returns to paragraph and L1 resets",
+  )
+  let fsi = [
+    BidiClass.R,
+    BidiClass.FSI,
+    BidiClass.LRI,
+    BidiClass.R,
+    BidiClass.PDI,
+    BidiClass.EN,
+    BidiClass.PDI,
+  ]
+  let fsiBase = run analyzeClasses(&fsi, ParagraphDirection.Auto, &mut workspace)
+  run Testing.expect(
+    fsiBase == 1 && workspace.level(5) == 2,
+    "FSI defaults LTR when only nested strong text exists",
+  )
+}
+
+effect fn l2AppendsVisualPermutationCase() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut order = List<usize>.make()
+  run order.append(99)
+  let levels: [u8; 5] = [0, 1, 2, 2, 1]
+  run reorder(&levels, &mut order)
+  let expected: [usize; 6] = [99, 0, 4, 2, 3, 1]
+  let mut i: usize = 0
+  while i < expected.length {
+    run Testing.expect(
+      order.get(i) == expected[i],
+      "L2 preserves caller prefix and nested even run order",
+    )
+    i = i + 1
+  }
+}
+
+test effect fn sourceRangesAndX9Affinity() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run sourceRangesAndX9AffinityCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn l1DoesNotDestroyShapingLevels() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run l1DoesNotDestroyShapingLevelsCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn paragraphDefaultsAndWorkspaceReuse() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run paragraphDefaultsAndWorkspaceReuseCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn allWeakClassesAndCanonicalBrackets() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run allWeakClassesAndCanonicalBracketsCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn isolateOverflowAndFirstStrong() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run isolateOverflowAndFirstStrongCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn l2AppendsVisualPermutation() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run l2AppendsVisualPermutationCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}

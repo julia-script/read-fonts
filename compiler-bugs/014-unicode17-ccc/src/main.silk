@@ -1,0 +1,30 @@
+import silk.unicode { Unicode }
+import silk.string { String }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.effect { Effect }
+
+effect fn probe() -> i32
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut failures: i32 = 0
+
+  // Unicode 17 UnicodeData.txt: 1ACF;COMBINING DOUBLE CARON;Mn;230;NSM;...
+  if Unicode.canonicalCombiningClass(0x1acf) != 230 {
+    failures = failures | 1
+  }
+  let nfd = run Unicode.normalizeNfd("a\u{1acf}\u{316}")
+  if String.view(&nfd) != "a\u{316}\u{1acf}" {
+    failures = failures | 2
+  }
+  let nfc = run Unicode.normalizeNfc("a\u{1acf}\u{316}")
+  if String.view(&nfc) != "a\u{316}\u{1acf}" {
+    failures = failures | 4
+  }
+  return failures
+}
+
+pub effect fn main() -> i32
+  ! OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  return run probe() |> Effect.provideMut<Allocator>(&mut allocator)
+}

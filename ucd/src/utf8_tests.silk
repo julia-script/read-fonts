@@ -1,0 +1,49 @@
+import utf8
+import test_support as Scan
+import silk.testing { Testing, AssertionError }
+import silk.option { Option }
+
+test effect fn scalarByteOffsets() -> ()
+  ! AssertionError<'static> {
+  let bytes = b"A\xc3\xa9\xe0\xa4\x95\xf0\x9f\x98\x80"
+  let ascii = utf8.decode(bytes, 0)
+  let latin = utf8.decode(bytes, ascii.next)
+  let indic = utf8.decode(bytes, latin.next)
+  let emoji = utf8.decode(bytes, indic.next)
+  run Testing.expect(ascii.cp == 0x41 && ascii.next == 1, "ASCII byte range")
+  run Testing.expect(latin.cp == 0xe9 && latin.next == 3, "two-byte scalar range")
+  run Testing.expect(indic.cp == 0x915 && indic.next == 6, "three-byte scalar range")
+  run Testing.expect(emoji.cp == 0x1f600 && emoji.next == 10, "four-byte scalar range")
+}
+
+test effect fn invalidUtf8PreservesByteProgress() -> ()
+  ! AssertionError<'static> {
+  let bad = b"\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80\xe2\x82"
+  let mut at: usize = 0
+  while at < bad.length {
+    let decoded = utf8.decode(bad, at)
+    run Testing.expect(
+      decoded.cp == 0xfffd && decoded.next == at + 1,
+      "one replacement per invalid byte",
+    )
+    at = decoded.next
+  }
+  let eof = utf8.decode(bad, bad.length)
+  run Testing.expect(eof.next == bad.length, "EOF does not advance")
+  let mixed = utf8.decode(b"\xe2A", 0)
+  let following = utf8.decode(b"\xe2A", mixed.next)
+  run Testing.expect(
+    following.cp == 0x41 && following.next == 2,
+    "invalid prefix preserves following ASCII",
+  )
+}
+
+test effect fn conformanceIntegerBoundaries() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(
+    (Scan.number(b"FFFFFFFF", 16) |> Option<u32>.unwrapOr(0)) == 4294967295,
+    "maximum hexadecimal value",
+  )
+  run Testing.expect(Scan.number(b"4294967296", 10).isNone(), "decimal overflow rejected")
+  run Testing.expect(Scan.number(b"D800x", 16).isNone(), "trailing nonhex digit rejected")
+}

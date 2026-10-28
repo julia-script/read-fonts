@@ -113,3 +113,37 @@ test effect fn publicUnicodeQueries() -> ()
     "Hangul's trailing-Jamo base is excluded",
   )
 }
+
+test effect fn shapingPropertyPolicies() -> ()
+  ! AssertionError<'static> {
+  let visible: [u32; 8] = [0x115f, 0x1160, 0x3164, 0xffa0, 0x1bca0, 0x1bca1, 0x1bca2, 0x1bca3]
+  let mut i: usize = 0
+  while i < visible.length {
+    run Testing.expect(
+      !unicode.isDefaultIgnorable(visible[i]),
+      "font compatibility ignorable exclusion",
+    )
+    i = i + 1
+  }
+  run Testing.expect(unicode.isDefaultIgnorable(0x200d), "ordinary default ignorable")
+  run Testing.expect(
+    !unicode.isVariationSelector(0x180b) && !unicode.isVariationSelector(0x180c)
+      && !unicode.isVariationSelector(0x180d)
+      && !unicode.isVariationSelector(0x180f),
+    "Mongolian selectors belong to Arabic shaper",
+  )
+  run Testing.expect(unicode.isVariationSelector(0xfe0f), "standard selector")
+  run Testing.expect(unicode.joining(0x200d) == 3, "join-causing shaping state")
+  run Testing.expect(
+    unicode.joining(0x710) == 4 && unicode.joining(0x715) == 5,
+    "Syriac shaping states",
+  )
+  run Testing.expect(
+    unicode.vertical(0x21) == 0x21 && unicode.vertical(0xff01) == 0xfe15,
+    "vertical fullwidth policy",
+  )
+  run Testing.expect(
+    unicode.vertical(0xff3f) == 0xfe33 && unicode.vertical(0xfe4f) == 0xfe34,
+    "straight and wavy low lines",
+  )
+}

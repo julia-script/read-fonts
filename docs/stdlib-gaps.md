@@ -53,3 +53,17 @@ therefore use `model/optional.silk`'s `Maybe<T>`, and `CffFontRef` keeps its
 optional top dict fields as `Maybe` so `GlyphMetrics` can hold a parsed font
 instead of re-parsing it per glyph. Filed as
 [silk-lang/silk#2434](https://github.com/silk-lang/silk/issues/2434).
+
+## 007 — Unicode normalization data version and missing combining classes
+
+The pinned stdlib reports Unicode 17.0.0, while `ucd` owns Unicode 18.0.0.
+The difference is not solely a version upgrade: 34 nonzero combining classes
+already assigned in Unicode 17 are missing from stdlib data. Another 34 are
+genuine Unicode 18 additions. Full-domain raw canonical pair maps agree;
+all 20,171 Unicode 18 normalization rows expose 134 NFC and 134 NFD mismatches.
+`scripts/check-normalization-gap` reproduces and classifies these differences.
+The minimal CCC/NFC/NFD reproducer is
+[`compiler-bugs/014-unicode17-ccc`](../compiler-bugs/014-unicode17-ccc/README.md),
+reported as [silk-lang/silk#2487](https://github.com/silk-lang/silk/issues/2487).
+Harfrust uses `ucd`'s Unicode 18 classes and raw pairs, not stdlib string
+normalization. No compiler or stdlib data is patched or vendored.

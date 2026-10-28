@@ -25,13 +25,30 @@ jobs:
       - run: silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
 
   unicode:
-    name: Unicode properties
+    name: Unicode properties, algorithms and dictionaries
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-silk
-      - run: silk test --manifest-path ucd/silk.toml --root src/tests.silk
+      - run: rm -rf build/llvm build/cache && silk test --release --manifest-path ucd/silk.toml --root src/tests.silk
+      - run: rm -rf build/llvm build/cache && silk test --release --manifest-path ucd_dictionary/silk.toml --root src/tests.silk
+      - run: rm -rf build/llvm build/cache && silk build --release --manifest-path ucd_bench/silk.toml
+      - run: build/llvm/x86_64-unknown-linux-gnu/release/ucd_bench --version
+
+  unicode-conformance:
+    name: Unicode 18 ${{ matrix.suite }} conformance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [bidi, line_break, segmentation, normalization]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-silk
+      - run: scripts/fetch-unicode
+      - run: rm -rf build/llvm build/cache && silk test --release --manifest-path ucd/silk.toml --root src/${{ matrix.suite }}_conformance.silk
 
   codegen:
     name: Generated code, formatting and tools
@@ -93,9 +110,9 @@ jobs:
           submodules: recursive
       - uses: ./.github/actions/setup-silk
       - name: Library unit tests
-        run: silk test --release --manifest-path harfrust/silk.toml --root src/tests.silk
+        run: rm -rf build/llvm build/cache && silk test --release --manifest-path harfrust/silk.toml --root src/tests.silk
       - name: Build the shaping runner once
-        run: silk build --release --manifest-path hr_shape/silk.toml
+        run: rm -rf build/llvm build/cache && silk build --release --manifest-path hr_shape/silk.toml
       - name: Pinned shaping cases
         run: build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --suite harfrust/tests/shaping.bin
       - name: Long-input regressions

@@ -12,8 +12,10 @@ shaping, OpenType and AAT layout, and the `hr_shape` CLI.
 - `font_types/`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
 - `read_fonts/`: borrowed parsing, generated tables, integer sets and the font model.
 - `font_dump/`: CLI that prints every parsed field of a font as text.
-- `ucd/`: font-independent Unicode properties and canonical composition queries
-  shared by shaping; see [the package API](docs/ucd.md).
+- `ucd/`: Unicode 18 properties, canonical pairs, bidi, line breaking, segmentation,
+  script itemization and vertical orientation; see [the package API](docs/ucd.md).
+- `ucd_dictionary/`: optional ICU Thai, Lao, Khmer and Myanmar dictionaries and breaker.
+- `ucd_bench/`: Unicode algorithm workloads with pinned Rust/ICU4X comparisons.
 - `harfrust/`: native text shaping, reusable plans, custom font callbacks and tracing.
 - `hr_shape/`: glyph-string CLI, data-driven shaping suite and benchmark runner.
 - `font_bench/`: library workloads (cmap lookups, glyf decoding, hmtx advances) timed
@@ -45,6 +47,8 @@ and runs bounded jobs in parallel:
 silk test --manifest-path font_types/silk.toml --root src/tests.silk
 silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
 silk test --manifest-path ucd/silk.toml --root src/tests.silk
+silk test --manifest-path ucd_dictionary/silk.toml --root src/tests.silk
+# Full Unicode 18 conformance commands and baseline tools: docs/ucd.md
 # Generated code, formatting and tools
 scripts/generate --check   # regenerates and runs silk format; fails on any change
 python3 -m unittest discover -s scripts/tests
@@ -53,7 +57,9 @@ python3 -m unittest discover -s scripts/tests
 scripts/build --release
 READ_FONTS_PROFILE=release scripts/check-robustness
 # Native shaping (6,090 pinned cases, no known failures)
+rm -rf build/llvm build/cache
 silk test --release --manifest-path harfrust/silk.toml --root src/tests.silk
+rm -rf build/llvm build/cache
 silk build --release --manifest-path hr_shape/silk.toml
 build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --suite harfrust/tests/shaping.bin
 build/llvm/x86_64-unknown-linux-gnu/release/hr_shape --regressions
@@ -110,3 +116,6 @@ append handwritten `tables/*_impl.silk` files to their table's module.
 
 Available under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE),
 following fontations. The harfrust port uses its upstream [MIT license](harfrust/LICENSE). The submodules keep their own notices and font licenses.
+`ucd` retains its [MIT implementation notice](ucd/LICENSE) and
+[Unicode data license](ucd/LICENSE-UNICODE). Optional dictionaries retain the
+complete [ICU license and third-party notices](ucd_dictionary/LICENSE).

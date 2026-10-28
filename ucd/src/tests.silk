@@ -1,25 +1,45 @@
+import utf8_tests
+import bidi_tests
+import segmentation_tests
+import line_break_tests
+import itemization_tests
+import vertical_tests
 import lib as unicode
-import lib { Decomposed, Script }
+import lib { Decomposed, Script, GeneralCategory, JoiningType, JoiningGroup }
+import lib {
+  BidiClass,
+  BidiPairedBracketType,
+  LineBreak,
+  EastAsianWidth,
+  GraphemeBreak,
+  WordBreak,
+  SentenceBreak,
+  IndicConjunctBreak,
+  VerticalOrientation,
+}
 import silk.option { Option }
 import silk.testing { Testing, AssertionError }
 
 test effect fn categoriesAndScripts() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(unicode.generalCategory(0x41) == 9, "uppercase category")
-  run Testing.expect(unicode.generalCategory(0x301) == 12, "nonspacing mark category")
-  run Testing.expect(unicode.script(0x41) == 0x4c61746e, "Latin script")
-  run Testing.expect(unicode.script(0x18e00) == 0x4a757263, "Unicode 18 Jurchen")
-  run Testing.expect(unicode.script(0x125a8) == 0x5063756e, "Unicode 18 Proto-Cuneiform")
-  run Testing.expect(unicode.script(0x3d000) == 0x5365616c, "Unicode 18 Seal")
+  run Testing.expect(unicode.generalCategory(0x41) == GeneralCategory.Lu, "uppercase category")
+  run Testing.expect(
+    unicode.generalCategory(0x301) == GeneralCategory.Mn,
+    "nonspacing mark category",
+  )
+  run Testing.expect(unicode.script(0x41).value == 0x4c61746e, "Latin script")
+  run Testing.expect(unicode.script(0x18e00).value == 0x4a757263, "Unicode 18 Jurchen")
+  run Testing.expect(unicode.script(0x125a8).value == 0x5063756e, "Unicode 18 Proto-Cuneiform")
+  run Testing.expect(unicode.script(0x3d000).value == 0x5365616c, "Unicode 18 Seal")
   run Testing.expect(unicode.isMark(0x301) && !unicode.isMark(0x41), "mark predicate")
 }
 
 test effect fn canonicalCombiningClasses() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(unicode.combiningClass(0x41) == 0, "starter class")
-  run Testing.expect(unicode.combiningClass(0x301) == 230, "above class")
-  run Testing.expect(unicode.combiningClass(0xc55) == 84, "unmodified Telugu class")
-  run Testing.expect(unicode.combiningClass(0xc56) == 91, "unmodified Telugu length class")
+  run Testing.expect(unicode.combiningClass(0x41).number() == 0, "starter class")
+  run Testing.expect(unicode.combiningClass(0x301).number() == 230, "above class")
+  run Testing.expect(unicode.combiningClass(0xc55).number() == 84, "unmodified Telugu class")
+  run Testing.expect(unicode.combiningClass(0xc56).number() == 91, "unmodified Telugu length class")
 }
 
 test effect fn mirroringAndVerticalForms() -> ()
@@ -52,15 +72,15 @@ test effect fn selectorsIgnorablesAndEmoji() -> ()
 
 test effect fn arabicAndSyriacJoining() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(unicode.joining(0x41) == 0, "nonjoining Latin")
-  run Testing.expect(unicode.joining(0x627) == 2, "right joining alef")
-  run Testing.expect(unicode.joining(0x628) == 3, "dual joining beh")
-  run Testing.expect(unicode.joining(0x301) == 6, "transparent mark fallback")
-  run Testing.expect(unicode.joining(0x200c) == 0, "nonjoining ZWNJ override")
-  run Testing.expect(unicode.joining(0x200d) == 3, "join-causing ZWJ")
-  run Testing.expect(unicode.joining(0x710) == 4, "Syriac ALAPH remains distinct")
-  run Testing.expect(unicode.joining(0x715) == 5, "Syriac DALATH remains distinct")
-  run Testing.expect(unicode.joining(0x72a) == 5, "Syriac RISH remains distinct")
+  run Testing.expect(unicode.joiningType(0x41) == JoiningType.U, "nonjoining Latin")
+  run Testing.expect(unicode.joiningType(0x627) == JoiningType.R, "right joining alef")
+  run Testing.expect(unicode.joiningType(0x628) == JoiningType.D, "dual joining beh")
+  run Testing.expect(unicode.joiningType(0x301) == JoiningType.T, "transparent mark")
+  run Testing.expect(unicode.joiningType(0x200c) == JoiningType.U, "nonjoining ZWNJ override")
+  run Testing.expect(unicode.joiningType(0x200d) == JoiningType.C, "join-causing ZWJ")
+  run Testing.expect(unicode.joiningGroup(0x710) == JoiningGroup.Alaph, "Syriac ALAPH group")
+  run Testing.expect(unicode.joiningGroup(0x715) == JoiningGroup.Dalath_Rish, "Syriac DALATH group")
+  run Testing.expect(unicode.joiningGroup(0x72a) == JoiningGroup.Dalath_Rish, "Syriac RISH group")
 }
 
 test effect fn rawCanonicalComposition() -> ()
@@ -181,14 +201,17 @@ test effect fn invalidCodepointsAndLookupBoundaries() -> ()
   let mut i: usize = 0
   while i < invalid.length {
     let cp = invalid[i]
-    run Testing.expect(unicode.generalCategory(cp) == 2, "invalid category is unassigned")
-    run Testing.expect(unicode.combiningClass(cp) == 0, "invalid combining class")
-    run Testing.expect(unicode.script(cp) == 0x5a7a7a7a, "invalid script is unknown")
+    run Testing.expect(
+      unicode.generalCategory(cp) == GeneralCategory.Cn,
+      "invalid category is unassigned",
+    )
+    run Testing.expect(unicode.combiningClass(cp).number() == 0, "invalid combining class")
+    run Testing.expect(unicode.script(cp).value == 0x5a7a7a7a, "invalid script is unknown")
     run Testing.expect(
       unicode.mirror(cp) == cp && unicode.vertical(cp) == cp,
       "invalid mapping identity",
     )
-    run Testing.expect(unicode.joining(cp) == 0, "invalid joining is nonjoining")
+    run Testing.expect(unicode.joiningType(cp) == JoiningType.U, "invalid joining is nonjoining")
     run Testing.expect(
       !unicode.isMark(cp) && !unicode.isVariationSelector(cp),
       "invalid mark and selector",
@@ -246,15 +269,11 @@ test effect fn invalidCodepointsAndLookupBoundaries() -> ()
   while i < edges.length {
     let cp = edges[i]
     run Testing.expect(
-      unicode.generalCategory(cp) <= 29 && unicode.joining(cp) <= 6,
-      "category and joining boundary",
-    )
-    run Testing.expect(
       unicode.mirror(cp) <= 0x10ffff && unicode.vertical(cp) <= 0x10ffff,
       "mapping boundary",
     )
-    run Testing.expect(unicode.script(cp) != 0, "script boundary")
-    run Testing.expect(unicode.combiningClass(cp) <= 254, "class boundary")
+    run Testing.expect(unicode.script(cp).value != 0, "script boundary")
+    run Testing.expect(unicode.combiningClass(cp).number() <= 254, "class boundary")
     let parts = unicode.decomposeRaw(cp)
     run Testing.expect(
       parts.first <= 0x10ffff && parts.second <= 0x10ffff,
@@ -264,4 +283,93 @@ test effect fn invalidCodepointsAndLookupBoundaries() -> ()
     run Testing.expect(cp < 131070 || !pictographic, "emoji upper bound")
     i = i + 1
   }
+}
+
+test effect fn typedUnicodeProperties() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(unicode.bidiClass(0x05d0) == BidiClass.R, "Hebrew bidi class")
+  run Testing.expect(unicode.bidiClass(0x0608) == BidiClass.AL, "Arabic bidi class")
+  run Testing.expect(unicode.bidiClass(0x0590) == BidiClass.R, "unassigned Hebrew missing default")
+  run Testing.expect(
+    unicode.bidiPairedBracketType(0x28) == BidiPairedBracketType.Open,
+    "open bracket",
+  )
+  run Testing.expect(
+    unicode.bidiPairedBracketType(0x29) == BidiPairedBracketType.Close,
+    "close bracket",
+  )
+  run Testing.expect(unicode.bidiPairedBracket(0x28) == 0x29, "bracket mate")
+  run Testing.expect(unicode.bidiPairedBracket(0x41) == 0x41, "nonbracket identity")
+  run Testing.expect(unicode.lineBreak(0x0a) == LineBreak.LF, "line feed class")
+  run Testing.expect(unicode.eastAsianWidth(0x3000) == EastAsianWidth.F, "fullwidth space")
+  run Testing.expect(unicode.graphemeBreak(0x301) == GraphemeBreak.Extend, "grapheme extend")
+  run Testing.expect(unicode.wordBreak(0x05d0) == WordBreak.Hebrew_Letter, "Hebrew word class")
+  run Testing.expect(
+    unicode.sentenceBreak(0x2e) == SentenceBreak.ATerm,
+    "sentence abbreviation terminator",
+  )
+  run Testing.expect(
+    unicode.indicConjunctBreak(0x094d) == IndicConjunctBreak.Linker,
+    "Indic linker",
+  )
+  run Testing.expect(unicode.verticalOrientation(0x41) == VerticalOrientation.R, "rotated Latin")
+  run Testing.expect(unicode.verticalOrientation(0x4e00) == VerticalOrientation.U, "upright Han")
+  run Testing.expect(
+    unicode.isEmoji(0x1f600) && unicode.isEmojiPresentation(0x1f600),
+    "emoji presentation",
+  )
+  run Testing.expect(
+    unicode.isEmojiModifier(0x1f3fb) && unicode.isEmojiComponent(0x1f3fb),
+    "emoji modifier",
+  )
+  run Testing.expect(unicode.isEmojiModifierBase(0x1f44d), "emoji modifier base")
+  run Testing.expect(unicode.isRegionalIndicator(0x1f1e6), "regional indicator")
+  run Testing.expect(
+    !unicode.isRegionalIndicator(0x1f1e5) && !unicode.isRegionalIndicator(0x1f200),
+    "regional indicator boundaries",
+  )
+  run Testing.expect(
+    unicode.isDefaultIgnorable(0x115f) && unicode.isDefaultIgnorable(0x1bca0),
+    "normative ignorables, not shaping exclusions",
+  )
+  run Testing.expect(
+    unicode.isVariationSelector(0x180b) && unicode.isVariationSelector(0x180f),
+    "Mongolian selectors",
+  )
+  run Testing.expect(
+    !unicode.isVariationSelector(0x180e),
+    "Mongolian vowel separator is not selector",
+  )
+}
+
+test effect fn scriptExtensionSets() -> ()
+  ! AssertionError<'static> {
+  let latin = unicode.scriptExtensions(0x41)
+  run Testing.expect(
+    latin.length() == 1 && latin.contains(Script { value: 0x4c61746e }),
+    "default singleton",
+  )
+  run Testing.expect(
+    (latin.get(0) |> Option<Script>.unwrapOr(Script { value: 0 })).value == 0x4c61746e,
+    "indexed singleton",
+  )
+  run Testing.expect(
+    match move latin.get(1) {
+      Option<Script>.None => true
+      _ => false
+    },
+    "set upper bound",
+  )
+  let prolonged = unicode.scriptExtensions(0x30fc)
+  run Testing.expect(
+    prolonged.contains(Script { value: 0x48697261 })
+      && prolonged.contains(Script { value: 0x4b616e61 }),
+    "Hiragana and Katakana extensions",
+  )
+  run Testing.expect(!prolonged.contains(Script { value: 0x4c61746e }), "unrelated script absent")
+  let invalid = unicode.scriptExtensions(0xffffffff)
+  run Testing.expect(
+    invalid.length() == 1 && invalid.contains(Script { value: 0x5a7a7a7a }),
+    "invalid default singleton",
+  )
 }
