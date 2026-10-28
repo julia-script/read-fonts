@@ -231,7 +231,10 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
   // glyph walk. Substitutions add their glyphs to it, so only a pause, which can change glyphs
   // in other ways, refreshes it, as in harfrust.
-  buffer.digest = bufferDigest(&buffer.*)
+  if !plan.positioning || !buffer.digestFresh {
+    buffer.digest = bufferDigest(&buffer.*)
+  }
+  buffer.digestFresh = false
   let mut digestStale = false
   let tracing = trace.enabled(font, &buffer.*)
   let paused = complex.pausedStages(buffer.shaper, buffer.script)
@@ -250,6 +253,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       i = i + 1
     }
     if !any {
+      buffer.digestFresh = !plan.positioning
       drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
       return
     }
@@ -514,6 +518,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   if context.budget == 0 {
     buffer.successful = false
   }
+  buffer.digestFresh = !plan.positioning && !digestStale
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
 }
 

@@ -245,6 +245,9 @@ pub struct Buffer {
   /// For `ot.apply`: a digest of the glyphs, which substitutions add their glyphs to. It may hold
   /// glyphs that are gone, as harfrust's does.
   pub digest: SetDigest,
+  /// Whether `digest` still covers the glyphs: set when substitution ends, for positioning, which
+  /// follows without changing glyphs. Anything else clears it.
+  pub digestFresh: bool,
 }
 
 impl Buffer {
@@ -281,6 +284,7 @@ impl Buffer {
       savedInput: List<Glyph>.make(),
       positionStack: List<usize>.make(),
       digest: SetDigest.new(),
+      digestFresh: false,
     }
   }
 
@@ -308,6 +312,7 @@ impl Buffer {
 
   pub fn clear(self: &mut Self) -> () {
     List<Glyph>.clear(&mut self.glyphs)
+    self.digestFresh = false
     List<u32>.clear(&mut self.preContext)
     List<u32>.clear(&mut self.postContext)
     self.direction = Direction.Invalid
