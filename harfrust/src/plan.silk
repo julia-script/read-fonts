@@ -53,6 +53,9 @@ pub struct LookupStep {
   /// Whether the lookup has subtables and all of them adjust pairs (`LookupSubtable.kern`), so
   /// `ot.applyPairs` applies it.
   pub pairs: bool,
+  /// Whether the lookup has subtables and all of them are 16-bit format 3 contextual ones with
+  /// `contextDigests`, so `ot.applyFormat3Step` applies it.
+  pub format3: bool,
   /// `ZWJ_*` bits for the step's feature under the plan's shaper and script: whether matching
   /// skips joiners automatically, and whether substitution stays within a syllable.
   pub zwj: u8,
@@ -341,6 +344,12 @@ impl<'a> OtPlan<'a> {
       pairs = List<LookupSubtable>.asSlice(&self.subtables)[first + k].kern != 0
       k = k + 1
     }
+    let mut format3 = count != 0
+    k = 0
+    while k < count && format3 {
+      format3 = List<LookupSubtable>.asSlice(&self.subtables)[first + k].contextDigests != usize.MAX
+      k = k + 1
+    }
     let header = View.tail(&self.table, lookupOffset)
     run List<LookupStep>.append(
       &mut self.steps,
@@ -358,6 +367,7 @@ impl<'a> OtPlan<'a> {
         checks: featureChecks(tag),
         groupEnd: groupEnd,
         pairs: pairs,
+        format3: format3,
         zwj: 0,
         kind: View.u16(&header, 0),
         lookupFlags: View.u16(&header, 2),
