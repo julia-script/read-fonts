@@ -13,6 +13,7 @@ import silk.allocator { Allocator, OutOfMemoryError }
 import silk.i32
 import silk.u16
 import silk.u32
+import silk.u8
 
 fn category(cp: u32, input: u8) -> u8 {
   let mut c = input
@@ -139,7 +140,7 @@ effect fn aroundBase<F: FontFuncs>(
       if count > 1 && original.ligated {
         let mut part: i32 = -1
         if item.component != 0 {
-          part = u32.toI32(item.component - 1)
+          part = u8.toI32(item.component) - 1
         }
         if original.ligatureId == 0 || original.ligatureId != item.ligatureId
           || part >= u32.toI32(count) {

@@ -77,7 +77,14 @@ pub struct Glyph {
   pub info: GlyphInfo,
   pub position: GlyphPosition,
   pub codepoint: u32,
-  pub glyphClass: u32,
+  pub form: u32,
+  pub attach: i32,
+  pub featureMask: u32,
+  pub glyphClass: u8,
+  pub syllable: u8,
+  pub ligatureId: u8,
+  pub component: u8,
+  pub numComponents: u8,
   pub combiningClass: u8,
   pub ignorable: bool,
   pub hidden: bool,
@@ -89,17 +96,10 @@ pub struct Glyph {
   pub substituted: bool,
   pub ligated: bool,
   pub multiplied: bool,
-  pub form: u32,
-  pub syllable: u32,
-  pub ligatureId: u32,
-  pub component: u32,
-  pub numComponents: u32,
-  pub attach: i32,
   pub attachType: u8,
   pub category: u8,
   pub order: u8,
   pub spaceFallback: u8,
-  pub featureMask: u32,
 }
 
 impl Copy for Glyph {}
@@ -107,7 +107,7 @@ impl Copy for Glyph {}
 impl Glyph {
   pub fn ligNumComps(self: &Self) -> u32 {
     if self.glyphClass == 2 {
-      return self.numComponents
+      return u8.toU32(self.numComponents)
     }
     return 1
   }

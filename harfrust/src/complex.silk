@@ -448,7 +448,7 @@ pub effect fn dotted<F: FontFuncs>(
   let mut hasBroken = false
   let mut n: usize = 0
   while n < Buffer.len(&buffer.*) {
-    if (List<Glyph>.get(&buffer.glyphs, n).syllable & 15) == broken {
+    if u8.toU32(List<Glyph>.get(&buffer.glyphs, n).syllable & 15) == broken {
       hasBroken = true
       break
     }
@@ -468,7 +468,7 @@ pub effect fn dotted<F: FontFuncs>(
   while start < Buffer.len(&buffer.*) {
     let mut end = syllable.next(&buffer.*, start)
     let first = List<Glyph>.get(&buffer.glyphs, start)
-    if (first.syllable & 15) == broken {
+    if u8.toU32(first.syllable & 15) == broken {
       let mut item = Glyph.new(0x25cc, first.info.cluster)
       item.info.glyphId = glyph
       item.syllable = first.syllable

@@ -166,7 +166,7 @@ pub fn setGdefGlyphClasses<'a>(plan: &OtPlan<'a>, glyphs: &mut [Glyph]) -> () {
   let classes = gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses)
   let mut i: usize = 0
   while i < glyphs.length {
-    glyphs[i].glyphClass = classOf(&classes, glyphs[i].info.glyphId)
+    glyphs[i].glyphClass = u32.wrappingToU8(classOf(&classes, glyphs[i].info.glyphId))
     i = i + 1
   }
 }
@@ -1279,7 +1279,7 @@ fn substituteGlyph(
     item.multiplied = true
   }
   if View.len(&context.glyphClasses.view) > 0 {
-    item.glyphClass = classOf(&context.glyphClasses, glyphId)
+    item.glyphClass = u32.wrappingToU8(classOf(&context.glyphClasses, glyphId))
   }
 }
 
@@ -1402,7 +1402,7 @@ effect fn substitute<F: FontFuncs>(
         while i < count {
           let mut item = glyph
           if item.ligatureId == 0 {
-            item.component = usize.toU32(i) & 15
+            item.component = usize.wrappingToU8(i & 15)
             item.numComponents = 1
           }
           if View.len(&context.glyphClasses.view) == 0 && glyph.glyphClass == 2 {
@@ -1459,7 +1459,7 @@ effect fn substitute<F: FontFuncs>(
       while i < count {
         let mut item = glyph
         if item.ligatureId == 0 {
-          item.component = usize.toU32(i) & 15
+          item.component = usize.wrappingToU8(i & 15)
           item.numComponents = 1
         }
         if View.len(&context.glyphClasses.view) == 0 && glyph.glyphClass == 2 {
@@ -1662,17 +1662,17 @@ effect fn substitute<F: FontFuncs>(
           n = n + 1
         }
         let isLigature = !baseLigature && !markLigature
-        let mut id: u32 = 0
+        let mut id: u8 = 0
         let mut lastId = original.ligatureId
         let mut lastNum = Glyph.ligNumComps(&original)
         let mut soFar = lastNum
         let mut item = original
         if isLigature {
           context.ligatureId = context.ligatureId % 7 + 1
-          id = context.ligatureId
+          id = u32.wrappingToU8(context.ligatureId)
           item.ligatureId = id
           item.component = 0
-          item.numComponents = total & 15
+          item.numComponents = u32.wrappingToU8(total & 15)
           if View.len(&context.glyphClasses.view) == 0 {
             item.glyphClass = 2
           }
@@ -1689,12 +1689,12 @@ effect fn substitute<F: FontFuncs>(
             lastNum = Glyph.ligContribution(&part)
             soFar = soFar + lastNum
           } else if isLigature {
-            let mut comp = part.component
+            let mut comp = u8.toU32(part.component)
             if comp == 0 || comp > lastNum {
               comp = lastNum
             }
             part.ligatureId = id
-            part.component = (soFar - lastNum + comp) & 15
+            part.component = u32.wrappingToU8((soFar - lastNum + comp) & 15)
             part.numComponents = 1
             List<Glyph>.set(&mut buffer.glyphs, p, part)
           }
@@ -1706,12 +1706,12 @@ effect fn substitute<F: FontFuncs>(
             if part.ligatureId != lastId || part.component == 0 {
               break
             }
-            let mut comp = part.component
+            let mut comp = u8.toU32(part.component)
             if comp > lastNum {
               comp = lastNum
             }
             part.ligatureId = id
-            part.component = (soFar - lastNum + comp) & 15
+            part.component = u32.wrappingToU8((soFar - lastNum + comp) & 15)
             part.numComponents = 1
             List<Glyph>.set(&mut buffer.glyphs, p, part)
             p = p + 1
@@ -3833,8 +3833,8 @@ effect fn attachMark<F: FontFuncs>(
     }
     row = components - 1
     if item.ligatureId != 0 && item.ligatureId == baseGlyph.ligatureId && item.component > 0
-      && u32.toUsize(item.component) <= components {
-      row = u32.toUsize(item.component) - 1
+      && u8.toUsize(item.component) <= components {
+      row = u8.toUsize(item.component) - 1
     }
   }
   let target = anchor(
