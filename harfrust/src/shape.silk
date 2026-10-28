@@ -169,7 +169,8 @@ effect fn execute<'a, 's, F: FontFuncs>(
     run complex.setup(&mut buffer)
   }
   let mut morx = false
-  if Direction.isHorizontal(buffer.direction) || View.len(&font.data.gsub) == 0 {
+  if (View.len(&font.data.morx) >= 8 || View.len(&font.data.mort) >= 8)
+    && (Direction.isHorizontal(buffer.direction) || View.len(&font.data.gsub) == 0) {
     morx = run aat.substitute(font, &mut buffer, features)
   }
   if !morx {
@@ -315,7 +316,9 @@ effect fn execute<'a, 's, F: FontFuncs>(
     }
     i = i + 1
   }
-  aat.tracking(font, &mut buffer, features, pointSize)
+  if View.len(&font.data.trak) != 0 {
+    aat.tracking(font, &mut buffer, features, pointSize)
+  }
   run ot.finishOffsets(&mut buffer)
   if fallbackMarks && plan.fallbackPosition {
     run fallback.position(font, &mut buffer)
@@ -384,7 +387,11 @@ effect fn execute<'a, 's, F: FontFuncs>(
     }
     i = i + 1
   }
-  run arabic.stretch(font, &mut buffer)
+
+  // Only the Arabic shaper's scripts record stretches.
+  if arabic.usesScript(buffer.script) {
+    run arabic.stretch(font, &mut buffer)
+  }
   Buffer.propagateFlags(&mut buffer)
   buffer.contentType = ContentType.Glyphs
   buffer.direction = direction
