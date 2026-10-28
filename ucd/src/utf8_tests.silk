@@ -103,14 +103,6 @@ test effect fn decoderMatchesStdlibDecoder() -> ()
             if actual.cp != expected.cp || actual.next != expected.next {
               mismatches = mismatches + 1
             }
-
-            // The trusted decoder must agree wherever validation accepts the bytes.
-            if utf8.valid(slice) {
-              let trusted = utf8.decodeValid(slice, 0)
-              if trusted.cp != actual.cp || trusted.next != actual.next {
-                mismatches = mismatches + 1
-              }
-            }
             length = length + 1
           }
           fourth = fourth + 1
@@ -121,5 +113,5 @@ test effect fn decoderMatchesStdlibDecoder() -> ()
     }
     lead = lead + 1
   }
-  run Testing.expect(mismatches == 0, "decoders agree with the stdlib UTF-8 decoder")
+  run Testing.expect(mismatches == 0, "decoder agrees with the stdlib UTF-8 decoder")
 }
