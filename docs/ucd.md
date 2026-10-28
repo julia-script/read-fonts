@@ -328,8 +328,8 @@ checksums, reference versions and the measured source revision:
 | Algorithm | Reference | Silk/reference instruction range |
 |---|---|---:|
 | Bidi | unicode-bidi | 0.24–0.79x |
-| Line breaks | unicode-linebreak | 2.82–3.49x |
-| Line breaks | ICU4X | 0.89–1.11x |
+| Line breaks | unicode-linebreak | 2.16–2.92x |
+| Line breaks | ICU4X | 0.65–0.94x |
 | Graphemes | ICU4X | 0.38–0.93x |
 | Words | unicode-segmentation | 0.62–0.74x |
 | Sentences | ICU4X | 0.61–1.08x |
@@ -344,7 +344,9 @@ Silk line breaking stores richer layout records than the references' indices.
 Bidi uses reusable Silk workspace versus the reference's allocating API.
 Inlining token readers and hoisting context-independent AL/HL/NU rules reduced
 the Latin line workload by 33.5% instructions on dev.22 without changing
-conformance. The phase-1 extraction merged with no shaping instruction
+conformance. A generated table of context-free class pairs, plus a loop copy
+with constant options for the untailored profile, cut it a further 16%
+(14–18% wall time across the five workloads). The phase-1 extraction merged with no shaping instruction
 increases. On dev.23, the subsequent UCD table-layout cutover preserves all
 seven shaping checksums versus main `487488c`; instruction changes range from
 −0.48% to +0.74%, with a +0.12% geometric mean.
