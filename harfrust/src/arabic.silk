@@ -288,13 +288,13 @@ fn ligate(buffer: &mut Buffer, at: usize, positions: &[usize], glyph: u32, base:
   item.ligated = true
   if base {
     item.glyphClass = 2
-    item.ligatureId = usize.toU32(at + 1)
+    item.ligatureId = usize.wrappingToU8(at % 255 + 1)
     item.component = 0
-    item.numComponents = usize.toU32(positions.length)
+    item.numComponents = usize.wrappingToU8(positions.length)
   }
   List<Glyph>.set(&mut buffer.glyphs, at, item)
   let mut j = at + 1
-  let mut component: u32 = 1
+  let mut component: u8 = 1
   let mut n: usize = 1
   while j <= last {
     if n < positions.length && j == positions[n] {
