@@ -152,13 +152,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.20732e+07 | 6.53272e+07 | 0.95× |
-| Roboto / English words | 8.58857e+07 | 8.7936e+07 | 0.98× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.03819e+08 | 7.89359e+08 | 1.02× |
-| Noto Nastaliq Urdu / Persian words | 7.78993e+08 | 8.46944e+08 | 0.92× |
-| Noto Sans Devanagari / Hindi words | 2.23056e+08 | 2.25202e+08 | 0.99× |
-| Amiri / Persian Little Prince | 3.439e+08 | 3.73885e+08 | 0.92× |
-| Source Serif Variable / react-dom | 8.11931e+08 | 1.00439e+09 | 0.81× |
+| Roboto / English Little Prince | 6.1971e+07 | 6.53272e+07 | 0.95× |
+| Roboto / English words | 8.52166e+07 | 8.7936e+07 | 0.97× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.0377e+08 | 7.89359e+08 | 1.02× |
+| Noto Nastaliq Urdu / Persian words | 7.78453e+08 | 8.46944e+08 | 0.92× |
+| Noto Sans Devanagari / Hindi words | 2.22516e+08 | 2.25202e+08 | 0.99× |
+| Amiri / Persian Little Prince | 3.4385e+08 | 3.73885e+08 | 0.92× |
+| Source Serif Variable / react-dom | 8.10318e+08 | 1.00439e+09 | 0.81× |
 
 The geometric mean is **0.94×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -279,6 +279,7 @@ An output pass appends each passed-over glyph directly, in `nextGlyph`, instead 
 When the output outgrows the input, the output so far moves out in slices, not one glyph at a time.
 A format 3 rule that a context step already checked is not checked again in `contextual`.
 Adding text counts scalars with a loop that vectorizes and converts byte offsets to clusters without a check per scalar.
+Clearing a buffer empties its language in place instead of dropping and replacing it.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
