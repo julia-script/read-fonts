@@ -322,7 +322,7 @@ impl Buffer {
     self.dumber = false
     self.language = 0
     self.languageTags = LanguageTags.new()
-    self.languageValue = Language.empty()
+    Language.clear(&mut self.languageValue)
     self.successful = true
     self.targetDirection = Direction.Invalid
     self.contentType = ContentType.None

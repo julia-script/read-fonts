@@ -22,6 +22,11 @@ impl Language {
     return Self { bytes: List<u8>.make() }
   }
 
+  /// Makes the language empty, keeping its storage for reuse.
+  pub fn clear(self: &mut Self) -> () {
+    List<u8>.clear(&mut self.bytes)
+  }
+
   pub effect fn new(bytes: &[u8]) -> Option<Self>
     ! OutOfMemoryError
     ? &mut Allocator {
