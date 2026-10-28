@@ -555,15 +555,22 @@ effect fn segment(
   let mut afterNext = reader.next()
   let mut context = Context.make()
   let mut before = Token.eof(0)
+  let boundaries = dictionary.asSlice()
   let mut dictionaryIndex: usize = 0
   let mut graphemeAt: usize = 0
+  let breakAll = options.wordBreak == WordBreakMode.BreakAll
+  let suppressHyphens = options.hyphens == Hyphens.None || breakAll
   while !right.isEof() {
     context.advance(left)
-    while dictionaryIndex < dictionary.length() && dictionary.get(dictionaryIndex) < right.start {
-      dictionaryIndex = dictionaryIndex + 1
+    let mut dictionaryBreak = false
+    if left.has(SA) && right.has(SA) {
+      // Boundaries are sorted, so the cursor only moves forward.
+      while dictionaryIndex < boundaries.length && boundaries[dictionaryIndex] < right.start {
+        dictionaryIndex = dictionaryIndex + 1
+      }
+      dictionaryBreak = dictionaryIndex < boundaries.length
+        && boundaries[dictionaryIndex] == right.start
     }
-    let dictionaryBreak = left.has(SA) && right.has(SA) && dictionaryIndex < dictionary.length()
-      && dictionary.get(dictionaryIndex) == right.start
 
     // LB23/LB25/LB28 join every AL/HL/NU pair. Resolve that context-independent
     // block before passing five token records through the contextual rules.
@@ -584,14 +591,13 @@ effect fn segment(
         dictionaryBreak,
       )
     }
-    if options.wordBreak == WordBreakMode.BreakAll {
+    if breakAll {
       while graphemeAt < right.start {
         graphemeAt = graphemes.next(text)
       }
       allowed = allowed && graphemeAt == right.start
     }
-    if left.cp == 0xad
-      && (options.hyphens == Hyphens.None || options.wordBreak == WordBreakMode.BreakAll) {
+    if left.cp == 0xad && suppressHyphens {
       allowed = false
     }
     if allowed {
