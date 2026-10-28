@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 7.63758e+07 | 65.3M | 1.17× |
-| Roboto / English words | 1.0838e+08 | 87.9M | 1.23× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1.00515e+09 | 789M | 1.27× |
-| Noto Nastaliq Urdu / Persian words | 9.12357e+08 | 847M | 1.08× |
-| Noto Sans Devanagari / Hindi words | 2.71313e+08 | 225M | 1.20× |
-| Amiri / Persian Little Prince | 4.78202e+08 | 374M | 1.28× |
-| Source Serif Variable / react-dom | 1.02452e+09 | 1,004M | 1.02× |
+| Roboto / English Little Prince | 77.3M | 65.3M | 1.18× |
+| Roboto / English words | 107M | 87.9M | 1.22× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1.04G | 789M | 1.31× |
+| Noto Nastaliq Urdu / Persian words | 944M | 847M | 1.11× |
+| Noto Sans Devanagari / Hindi words | 274M | 225M | 1.22× |
+| Amiri / Persian Little Prince | 489M | 374M | 1.31× |
+| Source Serif Variable / react-dom | 1.02G | 1,004M | 1.02× |
 
-The geometric mean is **1.18×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.19×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -231,7 +231,7 @@ classes straight from the plan, and plans fill expanded coverages and class rang
 output list in one pass, started at the first edit, instead of moving the rest of
 the buffer for every edit; deleting a glyph merges its cluster into the output
 read so far. The scratch lists a lookup application needs, its saved input and
-contextual input positions, live in the buffer, so each table's application
+contextual input and ligature component positions, live in the buffer, so each table's application
 neither creates nor frees them. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
