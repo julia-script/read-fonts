@@ -1582,7 +1582,10 @@ impl Buffer {
       self.successful = false
       return
     }
-    if self.separateOutput {
+    if self.separateOutput && count == 1 {
+      // Most copies are of the one glyph `nextGlyph` passes over.
+      run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[from])
+    } else if self.separateOutput {
       // Short runs keep each copy a vector loop rather than a string move.
       run List<Glyph>.reserve(&mut self.out, count)
       let mut k: usize = 0
