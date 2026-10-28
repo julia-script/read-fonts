@@ -724,7 +724,10 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
       if (checks & CHECK_JAMO) != 0 && glyph.form != step.tag {
         initial = 0
       }
-      if (checks & CHECK_CALT) != 0 && preprocess.isJamo(glyph.codepoint) {
+
+      // Jamo start at U+1100, so most scripts' glyphs pass on the first compare.
+      if (checks & CHECK_CALT) != 0 && glyph.codepoint >= 0x1100
+        && preprocess.isJamo(glyph.codepoint) {
         initial = 0
       }
       if (checks & CHECK_FRACTION) != 0 {
