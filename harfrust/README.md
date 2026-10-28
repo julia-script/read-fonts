@@ -152,13 +152,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.86817e+07 | 65.3M | 1.05× |
-| Roboto / English words | 9.19978e+07 | 87.9M | 1.05× |
+| Roboto / English Little Prince | 6.86822e+07 | 65.3M | 1.05× |
+| Roboto / English words | 9.19984e+07 | 87.9M | 1.05× |
 | Noto Nastaliq Urdu / Persian Little Prince | 9.06013e+08 | 789M | 1.15× |
-| Noto Nastaliq Urdu / Persian words | 8.40309e+08 | 847M | 0.99× |
-| Noto Sans Devanagari / Hindi words | 2.47944e+08 | 225M | 1.10× |
-| Amiri / Persian Little Prince | 4.14147e+08 | 374M | 1.11× |
-| Source Serif Variable / react-dom | 8.80584e+08 | 1,004M | 0.88× |
+| Noto Nastaliq Urdu / Persian words | 8.4031e+08 | 847M | 0.99× |
+| Noto Sans Devanagari / Hindi words | 2.47268e+08 | 225M | 1.10× |
+| Amiri / Persian Little Prince | 4.07726e+08 | 374M | 1.09× |
+| Source Serif Variable / react-dom | 8.80585e+08 | 1,004M | 0.88× |
 
 The geometric mean is **1.04×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -256,6 +256,8 @@ Substitutions add their glyphs to the buffer's digest, as in harfrust, so a long
 buffer is rescanned only after a pause.
 A table none of whose lookups may apply to the glyphs returns before its context is
 set up, which most single words' substitution tables do.
+Digest checks narrow glyph ids without the checked conversion, which the compiler
+does not inline.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
