@@ -447,6 +447,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           buffer.havePositions = hadPositions
         }
         buffer.idx = 0
+      } else if pairs {
+        run applyPairsStep(font, &mut context, &mut buffer, &lookup, subtables, step, end)
       } else {
         let mut i: usize = 0
         while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
@@ -458,8 +460,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
           if !everywhere && enabled(&context, glyph, step, end) == 0 {
             // The glyph's features leave the step off.
-          } else if pairs {
-            result = run applyPairs(font, &mut context, &mut buffer, &lookup, subtables, i)
           } else {
             result = run applyLookup(
               font,
@@ -1120,6 +1120,39 @@ effect fn applyLookup<F: FontFuncs>(
   return no()
 }
 
+/// Applies a pair adjustment step, whose subtables all adjust pairs, at each glyph in turn; its
+/// own loop keeps `applyPairs` inlined.
+effect fn applyPairsStep<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  step: usize,
+  end: usize,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let everywhere = context.everywhere
+  let mut i: usize = 0
+  while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
+    i = nextCandidate(List<Glyph>.asSlice(&buffer.glyphs), i, &context.steps[step].digest)
+    if i >= Buffer.len(&buffer.*) {
+      break
+    }
+    let mut result = no()
+    let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+    if everywhere || enabled(&context.*, glyph, step, end) != 0 {
+      result = run applyPairs(font, &mut context, &mut buffer, lookup, subtables, i)
+    }
+    if result.yes {
+      i = result.next
+    } else {
+      i = i + 1
+    }
+  }
+}
+
 /// `applyLookup` for a top-level lookup whose subtables all adjust pairs (`kern != 0`): the same
 /// subtable skips, budget charges and results, without the branches for other kinds. A pair
 /// subtable's digest holds every glyph of its coverage, so an expanded coverage is checked
@@ -1133,7 +1166,7 @@ effect fn applyPairs<F: FontFuncs>(
   at: usize,
 ) -> Applied
   ! OutOfMemoryError
-  ? &mut Allocator {
+  ? &mut Allocator with Intrinsic.inlineAlways() {
   if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
     || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
     return no()
