@@ -445,15 +445,18 @@ impl Buffer {
     ? &mut Allocator {
     let length = Buffer.len(&self.*)
     run List<Glyph>.appendRepeated(&mut self.glyphs, item, count)
-    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
-    let mut i = length
-    while i > at {
+
+    // The tail moves through a slice that starts at `at`, so the moves need no bounds checks.
+    let moved = length - at
+    let tail = Slice.viewMut(List<Glyph>.asMutSlice(&mut self.glyphs), at, moved + count)
+    let mut i = tail.length
+    while i > count {
       i = i - 1
-      slots[i + count] = slots[i]
+      tail[i] = tail[i - count]
     }
     let mut n: usize = 0
     while n < count {
-      slots[at + n] = item
+      tail[n] = item
       n = n + 1
     }
   }
@@ -474,10 +477,17 @@ impl Buffer {
       if k < positions.length {
         end = positions[k]
       }
-      while read < end {
-        slots[write] = slots[read]
-        write = write + 1
-        read = read + 1
+      if read < end && end <= length && write < read {
+        // `write` trails `read`, so a slice from `write` holds both ends of each move.
+        let span = Slice.viewMut(&mut slots, write, end - write)
+        let gap = read - write
+        let mut j = gap
+        while j < span.length {
+          span[j - gap] = span[j]
+          j = j + 1
+        }
+        write = write + (end - read)
+        read = end
       }
     }
     List<Glyph>.truncate(&mut self.glyphs, write)
