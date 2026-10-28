@@ -2982,12 +2982,25 @@ struct Anchor {
 impl Copy for Anchor {}
 
 fn anchor(context: &Context, table: View) -> Anchor {
-  if View.len(&table) < 6 || View.u16(&table, 0) == 0 || View.u16(&table, 0) > 3 {
+  if View.len(&table) < 6 {
     return Anchor { x: 0, y: 0, valid: false }
+  }
+  let format = View.u16(&table, 0)
+  if format == 0 || format > 3 {
+    return Anchor { x: 0, y: 0, valid: false }
+  }
+
+  // At unit scale a design-unit anchor without device deltas is already the result.
+  if format != 3 && Scale.isUnit(&context.scale) {
+    return Anchor {
+      x: i16.toI32(View.i16(&table, 2)),
+      y: i16.toI32(View.i16(&table, 4)),
+      valid: true,
+    }
   }
   let mut x = i16.toF32(View.i16(&table, 2))
   let mut y = i16.toF32(View.i16(&table, 4))
-  if View.u16(&table, 0) == 3 {
+  if format == 3 {
     x = x + deviceDelta(context, View.offset16(&table, 6))
     y = y + deviceDelta(context, View.offset16(&table, 8))
   }
@@ -3622,68 +3635,85 @@ pub effect fn finishOffsets(buffer: &mut Buffer) -> ()
   if !buffer.haveAttachments {
     return
   }
-  let mut xs = List<i64>.make()
-  let mut ys = List<i64>.make()
-  run List<i64>.reserveExact(&mut xs, Buffer.len(&buffer.*) + 1)
-  run List<i64>.reserveExact(&mut ys, Buffer.len(&buffer.*) + 1)
-  let mut x: i64 = 0
-  let mut y: i64 = 0
+  let horizontal = Direction.isHorizontal(buffer.direction)
+  let forward = Direction.isForward(buffer.direction)
+  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
   let mut i: usize = 0
-  while i < Buffer.len(&buffer.*) {
-    run List<i64>.append(&mut xs, x)
-    run List<i64>.append(&mut ys, y)
-    let pos = &List<Glyph>.asSlice(&buffer.glyphs)[i].position
-    x = x + i32.toI64(pos.xAdvance)
-    y = y + i32.toI64(pos.yAdvance)
-    i = i + 1
-  }
-  run List<i64>.append(&mut xs, x)
-  run List<i64>.append(&mut ys, y)
-  i = 0
-  while i < Buffer.len(&buffer.*) {
-    resolveOffset(&mut buffer, i, List<i64>.asSlice(&xs), List<i64>.asSlice(&ys), 0)
+  while i < glyphs.length {
+    if glyphs[i].attach != 0 {
+      resolveOffset(&mut glyphs, i, horizontal, forward, 0)
+    }
     i = i + 1
   }
 }
 
-fn resolveOffset(buffer: &mut Buffer, at: usize, xs: &[i64], ys: &[i64], depth: usize) -> () {
+// The advances of glyphs `from..to`, in 64 bits so long runs cannot overflow.
+fn advanceSum(glyphs: &mut [Glyph], from: usize, to: usize) -> [i64; 2] {
+  let mut x: i64 = 0
+  let mut y: i64 = 0
+  let mut k = from
+  while k < to {
+    x = x + i32.toI64(glyphs[k].position.xAdvance)
+    y = y + i32.toI64(glyphs[k].position.yAdvance)
+    k = k + 1
+  }
+  return [x, y]
+}
+
+fn resolveOffset(
+  glyphs: &mut [Glyph],
+  at: usize,
+  horizontal: bool,
+  forward: bool,
+  depth: usize,
+) -> () {
   if depth >= 100 {
     return
   }
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  if item.attach == 0 {
+  let attach = glyphs[at].attach
+  if attach == 0 {
     return
   }
-  let target = usize.toI64(at) + i32.toI64(item.attach)
-  item.attach = 0
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
-  if target < 0 || target >= usize.toI64(Buffer.len(&buffer.*)) {
+  glyphs[at].attach = 0
+  let target = usize.toI64(at) + i32.toI64(attach)
+  if target < 0 || target >= usize.toI64(glyphs.length) {
     return
   }
   let base = i64.toUsize(target)
-  resolveOffset(&mut buffer, base, xs, ys, depth + 1)
-  let parent = List<Glyph>.get(&buffer.glyphs, base)
-  if item.attachType == 2 {
-    if Direction.isHorizontal(buffer.direction) {
-      item.position.yOffset = add(item.position.yOffset, parent.position.yOffset)
+  resolveOffset(&mut glyphs, base, horizontal, forward, depth + 1)
+  let parentX = glyphs[base].position.xOffset
+  let parentY = glyphs[base].position.yOffset
+  if glyphs[at].attachType == 2 {
+    if horizontal {
+      glyphs[at].position.yOffset = add(glyphs[at].position.yOffset, parentY)
     } else {
-      item.position.xOffset = add(item.position.xOffset, parent.position.xOffset)
+      glyphs[at].position.xOffset = add(glyphs[at].position.xOffset, parentX)
     }
-  } else {
-    if Direction.isHorizontal(buffer.direction) {
-      item.position.xOffset = add(item.position.xOffset, parent.position.xOffset)
-    } else {
-      item.position.yOffset = add(item.position.yOffset, parent.position.yOffset)
-    }
-    if Direction.isForward(buffer.direction) {
-      item.position.xOffset = clamp(i32.toI64(item.position.xOffset) + xs[base] - xs[at])
-      item.position.yOffset = clamp(i32.toI64(item.position.yOffset) + ys[base] - ys[at])
-    } else {
-      item.position.xOffset = clamp(i32.toI64(item.position.xOffset) + xs[at + 1] - xs[base + 1])
-      item.position.yOffset = clamp(i32.toI64(item.position.yOffset) + ys[at + 1] - ys[base + 1])
-    }
+    return
   }
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  if horizontal {
+    glyphs[at].position.xOffset = add(glyphs[at].position.xOffset, parentX)
+  } else {
+    glyphs[at].position.yOffset = add(glyphs[at].position.yOffset, parentY)
+  }
+
+  // Move the glyph back over the advances between it and its base.
+  let mut shift: [i64; 2] = [0, 0]
+  if forward {
+    if base < at {
+      let sum = advanceSum(&mut glyphs, base, at)
+      shift = [0 - sum[0], 0 - sum[1]]
+    } else {
+      shift = advanceSum(&mut glyphs, at, base)
+    }
+  } else if base < at {
+    shift = advanceSum(&mut glyphs, base + 1, at + 1)
+  } else {
+    let sum = advanceSum(&mut glyphs, at + 1, base + 1)
+    shift = [0 - sum[0], 0 - sum[1]]
+  }
+  glyphs[at].position.xOffset = clamp(i32.toI64(glyphs[at].position.xOffset) + shift[0])
+  glyphs[at].position.yOffset = clamp(i32.toI64(glyphs[at].position.yOffset) + shift[1])
 }
 
 fn hasCoverage(table: View, glyph: u32) -> bool {
