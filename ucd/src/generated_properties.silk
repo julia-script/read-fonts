@@ -37,7 +37,12 @@ pub enum GeneralCategory {
 }
 
 pub fn generalCategory(cp: u32) -> GeneralCategory with Intrinsic.inlineAlways() {
-  return match Data.generalCategory(cp) {
+  return generalCategoryValue(Data.generalCategory(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn generalCategoryValue(value: u32) -> GeneralCategory with Intrinsic.inlineAlways() {
+  return match value {
     0 => GeneralCategory.Cc
     1 => GeneralCategory.Cf
     3 => GeneralCategory.Co
@@ -133,7 +138,12 @@ pub enum CanonicalCombiningClass {
 }
 
 pub fn combiningClass(cp: u32) -> CanonicalCombiningClass with Intrinsic.inlineAlways() {
-  return match Data.combiningClass(cp) {
+  return combiningClassValue(Data.combiningClass(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn combiningClassValue(value: u32) -> CanonicalCombiningClass with Intrinsic.inlineAlways() {
+  return match value {
     1 => CanonicalCombiningClass.Overlay
     6 => CanonicalCombiningClass.Han_Reading
     7 => CanonicalCombiningClass.Nukta
@@ -287,7 +297,12 @@ pub enum BidiClass {
 }
 
 pub fn bidiClass(cp: u32) -> BidiClass with Intrinsic.inlineAlways() {
-  return match Data.bidiClass(cp) {
+  return bidiClassValue(Data.bidiClass(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn bidiClassValue(value: u32) -> BidiClass with Intrinsic.inlineAlways() {
+  return match value {
     0 => BidiClass.AL
     1 => BidiClass.AN
     2 => BidiClass.B
@@ -324,7 +339,12 @@ pub enum JoiningType {
 }
 
 pub fn joiningType(cp: u32) -> JoiningType with Intrinsic.inlineAlways() {
-  return match Data.joiningType(cp) {
+  return joiningTypeValue(Data.joiningType(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn joiningTypeValue(value: u32) -> JoiningType with Intrinsic.inlineAlways() {
+  return match value {
     0 => JoiningType.C
     1 => JoiningType.D
     2 => JoiningType.L
@@ -454,7 +474,12 @@ pub enum JoiningGroup {
 }
 
 pub fn joiningGroup(cp: u32) -> JoiningGroup with Intrinsic.inlineAlways() {
-  return match Data.joiningGroup(cp) {
+  return joiningGroupValue(Data.joiningGroup(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn joiningGroupValue(value: u32) -> JoiningGroup with Intrinsic.inlineAlways() {
+  return match value {
     0 => JoiningGroup.African_Feh
     1 => JoiningGroup.African_Noon
     2 => JoiningGroup.African_Qaf
@@ -627,7 +652,12 @@ pub enum LineBreak {
 }
 
 pub fn lineBreak(cp: u32) -> LineBreak with Intrinsic.inlineAlways() {
-  return match Data.lineBreak(cp) {
+  return lineBreakValue(Data.lineBreak(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn lineBreakValue(value: u32) -> LineBreak with Intrinsic.inlineAlways() {
+  return match value {
     0 => LineBreak.AI
     1 => LineBreak.AK
     2 => LineBreak.AL
@@ -690,7 +720,12 @@ pub enum EastAsianWidth {
 }
 
 pub fn eastAsianWidth(cp: u32) -> EastAsianWidth with Intrinsic.inlineAlways() {
-  return match Data.eastAsianWidth(cp) {
+  return eastAsianWidthValue(Data.eastAsianWidth(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn eastAsianWidthValue(value: u32) -> EastAsianWidth with Intrinsic.inlineAlways() {
+  return match value {
     0 => EastAsianWidth.A
     1 => EastAsianWidth.F
     2 => EastAsianWidth.H
@@ -722,7 +757,12 @@ pub enum GraphemeBreak {
 }
 
 pub fn graphemeBreak(cp: u32) -> GraphemeBreak with Intrinsic.inlineAlways() {
-  return match Data.graphemeBreak(cp) {
+  return graphemeBreakValue(Data.graphemeBreak(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn graphemeBreakValue(value: u32) -> GraphemeBreak with Intrinsic.inlineAlways() {
+  return match value {
     0 => GraphemeBreak.Control
     1 => GraphemeBreak.CR
     2 => GraphemeBreak.E_Base
@@ -771,7 +811,12 @@ pub enum WordBreak {
 }
 
 pub fn wordBreak(cp: u32) -> WordBreak with Intrinsic.inlineAlways() {
-  return match Data.wordBreak(cp) {
+  return wordBreakValue(Data.wordBreak(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn wordBreakValue(value: u32) -> WordBreak with Intrinsic.inlineAlways() {
+  return match value {
     0 => WordBreak.CR
     1 => WordBreak.Double_Quote
     2 => WordBreak.E_Base
@@ -817,7 +862,12 @@ pub enum SentenceBreak {
 }
 
 pub fn sentenceBreak(cp: u32) -> SentenceBreak with Intrinsic.inlineAlways() {
-  return match Data.sentenceBreak(cp) {
+  return sentenceBreakValue(Data.sentenceBreak(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn sentenceBreakValue(value: u32) -> SentenceBreak with Intrinsic.inlineAlways() {
+  return match value {
     0 => SentenceBreak.ATerm
     1 => SentenceBreak.Close
     2 => SentenceBreak.CR
@@ -844,7 +894,12 @@ pub enum VerticalOrientation {
 }
 
 pub fn verticalOrientation(cp: u32) -> VerticalOrientation with Intrinsic.inlineAlways() {
-  return match Data.verticalOrientation(cp) {
+  return verticalOrientationValue(Data.verticalOrientation(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn verticalOrientationValue(value: u32) -> VerticalOrientation with Intrinsic.inlineAlways() {
+  return match value {
     1 => VerticalOrientation.Tr
     2 => VerticalOrientation.Tu
     3 => VerticalOrientation.U
@@ -860,7 +915,12 @@ pub enum IndicConjunctBreak {
 }
 
 pub fn indicConjunctBreak(cp: u32) -> IndicConjunctBreak with Intrinsic.inlineAlways() {
-  return match Data.indicConjunctBreak(cp) {
+  return indicConjunctBreakValue(Data.indicConjunctBreak(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn indicConjunctBreakValue(value: u32) -> IndicConjunctBreak with Intrinsic.inlineAlways() {
+  return match value {
     1 => IndicConjunctBreak.Consonant
     2 => IndicConjunctBreak.Extend
     3 => IndicConjunctBreak.Linker
@@ -875,7 +935,14 @@ pub enum BidiPairedBracketType {
 }
 
 pub fn bidiPairedBracketType(cp: u32) -> BidiPairedBracketType with Intrinsic.inlineAlways() {
-  return match Data.bidiPairedBracketType(cp) {
+  return bidiPairedBracketTypeValue(Data.bidiPairedBracketType(cp))
+}
+
+// Package-internal: converts a packed table value.
+pub fn bidiPairedBracketTypeValue(
+  value: u32,
+) -> BidiPairedBracketType with Intrinsic.inlineAlways() {
+  return match value {
     1 => BidiPairedBracketType.Open
     2 => BidiPairedBracketType.Close
     _ => BidiPairedBracketType.None

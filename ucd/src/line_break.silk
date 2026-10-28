@@ -13,7 +13,9 @@
 //! The caller clears output. Results are sorted, unique, with canonical EOF.
 //! Standard breaking uses constant scratch storage and decodes each scalar once.
 import lib as Ucd
-import lib { LineBreak, GeneralCategory, EastAsianWidth }
+import lib { LineBreak }
+import generated_unicode as Data
+import generated_properties { lineBreakValue }
 import utf8
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
@@ -21,6 +23,7 @@ import text { TextBreak, TextBreakKind, TextCursor }
 import silk.list { List }
 import silk.ownership { Copy }
 import silk.allocator { Allocator, OutOfMemoryError }
+import silk.u32
 
 pub enum LineBreakMode {
   Auto,
@@ -67,37 +70,41 @@ impl LineOptions {
   }
 }
 
+// Token flags. The low eight come from the generated lineBreakInfo table
+// (scripts/generate-unicode keeps the same layout, shifted by six class bits).
+const EAST: u16 = 1 // East_Asian_Width F, W or H
+const CURRENCY_WIDE: u16 = 2 // East_Asian_Width A, F or W
+const PI: u16 = 4 // General_Category Pi
+const PF: u16 = 8 // General_Category Pf
+const LETTER: u16 = 16 // General_Category L*
+const EMOJI: u16 = 32 // unassigned Extended_Pictographic
+const SA: u16 = 64 // SA resolved to AL
+const CJ: u16 = 128 // CJ resolved to NS
+const ZWJ: u16 = 256 // the base or its last combining mark is ZWJ
+const WORD: u16 = 512 // a word character for word-break: keep-all
+const EOF: u16 = 1024 // past the end of the text
+
+// One LB9 combining sequence: 16 bytes, so the five-token window stays in registers.
 struct Token {
   start: usize,
-  end: usize,
   cp: u32,
   cls: LineBreak,
-  category: GeneralCategory,
-  east: bool,
-  currencyWide: bool,
-  potentialEmoji: bool,
-  sa: bool,
-  zwj: bool,
-  word: bool,
+  flags: u16,
 }
 
 impl Copy for Token {}
 
 impl Token {
-  fn eof(at: usize) -> Self {
-    return Self {
-      start: at,
-      end: at,
-      cp: 0,
-      cls: LineBreak.XX,
-      category: GeneralCategory.Cn,
-      east: false,
-      currencyWide: false,
-      potentialEmoji: false,
-      sa: false,
-      zwj: false,
-      word: false,
-    }
+  fn eof(at: usize) -> Self with Intrinsic.inlineAlways() {
+    return Self { start: at, cp: 0, cls: LineBreak.XX, flags: EOF }
+  }
+
+  fn has(self: Self, flag: u16) -> bool with Intrinsic.inlineAlways() {
+    return (self.flags & flag) != 0
+  }
+
+  fn isEof(self: Self) -> bool with Intrinsic.inlineAlways() {
+    return self.has(EOF)
   }
 }
 
@@ -112,12 +119,6 @@ fn alpha(c: LineBreak) -> bool {
 fn hangul(c: LineBreak) -> bool {
   return c == LineBreak.JL || c == LineBreak.JV || c == LineBreak.JT || c == LineBreak.H2
     || c == LineBreak.H3
-}
-
-fn letter(c: GeneralCategory) -> bool {
-  return c == GeneralCategory.Lu || c == GeneralCategory.Ll || c == GeneralCategory.Lt
-    || c == GeneralCategory.Lm
-    || c == GeneralCategory.Lo
 }
 
 fn aksara(t: Token) -> bool {
@@ -170,125 +171,103 @@ fn cjk(options: LineOptions) -> bool {
 }
 
 // LB9 consumes CM/ZWJ once, retaining the base's *all* relevant properties.
-// Three-token lookahead handles LB25 without rescanning UTF-8 or allocating.
+// The reader decodes one scalar ahead to find each sequence's end; with the
+// segmenter's three-token window, LB25 needs no rescanning or allocation.
 struct Reader<'a> {
   text: &'a [u8],
   at: usize,
-  pending: Token,
-  hasPending: bool,
-  options: LineOptions
+  upcoming: Token,
+  options: LineOptions,
+  tailored: bool,
 }
 
 impl<'a> Reader<'a> {
   fn make(text: &'a [u8], options: LineOptions) -> Self {
-    return Self {
+    let mut reader = Self {
       text: text,
       at: 0,
-      pending: Token.eof(text.length),
-      hasPending: false,
+      upcoming: Token.eof(0),
       options: options,
+      tailored: css(options) || options.wordBreak == WordBreakMode.BreakAll,
     }
+    reader.upcoming = reader.scalar()
+    return move reader
   }
 
   fn scalar(self: &mut Self) -> Token with Intrinsic.inlineAlways() {
-    if self.hasPending {
-      self.hasPending = false
-      return self.pending
-    }
     if self.at == self.text.length {
       return Token.eof(self.at)
     }
     let start = self.at
     let decoded = utf8.decode(self.text, start)
     self.at = decoded.next
-    let raw = Ucd.lineBreak(decoded.cp)
-    let category = Ucd.generalCategory(decoded.cp)
-    let width = Ucd.eastAsianWidth(decoded.cp)
-    let mut cls = raw
-    if raw == LineBreak.AI || raw == LineBreak.SG || raw == LineBreak.XX {
-      cls = LineBreak.AL
+    let info = Data.lineBreakInfo(decoded.cp)
+    let mut cls = lineBreakValue(info & 63)
+    let mut flags = u32.wrappingToU16(u32.shiftRight(info, 6))
+    if (flags & CJ) != 0 && loose(self.options) {
+      cls = LineBreak.ID
     }
-    if raw == LineBreak.SA {
-      cls = LineBreak.AL
-      if category == GeneralCategory.Mn || category == GeneralCategory.Mc {
-        cls = LineBreak.CM
-      }
+    if cls == LineBreak.ZWJ {
+      flags = flags | ZWJ
     }
-    if raw == LineBreak.CJ {
-      cls = LineBreak.NS
-      if loose(self.options) {
-        cls = LineBreak.ID
-      }
+    if (flags & LETTER) != 0 || alpha(cls) || cls == LineBreak.NU || cls == LineBreak.ID {
+      flags = flags | WORD
     }
-    return Token {
-      start: start,
-      end: decoded.next,
-      cp: decoded.cp,
-      cls: cls,
-      category: category,
-      east: width == EastAsianWidth.F || width == EastAsianWidth.W || width == EastAsianWidth.H,
-      currencyWide: width == EastAsianWidth.A || width == EastAsianWidth.F
-        || width == EastAsianWidth.W,
-      potentialEmoji: category == GeneralCategory.Cn && Ucd.isExtendedPictographic(decoded.cp),
-      sa: raw == LineBreak.SA && cls != LineBreak.CM,
-      zwj: raw == LineBreak.ZWJ,
-      word: letter(category) || alpha(cls) || cls == LineBreak.NU || cls == LineBreak.ID,
-    }
+    return Token { start: start, cp: decoded.cp, cls: cls, flags: flags }
   }
 
   fn next(self: &mut Self) -> Token with Intrinsic.inlineAlways() {
-    let mut token = self.scalar()
-    if token.start == token.end {
+    let mut token = self.upcoming
+    if token.isEof() {
       return token
     }
+    self.upcoming = self.scalar()
     if token.cls == LineBreak.CM || token.cls == LineBreak.ZWJ {
       // LB10: all properties become those of LATIN CAPITAL LETTER A.
       token.cls = LineBreak.AL
-      token.category = GeneralCategory.Lu
-      token.east = false
-      token.currencyWide = false
-      token.potentialEmoji = false
-      token.word = true
+      token.flags = (token.flags & (SA | ZWJ)) | LETTER | WORD
     }
     if !hard(token.cls) && token.cls != LineBreak.SP && token.cls != LineBreak.ZW {
-      while true {
-        let following = self.scalar()
-        if following.start != following.end
-          && (following.cls == LineBreak.CM || following.cls == LineBreak.ZWJ) {
-          token.end = following.end
-          token.zwj = following.zwj
-        } else {
-          self.pending = following
-          self.hasPending = true
-          break
-        }
+      while self.upcoming.cls == LineBreak.CM || self.upcoming.cls == LineBreak.ZWJ {
+        token.flags = (token.flags & ~ZWJ) | (self.upcoming.flags & ZWJ)
+        self.upcoming = self.scalar()
       }
     }
+    if self.tailored {
+      return self.tailor(token)
+    }
+    return token
+  }
+
+  fn tailor(self: &Self, token: Token) -> Token with Intrinsic.inlineNever() {
+    let mut result = token
     if css(self.options) {
-      if loose(self.options) && token.cls == LineBreak.NS && iteration(token.cp) {
-        token.cls = LineBreak.ID
+      if loose(self.options) && result.cls == LineBreak.NS && iteration(result.cp) {
+        result.cls = LineBreak.ID
       }
       if cjk(self.options) && self.options.lineBreak != LineBreakMode.Strict
-        && (token.cp == 0x301c || token.cp == 0x30a0) {
-        token.cls = LineBreak.ID
+        && (result.cp == 0x301c || result.cp == 0x30a0) {
+        result.cls = LineBreak.ID
       }
     }
 
     // Small kana and iteration marks remain controlled by line-break, not
     // word-break. Hangul already breaks between complete syllables.
     if self.options.wordBreak == WordBreakMode.BreakAll
-      && (alpha(token.cls) || token.cls == LineBreak.NU || token.sa || token.cls == LineBreak.AK
-        || token.cls == LineBreak.AP
-        || token.cls == LineBreak.AS) {
-      token.cls = LineBreak.ID
+      && (alpha(result.cls) || result.cls == LineBreak.NU || result.has(SA)
+        || result.cls == LineBreak.AK
+        || result.cls == LineBreak.AP
+        || result.cls == LineBreak.AS) {
+      result.cls = LineBreak.ID
     }
-    return token
+    return result
   }
 }
 
+// Only classes survive from earlier tokens; LineBreak.XX means none (start of text).
 struct Context {
-  previous: Token,
-  nonspace: Token,
+  previous: LineBreak,
+  nonspace: LineBreak,
   quoteInitial: bool,
   numeric: bool,
   previousNumeric: bool,
@@ -298,8 +277,8 @@ struct Context {
 impl Context {
   fn make() -> Self {
     return Self {
-      previous: Token.eof(0),
-      nonspace: Token.eof(0),
+      previous: LineBreak.XX,
+      nonspace: LineBreak.XX,
       quoteInitial: false,
       numeric: false,
       previousNumeric: false,
@@ -307,11 +286,11 @@ impl Context {
     }
   }
 
-  fn advance(self: &mut Self, token: Token) -> () {
+  fn advance(self: &mut Self, token: Token) -> () with Intrinsic.inlineAlways() {
     if token.cls != LineBreak.SP {
-      self.nonspace = token
-      self.quoteInitial = token.cls == LineBreak.QU && token.category == GeneralCategory.Pi
-        && (self.previous.start == self.previous.end || initialQuote(self.previous.cls))
+      self.nonspace = token.cls
+      self.quoteInitial = token.cls == LineBreak.QU && token.has(PI)
+        && (self.previous == LineBreak.XX || initialQuote(self.previous))
     }
     self.previousNumeric = self.numeric
     self.numeric = token.cls == LineBreak.NU
@@ -321,7 +300,7 @@ impl Context {
     } else {
       self.oddRegional = false
     }
-    self.previous = token
+    self.previous = token.cls
   }
 }
 
@@ -349,10 +328,10 @@ fn opportunity(
   if hard(b) || b == LineBreak.SP || b == LineBreak.ZW {
     return false
   }
-  if context.nonspace.cls == LineBreak.ZW {
+  if context.nonspace == LineBreak.ZW {
     return true
   }
-  if left.zwj || a == LineBreak.WJ || b == LineBreak.WJ || a == LineBreak.GL {
+  if left.has(ZWJ) || a == LineBreak.WJ || b == LineBreak.WJ || a == LineBreak.GL {
     return false
   }
 
@@ -368,11 +347,10 @@ fn opportunity(
     || (b == LineBreak.EX && !beforeCentered) {
     return false
   }
-  if context.nonspace.cls == LineBreak.OP || context.quoteInitial {
+  if context.nonspace == LineBreak.OP || context.quoteInitial {
     return false
   }
-  if b == LineBreak.QU && right.category == GeneralCategory.Pf
-    && (next.start == next.end || finalQuote(n)) {
+  if b == LineBreak.QU && right.has(PF) && (next.isEof() || finalQuote(n)) {
     return false
   }
   if a == LineBreak.SP && b == LineBreak.IS && n == LineBreak.NU {
@@ -381,12 +359,11 @@ fn opportunity(
   if b == LineBreak.IS && !beforeCentered {
     return false
   }
-  if (context.nonspace.cls == LineBreak.CL || context.nonspace.cls == LineBreak.CP)
-    && b == LineBreak.NS
+  if (context.nonspace == LineBreak.CL || context.nonspace == LineBreak.CP) && b == LineBreak.NS
     && !beforeCentered {
     return false
   }
-  if context.nonspace.cls == LineBreak.B2 && b == LineBreak.B2 {
+  if context.nonspace == LineBreak.B2 && b == LineBreak.B2 {
     return false
   }
   if a == LineBreak.SP {
@@ -394,14 +371,13 @@ fn opportunity(
   }
 
   // LB19/LB19a: Pi/Pf and East Asian context are properties of the LB9 base.
-  if (b == LineBreak.QU && right.category != GeneralCategory.Pi)
-    || (a == LineBreak.QU && left.category != GeneralCategory.Pf) {
+  if (b == LineBreak.QU && !right.has(PI)) || (a == LineBreak.QU && !left.has(PF)) {
     return false
   }
-  if b == LineBreak.QU && (!left.east || next.start == next.end || !next.east) {
+  if b == LineBreak.QU && (!left.has(EAST) || next.isEof() || !next.has(EAST)) {
     return false
   }
-  if a == LineBreak.QU && (!right.east || before.start == before.end || !before.east) {
+  if a == LineBreak.QU && (!right.has(EAST) || before.isEof() || !before.has(EAST)) {
     return false
   }
   if a == LineBreak.CB || b == LineBreak.CB {
@@ -410,11 +386,12 @@ fn opportunity(
 
   // KeepAll wins over CSS loose punctuation-class substitutions, but not a
   // real dictionary word boundary or explicit breaks (handled above).
-  if options.wordBreak == WordBreakMode.KeepAll && left.word && right.word && !dictionary {
+  if options.wordBreak == WordBreakMode.KeepAll && left.has(WORD) && right.has(WORD)
+    && !dictionary {
     return false
   }
   if (a == LineBreak.HY || a == LineBreak.HH) && alpha(b)
-    && (before.start == before.end || initial(before.cls)) {
+    && (before.isEof() || initial(before.cls)) {
     return false
   }
   let beforeLooseHyphen = loose(options) && a == LineBreak.ID
@@ -438,8 +415,8 @@ fn opportunity(
   }
 
   // Loose CJK prefixes/postfixes alter only the applicable side of the pair.
-  let prefix = a == LineBreak.PR && !(looseCjk && left.currencyWide)
-  let postfix = b == LineBreak.PO && !(looseCjk && right.currencyWide)
+  let prefix = a == LineBreak.PR && !(looseCjk && left.has(CURRENCY_WIDE))
+  let postfix = b == LineBreak.PO && !(looseCjk && right.has(CURRENCY_WIDE))
   if prefix && (b == LineBreak.ID || b == LineBreak.EB || b == LineBreak.EM) {
     return false
   }
@@ -495,16 +472,16 @@ fn opportunity(
   if a == LineBreak.IS && alpha(b) {
     return false
   }
-  if (alpha(a) || a == LineBreak.NU) && b == LineBreak.OP && !right.east {
+  if (alpha(a) || a == LineBreak.NU) && b == LineBreak.OP && !right.has(EAST) {
     return false
   }
-  if a == LineBreak.CP && !left.east && (alpha(b) || b == LineBreak.NU) {
+  if a == LineBreak.CP && !left.has(EAST) && (alpha(b) || b == LineBreak.NU) {
     return false
   }
   if a == LineBreak.RI && b == LineBreak.RI && context.oddRegional {
     return false
   }
-  if (a == LineBreak.EB || left.potentialEmoji) && b == LineBreak.EM {
+  if (a == LineBreak.EB || left.has(EMOJI)) && b == LineBreak.EM {
     return false
   }
   return true
@@ -566,12 +543,12 @@ effect fn segment(
   let mut before = Token.eof(0)
   let mut dictionaryIndex: usize = 0
   let mut graphemeAt: usize = 0
-  while right.start != right.end {
+  while !right.isEof() {
     context.advance(left)
     while dictionaryIndex < dictionary.length() && dictionary.get(dictionaryIndex) < right.start {
       dictionaryIndex = dictionaryIndex + 1
     }
-    let dictionaryBreak = left.sa && right.sa && dictionaryIndex < dictionary.length()
+    let dictionaryBreak = left.has(SA) && right.has(SA) && dictionaryIndex < dictionary.length()
       && dictionary.get(dictionaryIndex) == right.start
 
     // LB23/LB25/LB28 join every AL/HL/NU pair. Resolve that context-independent

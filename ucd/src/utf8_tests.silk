@@ -2,6 +2,10 @@ import utf8
 import test_support as Scan
 import silk.testing { Testing, AssertionError }
 import silk.option { Option }
+import silk.utf8_decoder { Utf8Decoder, Utf8Step }
+import silk.slice { Slice }
+import silk.u8
+import silk.usize
 
 test effect fn scalarByteOffsets() -> ()
   ! AssertionError<'static> {
@@ -46,4 +50,68 @@ test effect fn conformanceIntegerBoundaries() -> ()
   )
   run Testing.expect(Scan.number(b"4294967296", 10).isNone(), "decimal overflow rejected")
   run Testing.expect(Scan.number(b"D800x", 16).isNone(), "trailing nonhex digit rejected")
+}
+
+// The previous stdlib-decoder implementation, kept as a differential oracle.
+fn referenceDecode(bytes: &[u8], at: usize) -> utf8.Decoded {
+  if at >= bytes.length {
+    return utf8.Decoded { cp: 0xfffd, next: bytes.length }
+  }
+  if bytes[at] < 128 {
+    return utf8.Decoded { cp: u8.toU32(bytes[at]), next: at + 1 }
+  }
+  let mut decoder = Utf8Decoder.make()
+  let mut cursor = at
+  while cursor < bytes.length && cursor - at < 4 {
+    let step = Utf8Decoder.step(&mut decoder, bytes[cursor], cursor)
+    cursor = cursor + 1
+    match &step {
+      Utf8Step.Scalar { value } => {
+        return utf8.Decoded { cp: value, next: cursor }
+      }
+      Utf8Step.Invalid { offset: _ } => {
+        return utf8.Decoded { cp: 0xfffd, next: at + 1 }
+      }
+      Utf8Step.NeedMore => {}
+    }
+  }
+  return utf8.Decoded { cp: 0xfffd, next: at + 1 }
+}
+
+test effect fn decoderMatchesStdlibDecoder() -> ()
+  ! AssertionError<'static> {
+  let tails: [u8; 4] = [0x80, 0xbf, 0x41, 0xc3]
+  let mut buffer: [u8; 4] = [0; 4]
+  let mut mismatches: usize = 0
+  let mut lead: usize = 0
+  while lead < 256 {
+    let mut second: usize = 0
+    while second < 256 {
+      let mut third: usize = 0
+      while third < 4 {
+        let mut fourth: usize = 0
+        while fourth < 4 {
+          buffer[0] = usize.wrappingToU8(lead)
+          buffer[1] = usize.wrappingToU8(second)
+          buffer[2] = tails[third]
+          buffer[3] = tails[fourth]
+          let mut length: usize = 1
+          while length <= 4 {
+            let slice = Slice.view<u8>(&buffer, 0, length)
+            let actual = utf8.decode(slice, 0)
+            let expected = referenceDecode(slice, 0)
+            if actual.cp != expected.cp || actual.next != expected.next {
+              mismatches = mismatches + 1
+            }
+            length = length + 1
+          }
+          fourth = fourth + 1
+        }
+        third = third + 1
+      }
+      second = second + 1
+    }
+    lead = lead + 1
+  }
+  run Testing.expect(mismatches == 0, "decoder agrees with the stdlib UTF-8 decoder")
 }
