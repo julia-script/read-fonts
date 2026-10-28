@@ -10,21 +10,23 @@ import silk.i32
 import silk.i64
 
 fn be16(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
+  if index >= data.length || data.length - index < 2 {
+    return 0
+  }
   return u32.shiftLeft(u8.toU32(data[index]), 8) | u8.toU32(data[index + 1])
 }
 
 fn be32(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
+  if index >= data.length || data.length - index < 4 {
+    return 0
+  }
   return u32.shiftLeft(u8.toU32(data[index]), 24) | u32.shiftLeft(u8.toU32(data[index + 1]), 16)
     | u32.shiftLeft(u8.toU32(data[index + 2]), 8)
     | u8.toU32(data[index + 3])
 }
 
 fn beI32(data: &[u8], index: usize) -> i32 with Intrinsic.inlineAlways() {
-  let value = be32(data, index)
-  if value <= 2147483647 {
-    return u32.toI32(value)
-  }
-  return -1 - u32.toI32(4294967295 - value)
+  return u32.wrappingToI32(be32(data, index))
 }
 
 fn byte(index: usize) -> usize with Intrinsic.inlineAlways() {
@@ -67,7 +69,7 @@ pub fn script(cp: u32) -> u32 {
   return be32(Data.scripts(), i * 4)
 }
 
-pub fn mirror(cp: u32) -> u32 {
+pub fn mirror(cp: u32) -> u32 with Intrinsic.inlineAlways() {
   let u = u32.toUsize(cp)
   if u >= 121617 {
     return cp
