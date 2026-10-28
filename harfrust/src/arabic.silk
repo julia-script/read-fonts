@@ -440,13 +440,11 @@ pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buf
   ! OutOfMemoryError
   ? &mut Allocator {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
-  let mut any = false
   let mut k: usize = 0
-  while k < glyphs.length && !any {
-    any = glyphs[k].stretch != 0
+  while k < glyphs.length && glyphs[k].stretch == 0 {
     k = k + 1
   }
-  if !any {
+  if k == glyphs.length {
     return
   }
   let rtl = buffer.direction == Direction.RightToLeft
