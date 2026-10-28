@@ -62,6 +62,8 @@ struct Context<'a, 's> {
   /// The plan's cached subtables, and where each lookup's start (`OtPlan.lookupSubtables`).
   subtables: &'s [LookupSubtable],
   lookupSubtables: &'s [u64],
+  /// Where each cached lookup starts in the table (`OtPlan.lookupOffsets`).
+  lookupOffsets: &'s [usize],
   /// Expanded starting coverages of the plan's subtables (`OtPlan.coverageValues`).
   coverageValues: &'s [u16],
   /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
@@ -239,6 +241,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     contextDigests: List<SetDigest>.asSlice(&plan.contextDigests),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
+    lookupOffsets: List<usize>.asSlice(&plan.lookupOffsets),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses),
@@ -600,6 +603,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     contextDigests: List<SetDigest>.asSlice(&plan.contextDigests),
     subtables: List<LookupSubtable>.asSlice(&plan.subtables),
     lookupSubtables: List<u64>.asSlice(&plan.lookupSubtables),
+    lookupOffsets: List<usize>.asSlice(&plan.lookupOffsets),
     coverageValues: List<u16>.asSlice(&plan.coverageValues),
     pairDigests: List<SetDigest>.asSlice(&plan.pairDigests),
     glyphClasses: gdefClasses(plan, plan.glyphClassDef, plan.glyphClasses),
@@ -2820,8 +2824,17 @@ effect fn contextual<F: FontFuncs>(
           break
         }
         let oldLength = Buffer.len(&buffer.*)
-        let nested = getLookup(&context.*, View.u16(&rule, actionPos + action * 4 + 2))
         let nestedIndex = u16.toUsize(View.u16(&rule, actionPos + action * 4 + 2))
+
+        // The plan caches the lookups contextual rules apply, with where each starts.
+        let mut nested = Lookup { table: View.empty(), kind: 0, flags: 0, markSet: 0 }
+        if nestedIndex < context.lookupSubtables.length
+          && context.lookupSubtables[nestedIndex] != u64.MAX
+          && nestedIndex < context.lookupOffsets.length {
+          nested = lookupAt(&context.*, context.lookupOffsets[nestedIndex])
+        } else {
+          nested = getLookup(&context.*, View.u16(&rule, actionPos + action * 4 + 2))
+        }
         drop run trace.pair(
           font,
           &buffer.*,
