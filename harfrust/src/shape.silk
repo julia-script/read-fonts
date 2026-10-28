@@ -398,13 +398,20 @@ fn hasFeature(plan: &OtPlan, tag: u32) -> bool {
   return false
 }
 
-fn fractions(buffer: &mut Buffer) -> () {
-  // Most runs have no fraction slash, so they are scanned without copying glyphs out.
+fn fractions(buffer: &mut Buffer) -> () with Intrinsic.inlineAlways() {
+  // Most runs have no fraction slash, so they are scanned here and only the rest are marked.
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let mut i: usize = 0
   while i < glyphs.length && glyphs[i].codepoint != 0x2044 {
     i = i + 1
   }
+  if i < glyphs.length {
+    markFractions(&mut buffer, i)
+  }
+}
+
+fn markFractions(buffer: &mut Buffer, from: usize) -> () {
+  let mut i = from
   while i < Buffer.len(&buffer.*) {
     if List<Glyph>.get(&buffer.glyphs, i).codepoint == 0x2044 {
       let mut first = i
