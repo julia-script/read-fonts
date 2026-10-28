@@ -111,6 +111,10 @@ fn zwjBits(shaper: u32, script: u32, tag: u32) -> u8 {
 pub struct LookupSubtable {
   pub offset: usize,
   pub kind: u16,
+  /// With `contextDigests` (below), the subtable's backtrack, input and lookahead glyph counts.
+  pub backCount: u16,
+  pub inputCount: u16,
+  pub aheadCount: u16,
   pub digest: SetDigest,
   /// This subtable's rule set digests in `OtPlan.ruleDigests`; `ruleSets` is 0 without them.
   pub ruleDigests: usize,
@@ -426,9 +430,23 @@ impl<'a> OtPlan<'a> {
           second = SetDigest.full()
         }
         let mut contextDigests = usize.MAX
+        let mut backCount: u16 = 0
+        let mut inputCount: u16 = 0
+        let mut aheadCount: u16 = 0
         if contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3 {
           contextDigests = List<SetDigest>.length(&self.contextDigests)
-          run self.addFormat3Digests(table, kind == 6 || kind == 8)
+          let chained = kind == 6 || kind == 8
+          run self.addFormat3Digests(table, chained)
+          if chained {
+            backCount = View.u16(&table, 2)
+            inputCount = View.u16(&table, 4 + u16.toUsize(backCount) * 2)
+            aheadCount = View.u16(
+              &table,
+              6 + u16.toUsize(backCount) * 2 + u16.toUsize(inputCount) * 2,
+            )
+          } else {
+            inputCount = View.u16(&table, 2)
+          }
         }
         let coverageStart = List<u16>.length(&self.coverageValues)
         let mut coverageFirst: u32 = 0
@@ -463,6 +481,9 @@ impl<'a> OtPlan<'a> {
             classesResolved: false,
             kern: kernFormat(table, kind, self.positioning),
             contextDigests: contextDigests,
+            backCount: backCount,
+            inputCount: inputCount,
+            aheadCount: aheadCount,
           },
         )
         i = i + 1
