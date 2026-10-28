@@ -77,6 +77,11 @@ pub struct LookupSubtable {
   pub coverageFirst: u32,
   pub coverageStart: usize,
   pub coverageCount: usize,
+  /// The same expansion of a format 1 mark attachment subtable's base (or ligature or mark 2)
+  /// coverage; `baseCount` is 0 when it is not expanded.
+  pub baseFirst: u32,
+  pub baseStart: usize,
+  pub baseCount: usize,
   /// Whether applying the subtable to an uncovered glyph spends a unit of budget, as a format 3
   /// contextual subtable does.
   pub missSpends: bool,
@@ -230,6 +235,9 @@ pub struct OtPlan<'a> {
   pub direction: Direction,
   pub script: u32,
   pub positioning: bool,
+  /// Whether mark attachment subtables expand their base coverage too. Only the Arabic and
+  /// complex shapers' scripts attach marks often enough to repay the expansion.
+  pub expandBases: bool,
   pub chosenScript: u32,
 }
 
@@ -374,6 +382,12 @@ impl<'a> OtPlan<'a> {
         if expand {
           coverageFirst = run self.expandCoverage(table, kind)
         }
+        let coverageEnd = List<u16>.length(&self.coverageValues)
+        let mut baseFirst: u32 = 0
+        if expand && self.expandBases && kind >= 4 && kind <= 6 && View.u16(&table, 0) == 1
+          && View.u16(&table, 4) != 0 {
+          baseFirst = run self.expandCoverageView(View.offset16(&table, 4))
+        }
         run List<LookupSubtable>.append(
           &mut self.subtables,
           // Every view derived by offsets runs to the end of the layout table.
@@ -387,7 +401,10 @@ impl<'a> OtPlan<'a> {
             pairSets: List<SetDigest>.length(&self.pairDigests) - pairDigests,
             coverageFirst: coverageFirst,
             coverageStart: coverageStart,
-            coverageCount: List<u16>.length(&self.coverageValues) - coverageStart,
+            coverageCount: coverageEnd - coverageStart,
+            baseFirst: baseFirst,
+            baseStart: coverageEnd,
+            baseCount: List<u16>.length(&self.coverageValues) - coverageEnd,
             missSpends: contextualKind(kind, self.positioning) && View.u16(&table, 0) == 3,
             classes: [noClassTable(); 3],
             classesResolved: false,
@@ -648,7 +665,14 @@ impl<'a> OtPlan<'a> {
     if View.u16(&table, coverageAt) == 0 {
       return 0
     }
-    let coverage = View.offset16(&table, coverageAt)
+    return run self.expandCoverageView(View.offset16(&table, coverageAt))
+  }
+
+  /// Appends `coverage`'s expansion to `coverageValues` and returns its first glyph, or appends
+  /// nothing.
+  effect fn expandCoverageView(self: &mut Self, coverage: View<'a>) -> u32
+    ! OutOfMemoryError
+    ? &mut Allocator {
     let coverageFormat = View.u16(&coverage, 0)
     let count = u16.toUsize(View.u16(&coverage, 2))
     let mut entrySize: usize = 2
@@ -740,6 +764,7 @@ impl<'a> OtPlan<'a> {
       direction: Direction.LeftToRight,
       script: 0,
       positioning: positioning,
+      expandBases: false,
       chosenScript: 0,
     }
   }
@@ -955,6 +980,7 @@ impl<'a> OtPlan<'a> {
     let mut plan = OtPlan.forTable(table, positioning)
     plan.direction = buffer.direction
     plan.script = buffer.script
+    plan.expandBases = buffer.shaper != 0 || arabic.usesScript(buffer.script)
     let scriptList = View.layoutList(&table, 0)
     let mut script = View.tail(&table, View.len(&table))
     let candidates = ScriptTags.forLanguage(buffer.script, &buffer.languageValue)
