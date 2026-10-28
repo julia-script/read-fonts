@@ -84,9 +84,8 @@ fn setOrder(buffer: &mut Buffer, at: usize, order: u8) -> () {
 }
 
 fn mask(buffer: &mut Buffer, at: usize, bits: u32) -> () {
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  item.featureMask = item.featureMask | bits
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  slots[at].featureMask = slots[at].featureMask | bits
 }
 
 /// Digests of the features that consonant positions and reph forms probe, kept by the plan so
@@ -133,22 +132,21 @@ pub effect fn initial<F: FontFuncs>(
   }
   let viramaMapped = ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v)
   let mut i: usize = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if viramaMapped && item.order == 4 {
-      let c = item.info.glyphId
+  while viramaMapped && i < Buffer.len(&buffer.*) {
+    let slots = List<Glyph>.asSlice(&buffer.glyphs)
+    if slots[i].order == 4 {
+      let c = slots[i].info.glyphId
       if (run probe(font, plan, 0x626c7766, &probes.blwf, v, c))
         || (run probe(font, plan, 0x626c7766, &probes.blwf, c, v))
         || (run probe(font, plan, 0x76617475, &probes.vatu, v, c))
         || (run probe(font, plan, 0x76617475, &probes.vatu, c, v)) {
-        item.order = 8
+        setOrder(&mut buffer, i, 8)
       } else if (run probe(font, plan, 0x70737466, &probes.pstf, v, c))
         || (run probe(font, plan, 0x70737466, &probes.pstf, c, v))
         || (run probe(font, plan, 0x70726566, &probes.pref, v, c))
         || (run probe(font, plan, 0x70726566, &probes.pref, c, v)) {
-        item.order = 11
+        setOrder(&mut buffer, i, 11)
       }
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
     }
     i = i + 1
   }
@@ -465,18 +463,17 @@ effect fn initialSyllable<F: FontFuncs>(
 
 pub fn final<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buffer) -> () {
   let v = ConfiguredShaper.glyphFor(font, virama(buffer.script))
-  let mut i: usize = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v) && item.info.glyphId == v
-      && item.ligated
-      && item.multiplied {
-      item.category = 4
-      item.ligated = false
-      item.multiplied = false
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+  if ConfiguredShaper.mappedGlyphExists(font, virama(buffer.script), v) {
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    let mut i: usize = 0
+    while i < slots.length {
+      if slots[i].info.glyphId == v && slots[i].ligated && slots[i].multiplied {
+        slots[i].category = 4
+        slots[i].ligated = false
+        slots[i].multiplied = false
+      }
+      i = i + 1
     }
-    i = i + 1
   }
   let mut start: usize = 0
   while start < Buffer.len(&buffer.*) {

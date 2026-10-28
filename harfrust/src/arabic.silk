@@ -158,7 +158,7 @@ pub fn setup(buffer: &mut Buffer) -> () {
     while i < Buffer.len(&buffer.*) {
       let mut item = List<Glyph>.get(&buffer.glyphs, i)
       if (item.codepoint >= 0x180b && item.codepoint <= 0x180d) || item.codepoint == 0x180f {
-        item.form = List<Glyph>.get(&buffer.glyphs, i - 1).form
+        item.form = List<Glyph>.asSlice(&buffer.glyphs)[i - 1].form
         List<Glyph>.set(&mut buffer.glyphs, i, item)
       }
       i = i + 1
@@ -259,7 +259,7 @@ fn windowsLigatures<F: FontFuncs>(
     }
     let mut second = i + 1
     while ignoreMarks && second < Buffer.len(&buffer.*)
-      && List<Glyph>.get(&buffer.glyphs, second).glyphClass == 3 {
+      && List<Glyph>.asSlice(&buffer.glyphs)[second].glyphClass == 3 {
       second = second + 1
     }
     if second >= Buffer.len(&buffer.*) {
@@ -268,7 +268,7 @@ fn windowsLigatures<F: FontFuncs>(
     let mut p: usize = 0
     while p + 3 <= pairs.length {
       if first.info.glyphId == pairs[p]
-        && List<Glyph>.get(&buffer.glyphs, second).info.glyphId == pairs[p + 1] {
+        && List<Glyph>.asSlice(&buffer.glyphs)[second].info.glyphId == pairs[p + 1] {
         ligate(&mut buffer, i, &[i, second], pairs[p + 2], ignoreMarks)
         break
       }
@@ -350,7 +350,7 @@ fn unicodeLigatures<F: FontFuncs>(
         while n < count {
           cursor = cursor + 1
           while group != 2 && cursor < Buffer.len(&buffer.*)
-            && List<Glyph>.get(&buffer.glyphs, cursor).glyphClass == 3 {
+            && List<Glyph>.asSlice(&buffer.glyphs)[cursor].glyphClass == 3 {
             cursor = cursor + 1
           }
           if cursor >= Buffer.len(&buffer.*) {
@@ -362,7 +362,7 @@ fn unicodeLigatures<F: FontFuncs>(
             u16.toU32(View.u16(&data, p + 2 + n * 2)),
             expected,
           )
-            || List<Glyph>.get(&buffer.glyphs, cursor).info.glyphId != expected {
+            || List<Glyph>.asSlice(&buffer.glyphs)[cursor].info.glyphId != expected {
             break
           }
           indices[n] = cursor
@@ -430,7 +430,7 @@ pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buf
   let metrics = run metrics(font)
   let mut i = Buffer.len(&buffer.*)
   while i != 0 {
-    if List<Glyph>.get(&buffer.glyphs, i - 1).stretch == 0 {
+    if List<Glyph>.asSlice(&buffer.glyphs)[i - 1].stretch == 0 {
       i = i - 1
       continue
     }
@@ -438,7 +438,7 @@ pub effect fn stretch<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &mut Buf
     let mut fixed: i32 = 0
     let mut repeating: i32 = 0
     let mut repeats: i32 = 0
-    while i != 0 && List<Glyph>.get(&buffer.glyphs, i - 1).stretch != 0 {
+    while i != 0 && List<Glyph>.asSlice(&buffer.glyphs)[i - 1].stretch != 0 {
       i = i - 1
       let item = List<Glyph>.get(&buffer.glyphs, i)
       let width = Metrics.hAdvance(&metrics, GlyphId.new(item.info.glyphId))

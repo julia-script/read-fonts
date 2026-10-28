@@ -450,15 +450,15 @@ fn fractions(buffer: &mut Buffer) -> () with Intrinsic.inlineAlways() {
 fn markFractions(buffer: &mut Buffer, from: usize) -> () {
   let mut i = from
   while i < Buffer.len(&buffer.*) {
-    if List<Glyph>.get(&buffer.glyphs, i).codepoint == 0x2044 {
+    if List<Glyph>.asSlice(&buffer.glyphs)[i].codepoint == 0x2044 {
       let mut first = i
       let mut end = i + 1
       while first > 0
-        && unicode.generalCategory(List<Glyph>.get(&buffer.glyphs, first - 1).codepoint) == 13 {
+        && unicode.generalCategory(List<Glyph>.asSlice(&buffer.glyphs)[first - 1].codepoint) == 13 {
         first = first - 1
       }
       while end < Buffer.len(&buffer.*)
-        && unicode.generalCategory(List<Glyph>.get(&buffer.glyphs, end).codepoint) == 13 {
+        && unicode.generalCategory(List<Glyph>.asSlice(&buffer.glyphs)[end].codepoint) == 13 {
         end = end + 1
       }
       if first != i && end != i + 1 {
