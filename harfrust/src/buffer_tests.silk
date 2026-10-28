@@ -187,3 +187,215 @@ test effect fn bufferOwnershipAndClusters() -> ()
   let mut allocator = Allocator.systemAllocatorProvider()
   run cases() |> Effect.provideMut<Allocator>(&mut allocator)
 }
+
+fn glyphAt(buffer: &Buffer, at: usize) -> Glyph {
+  return List<Glyph>.asSlice(&buffer.glyphs)[at]
+}
+
+fn idsAre(buffer: &Buffer, ids: &[u32]) -> bool {
+  if Buffer.len(buffer) != ids.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < ids.length {
+    if glyphAt(buffer, i).info.glyphId != ids[i] {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn clustersAre(buffer: &Buffer, clusters: &[u32]) -> bool {
+  if Buffer.len(buffer) != clusters.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < clusters.length {
+    if glyphAt(buffer, i).info.cluster != clusters[i] {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn flagsAre(buffer: &Buffer, flags: &[u32]) -> bool {
+  if Buffer.len(buffer) != flags.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < flags.length {
+    if glyphAt(buffer, i).info.flags != flags[i] {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+effect fn outputCases() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut buffer = Buffer.new()
+  run Buffer.pushCodepoints(&mut buffer, &[65, 66, 67, 68])
+  Buffer.enter(&mut buffer)
+
+  // A pass that only advances shares the input list and copies nothing.
+  Buffer.clearOutput(&mut buffer)
+  while buffer.idx < Buffer.len(&buffer) {
+    run Buffer.nextGlyph(&mut buffer)
+  }
+  run Testing.expect(
+    !buffer.separateOutput && buffer.outLen == 4,
+    "an unedited pass keeps the output in place",
+  )
+  run Testing.expect(run Buffer.syncOutput(&mut buffer), "an unedited pass syncs")
+  run Testing.expect(
+    idsAre(&buffer, &[65, 66, 67, 68]) && !buffer.haveOutput,
+    "an unedited pass leaves the glyphs as they were",
+  )
+
+  // A ligature shrinks the buffer in place.
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyph(&mut buffer)
+  run Buffer.replaceGlyphs(&mut buffer, 2, &[99])
+  run Testing.expect(
+    !buffer.separateOutput && Buffer.backtrackLen(&buffer) == 2
+      && Buffer.lookaheadLen(&buffer) == 1,
+    "a ligature writes in front of the unread input",
+  )
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[65, 99, 68]) && clustersAre(&buffer, &[0, 1, 3]),
+    "a ligature takes the merged cluster of its components",
+  )
+
+  // A multiple substitution outgrows the input and moves the output aside.
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyph(&mut buffer)
+  run Buffer.replaceGlyphs(&mut buffer, 1, &[7, 8, 9])
+  run Testing.expect(buffer.separateOutput, "growing output moves to its own list")
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[65, 7, 8, 9, 68]) && clustersAre(&buffer, &[0, 1, 1, 1, 3]),
+    "a multiple substitution repeats the replaced glyph's cluster",
+  )
+
+  // Replacing, outputting and copying single glyphs.
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.replaceGlyph(&mut buffer, 40)
+  run Buffer.outputGlyph(&mut buffer, 41)
+  run Buffer.copyGlyph(&mut buffer)
+  Buffer.skipGlyph(&mut buffer)
+  run Testing.expect(
+    Buffer.outGlyphs(&buffer).length == 3 && Buffer.outGlyphs(&buffer)[2].info.glyphId == 7,
+    "outputGlyph and copyGlyph copy the current glyph without advancing",
+  )
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[40, 41, 7, 8, 9, 68]),
+    "skipGlyph drops the current glyph",
+  )
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyphs(&mut buffer, 6)
+  run Buffer.outputGlyph(&mut buffer, 42)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[40, 41, 7, 8, 9, 68, 42]) && glyphAt(&buffer, 6).info.cluster == 3,
+    "outputGlyph at the end copies the last output glyph",
+  )
+
+  // Deleting merges a lone glyph's cluster backward, or forward at the start.
+  Buffer.clear(&mut buffer)
+  run Buffer.pushCodepoints(&mut buffer, &[65, 66, 67])
+  Buffer.enter(&mut buffer)
+  if true {
+    let slots = Buffer.glyphDataMut(&mut buffer)
+    slots[0].info.cluster = 2
+    slots[2].info.cluster = 0
+  }
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyph(&mut buffer)
+  Buffer.deleteCurrent(&mut buffer)
+  run Buffer.nextGlyph(&mut buffer)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[65, 67]) && clustersAre(&buffer, &[1, 0]),
+    "deleting merges the cluster backward into the output",
+  )
+  Buffer.clearOutput(&mut buffer)
+  Buffer.deleteCurrent(&mut buffer)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[67]) && clustersAre(&buffer, &[0]),
+    "deleting the first glyph merges forward",
+  )
+
+  // Moving the output position forward and back.
+  Buffer.clear(&mut buffer)
+  run Buffer.pushCodepoints(&mut buffer, &[65, 66, 67, 68])
+  Buffer.enter(&mut buffer)
+  Buffer.clearOutput(&mut buffer)
+  drop run Buffer.moveTo(&mut buffer, 3)
+  drop run Buffer.moveTo(&mut buffer, 1)
+  run Testing.expect(
+    buffer.idx == 1 && buffer.outLen == 1,
+    "rewinding in place moves the read position back",
+  )
+  run Buffer.replaceGlyphs(&mut buffer, 1, &[5, 6, 7])
+  run Testing.expect(buffer.idx == 2 && buffer.outLen == 4, "output overtakes the input")
+  run Testing.expect(run Buffer.moveTo(&mut buffer, 0), "rewinding past the input start")
+  run Testing.expect(
+    buffer.idx == 0 && buffer.outLen == 0 && Buffer.lookaheadLen(&buffer) == 6,
+    "rewinding past the input start opens a gap",
+  )
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    idsAre(&buffer, &[65, 5, 6, 7, 67, 68]),
+    "rewound output reads back as input",
+  )
+
+  // Cluster merges that reach the end of the output continue into the input.
+  Buffer.clear(&mut buffer)
+  run Buffer.pushCodepoints(&mut buffer, &[65, 66, 67, 68, 69])
+  Buffer.enter(&mut buffer)
+  if true {
+    let slots = Buffer.glyphDataMut(&mut buffer)
+    slots[3].info.cluster = 2
+  }
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyphs(&mut buffer, 3)
+  Buffer.mergeOutClusters(&mut buffer, 1, 3)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    clustersAre(&buffer, &[0, 1, 1, 1, 4]),
+    "merging the output tail merges the input head",
+  )
+
+  // Flags across the output tail and the input head.
+  Buffer.clear(&mut buffer)
+  run Buffer.pushCodepoints(&mut buffer, &[65, 66, 67, 68])
+  Buffer.enter(&mut buffer)
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyphs(&mut buffer, 2)
+  Buffer.unsafeToBreakFromOutput(&mut buffer, 1, 3)
+  Buffer.unsafeToConcatFromOutput(&mut buffer, 0, 4)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(
+    flagsAre(&buffer, &[0, 0, 3, 0]),
+    "unsafe to break skips the lowest cluster; concat needs its buffer flag",
+  )
+  buffer.flags = 64
+  Buffer.clearOutput(&mut buffer)
+  run Buffer.nextGlyphs(&mut buffer, 2)
+  Buffer.unsafeToConcatFromOutput(&mut buffer, 0, 4)
+  drop run Buffer.syncOutput(&mut buffer)
+  run Testing.expect(flagsAre(&buffer, &[2, 2, 3, 2]), "unsafe to concat marks every glyph")
+}
+
+test effect fn bufferOutput() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run outputCases() |> Effect.provideMut<Allocator>(&mut allocator)
+}
