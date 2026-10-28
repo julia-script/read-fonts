@@ -1387,7 +1387,7 @@ impl Buffer {
       }
     } else if self.idx + 1 < length {
       let at = self.idx
-      Buffer.mergeClusters(&mut self, at, at + 2)
+      Buffer.mergeInputClusters(&mut self, at, at + 2)
     }
     self.idx = self.idx + 1
   }
@@ -1451,6 +1451,66 @@ impl Buffer {
     return true
   }
 
+  /// `mergeClusters` for unread input glyphs `start..end`. During an output pass the merge
+  /// reaches back over the input only to `idx`, then into the output, as it reaches back over
+  /// the glyphs before `start` without one.
+  pub fn mergeInputClusters(self: &mut Self, start: usize, end: usize) -> () {
+    if !self.haveOutput || start < self.idx {
+      Buffer.mergeClusters(&mut self, start, end)
+      return
+    }
+    if start >= end || end > Buffer.len(&self.*) {
+      return
+    }
+    if !ClusterLevel.isMonotone(self.clusterLevel) {
+      Buffer.unsafeToBreak(&mut self, start, end)
+      return
+    }
+    if end - start < 2 {
+      return
+    }
+    drop Buffer.spendOperations(&mut self, end - start)
+    let idx = self.idx
+    let input = List<Glyph>.asMutSlice(&mut self.glyphs)
+    let mut cluster = input[start].info.cluster
+    let mut i = start + 1
+    while i < end {
+      if input[i].info.cluster < cluster {
+        cluster = input[i].info.cluster
+      }
+      i = i + 1
+    }
+    let first = input[start].info.cluster
+    let last = input[end - 1].info.cluster
+    let mut from = start
+    let mut to = end
+    while from > idx && input[from - 1].info.cluster == first {
+      from = from - 1
+    }
+    while to < input.length && input[to].info.cluster == last {
+      to = to + 1
+    }
+    i = from
+    while i < to {
+      if input[i].info.cluster != cluster {
+        input[i].info.flags = 0
+      }
+      input[i].info.cluster = cluster
+      i = i + 1
+    }
+    if from == idx {
+      let out = Buffer.outGlyphsMut(&mut self)
+      let mut k = out.length
+      while k != 0 && out[k - 1].info.cluster == first {
+        k = k - 1
+        if out[k].info.cluster != cluster {
+          out[k].info.flags = 0
+        }
+        out[k].info.cluster = cluster
+      }
+    }
+  }
+
   /// Merges the clusters of output glyphs `start..end`, and of the unread input glyphs that
   /// continue the output's last cluster.
   pub fn mergeOutClusters(self: &mut Self, start: usize, end: usize) -> () {
@@ -1490,11 +1550,19 @@ impl Buffer {
       return
     }
     if self.separateOutput {
+      // Short runs keep each copy a vector loop rather than a string move.
       run List<Glyph>.reserve(&mut self.out, count)
       let mut k: usize = 0
       while k < count {
-        run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[from + k])
-        k = k + 1
+        let mut chunk = count - k
+        if chunk > 24 {
+          chunk = 24
+        }
+        run List<Glyph>.appendSlice(
+          &mut self.out,
+          Slice.view(List<Glyph>.asSlice(&self.glyphs), from + k, chunk),
+        )
+        k = k + chunk
       }
     } else {
       // Shared output ends before the input it copies from, so copy from the start.
