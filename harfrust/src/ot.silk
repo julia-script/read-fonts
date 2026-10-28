@@ -333,6 +333,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         steps[step].subtableCount,
       )
       let everywhere = enabledEverywhere(&context, step, end)
+      let pairs = steps[step].pairs && context.positioning
       if !mayApply {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
@@ -347,7 +348,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
               font,
               &mut context,
               &mut buffer,
-              lookup,
+              &lookup,
               subtables,
               i,
               step,
@@ -365,12 +366,16 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
           }
           let mut result = no()
           let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-          if everywhere || enabled(&context, glyph, step, end) > 0 {
+          if !everywhere && enabled(&context, glyph, step, end) == 0 {
+            // The glyph's features leave the step off.
+          } else if pairs {
+            result = run applyPairs(font, &mut context, &mut buffer, &lookup, subtables, i)
+          } else {
             result = run applyLookup(
               font,
               &mut context,
               &mut buffer,
-              lookup,
+              &lookup,
               subtables,
               i,
               step,
@@ -557,7 +562,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        &lookup,
         subtables,
         0,
         i,
@@ -720,7 +725,7 @@ effect fn applyLookup<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
   buffer: &mut Buffer,
-  lookup: Lookup,
+  lookup: &Lookup,
   subtables: &[LookupSubtable],
   at: usize,
   first: usize,
@@ -734,7 +739,7 @@ effect fn applyLookup<F: FontFuncs>(
     return no()
   }
   if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
-    || ignored(&context.*, lookup, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
     return no()
   }
   context.budget = context.budget - 1
@@ -813,7 +818,7 @@ effect fn applyLookup<F: FontFuncs>(
         && format3Fails(
           &context.*,
           &buffer.*,
-          lookup,
+          lookup.*,
           table,
           at,
           first,
@@ -839,7 +844,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         subtables,
         i,
@@ -857,7 +862,7 @@ effect fn applyLookup<F: FontFuncs>(
       // A format 1 pair set whose digest lacks the second glyph is rejected here, without
       // the call; `kern` would reject it the same way.
       if second == SECOND_UNKNOWN {
-        second = match move next(&context.*, &buffer.*, lookup, at, false) {
+        second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
           Option<usize>.Some { value } => value
           _ => SECOND_NONE
         }
@@ -883,7 +888,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &context.*,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         subtables,
         i,
@@ -900,7 +905,7 @@ effect fn applyLookup<F: FontFuncs>(
         font,
         &mut context,
         &mut buffer,
-        lookup,
+        lookup.*,
         table,
         kind,
         digests,
@@ -915,6 +920,114 @@ effect fn applyLookup<F: FontFuncs>(
     }
     i = i + 1
   }
+  return no()
+}
+
+/// `applyLookup` for a top-level lookup whose subtables all adjust pairs (`kern != 0`): the same
+/// subtable skips, budget charges and results, without the branches for other kinds.
+effect fn applyPairs<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  at: usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    return no()
+  }
+  let glyph = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
+  let mut budget = context.budget - 1
+  let mut second = SECOND_UNKNOWN
+  let mut i: usize = 0
+  while i < subtables.length && budget != 0 && buffer.successful {
+    let mut known: u32 = 0
+    let mut found = false
+    while i < subtables.length && budget != 0 {
+      budget = budget - 1
+      let sub = &subtables[i]
+      if SetDigest.mayHave(&sub.digest, glyph) {
+        if sub.coverageCount == 0 {
+          found = true
+          break
+        }
+        if glyph >= sub.coverageFirst
+          && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+          known = u16.toU32(
+            context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
+          )
+        }
+        if known != 0 {
+          found = true
+          break
+        }
+        if sub.missSpends && budget != 0 {
+          budget = budget - 1
+        }
+      }
+      i = i + 1
+    }
+    context.budget = budget
+    if !found {
+      return no()
+    }
+    let sub = &subtables[i]
+    let mut result = no()
+    if known != 0 && (sub.kern <= 2 || !context.variable) {
+      if second == SECOND_UNKNOWN {
+        second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
+          Option<usize>.Some { value } => value
+          _ => SECOND_NONE
+        }
+      }
+      if second == SECOND_NONE {
+        i = i + 1
+        continue
+      }
+      let coverage = u32.toUsize(known - 1)
+      if (sub.kern == 1 || sub.kern == 3) && coverage < sub.pairSets
+        && !SetDigest.mayHave(
+          &context.pairDigests[sub.pairDigests + coverage],
+          List<Glyph>.asSlice(&buffer.glyphs)[second].info.glyphId,
+        ) {
+        Buffer.unsafeToConcat(&mut buffer, at, second + 1)
+        i = i + 1
+        continue
+      }
+      result = run kern(
+        font,
+        &context.*,
+        &mut buffer,
+        View.tail(&context.table, sub.offset),
+        sub,
+        known,
+        at,
+        second,
+      )
+    } else {
+      result = run position(
+        font,
+        &context.*,
+        &mut buffer,
+        lookup.*,
+        View.tail(&context.table, sub.offset),
+        subtables,
+        i,
+        sub.kind,
+        known,
+        at,
+      )
+    }
+    if result.yes {
+      return result
+    }
+    budget = context.budget
+    i = i + 1
+  }
+  context.budget = budget
   return no()
 }
 
@@ -2454,7 +2567,7 @@ effect fn contextual<F: FontFuncs>(
           font,
           &mut context,
           &mut buffer,
-          nested,
+          &nested,
           nestedSubtables,
           atAction,
           first,
