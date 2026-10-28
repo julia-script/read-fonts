@@ -28,6 +28,7 @@ scripts/generate-unicode         # properties only, no Harfrust source dependenc
 scripts/generate                 # all data and Silk formatting
 scripts/generate --check         # committed output must be current
 silk test --manifest-path ucd/silk.toml --root src/tests.silk
+rm -rf build/llvm build/cache
 silk test --release --manifest-path ucd/silk.toml --root src/sweep.silk
 scripts/check-unicode-equivalence # full-domain source/table comparison, outside PR CI
 ```
@@ -149,11 +150,22 @@ These are **shaping-policy differences, not Unicode version changes**:
 
 ### Normalization version gap
 
-Silk dev.22's `silk.unicode` NFC/NFD implementation uses Unicode **17.0.0**.
-`ucd` deliberately does not call it: shaping consumes raw Unicode 18 pairs.
-These versions must not be assumed interchangeable. The repository's separate
-normalization comparison must characterize the Unicode 17/18 gap; the property
-generator and its equivalence checker do not claim stdlib normalization parity.
+Silk dev.22's `silk.unicode` reports Unicode **17.0.0**, but also omits 34
+nonzero combining classes already assigned in Unicode 17. Another 34 CCC
+differences are genuine Unicode 18 additions. These are not interchangeable
+normalization datasets. Reported as
+[silk-lang/silk#2487](https://github.com/silk-lang/silk/issues/2487).
+
+`scripts/check-normalization-gap` checks CCC over all 1,114,112 code-point slots,
+raw non-Hangul decomposition/composition maps, and all ten canonical invariants
+in each of Unicode 18's 20,171 normalization rows. Observed: zero raw-pair
+differences, 68 CCC differences, 134 NFC and 134 NFD mismatches. Its separately
+SHA256-pinned Unicode 17 source distinguishes stdlib data errors from version
+changes; detailed results go to `build/normalization-gap.json`.
+
+Harfrust depends on canonical ordering, so these differences matter to shaping.
+It uses `ucd`'s correct Unicode 18 properties and raw pairs and never calls
+stdlib NFC/NFD. No compiler/stdlib data is patched or vendored.
 
 ## Text algorithms
 
@@ -210,9 +222,14 @@ vertical alternates before choosing fallback orientation.
 
 ```sh
 scripts/fetch-unicode
+rm -rf build/llvm build/cache
 silk test --release --manifest-path ucd/silk.toml --root src/bidi_conformance.silk
+rm -rf build/llvm build/cache
 silk test --release --manifest-path ucd/silk.toml --root src/line_break_conformance.silk
+rm -rf build/llvm build/cache
 silk test --release --manifest-path ucd/silk.toml --root src/segmentation_conformance.silk
+rm -rf build/llvm build/cache
+silk test --release --manifest-path ucd/silk.toml --root src/normalization_conformance.silk
 ```
 
 The runners consume every data row of both bidi files and all four break-test
@@ -220,8 +237,87 @@ files, without code-point filters or skipped cases. Clear the compiler caches
 before each release invocation as noted above. PR CI runs these suites in
 parallel bounded jobs; full-domain equivalence and performance references stay
 in the scheduled/manual workflow.
+The normalization runner reconstructs canonical forms from `ucd`'s raw APIs
+inside the test only, checking all ten canonical invariants per fixture row.
+No public string-normalization implementation is duplicated.
+
+## Optional Southeast Asian dictionaries
+
+Add `ucd_dictionary` only when Thai, Lao, Khmer, or Myanmar dictionary breaking
+is needed. Ordinary `ucd` does not depend on it. `IcuDictionary.make()` implements
+`ucd.dictionary.DictionarySegmenter`; pass it to
+`ucd.line_break.withDictionary(text, options, &dictionary, &mut output)`.
+Its direct `breaks` interface returns original-byte word boundaries including
+zero and EOF. It is not a replacement for default UAX #29 word segmentation.
+
+The package ports ICU's ordered three-word lookahead, unknown-prefix handling,
+language-specific resynchronization, combining marks, and Thai suffix rules.
+Construction allocates nothing; only caller-list growth allocates during use.
+The four tries contain 179,081 entries in **2,867,684 packed bytes**.
+ICU release-78.1 commit `049e0d6a420629ac7db77256987d083a563287b5`,
+dictionaries, engine sources, rules, reference cases and license are SHA256-pinned
+by `scripts/generate-unicode-dictionaries`. Its `--offline` and `--check` modes
+support reproducible cache-only validation. The ordinary `scripts/generate`
+includes this data. No Chinese/Japanese dictionary or ICU LSTM model is shipped.
+
+All 51 extracted ICU reference cases run in the dictionary package's tests;
+expectations come from upstream, not this implementation. See
+[`ucd_dictionary/NOTICE`](../ucd_dictionary/NOTICE) for provenance and the
+UTF-8 versus UTF-16 UText minimum-span distinction.
+
+## Reference comparisons and benchmarks
+
+```sh
+cargo build --locked --release --manifest-path scripts/rust-ucd-bench/Cargo.toml --target-dir build/ucd-rust
+rm -rf build/llvm build/cache
+silk build --release --manifest-path ucd_bench/silk.toml
+scripts/bench-unicode
+scripts/bench-unicode --callgrind --iterations 1 --samples 1
+scripts/check-normalization-gap
+scripts/check-unicode-itemization
+```
+
+Benchmark defaults use the x86_64 Linux executable path, like `bench-shaping`;
+pass `--silk PATH` on other targets. `--baseline-only` runs references without
+a Silk executable. `--filter`, `--algorithm`, `--samples`, `--iterations`, and
+`--report` select workloads and JSON output. Callgrind requires Linux/Valgrind.
+The itemization comparison requires C++17, `pkg-config`, and ICU development
+files; it reports the linked version and checks 123 shared cases plus four
+explicit Script_Extensions/combining-mark differences against ICU's pinned
+ScriptRun sample. Native ICU is never linked into either Silk library.
+
+The 30 benchmark comparisons cover Latin, mixed RTL, Indic, CJK, and emoji.
+All boundary/level checksums match. Pinned references are `unicode-bidi` 0.3.18
+(Unicode 16), `unicode-linebreak` 0.1.5 (Unicode 15), `unicode-segmentation`
+1.12.0, and ICU4X segmenter 2.4.0's stable constructors. They are performance
+references, not Unicode 18 conformance oracles. ICU's non-complex word
+constructor does not support CJK, so default-word comparisons use
+`unicode-segmentation` rather than silently accepting its different boundaries.
+
+Measured on AArch64 Linux, Silk dev.22, clang 22.1.2, Rust 1.93, Valgrind 3.26:
+
+| Algorithm | Reference | Silk/reference instruction range |
+|---|---|---:|
+| Bidi | unicode-bidi | 1.38–3.32x |
+| Line breaks | unicode-linebreak | 4.92–8.47x |
+| Line breaks | ICU4X | 2.35–2.86x |
+| Graphemes | ICU4X | 1.31–1.85x |
+| Words | unicode-segmentation | 0.95–1.12x |
+| Sentences | ICU4X | 1.00–1.50x |
+
+These are whole-process measurements, including input and checksum work, not
+speed-parity claims. Boundary buffers are reused in both implementations;
+Silk line breaking stores richer layout records than the references' indices.
+Bidi uses reusable Silk workspace versus the reference's allocating API.
+Inlining token readers and hoisting context-independent AL/HL/NU rules reduced
+the Latin line workload by 33.5% instructions without changing conformance.
+The phase-1 extraction merged with no shaping instruction increases. The
+subsequent UCD table-layout cutover preserves all seven shaping checksums;
+instruction changes versus that extracted baseline range from −0.45% to +0.73%.
 
 ## Licenses
 
 The inherited implementation retains the MIT notice in `ucd/LICENSE`.
 Unicode source data retains `ucd/LICENSE-UNICODE` (Unicode License v3).
+The optional dictionary package copies ICU's complete license, including its
+Unicode License v3 and Lao/Burmese word-list notices.

@@ -16,13 +16,50 @@ env:
 
 jobs:
   unicode:
-    name: Full Unicode property sweep
+    name: Full Unicode property equivalence and sweep
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: ./.github/actions/setup-silk
-      - run: silk test --release --manifest-path ucd/silk.toml --root src/sweep.silk
+      - run: sudo apt-get update && sudo apt-get install -y libicu-dev pkg-config
+      - run: scripts/check-unicode-equivalence
+      - run: rm -rf build/llvm build/cache && silk test --release --manifest-path ucd/silk.toml --root src/sweep.silk
+      - run: scripts/check-normalization-gap
+      - run: scripts/check-unicode-itemization
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unicode-normalization-gap
+          path: build/normalization-gap.json
+
+  unicode-performance:
+    name: Unicode algorithm performance references
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-silk
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: sudo apt-get update && sudo apt-get install -y valgrind
+      - run: |
+          cargo fmt --manifest-path scripts/rust-ucd-bench/Cargo.toml --check
+          cargo clippy --locked --release --manifest-path scripts/rust-ucd-bench/Cargo.toml --target-dir build/ucd-rust -- -D warnings
+          cargo build --locked --release --manifest-path scripts/rust-ucd-bench/Cargo.toml --target-dir build/ucd-rust
+          rm -rf build/llvm build/cache
+          silk build --release --manifest-path ucd_bench/silk.toml
+      - run: scripts/bench-unicode --report build/ucd-bench/time.json
+      - if: ${{ !cancelled() }}
+        run: scripts/bench-unicode --callgrind --iterations 1 --samples 1 --report build/ucd-bench/instructions.json
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unicode-performance
+          path: build/ucd-bench/
 
   compare:
     runs-on: ubuntu-24.04

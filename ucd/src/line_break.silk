@@ -190,7 +190,7 @@ impl<'a> Reader<'a> {
     }
   }
 
-  fn scalar(self: &mut Self) -> Token {
+  fn scalar(self: &mut Self) -> Token with Intrinsic.inlineAlways() {
     if self.hasPending {
       self.hasPending = false
       return self.pending
@@ -236,7 +236,7 @@ impl<'a> Reader<'a> {
     }
   }
 
-  fn next(self: &mut Self) -> Token {
+  fn next(self: &mut Self) -> Token with Intrinsic.inlineAlways() {
     let mut token = self.scalar()
     if token.start == token.end {
       return token
@@ -440,9 +440,6 @@ fn opportunity(
   // Loose CJK prefixes/postfixes alter only the applicable side of the pair.
   let prefix = a == LineBreak.PR && !(looseCjk && left.currencyWide)
   let postfix = b == LineBreak.PO && !(looseCjk && right.currencyWide)
-  if (alpha(a) && b == LineBreak.NU) || (a == LineBreak.NU && alpha(b)) {
-    return false
-  }
   if prefix && (b == LineBreak.ID || b == LineBreak.EB || b == LineBreak.EM) {
     return false
   }
@@ -479,9 +476,6 @@ fn opportunity(
     return false
   }
   if (hangul(a) && postfix) || (prefix && hangul(b)) {
-    return false
-  }
-  if alpha(a) && alpha(b) && !dictionary {
     return false
   }
 
@@ -579,16 +573,26 @@ effect fn segment(
     }
     let dictionaryBreak = left.sa && right.sa && dictionaryIndex < dictionary.length()
       && dictionary.get(dictionaryIndex) == right.start
-    let mut allowed = opportunity(
-      left,
-      right,
-      next,
-      afterNext,
-      before,
-      &context,
-      options,
-      dictionaryBreak,
-    )
+
+    // LB23/LB25/LB28 join every AL/HL/NU pair. Resolve that context-independent
+    // block before passing five token records through the contextual rules.
+    // BreakAll has already reclassified eligible characters; SA dictionary
+    // boundaries must bypass the alphabetic no-break rule.
+    let mut allowed = false
+    if dictionaryBreak
+      || !((alpha(left.cls) || left.cls == LineBreak.NU)
+        && (alpha(right.cls) || right.cls == LineBreak.NU)) {
+      allowed = opportunity(
+        left,
+        right,
+        next,
+        afterNext,
+        before,
+        &context,
+        options,
+        dictionaryBreak,
+      )
+    }
     if options.wordBreak == WordBreakMode.BreakAll {
       while graphemeAt < right.start {
         graphemeAt = graphemes.next(text)

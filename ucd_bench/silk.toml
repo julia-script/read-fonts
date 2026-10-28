@@ -1,0 +1,7 @@
+[package]
+name = "ucd_bench"
+version = "0.1.0"
+silk-version = "0.1.0-dev.22+5cd5bc433c4e"
+
+[dependencies]
+ucd = { path = "../ucd" }

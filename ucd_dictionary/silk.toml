@@ -1,0 +1,9 @@
+[package]
+name = "ucd_dictionary"
+version = "0.1.0"
+silk-version = "0.1.0-dev.22+5cd5bc433c4e"
+kind = "library"
+exports = ["lib"]
+
+[dependencies]
+ucd = { path = "../ucd" }

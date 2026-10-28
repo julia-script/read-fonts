@@ -20,3 +20,4 @@ The 003 fix covers arithmetic but not `==` on a generic Equal conformance
 - [011 — static empty slice](011-static-empty-slice/README.md): `&[]` or an empty `const` array cannot be returned as `&'static [T]` (SEM0212); slice zero elements from an owned array instead. Reported as silk-lang/silk#2428.
 - [012 — list shifts](012-list-shift/README.md): `List.insert` and `List.remove` move the tail one element at a time instead of with a memmove; no workaround. Reported as silk-lang/silk#2431.
 - [013 — signed byte-load combining](013-signed-byte-load/README.md): widening a byte-assembled signed word prevents AArch64 load/reversal combining; mirror deltas use modular `u32` arithmetic instead. Reported as silk-lang/silk#2474.
+- [014 — missing Unicode 17 combining classes](014-unicode17-ccc/README.md): stdlib normalization claims Unicode 17 but omits 34 nonzero classes; shaping uses `ucd`'s correct properties and raw pairs. Reported as silk-lang/silk#2487.
