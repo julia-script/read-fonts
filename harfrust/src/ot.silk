@@ -357,13 +357,13 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       context.restrictSyllable = !plan.positioning && (zwj & ZWJ_PER_SYLLABLE) != 0
       context.autoZwj = (zwj & ZWJ_AUTO) != 0
       context.autoZwnj = (zwj & ZWNJ_AUTO) != 0
-      let lookup = lookupAt(&context, steps[step].lookupOffset)
+      let lookup = stepLookup(&context, &steps[step])
       let subtables = Slice.view(
         List<LookupSubtable>.asSlice(&plan.subtables),
         steps[step].firstSubtable,
         steps[step].subtableCount,
       )
-      let everywhere = enabledEverywhere(&context, step, end)
+      let everywhere = enabledEverywhere(&context, step)
       context.everywhere = everywhere
       let pairs = steps[step].pairs && context.positioning
       if !mayApply {
@@ -558,6 +558,16 @@ fn bufferDigest(buffer: &Buffer) -> SetDigest {
   return digest
 }
 
+/// A plan step's lookup, from the header fields the plan read.
+fn stepLookup<'a, 's>(context: &Context<'a, 's>, step: &LookupStep) -> Lookup<'a> {
+  return Lookup {
+    table: View.tail(&context.table, step.lookupOffset),
+    kind: step.kind,
+    flags: step.lookupFlags,
+    markSet: step.markSet,
+  }
+}
+
 /// The lookup at a plan step's cached offset.
 fn lookupAt<'a, 's>(context: &Context<'a, 's>, offset: usize) -> Lookup<'a> {
   let table = View.tail(&context.table, offset)
@@ -653,7 +663,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
   let mut i: usize = 0
   while i < steps.length {
     if steps[i].tag == tag && SetDigest.mayHave(&steps[i].digest, glyphs[0]) {
-      let lookup = lookupAt(&context, steps[i].lookupOffset)
+      let lookup = stepLookup(&context, &steps[i])
       if glyphs.length > 1 && lookup.kind <= 3 {
         i = i + 1
         continue
@@ -743,19 +753,8 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
 
 /// Whether `enabled` is nonzero for every glyph: without user features, a required step or a
 /// plain step with a nonzero value enables the lookup whatever the glyph.
-fn enabledEverywhere(context: &Context, first: usize, last: usize) -> bool {
-  if context.features.length != 0 {
-    return false
-  }
-  let mut i = first
-  while i < last {
-    let step = &context.steps[i]
-    if step.required || (step.checks == 0 && step.value != 0) {
-      return true
-    }
-    i = i + 1
-  }
-  return false
+fn enabledEverywhere(context: &Context, first: usize) -> bool {
+  return context.features.length == 0 && context.steps[first].everywhere
 }
 
 /// Whether `lookup` skips `glyph` by its GDEF class. The class checks are inlined into every
