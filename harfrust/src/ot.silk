@@ -227,6 +227,33 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     return
   }
   let steps = List<LookupStep>.asSlice(&plan.steps)
+
+  // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
+  // glyph walk. Substitutions add their glyphs to it, so only a pause, which can change glyphs
+  // in other ways, refreshes it, as in harfrust.
+  buffer.digest = bufferDigest(&buffer.*)
+  let mut digestStale = false
+  let tracing = trace.enabled(font, &buffer.*)
+  let paused = complex.pausedStages(buffer.shaper, buffer.script)
+
+  // Without pauses or tracing, a table none of whose lookups may apply to the glyphs does
+  // nothing, so it returns before the context is set up.
+  if !tracing && (plan.positioning || paused == 0) && buffer.successful
+    && usize.saturatingMultiply(buffer.maxOperations, 64) != 0 {
+    let mut any = false
+    let mut i: usize = 0
+    while i < steps.length {
+      if stepMayApply(&steps[i], &buffer.digest, &buffer.*) {
+        any = true
+        break
+      }
+      i = i + 1
+    }
+    if !any {
+      drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
+      return
+    }
+  }
   let length = Buffer.len(&buffer.*)
   let maxLength = buffer.maxLength
   let mut context = Context {
@@ -279,12 +306,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     stageLimit = steps[steps.length - 1].stage + 1
   }
 
-  // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
-  // glyph walk. Substitutions add their glyphs to it, so only a pause, which can change glyphs
-  // in other ways, refreshes it, as in harfrust.
-  let mut digestStale = true
-  let tracing = trace.enabled(font, &buffer.*)
-  let paused = complex.pausedStages(buffer.shaper, buffer.script)
   while stage < stageLimit && context.budget != 0 && buffer.successful {
     if !plan.positioning && stage < 64 && (u64.shiftRight(paused, u32.toU64(stage)) & 1) != 0 {
       if run complex.pause(font, &mut buffer, plan, stage, features) {
