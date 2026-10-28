@@ -107,7 +107,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   // Only the universal machine skips glyphs, so it alone keeps the included glyphs'
   // indices; for the others position p is glyph p.
   let mut indices = List<usize>.make()
-  let mut len = usize.toI32(length)
+  let mut len = length
   if machine == 4 {
     run List<usize>.reserve(&mut indices, length + 1)
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
@@ -129,7 +129,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
       }
       i = i + 1
     }
-    len = usize.toI32(List<usize>.length(&indices))
+    len = List<usize>.length(&indices)
     run List<usize>.append(&mut indices, length)
   }
   let mut breakFlags: u32 = 1
@@ -139,24 +139,32 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   let positions = List<usize>.asSlice(&indices)
   let skips = machine == 4
   let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-  let mut p: i32 = 0
-  let mut ts: i32 = 0
-  let mut te: i32 = 0
+
+  // Per-state flags: whether entering the state starts a token, and whether leaving it
+  // resets the token start.
+  let toState = Slice.view(states, 4, stateCount)
+  let fromState = Slice.view(states, 4 + stateCount, stateCount)
+
+  // Positions are unsigned; stepping back from 0 wraps past `len` and ends the scan, as a
+  // negative position would.
+  let mut p: usize = 0
+  let mut ts: usize = 0
+  let mut te: usize = 0
   let mut act: u8 = 0
   let mut state = be16(states, 0)
   let mut serial: u32 = 1
   let mut budget = length * 8 + 16
   while p <= len && budget != 0 {
     budget = budget - 1
-    if state >= stateCount || p < 0 {
+    if state >= stateCount {
       break
     }
-    if states[4 + state] != 0 {
+    if toState[state] != 0 {
       ts = p
     }
     let mut category: usize = 59
     if p < len {
-      let mut at = i32.toUsize(p)
+      let mut at = p
       if skips {
         at = positions[at]
       }
@@ -183,18 +191,18 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
           te = p
         }
         3 => {
-          p = p - 1
+          p = usize.wrappingSubtract(p, 1)
         }
         4 => {
-          p = te - 1
+          p = usize.wrappingSubtract(te, 1)
         }
         5 => {
           act = arg
         }
         6 => {
-          if ts >= 0 && ts < te && te <= len {
-            let mut start = i32.toUsize(ts)
-            let mut end = i32.toUsize(te)
+          if ts < te && te <= len {
+            let mut start = ts
+            let mut end = te
             if skips {
               start = positions[start]
               end = positions[end]
@@ -219,10 +227,10 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if p == len {
       break
     }
-    if states[4 + stateCount + state] != 0 {
+    if state < stateCount && fromState[state] != 0 {
       ts = 0
     }
-    p = p + 1
+    p = usize.wrappingAdd(p, 1)
   }
 }
 
@@ -234,19 +242,31 @@ fn markSyllable(
   end: usize,
   value: u32,
   flags: u32,
-) -> () with Intrinsic.inlineNever() {
+) -> () with Intrinsic.inlineAlways() {
   if start >= end || end > glyphs.length {
     return
   }
   let span = Slice.viewMut(&mut glyphs, start, end - start)
-  let mut cluster: u32 = 4294967295
-  let mut i: usize = 0
+  let first = span[0].info.cluster
+  let mut cluster = first
+  let mut mixed = false
+  span[0].syllable = value
+  let mut i: usize = 1
   while i < span.length {
     span[i].syllable = value
-    if span[i].info.cluster < cluster {
-      cluster = span[i].info.cluster
+    let other = span[i].info.cluster
+    if other != first {
+      mixed = true
+      if other < cluster {
+        cluster = other
+      }
     }
     i = i + 1
+  }
+
+  // Glyphs that all share one cluster are all in the lowest one.
+  if !mixed {
+    return
   }
   i = 0
   while i < span.length {
