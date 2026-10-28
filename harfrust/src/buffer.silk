@@ -9,6 +9,7 @@ import unicode
 import silk.list { List }
 import silk.ownership { Copy }
 import silk.string { String, ScalarStep }
+import set_digest { SetDigest }
 import silk.option { Option }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.char
@@ -241,6 +242,9 @@ pub struct Buffer {
   pub savedInput: List<Glyph>,
   /// Scratch for `ot.apply`: contextual input positions, 64 per lookup nesting depth.
   pub positionStack: List<usize>,
+  /// For `ot.apply`: a digest of the glyphs, which substitutions add their glyphs to. It may hold
+  /// glyphs that are gone, as harfrust's does.
+  pub digest: SetDigest,
 }
 
 impl Buffer {
@@ -276,6 +280,7 @@ impl Buffer {
       outLen: 0,
       savedInput: List<Glyph>.make(),
       positionStack: List<usize>.make(),
+      digest: SetDigest.new(),
     }
   }
 
