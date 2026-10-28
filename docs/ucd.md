@@ -320,18 +320,23 @@ references, not Unicode 18 conformance oracles. ICU's non-complex word
 constructor does not support CJK, so default-word comparisons use
 `unicode-segmentation` rather than silently accepting its different boundaries.
 
-Measured on AArch64 Linux, Silk dev.23, clang 22.1.2, Rust 1.93, Valgrind 3.26.
+Measured on x86_64 Linux, Silk dev.25, clang 22.1.8, Rust 1.97, Valgrind 3.22,
+with 10 iterations so per-run startup does not dominate.
 [`ucd_bench/baseline.json`](../ucd_bench/baseline.json) records all 30 counts,
 checksums, reference versions and the measured source revision:
 
 | Algorithm | Reference | Silk/reference instruction range |
 |---|---|---:|
-| Bidi | unicode-bidi | 1.32–3.18x |
-| Line breaks | unicode-linebreak | 4.66–8.05x |
-| Line breaks | ICU4X | 2.25–2.72x |
-| Graphemes | ICU4X | 1.29–1.82x |
-| Words | unicode-segmentation | 0.93–1.10x |
-| Sentences | ICU4X | 0.98–1.47x |
+| Bidi | unicode-bidi | 0.24–0.79x |
+| Line breaks | unicode-linebreak | 3.50–4.54x |
+| Line breaks | ICU4X | 1.20–1.38x |
+| Graphemes | ICU4X | 0.38–1.19x |
+| Words | unicode-segmentation | 0.66–0.79x |
+| Sentences | ICU4X | 0.82–1.36x |
+
+`unicode-linebreak` implements only the default UAX #14 pair table: no CSS
+strictness, word-break or hyphenation options and no dictionary segmentation
+for SA scripts, which the Silk line breaker evaluates per pair.
 
 These are whole-process measurements, including input and checksum work, not
 speed-parity claims. Boundary buffers are reused in both implementations;
