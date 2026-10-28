@@ -202,6 +202,114 @@ def derive_algorithm_tables(props, enums):
     props["graphemeInfo"] = grapheme
 
 
+# Context-free line-break pair decisions under the untailored profile, indexed
+# [left * classes + right]. RULES pairs fall back to ucd/src/line_break.silk,
+# whose rules this walk mirrors in order; keep the two in sync.
+LINE_RULES, LINE_KEEP, LINE_BREAK = 0, 1, 2
+
+
+def line_pairs(enums):
+    names = enums["lineBreak"][1]
+    def decide(a, b):
+        hard = lambda c: c in ("BK", "CR", "LF", "NL")
+        alpha = lambda c: c in ("AL", "HL")
+        hangul = lambda c: c in ("JL", "JV", "JT", "H2", "H3")
+        aksara = ("AK", "AS", "AL")  # AL: U+25CC counts as an aksara.
+        # Resolved before tokens reach the segmenter.
+        if a in ("AI", "SA", "SG", "XX", "CJ", "CM", "ZWJ") or b in ("AI", "SA", "SG", "XX", "CJ", "CM", "ZWJ"):
+            return LINE_RULES
+        if (alpha(a) or a == "NU") and (alpha(b) or b == "NU"):
+            return LINE_KEEP
+        if a == "CR" and b == "LF":
+            return LINE_KEEP
+        if hard(a):
+            return LINE_BREAK
+        if hard(b) or b in ("SP", "ZW"):
+            return LINE_KEEP
+        # Past a space the rules depend on the last non-space class.
+        if a == "SP":
+            return LINE_RULES
+        if a == "ZW":
+            return LINE_BREAK
+        if a in ("WJ", "GL") or b == "WJ":
+            return LINE_KEEP
+        if b == "GL" and a not in ("HY", "HH"):
+            return LINE_KEEP
+        if b in ("CL", "CP", "SY", "EX"):
+            return LINE_KEEP
+        if a == "OP":
+            return LINE_KEEP
+        # Quotation rules read Pi/Pf, East Asian width and neighbours.
+        if a == "QU" or b == "QU":
+            return LINE_RULES
+        if b == "IS":
+            return LINE_KEEP
+        if a in ("CL", "CP") and b == "NS":
+            return LINE_KEEP
+        if a == "B2" and b == "B2":
+            return LINE_KEEP
+        if a == "CB" or b == "CB":
+            return LINE_BREAK
+        # LB20a and LB21a look at the class before the hyphen.
+        if a in ("HY", "HH") and alpha(b):
+            return LINE_RULES
+        if b in ("BA", "HH", "HY", "NS"):
+            return LINE_KEEP
+        if a == "BB":
+            return LINE_KEEP
+        if a in ("HY", "HH"):
+            return LINE_RULES
+        if a == "SY" and b == "HL":
+            return LINE_KEEP
+        if b == "IN":
+            return LINE_KEEP
+        if a == "PR" and b in ("ID", "EB", "EM"):
+            return LINE_KEEP
+        if a in ("ID", "EB", "EM") and b == "PO":
+            return LINE_KEEP
+        if (a in ("PR", "PO") and alpha(b)) or (alpha(a) and b in ("PR", "PO")):
+            return LINE_KEEP
+        # LB25's numeric suffix: NU decides alone, SY/IS/CL/CP need history.
+        if b in ("PO", "PR"):
+            if a == "NU":
+                return LINE_KEEP
+            if a in ("SY", "IS", "CL", "CP"):
+                return LINE_RULES
+        if a in ("PR", "PO"):
+            if b == "NU":
+                return LINE_KEEP
+            if b == "OP":
+                return LINE_RULES
+        if b == "NU":
+            if a in ("HY", "IS", "NU"):
+                return LINE_KEEP
+            if a == "SY":
+                return LINE_RULES
+        if (a == "JL" and b in ("JL", "JV", "H2", "H3")) or (a in ("JV", "H2") and b in ("JV", "JT")) \
+                or (a in ("JT", "H3") and b == "JT") or (hangul(a) and b == "PO") or (a == "PR" and hangul(b)):
+            return LINE_KEEP
+        # LB28a reads the code point (U+25CC) and the tokens around the pair.
+        if a == "AP" and b in ("AK", "AS"):
+            return LINE_KEEP
+        if a in ("AK", "AS") and b in ("VF", "VI"):
+            return LINE_KEEP
+        if (a == "AP" and b == "AL") or (a == "AL" and b in ("VF", "VI")) or (a == "VI" and b in ("AK", "AL")) \
+                or (a in aksara and b in aksara):
+            return LINE_RULES
+        if a == "IS" and alpha(b):
+            return LINE_KEEP
+        # LB30 reads East Asian width, LB30a the regional indicator count.
+        if ((alpha(a) or a == "NU") and b == "OP") or (a == "CP" and (alpha(b) or b == "NU")) or (a == b == "RI"):
+            return LINE_RULES
+        if a == "EB" and b == "EM":
+            return LINE_KEEP
+        # Unassigned pictographs carry an emoji flag.
+        if b == "EM":
+            return LINE_RULES
+        return LINE_BREAK
+    return bytes(decide(a, b) for a in names for b in names)
+
+
 def width(values):
     largest = max(values, default=0)
     return 1 if largest < 256 else 2 if largest < 65536 else 4
@@ -323,6 +431,10 @@ def generate():
             api.append(f"// Package-internal: converts a packed table value.\npub fn {fn}Value(value: u32) -> {typ} with Intrinsic.inlineAlways() {{\n  return match value {{\n")
             api.extend(f"    {value} => {typ}.{variant}\n" for variant, value in zip(variants, numbers) if variant != fallback)
             api.append(f"    _ => {typ}.{fallback}\n  }}\n}}\n")
+            if fn == "lineBreak":
+                api.append(f"// Package-internal: the class's row and column in Data.linePairs.\npub fn lineBreakNumber(c: {typ}) -> usize with Intrinsic.inlineAlways() {{\n  return match c {{\n")
+                api.extend(f"    {typ}.{variant} => {i}\n" for i, variant in enumerate(variants))
+                api.append("  }\n}\n")
             if fn == "combiningClass":
                 api.append(f"impl {typ} {{\n  pub fn number(self: Self) -> u8 with Intrinsic.inlineAlways() {{\n    return match self {{\n")
                 api.extend(f"      {typ}.{variant} => {value}\n" for variant, value in zip(variants, numbers))
@@ -335,6 +447,7 @@ def generate():
     for size in (2, 4):
         expression = " | ".join(f"u32.shiftLeft(u8.toU32(data[index + {i}]), {(size - i - 1) * 8})" if i + 1 < size else f"u8.toU32(data[index + {i}])" for i in range(size))
         data.append(f"pub fn be{size * 8}(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {{ return {expression} }}\n")
+    data.append(byte_function("linePairs", line_pairs(enums)))
     data.append(byte_function("decompositions", b"".join(struct.pack(">II", *pair) for pair in pairs)))
     data.append(byte_function("compositions", b"".join(struct.pack(">III", *row) for row in compositions)))
     offsets, members = [], []
