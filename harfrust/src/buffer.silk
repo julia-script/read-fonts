@@ -4,7 +4,6 @@ import direction { Direction }
 import script { Script }
 import flags { BufferFlags, GlyphFlags }
 import silk.slice { Slice }
-import silk.pointer { Pointer }
 import font_types.lib { GlyphId }
 import unicode
 import silk.list { List }
@@ -481,42 +480,12 @@ impl Buffer {
     }
   }
 
-  /// Makes room for `count` copies of `item` at `at`, moving the later glyphs right in one pass.
-  /// `List.insert` moves the tail once per glyph and one element at a time.
+  /// Inserts `count` copies of `item` at `at`, moving the later glyphs right in one pass.
+  /// `List.insert` moves the tail once per glyph.
   pub effect fn insertCopies(self: &mut Self, at: usize, count: usize, item: Glyph) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
-    let length = Buffer.len(&self.*)
-    run List<Glyph>.appendRepeated(&mut self.glyphs, item, count)
-
-    // The tail moves right once, however many copies are inserted. `moved` traps when `at` is
-    // past the end, so the raw moves stay in bounds; through pointers they need no bounds checks,
-    // which the copy loop over a slice keeps, and LLVM unrolls them into block moves.
-    let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
-    let moved = length - at
-    match move Pointer.nonNullManyMut<Glyph>(Pointer.fromMutSlice<Glyph>(&mut slots)) {
-      Option<[*]mut Glyph>.Some { value: base } => {
-        unsafe {
-          let source = Pointer.assumeManyMut<Glyph>(Pointer.atMut<Glyph>(base, at))
-          let target = Pointer.assumeManyMut<Glyph>(Pointer.atMut<Glyph>(base, at + count))
-          let mut i = moved
-          while i > 0 {
-            i = i - 1
-            Pointer.write<Glyph>(
-              Pointer.atMut<Glyph>(target, i),
-              Pointer.read<Glyph>(Pointer.atMut<Glyph>(source, i)),
-            )
-          }
-        }
-      }
-      _ => {}
-    }
-    let tail = Slice.viewMut(&mut slots, at, count)
-    let mut n: usize = 0
-    while n < count {
-      tail[n] = item
-      n = n + 1
-    }
+    run List<Glyph>.insertRepeated(&mut self.glyphs, at, item, count)
   }
 
   /// Removes the glyphs at `positions`, which ascend, moving the later glyphs left in one pass.
