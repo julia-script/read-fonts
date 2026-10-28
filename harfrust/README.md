@@ -152,13 +152,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.77998e+07 | 65.3M | 1.04× |
-| Roboto / English words | 9.12583e+07 | 87.9M | 1.04× |
-| Noto Nastaliq Urdu / Persian Little Prince | 9.05961e+08 | 789M | 1.15× |
-| Noto Nastaliq Urdu / Persian words | 8.39945e+08 | 847M | 0.99× |
-| Noto Sans Devanagari / Hindi words | 2.46665e+08 | 225M | 1.10× |
-| Amiri / Persian Little Prince | 4.07379e+08 | 374M | 1.09× |
-| Source Serif Variable / react-dom | 8.70506e+08 | 1,004M | 0.87× |
+| Roboto / English Little Prince | 6.77993e+07 | 65.3M | 1.04× |
+| Roboto / English words | 9.12578e+07 | 87.9M | 1.04× |
+| Noto Nastaliq Urdu / Persian Little Prince | 9.04066e+08 | 789M | 1.15× |
+| Noto Nastaliq Urdu / Persian words | 8.38566e+08 | 847M | 0.99× |
+| Noto Sans Devanagari / Hindi words | 2.46664e+08 | 225M | 1.10× |
+| Amiri / Persian Little Prince | 4.05481e+08 | 374M | 1.08× |
+| Source Serif Variable / react-dom | 8.70505e+08 | 1,004M | 0.87× |
 
 The geometric mean is **1.03×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class

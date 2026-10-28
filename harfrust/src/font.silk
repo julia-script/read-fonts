@@ -812,7 +812,7 @@ impl<'a, 's, F> ConfiguredShaper<'a, 's, F> {
       let slot = u32.toUsize(cp & 127)
       let mut glyph: u32 = 0
       if u64.shiftRight(cache[slot], 32) == u32.toU64(cp) {
-        glyph = u64.toU32(cache[slot] & 0xffffffff)
+        glyph = u64.wrappingToU32(cache[slot])
       } else {
         glyph = ShaperData.nominalGlyph(self.data, cp)
         cache[slot] = u64.shiftLeft(u32.toU64(cp), 32) | u32.toU64(glyph)
