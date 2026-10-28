@@ -152,9 +152,9 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.20733e+07 | 6.53272e+07 | 0.95× |
-| Roboto / English words | 8.5886e+07 | 8.7936e+07 | 0.98× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.0692e+08 | 7.89359e+08 | 1.02× |
+| Roboto / English Little Prince | 6.20732e+07 | 6.53272e+07 | 0.95× |
+| Roboto / English words | 8.58857e+07 | 8.7936e+07 | 0.98× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.03819e+08 | 7.89359e+08 | 1.02× |
 | Noto Nastaliq Urdu / Persian words | 7.78993e+08 | 8.46944e+08 | 0.92× |
 | Noto Sans Devanagari / Hindi words | 2.23056e+08 | 2.25202e+08 | 0.99× |
 | Amiri / Persian Little Prince | 3.439e+08 | 3.73885e+08 | 0.92× |
@@ -276,6 +276,7 @@ Single, multiple, alternate and ligature substitution steps do the same with `su
 A multiple substitution moves the rest of the buffer once, however many glyphs it inserts.
 Substituted glyphs are updated in place, not copied out of the buffer and back.
 An output pass appends each passed-over glyph directly, in `nextGlyph`, instead of through a slice copy.
+When the output outgrows the input, the output so far moves out in slices, not one glyph at a time.
 A format 3 rule that a context step already checked is not checked again in `contextual`.
 Adding text counts scalars with a loop that vectorizes and converts byte offsets to clusters without a check per scalar.
 The remaining gap is mostly per-glyph table walking that harfrust

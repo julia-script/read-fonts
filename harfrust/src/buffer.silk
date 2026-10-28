@@ -1638,8 +1638,16 @@ impl Buffer {
       run List<Glyph>.reserve(&mut self.out, self.idx + numOut)
       let mut k: usize = 0
       while k < self.outLen {
-        run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[k])
-        k = k + 1
+        // Short runs keep each copy a vector loop rather than a string move.
+        let mut chunk = self.outLen - k
+        if chunk > 24 {
+          chunk = 24
+        }
+        run List<Glyph>.appendSlice(
+          &mut self.out,
+          Slice.view(List<Glyph>.asSlice(&self.glyphs), k, chunk),
+        )
+        k = k + chunk
       }
     }
     return true
