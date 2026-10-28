@@ -157,7 +157,7 @@ builds. Lower is better.
 | Noto Nastaliq Urdu / Persian Little Prince | 8.85748e+08 | 7.89359e+08 | 1.12× |
 | Noto Nastaliq Urdu / Persian words | 8.15716e+08 | 8.46944e+08 | 0.96× |
 | Noto Sans Devanagari / Hindi words | 2.34365e+08 | 2.25202e+08 | 1.04× |
-| Amiri / Persian Little Prince | 4.02706e+08 | 3.73885e+08 | 1.08× |
+| Amiri / Persian Little Prince | 3.98504e+08 | 3.73885e+08 | 1.07× |
 | Source Serif Variable / react-dom | 8.60951e+08 | 1.00439e+09 | 0.86× |
 
 The geometric mean is **1.01×**, down from 11.25× for the initial port. Plans
@@ -263,6 +263,7 @@ A glyph's small properties are bytes, so a glyph is 64 bytes and moves cost less
 Each lookup step stores its joiner handling, worked out once per plan rather than
 from its tag on every apply, along with its lookup's header fields and whether the
 step's group is on for every glyph.
+`calt`'s Hangul jamo check rejects code points below U+1100 with one compare.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
