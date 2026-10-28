@@ -49,8 +49,6 @@ struct Context<'a, 's> {
   restrictSyllable: bool,
   /// Whether multiple and ligature substitutions may start an output pass at their first edit.
   outputPass: bool,
-  // Ligature component positions, reused so each candidate ligature skips a 512-byte memset.
-  positions: [usize; 64],
   classTables: &'s [ClassTable],
   classValues: &'s [u16],
   /// Per rule set digests of contextual subtables' second input values (`OtPlan.ruleDigests`).
@@ -231,7 +229,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     shaper: buffer.shaper,
     restrictSyllable: false,
     outputPass: false,
-    positions: [0; 64],
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -593,7 +590,6 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     shaper: 0,
     restrictSyllable: false,
     outputPass: false,
-    positions: [0; 64],
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -611,6 +607,10 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     varStore: readVarStore(font.data.gdef, List<F2Dot14>.length(&font.coords)),
     variable: List<F2Dot14>.length(&font.coords) != 0,
   }
+
+  // One buffer serves every probed lookup; a lookup that applies ends the probe, and one that
+  // does not leaves only its glyphs to replace.
+  let mut buffer = Buffer.new()
   let mut i: usize = 0
   while i < steps.length {
     if steps[i].tag == tag && SetDigest.mayHave(&steps[i].digest, glyphs[0]) {
@@ -619,7 +619,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
         i = i + 1
         continue
       }
-      let mut buffer = Buffer.new()
+      List<Glyph>.clear(&mut buffer.glyphs)
       let mut j: usize = 0
       while j < glyphs.length {
         let mut item = Glyph.new(0, 0)
@@ -989,6 +989,7 @@ effect fn applyLookup<F: FontFuncs>(
         at,
         first,
         last,
+        depth,
       )
     }
     if result.yes {
@@ -1172,6 +1173,7 @@ effect fn substitute<F: FontFuncs>(
   at: usize,
   first: usize,
   last: usize,
+  depth: usize,
 ) -> Applied
   ! OutOfMemoryError
   ? &mut Allocator {
@@ -1399,6 +1401,14 @@ effect fn substitute<F: FontFuncs>(
       }
       return no()
     }
+
+    // Component positions live in this nesting depth's slot of the buffer's position stack,
+    // which a contextual lookup at this depth would use and none is applying.
+    let base = depth * 64
+    let stackLength = List<usize>.length(&buffer.positionStack)
+    if stackLength < base + 64 {
+      run List<usize>.appendRepeated(&mut buffer.positionStack, 0, base + 64 - stackLength)
+    }
     let mut i: usize = 0
     while i < count && context.budget != 0 && buffer.successful {
       if haveSecond && width == 2 {
@@ -1438,7 +1448,7 @@ effect fn substitute<F: FontFuncs>(
       if wide {
         matchKind = 4
       }
-      context.positions[0] = at
+
       let mut matched: usize = 1
       let mut cursor = at
       while matched < components {
@@ -1469,15 +1479,16 @@ effect fn substitute<F: FontFuncs>(
           ) {
           break
         }
-        context.positions[matched] = cursor
+        List<usize>.set(&mut buffer.positionStack, base + matched, cursor)
         matched = matched + 1
       }
       if matched == components {
+        List<usize>.set(&mut buffer.positionStack, base, at)
         drop run trace.indices(
           font,
           &buffer.*,
           "ligating glyphs at ",
-          Slice.view(&context.positions, 0, components),
+          Slice.view(List<usize>.asSlice(&buffer.positionStack), base, components),
           0,
         )
         Buffer.mergeInputClusters(&mut buffer, at, cursor + 1)
@@ -1488,7 +1499,10 @@ effect fn substitute<F: FontFuncs>(
         let mut total = Glyph.ligNumComps(&original)
         let mut n: usize = 1
         while n < components {
-          let part = List<Glyph>.get(&buffer.glyphs, context.positions[n])
+          let part = List<Glyph>.get(
+            &buffer.glyphs,
+            List<usize>.get(&buffer.positionStack, base + n),
+          )
           if part.glyphClass != 3 {
             baseLigature = false
             markLigature = false
@@ -1518,7 +1532,7 @@ effect fn substitute<F: FontFuncs>(
         n = 1
         while p <= cursor {
           let mut part = List<Glyph>.get(&buffer.glyphs, p)
-          if n < components && p == context.positions[n] {
+          if n < components && p == List<usize>.get(&buffer.positionStack, base + n) {
             n = n + 1
             lastId = part.ligatureId
             lastNum = Glyph.ligContribution(&part)
@@ -1559,12 +1573,13 @@ effect fn substitute<F: FontFuncs>(
           // The ligature goes to the output; the glyphs between its components move up to
           // the components' end and stay unread, as they follow the ligature.
           run Buffer.nextGlyph(&mut buffer)
+          let positions = Slice.view(List<usize>.asSlice(&buffer.positionStack), base, components)
           let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
           let mut write = cursor + 1
           let mut read = cursor
           let mut m = components - 1
           while read > at {
-            if m != 0 && read == context.positions[m] {
+            if m != 0 && read == positions[m] {
               m = m - 1
             } else {
               write = write - 1
@@ -1575,7 +1590,12 @@ effect fn substitute<F: FontFuncs>(
           buffer.idx = write
           return yes(at + 1)
         }
-        Buffer.removeSorted(&mut buffer, Slice.view(&context.positions, 1, components - 1))
+        let stack = Intrinsic.replace(buffer.positionStack, List<usize>.make())
+        Buffer.removeSorted(
+          &mut buffer,
+          Slice.view(List<usize>.asSlice(&stack), base + 1, components - 1),
+        )
+        buffer.positionStack = move stack
         drop run trace.indexed(font, &buffer.*, "ligated glyph at ", at, "")
         return yes(at + 1)
       }
