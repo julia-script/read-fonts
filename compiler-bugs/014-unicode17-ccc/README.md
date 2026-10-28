@@ -1,7 +1,7 @@
 # 014 — Unicode 17 combining classes missing from normalization
 
 Reported as [silk-lang/silk#2487](https://github.com/silk-lang/silk/issues/2487).
-Reproduced with Silk `0.1.0-dev.22+5cd5bc433c4e` on aarch64-apple-darwin.
+Reproduced with Silk `0.1.0-dev.23+538c9053f62a` on aarch64-apple-darwin.
 
 From this directory:
 

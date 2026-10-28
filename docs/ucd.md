@@ -150,7 +150,7 @@ These are **shaping-policy differences, not Unicode version changes**:
 
 ### Normalization version gap
 
-Silk dev.22's `silk.unicode` reports Unicode **17.0.0**, but also omits 34
+Silk dev.23's `silk.unicode` reports Unicode **17.0.0**, but also omits 34
 nonzero combining classes already assigned in Unicode 17. Another 34 CCC
 differences are genuine Unicode 18 additions. These are not interchangeable
 normalization datasets. Reported as
@@ -294,26 +294,29 @@ references, not Unicode 18 conformance oracles. ICU's non-complex word
 constructor does not support CJK, so default-word comparisons use
 `unicode-segmentation` rather than silently accepting its different boundaries.
 
-Measured on AArch64 Linux, Silk dev.22, clang 22.1.2, Rust 1.93, Valgrind 3.26:
+Measured on AArch64 Linux, Silk dev.23, clang 22.1.2, Rust 1.93, Valgrind 3.26.
+[`ucd_bench/baseline.json`](../ucd_bench/baseline.json) records all 30 counts,
+checksums, reference versions and the measured source revision:
 
 | Algorithm | Reference | Silk/reference instruction range |
 |---|---|---:|
-| Bidi | unicode-bidi | 1.38–3.32x |
-| Line breaks | unicode-linebreak | 4.92–8.47x |
-| Line breaks | ICU4X | 2.35–2.86x |
-| Graphemes | ICU4X | 1.31–1.85x |
-| Words | unicode-segmentation | 0.95–1.12x |
-| Sentences | ICU4X | 1.00–1.50x |
+| Bidi | unicode-bidi | 1.32–3.18x |
+| Line breaks | unicode-linebreak | 4.66–8.05x |
+| Line breaks | ICU4X | 2.25–2.72x |
+| Graphemes | ICU4X | 1.29–1.82x |
+| Words | unicode-segmentation | 0.93–1.10x |
+| Sentences | ICU4X | 0.98–1.47x |
 
 These are whole-process measurements, including input and checksum work, not
 speed-parity claims. Boundary buffers are reused in both implementations;
 Silk line breaking stores richer layout records than the references' indices.
 Bidi uses reusable Silk workspace versus the reference's allocating API.
 Inlining token readers and hoisting context-independent AL/HL/NU rules reduced
-the Latin line workload by 33.5% instructions without changing conformance.
-The phase-1 extraction merged with no shaping instruction increases. The
-subsequent UCD table-layout cutover preserves all seven shaping checksums;
-instruction changes versus that extracted baseline range from −0.45% to +0.73%.
+the Latin line workload by 33.5% instructions on dev.22 without changing
+conformance. The phase-1 extraction merged with no shaping instruction
+increases. On dev.23, the subsequent UCD table-layout cutover preserves all
+seven shaping checksums versus main `487488c`; instruction changes range from
+−0.48% to +0.74%, with a +0.12% geometric mean.
 
 ## Licenses
 
