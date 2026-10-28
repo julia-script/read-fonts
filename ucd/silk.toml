@@ -3,4 +3,4 @@ name = "ucd"
 version = "0.1.0"
 silk-version = "0.1.0-dev.23+538c9053f62a"
 kind = "library"
-exports = ["lib"]
+exports = ["lib", "bidi", "segmentation", "line_break", "dictionary", "itemization", "vertical", "text", "utf8"]

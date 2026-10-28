@@ -1,0 +1,37 @@
+//! Allocation-free scalar decoding for byte-oriented text algorithms.
+//! Invalid UTF-8 consumes one byte and yields U+FFFD; offsets always refer to input bytes.
+import silk.ownership { Copy }
+import silk.utf8_decoder { Utf8Decoder, Utf8Step }
+import silk.u8
+
+pub struct Decoded {
+  pub cp: u32,
+  pub next: usize,
+}
+
+impl Copy for Decoded {}
+
+pub fn decode(bytes: &[u8], at: usize) -> Decoded with Intrinsic.inline() {
+  if at >= bytes.length {
+    return Decoded { cp: 0xfffd, next: bytes.length }
+  }
+  if bytes[at] < 128 {
+    return Decoded { cp: u8.toU32(bytes[at]), next: at + 1 }
+  }
+  let mut decoder = Utf8Decoder.make()
+  let mut cursor = at
+  while cursor < bytes.length && cursor - at < 4 {
+    let step = Utf8Decoder.step(&mut decoder, bytes[cursor], cursor)
+    cursor = cursor + 1
+    match &step {
+      Utf8Step.Scalar { value } => {
+        return Decoded { cp: value, next: cursor }
+      }
+      Utf8Step.Invalid { offset: _ } => {
+        return Decoded { cp: 0xfffd, next: at + 1 }
+      }
+      Utf8Step.NeedMore => {}
+    }
+  }
+  return Decoded { cp: 0xfffd, next: at + 1 }
+}

@@ -1,0 +1,298 @@
+//! Full Unicode 18 BidiTest and BidiCharacterTest conformance, through L2.
+//! Run from the repository root after scripts/fetch-unicode.
+//! Every data row and every selected BidiTest paragraph-direction bit executes.
+import bidi { BidiWorkspace, ParagraphDirection, analyzeClasses, analyzeCodepoints }
+import lib { BidiClass }
+import test_support as Scan
+import silk.testing { Testing, AssertionError }
+import silk.allocator { Allocator, OutOfMemoryError }
+import silk.list { List }
+import silk.option { Option }
+import silk.bytes { Bytes }
+import silk.filesystem { Path, FileSystem, FileError }
+import silk.os_filesystem { OsFileSystem }
+import silk.native_host_input { NativeHostInput }
+import silk.host_input { HostInputError }
+import silk.effect { Effect }
+import silk.u8
+import silk.u32
+
+// Parse failures are failures of the runner, never a reason to skip a case.
+effect fn integer(bytes: &[u8], radix: u32) -> u32
+  ! AssertionError<'static> {
+  let result = Scan.number(Scan.trim(bytes), radix)
+  run Testing.expect(!result.isNone(), "invalid conformance integer")
+  return result.unwrapOr(0)
+}
+
+effect fn numbers(bytes: &[u8], radix: u32, allowRemoved: bool, output: &mut List<u32>) -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  output.clear()
+  let mut at: usize = 0
+  while at < bytes.length {
+    let word = Scan.view(bytes, Scan.word(bytes, &mut at))
+    if word.length == 0 {
+      break
+    }
+    if allowRemoved && Scan.equal(word, b"x") {
+      run output.append(u32.MAX)
+    } else {
+      run output.append(run integer(word, radix))
+    }
+  }
+}
+
+effect fn parseClass(word: &[u8]) -> BidiClass
+  ! AssertionError<'static> {
+  if Scan.equal(word, b"L") {
+    return BidiClass.L
+  }
+  if Scan.equal(word, b"R") {
+    return BidiClass.R
+  }
+  if Scan.equal(word, b"AL") {
+    return BidiClass.AL
+  }
+  if Scan.equal(word, b"EN") {
+    return BidiClass.EN
+  }
+  if Scan.equal(word, b"AN") {
+    return BidiClass.AN
+  }
+  if Scan.equal(word, b"ES") {
+    return BidiClass.ES
+  }
+  if Scan.equal(word, b"ET") {
+    return BidiClass.ET
+  }
+  if Scan.equal(word, b"CS") {
+    return BidiClass.CS
+  }
+  if Scan.equal(word, b"NSM") {
+    return BidiClass.NSM
+  }
+  if Scan.equal(word, b"BN") {
+    return BidiClass.BN
+  }
+  if Scan.equal(word, b"B") {
+    return BidiClass.B
+  }
+  if Scan.equal(word, b"S") {
+    return BidiClass.S
+  }
+  if Scan.equal(word, b"WS") {
+    return BidiClass.WS
+  }
+  if Scan.equal(word, b"ON") {
+    return BidiClass.ON
+  }
+  if Scan.equal(word, b"LRE") {
+    return BidiClass.LRE
+  }
+  if Scan.equal(word, b"LRO") {
+    return BidiClass.LRO
+  }
+  if Scan.equal(word, b"RLE") {
+    return BidiClass.RLE
+  }
+  if Scan.equal(word, b"RLO") {
+    return BidiClass.RLO
+  }
+  if Scan.equal(word, b"PDF") {
+    return BidiClass.PDF
+  }
+  if Scan.equal(word, b"LRI") {
+    return BidiClass.LRI
+  }
+  if Scan.equal(word, b"RLI") {
+    return BidiClass.RLI
+  }
+  if Scan.equal(word, b"FSI") {
+    return BidiClass.FSI
+  }
+  if Scan.equal(word, b"PDI") {
+    return BidiClass.PDI
+  }
+  run Testing.expect(false, "unknown BidiTest class")
+  return BidiClass.ON
+}
+
+effect fn compare(
+  workspace: &BidiWorkspace,
+  levels: &List<u32>,
+  expectedOrder: &List<u32>,
+  order: &mut List<usize>,
+) -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  run Testing.expect(workspace.length() == levels.length(), "conformance level count")
+  let mut i: usize = 0
+  while i < levels.length() {
+    let expected = levels.get(i)
+    run Testing.expect(workspace.isRemoved(i) == (expected == u32.MAX), "conformance X9 flag")
+    if expected != u32.MAX {
+      run Testing.expect(u8.toU32(workspace.unwrappedLevel(i)) == expected, "conformance L1 level")
+    }
+    i = i + 1
+  }
+  order.clear()
+  run workspace.visualOrder(&mut order)
+  run Testing.expect(order.length() == expectedOrder.length(), "conformance reordered length")
+  i = 0
+  while i < expectedOrder.length() {
+    run Testing.expect(
+      order.get(i) == u32.toUsize(expectedOrder.get(i)),
+      "conformance L2 visual order",
+    )
+    i = i + 1
+  }
+}
+
+pub effect fn classFile(data: &[u8]) -> usize
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut classes = List<BidiClass>.make()
+  let mut levels = List<u32>.make()
+  let mut expectedOrder = List<u32>.make()
+  let mut order = List<usize>.make()
+  let mut at: usize = 0
+  let mut cases: usize = 0
+  let mut haveLevels = false
+  let mut haveOrder = false
+  while at < data.length {
+    let raw = Scan.view(data, Scan.line(data, &mut at))
+    let mut comment: usize = 0
+    let row = Scan.trim(Scan.view(raw, Scan.field(raw, &mut comment, 35)))
+    if row.length == 0 {
+      continue
+    }
+    if row[0] == 64 {
+      let mut field: usize = 0
+      let directive = Scan.trim(Scan.view(row, Scan.field(row, &mut field, 58)))
+      let values = Scan.view(row, Scan.Span { start: field, end: row.length })
+      if Scan.equal(directive, b"@Levels") {
+        run numbers(values, 10, true, &mut levels)
+        haveLevels = true
+      } else if Scan.equal(directive, b"@Reorder") {
+        run numbers(values, 10, false, &mut expectedOrder)
+        haveOrder = true
+      }
+
+      // The file format explicitly reserves other @ directives for metadata.
+      continue
+    }
+    run Testing.expect(haveLevels && haveOrder, "data must follow level and reorder directives")
+    let mut field: usize = 0
+    let input = Scan.view(row, Scan.field(row, &mut field, 59))
+    let directions = run integer(Scan.view(row, Scan.field(row, &mut field, 59)), 16)
+    run Testing.expect(directions > 0 && directions <= 7, "BidiTest direction bitset")
+    classes.clear()
+    let mut wordAt: usize = 0
+    while wordAt < input.length {
+      let word = Scan.view(input, Scan.word(input, &mut wordAt))
+      if word.length == 0 {
+        break
+      }
+      run classes.append(run parseClass(word))
+    }
+    let mut bit: u32 = 1
+    while bit <= 4 {
+      if (directions / bit) % 2 == 1 {
+        let mut direction = ParagraphDirection.Auto
+        if bit == 2 {
+          direction = ParagraphDirection.Ltr
+        }
+        if bit == 4 {
+          direction = ParagraphDirection.Rtl
+        }
+        let base = run analyzeClasses(List<BidiClass>.asSlice(&classes), direction, &mut workspace)
+        run Testing.expect(base <= 1, "paragraph base is binary")
+        run compare(&workspace, &levels, &expectedOrder, &mut order)
+        cases = cases + 1
+      }
+      bit = bit * 2
+    }
+  }
+  run Testing.expect(cases > 0, "BidiTest must contain cases")
+  return cases
+}
+
+pub effect fn characterFile(data: &[u8]) -> usize
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let mut workspace = BidiWorkspace.make()
+  let mut codepoints = List<u32>.make()
+  let mut levels = List<u32>.make()
+  let mut expectedOrder = List<u32>.make()
+  let mut order = List<usize>.make()
+  let mut at: usize = 0
+  let mut cases: usize = 0
+  while at < data.length {
+    let raw = Scan.view(data, Scan.line(data, &mut at))
+    let mut comment: usize = 0
+    let row = Scan.trim(Scan.view(raw, Scan.field(raw, &mut comment, 35)))
+    if row.length == 0 {
+      continue
+    }
+    let mut field: usize = 0
+    run numbers(Scan.view(row, Scan.field(row, &mut field, 59)), 16, false, &mut codepoints)
+    let dir = run integer(Scan.view(row, Scan.field(row, &mut field, 59)), 10)
+    run Testing.expect(dir <= 2, "BidiCharacterTest paragraph direction")
+    let mut direction = ParagraphDirection.Auto
+    if dir == 0 {
+      direction = ParagraphDirection.Ltr
+    }
+    if dir == 1 {
+      direction = ParagraphDirection.Rtl
+    }
+    let expectedBase = run integer(Scan.view(row, Scan.field(row, &mut field, 59)), 10)
+    run numbers(Scan.view(row, Scan.field(row, &mut field, 59)), 10, true, &mut levels)
+    run numbers(Scan.view(row, Scan.field(row, &mut field, 59)), 10, false, &mut expectedOrder)
+    let base = run analyzeCodepoints(List<u32>.asSlice(&codepoints), direction, &mut workspace)
+    run Testing.expect(u8.toU32(base) == expectedBase, "conformance P2/P3 paragraph base")
+    run compare(&workspace, &levels, &expectedOrder, &mut order)
+    cases = cases + 1
+  }
+  run Testing.expect(cases > 0, "BidiCharacterTest must contain cases")
+  return cases
+}
+
+effect fn readFixture(name: string) -> Bytes
+  ! FileError | HostInputError | OutOfMemoryError
+  ? &mut Allocator {
+  let cwd = run NativeHostInput.workingDirectory()
+  let root = run Path.fromBytes(Bytes.asSlice(&cwd))
+  let path = run Path.resolve(&root, name)
+  let mut files = run OsFileSystem.make("/")
+  return run FileSystem.readFile(&path) |> Effect.provideMut<FileSystem>(&mut files)
+}
+
+effect fn completeBidiClassConformanceCase() -> ()
+  ! AssertionError<'static> | FileError | HostInputError | OutOfMemoryError
+  ? &mut Allocator {
+  let data = run readFixture("build/ucd/18.0.0/BidiTest.txt")
+  let count = run classFile(Bytes.asSlice(&data))
+  run Testing.expect(count > 700000, "complete pinned BidiTest corpus")
+}
+
+effect fn completeBidiCharacterConformanceCase() -> ()
+  ! AssertionError<'static> | FileError | HostInputError | OutOfMemoryError
+  ? &mut Allocator {
+  let data = run readFixture("build/ucd/18.0.0/BidiCharacterTest.txt")
+  let count = run characterFile(Bytes.asSlice(&data))
+  run Testing.expect(count > 90000, "complete pinned BidiCharacterTest corpus")
+}
+
+test effect fn completeBidiClassConformance() -> ()
+  ! AssertionError<'static> | FileError | HostInputError | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run completeBidiClassConformanceCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+test effect fn completeBidiCharacterConformance() -> ()
+  ! AssertionError<'static> | FileError | HostInputError | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run completeBidiCharacterConformanceCase() |> Effect.provideMut<Allocator>(&mut allocator)
+}

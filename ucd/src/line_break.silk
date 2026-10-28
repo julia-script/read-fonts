@@ -1,0 +1,644 @@
+//! Unicode 18 UAX #14, with CSS Text 3 tailoring (2026-08-14).
+//! Rules: https://www.unicode.org/reports/tr14/tr14-56.html and the Unicode 18
+//! auxiliary/LineBreakTest.html rule listing (including corrected LB12a).
+//! CSS: https://www.w3.org/TR/2026/CRD-css-text-3-20260814/#line-break-property
+//! `LineOptions.make()` is the untailored conformance profile: Auto + Default.
+//! Auto with Japanese/Chinese selects Normal; explicit Normal/Loose/Strict
+//! implement CSS punctuation rules. Both languages use the CSS CJK rules.
+//! Precedence: mandatory breaks and EOF; Anywhere (extended grapheme boundaries,
+//! ignoring WJ/GL and word-break, never hyphenating); otherwise UAX14 with CSS
+//! class tailoring, then KeepAll suppression / optional dictionary word breaks.
+//! BreakAll preserves graphemes and disables hyphenation; None suppresses SHY.
+//! Manual SHY opportunities are Hyphenated, never invented automatic hyphens.
+//! The caller clears output. Results are sorted, unique, with canonical EOF.
+//! Standard breaking uses constant scratch storage and decodes each scalar once.
+import lib as Ucd
+import lib { LineBreak, GeneralCategory, EastAsianWidth }
+import utf8
+import segmentation { GraphemeCursor }
+import dictionary { DictionarySegmenter }
+import text { TextBreak, TextBreakKind, TextCursor }
+import silk.list { List }
+import silk.ownership { Copy }
+import silk.allocator { Allocator, OutOfMemoryError }
+
+pub enum LineBreakMode {
+  Auto,
+  Loose,
+  Normal,
+  Strict,
+  Anywhere
+}
+
+pub enum WordBreakMode {
+  Normal,
+  BreakAll,
+  KeepAll
+}
+
+pub enum Hyphens {
+  Manual,
+  None
+}
+
+pub enum LineLanguage {
+  Default,
+  Japanese,
+  Chinese
+}
+
+pub struct LineOptions {
+  pub lineBreak: LineBreakMode,
+  pub wordBreak: WordBreakMode,
+  pub hyphens: Hyphens,
+  pub language: LineLanguage,
+}
+
+impl Copy for LineOptions {}
+
+impl LineOptions {
+  pub fn make() -> Self {
+    return Self {
+      lineBreak: LineBreakMode.Auto,
+      wordBreak: WordBreakMode.Normal,
+      hyphens: Hyphens.Manual,
+      language: LineLanguage.Default,
+    }
+  }
+}
+
+struct Token {
+  start: usize,
+  end: usize,
+  cp: u32,
+  cls: LineBreak,
+  category: GeneralCategory,
+  east: bool,
+  currencyWide: bool,
+  potentialEmoji: bool,
+  sa: bool,
+  zwj: bool,
+  word: bool,
+}
+
+impl Copy for Token {}
+
+impl Token {
+  fn eof(at: usize) -> Self {
+    return Self {
+      start: at,
+      end: at,
+      cp: 0,
+      cls: LineBreak.XX,
+      category: GeneralCategory.Cn,
+      east: false,
+      currencyWide: false,
+      potentialEmoji: false,
+      sa: false,
+      zwj: false,
+      word: false,
+    }
+  }
+}
+
+fn hard(c: LineBreak) -> bool {
+  return c == LineBreak.BK || c == LineBreak.CR || c == LineBreak.LF || c == LineBreak.NL
+}
+
+fn alpha(c: LineBreak) -> bool {
+  return c == LineBreak.AL || c == LineBreak.HL
+}
+
+fn hangul(c: LineBreak) -> bool {
+  return c == LineBreak.JL || c == LineBreak.JV || c == LineBreak.JT || c == LineBreak.H2
+    || c == LineBreak.H3
+}
+
+fn letter(c: GeneralCategory) -> bool {
+  return c == GeneralCategory.Lu || c == GeneralCategory.Ll || c == GeneralCategory.Lt
+    || c == GeneralCategory.Lm
+    || c == GeneralCategory.Lo
+}
+
+fn aksara(t: Token) -> bool {
+  return t.cls == LineBreak.AK || t.cls == LineBreak.AS || t.cp == 0x25cc
+}
+
+fn initial(c: LineBreak) -> bool {
+  return hard(c) || c == LineBreak.SP || c == LineBreak.ZW || c == LineBreak.CB || c == LineBreak.GL
+}
+
+fn initialQuote(c: LineBreak) -> bool {
+  return hard(c) || c == LineBreak.SP || c == LineBreak.ZW || c == LineBreak.OP || c == LineBreak.QU
+    || c == LineBreak.GL
+}
+
+fn finalQuote(c: LineBreak) -> bool {
+  return hard(c) || c == LineBreak.SP || c == LineBreak.GL || c == LineBreak.WJ || c == LineBreak.CL
+    || c == LineBreak.QU
+    || c == LineBreak.CP
+    || c == LineBreak.EX
+    || c == LineBreak.IS
+    || c == LineBreak.SY
+    || c == LineBreak.ZW
+}
+
+fn iteration(cp: u32) -> bool {
+  return cp == 0x3005 || cp == 0x303b || cp == 0x309d || cp == 0x309e || cp == 0x30fd
+    || cp == 0x30fe
+}
+
+fn centered(cp: u32) -> bool {
+  return cp == 0x30fb || cp == 0xff1a || cp == 0xff1b || cp == 0xff65 || cp == 0x203c
+    || cp == 0x2047
+    || cp == 0x2048
+    || cp == 0x2049
+    || cp == 0xff01
+    || cp == 0xff1f
+}
+
+fn css(options: LineOptions) -> bool {
+  return options.lineBreak != LineBreakMode.Auto || options.language != LineLanguage.Default
+}
+
+fn loose(options: LineOptions) -> bool {
+  return options.lineBreak == LineBreakMode.Loose
+}
+
+fn cjk(options: LineOptions) -> bool {
+  return options.language != LineLanguage.Default
+}
+
+// LB9 consumes CM/ZWJ once, retaining the base's *all* relevant properties.
+// Three-token lookahead handles LB25 without rescanning UTF-8 or allocating.
+struct Reader<'a> {
+  text: &'a [u8],
+  at: usize,
+  pending: Token,
+  hasPending: bool,
+  options: LineOptions
+}
+
+impl<'a> Reader<'a> {
+  fn make(text: &'a [u8], options: LineOptions) -> Self {
+    return Self {
+      text: text,
+      at: 0,
+      pending: Token.eof(text.length),
+      hasPending: false,
+      options: options,
+    }
+  }
+
+  fn scalar(self: &mut Self) -> Token {
+    if self.hasPending {
+      self.hasPending = false
+      return self.pending
+    }
+    if self.at == self.text.length {
+      return Token.eof(self.at)
+    }
+    let start = self.at
+    let decoded = utf8.decode(self.text, start)
+    self.at = decoded.next
+    let raw = Ucd.lineBreak(decoded.cp)
+    let category = Ucd.generalCategory(decoded.cp)
+    let width = Ucd.eastAsianWidth(decoded.cp)
+    let mut cls = raw
+    if raw == LineBreak.AI || raw == LineBreak.SG || raw == LineBreak.XX {
+      cls = LineBreak.AL
+    }
+    if raw == LineBreak.SA {
+      cls = LineBreak.AL
+      if category == GeneralCategory.Mn || category == GeneralCategory.Mc {
+        cls = LineBreak.CM
+      }
+    }
+    if raw == LineBreak.CJ {
+      cls = LineBreak.NS
+      if loose(self.options) {
+        cls = LineBreak.ID
+      }
+    }
+    return Token {
+      start: start,
+      end: decoded.next,
+      cp: decoded.cp,
+      cls: cls,
+      category: category,
+      east: width == EastAsianWidth.F || width == EastAsianWidth.W || width == EastAsianWidth.H,
+      currencyWide: width == EastAsianWidth.A || width == EastAsianWidth.F
+        || width == EastAsianWidth.W,
+      potentialEmoji: category == GeneralCategory.Cn && Ucd.isExtendedPictographic(decoded.cp),
+      sa: raw == LineBreak.SA && cls != LineBreak.CM,
+      zwj: raw == LineBreak.ZWJ,
+      word: letter(category) || alpha(cls) || cls == LineBreak.NU || cls == LineBreak.ID,
+    }
+  }
+
+  fn next(self: &mut Self) -> Token {
+    let mut token = self.scalar()
+    if token.start == token.end {
+      return token
+    }
+    if token.cls == LineBreak.CM || token.cls == LineBreak.ZWJ {
+      // LB10: all properties become those of LATIN CAPITAL LETTER A.
+      token.cls = LineBreak.AL
+      token.category = GeneralCategory.Lu
+      token.east = false
+      token.currencyWide = false
+      token.potentialEmoji = false
+      token.word = true
+    }
+    if !hard(token.cls) && token.cls != LineBreak.SP && token.cls != LineBreak.ZW {
+      while true {
+        let following = self.scalar()
+        if following.start != following.end
+          && (following.cls == LineBreak.CM || following.cls == LineBreak.ZWJ) {
+          token.end = following.end
+          token.zwj = following.zwj
+        } else {
+          self.pending = following
+          self.hasPending = true
+          break
+        }
+      }
+    }
+    if css(self.options) {
+      if loose(self.options) && token.cls == LineBreak.NS && iteration(token.cp) {
+        token.cls = LineBreak.ID
+      }
+      if cjk(self.options) && self.options.lineBreak != LineBreakMode.Strict
+        && (token.cp == 0x301c || token.cp == 0x30a0) {
+        token.cls = LineBreak.ID
+      }
+    }
+
+    // Small kana and iteration marks remain controlled by line-break, not
+    // word-break. Hangul already breaks between complete syllables.
+    if self.options.wordBreak == WordBreakMode.BreakAll
+      && (alpha(token.cls) || token.cls == LineBreak.NU || token.sa || token.cls == LineBreak.AK
+        || token.cls == LineBreak.AP
+        || token.cls == LineBreak.AS) {
+      token.cls = LineBreak.ID
+    }
+    return token
+  }
+}
+
+struct Context {
+  previous: Token,
+  nonspace: Token,
+  quoteInitial: bool,
+  numeric: bool,
+  previousNumeric: bool,
+  oddRegional: bool,
+}
+
+impl Context {
+  fn make() -> Self {
+    return Self {
+      previous: Token.eof(0),
+      nonspace: Token.eof(0),
+      quoteInitial: false,
+      numeric: false,
+      previousNumeric: false,
+      oddRegional: false,
+    }
+  }
+
+  fn advance(self: &mut Self, token: Token) -> () {
+    if token.cls != LineBreak.SP {
+      self.nonspace = token
+      self.quoteInitial = token.cls == LineBreak.QU && token.category == GeneralCategory.Pi
+        && (self.previous.start == self.previous.end || initialQuote(self.previous.cls))
+    }
+    self.previousNumeric = self.numeric
+    self.numeric = token.cls == LineBreak.NU
+      || ((token.cls == LineBreak.SY || token.cls == LineBreak.IS) && self.numeric)
+    if token.cls == LineBreak.RI {
+      self.oddRegional = !self.oddRegional
+    } else {
+      self.oddRegional = false
+    }
+    self.previous = token
+  }
+}
+
+fn opportunity(
+  left: Token,
+  right: Token,
+  next: Token,
+  afterNext: Token,
+  before: Token,
+  context: &Context,
+  options: LineOptions,
+  dictionary: bool,
+) -> bool {
+  let a = left.cls
+  let b = right.cls
+  let n = next.cls
+
+  // LB4-LB12. LB9/LB10 have already folded combining sequences.
+  if a == LineBreak.CR && b == LineBreak.LF {
+    return false
+  }
+  if hard(a) {
+    return true
+  }
+  if hard(b) || b == LineBreak.SP || b == LineBreak.ZW {
+    return false
+  }
+  if context.nonspace.cls == LineBreak.ZW {
+    return true
+  }
+  if left.zwj || a == LineBreak.WJ || b == LineBreak.WJ || a == LineBreak.GL {
+    return false
+  }
+
+  // Unicode 18 removes BA from the LB12a exceptions.
+  if b == LineBreak.GL && a != LineBreak.SP && a != LineBreak.HY && a != LineBreak.HH {
+    return false
+  }
+  let looseCjk = loose(options) && cjk(options)
+  let beforeCentered = looseCjk && centered(right.cp)
+
+  // LB13-LB18, including space-sensitive quotation and decimal context.
+  if b == LineBreak.CL || b == LineBreak.CP || b == LineBreak.SY
+    || (b == LineBreak.EX && !beforeCentered) {
+    return false
+  }
+  if context.nonspace.cls == LineBreak.OP || context.quoteInitial {
+    return false
+  }
+  if b == LineBreak.QU && right.category == GeneralCategory.Pf
+    && (next.start == next.end || finalQuote(n)) {
+    return false
+  }
+  if a == LineBreak.SP && b == LineBreak.IS && n == LineBreak.NU {
+    return true
+  }
+  if b == LineBreak.IS && !beforeCentered {
+    return false
+  }
+  if (context.nonspace.cls == LineBreak.CL || context.nonspace.cls == LineBreak.CP)
+    && b == LineBreak.NS
+    && !beforeCentered {
+    return false
+  }
+  if context.nonspace.cls == LineBreak.B2 && b == LineBreak.B2 {
+    return false
+  }
+  if a == LineBreak.SP {
+    return true
+  }
+
+  // LB19/LB19a: Pi/Pf and East Asian context are properties of the LB9 base.
+  if (b == LineBreak.QU && right.category != GeneralCategory.Pi)
+    || (a == LineBreak.QU && left.category != GeneralCategory.Pf) {
+    return false
+  }
+  if b == LineBreak.QU && (!left.east || next.start == next.end || !next.east) {
+    return false
+  }
+  if a == LineBreak.QU && (!right.east || before.start == before.end || !before.east) {
+    return false
+  }
+  if a == LineBreak.CB || b == LineBreak.CB {
+    return true
+  }
+
+  // KeepAll wins over CSS loose punctuation-class substitutions, but not a
+  // real dictionary word boundary or explicit breaks (handled above).
+  if options.wordBreak == WordBreakMode.KeepAll && left.word && right.word && !dictionary {
+    return false
+  }
+  if (a == LineBreak.HY || a == LineBreak.HH) && alpha(b)
+    && (before.start == before.end || initial(before.cls)) {
+    return false
+  }
+  let beforeLooseHyphen = loose(options) && a == LineBreak.ID
+    && (right.cp == 0x2010 || right.cp == 0x2013)
+  if (b == LineBreak.BA || b == LineBreak.HH || b == LineBreak.HY || b == LineBreak.NS)
+    && !beforeLooseHyphen
+    && !beforeCentered {
+    return false
+  }
+  if a == LineBreak.BB {
+    return false
+  }
+  if before.cls == LineBreak.HL && (a == LineBreak.HY || a == LineBreak.HH) && b != LineBreak.HL {
+    return false
+  }
+  if a == LineBreak.SY && b == LineBreak.HL {
+    return false
+  }
+  if b == LineBreak.IN && !(loose(options) && a == LineBreak.IN) {
+    return false
+  }
+
+  // Loose CJK prefixes/postfixes alter only the applicable side of the pair.
+  let prefix = a == LineBreak.PR && !(looseCjk && left.currencyWide)
+  let postfix = b == LineBreak.PO && !(looseCjk && right.currencyWide)
+  if (alpha(a) && b == LineBreak.NU) || (a == LineBreak.NU && alpha(b)) {
+    return false
+  }
+  if prefix && (b == LineBreak.ID || b == LineBreak.EB || b == LineBreak.EM) {
+    return false
+  }
+  if (a == LineBreak.ID || a == LineBreak.EB || a == LineBreak.EM) && postfix {
+    return false
+  }
+  if ((prefix || a == LineBreak.PO) && alpha(b)) || (alpha(a) && (b == LineBreak.PR || postfix)) {
+    return false
+  }
+
+  // LB25 uses a maintained NU (SY|IS)* suffix rather than scanning backwards.
+  if (postfix || b == LineBreak.PR)
+    && (context.numeric || ((a == LineBreak.CL || a == LineBreak.CP) && context.previousNumeric)) {
+    return false
+  }
+  if prefix || a == LineBreak.PO {
+    if b == LineBreak.NU
+      || (b == LineBreak.OP
+        && (n == LineBreak.NU || (n == LineBreak.IS && afterNext.cls == LineBreak.NU))) {
+      return false
+    }
+  }
+  if b == LineBreak.NU && (a == LineBreak.HY || a == LineBreak.IS || context.numeric) {
+    return false
+  }
+  if a == LineBreak.JL
+    && (b == LineBreak.JL || b == LineBreak.JV || b == LineBreak.H2 || b == LineBreak.H3) {
+    return false
+  }
+  if (a == LineBreak.JV || a == LineBreak.H2) && (b == LineBreak.JV || b == LineBreak.JT) {
+    return false
+  }
+  if (a == LineBreak.JT || a == LineBreak.H3) && b == LineBreak.JT {
+    return false
+  }
+  if (hangul(a) && postfix) || (prefix && hangul(b)) {
+    return false
+  }
+  if alpha(a) && alpha(b) && !dictionary {
+    return false
+  }
+
+  // LB28a, with U+25CC represented explicitly rather than reclassified.
+  if a == LineBreak.AP && aksara(right) {
+    return false
+  }
+  if aksara(left) && (b == LineBreak.VF || b == LineBreak.VI) {
+    return false
+  }
+  if aksara(before) && a == LineBreak.VI && (b == LineBreak.AK || right.cp == 0x25cc) {
+    return false
+  }
+  if aksara(left) && aksara(right) && n == LineBreak.VF {
+    return false
+  }
+  if a == LineBreak.IS && alpha(b) {
+    return false
+  }
+  if (alpha(a) || a == LineBreak.NU) && b == LineBreak.OP && !right.east {
+    return false
+  }
+  if a == LineBreak.CP && !left.east && (alpha(b) || b == LineBreak.NU) {
+    return false
+  }
+  if a == LineBreak.RI && b == LineBreak.RI && context.oddRegional {
+    return false
+  }
+  if (a == LineBreak.EB || left.potentialEmoji) && b == LineBreak.EM {
+    return false
+  }
+  return true
+}
+
+effect fn append(output: &mut List<TextBreak>, at: usize, end: usize, kind: TextBreakKind) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut cursor = TextCursor { unit: 0, offset: at }
+  if at == end {
+    cursor = TextCursor { unit: 1, offset: 0 }
+  }
+  run output.append(TextBreak { at: cursor, kind: kind })
+}
+
+effect fn anywhere(text: &[u8], output: &mut List<TextBreak>) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut cursor = GraphemeCursor.make()
+  let mut scalarAt: usize = 0
+  let mut previous = LineBreak.XX
+  while true {
+    let at = cursor.next(text)
+    while scalarAt < at {
+      let decoded = utf8.decode(text, scalarAt)
+      previous = Ucd.lineBreak(decoded.cp)
+      scalarAt = decoded.next
+    }
+    let mut kind = TextBreakKind.Soft
+    if hard(previous) || at == text.length {
+      kind = TextBreakKind.Forced
+    }
+    run append(&mut output, at, text.length, kind)
+    if at == text.length {
+      break
+    }
+  }
+}
+
+effect fn segment(
+  text: &[u8],
+  options: LineOptions,
+  dictionary: &List<usize>,
+  output: &mut List<TextBreak>,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  if options.lineBreak == LineBreakMode.Anywhere {
+    run anywhere(text, &mut output)
+    return
+  }
+  let mut graphemes = GraphemeCursor.make()
+  let mut reader = Reader.make(text, options)
+  let mut left = reader.next()
+  let mut right = reader.next()
+  let mut next = reader.next()
+  let mut afterNext = reader.next()
+  let mut context = Context.make()
+  let mut before = Token.eof(0)
+  let mut dictionaryIndex: usize = 0
+  let mut graphemeAt: usize = 0
+  while right.start != right.end {
+    context.advance(left)
+    while dictionaryIndex < dictionary.length() && dictionary.get(dictionaryIndex) < right.start {
+      dictionaryIndex = dictionaryIndex + 1
+    }
+    let dictionaryBreak = left.sa && right.sa && dictionaryIndex < dictionary.length()
+      && dictionary.get(dictionaryIndex) == right.start
+    let mut allowed = opportunity(
+      left,
+      right,
+      next,
+      afterNext,
+      before,
+      &context,
+      options,
+      dictionaryBreak,
+    )
+    if options.wordBreak == WordBreakMode.BreakAll {
+      while graphemeAt < right.start {
+        graphemeAt = graphemes.next(text)
+      }
+      allowed = allowed && graphemeAt == right.start
+    }
+    if left.cp == 0xad
+      && (options.hyphens == Hyphens.None || options.wordBreak == WordBreakMode.BreakAll) {
+      allowed = false
+    }
+    if allowed {
+      let mut kind = TextBreakKind.Soft
+      if hard(left.cls) {
+        kind = TextBreakKind.Forced
+      } else if left.cp == 0xad {
+        kind = TextBreakKind.Hyphenated
+      }
+      run append(&mut output, right.start, text.length, kind)
+    }
+    before = left
+    left = right
+    right = next
+    next = afterNext
+    afterNext = reader.next()
+  }
+  run append(&mut output, text.length, text.length, TextBreakKind.Forced)
+}
+
+pub effect fn breaks(text: &[u8], options: LineOptions, output: &mut List<TextBreak>) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let dictionary = List<usize>.make()
+  run segment(text, options, &dictionary, &mut output)
+}
+
+/// Dictionary boundaries tailor only SA/SA alphabetic boundaries, after all
+/// earlier UAX14 restrictions. Non-SA, marks, ZWJ, WJ, punctuation, and mandatory
+/// breaks retain their normal behavior. Sorted input boundaries are merged in a
+/// single pass, ignoring duplicate, interior-byte, and out-of-range candidates.
+pub effect fn withDictionary<D: DictionarySegmenter>(
+  text: &[u8],
+  options: LineOptions,
+  dictionary: &D,
+  output: &mut List<TextBreak>,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut boundaries = List<usize>.make()
+  if options.lineBreak != LineBreakMode.Anywhere && options.wordBreak != WordBreakMode.BreakAll {
+    run DictionarySegmenter.breaks(dictionary, text, &mut boundaries)
+  }
+  run segment(text, options, &boundaries, &mut output)
+}

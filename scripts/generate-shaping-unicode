@@ -2,15 +2,13 @@
 """Extract shaping constants from the pinned Harfrust source (no Rust build)."""
 from pathlib import Path
 import re
-import runpy
 import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "test-data/harfrust/harfrust/src"
 
 
-helpers = runpy.run_path(str(ROOT / "scripts/generate-unicode"))
-array, numbers, byte_function, script_tags = (helpers[name] for name in ("array", "numbers", "byte_function", "script_tags"))
+from shaping_unicode_helpers import array, numbers, byte_function, script_tags
 
 
 def generate():
