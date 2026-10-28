@@ -346,27 +346,41 @@ effect fn execute<'a, 's, F: FontFuncs>(
       haveInvisible = true
     }
   }
+  let mut notFoundSelector: u32 = 0
+  let mut haveNotFoundSelector = false
+  if let Option<u32>.Some { value } = &buffer.notFoundVariationSelectorGlyph {
+    notFoundSelector = value
+    haveNotFoundSelector = true
+  }
+  let hideIgnorables = (buffer.flags & 4) == 0
+  let removeIgnorables = (buffer.flags & 8) != 0 || !haveInvisible
   while i < Buffer.len(&buffer.*) {
-    let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-    if !current.selectorFallback && (!current.ignorable || current.substituted) {
-      i = i + 1
-      continue
-    }
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if item.selectorFallback {
-      if let Option<u32>.Some { value } = &buffer.notFoundVariationSelectorGlyph {
-        item.info.glyphId = value
+    let mut remove = false
+    if true {
+      let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      while i < glyphs.length && !glyphs[i].selectorFallback
+        && (!glyphs[i].ignorable || glyphs[i].substituted) {
+        i = i + 1
+      }
+      if i == glyphs.length {
+        break
+      }
+      let item = &mut glyphs[i]
+      if item.selectorFallback && haveNotFoundSelector {
+        item.info.glyphId = notFoundSelector
         item.position = GlyphPosition.zero()
-        List<Glyph>.set(&mut buffer.glyphs, i, item)
+      }
+      if item.ignorable && !item.substituted && hideIgnorables {
+        if removeIgnorables {
+          remove = true
+        } else {
+          item.info.glyphId = invisible
+        }
       }
     }
-    if item.ignorable && !item.substituted && (buffer.flags & 4) == 0 {
-      if (buffer.flags & 8) != 0 || !haveInvisible {
-        Buffer.deleteGlyph(&mut buffer, i)
-        continue
-      }
-      item.info.glyphId = invisible
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+    if remove {
+      Buffer.deleteGlyph(&mut buffer, i)
+      continue
     }
     i = i + 1
   }
