@@ -733,7 +733,12 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
   return false
 }
 
-fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
+fn enabled(
+  context: &Context,
+  glyph: &Glyph,
+  first: usize,
+  last: usize,
+) -> u32 with Intrinsic.inlineAlways() {
   let mut result: u32 = 0
   let mut i = first
   while i < last {
