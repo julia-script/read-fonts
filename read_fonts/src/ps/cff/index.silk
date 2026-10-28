@@ -3,9 +3,9 @@ import font_data { FontData }
 import read { ReadError }
 import model.error { Error }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.u16
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.num.u16
 pub import generated_cff { Index as Index1 }
 pub import generated_cff2 { Index as Index2 }
 

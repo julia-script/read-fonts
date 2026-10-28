@@ -1,10 +1,10 @@
 import segmentation
 import segmentation { GraphemeCursor }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.list { List }
-import silk.string { String }
-import silk.testing { Testing, AssertionError }
-import silk.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.text.string { String }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.effect { Effect }
 
 effect fn expectOffsets(actual: &[usize], expected: &[usize]) -> ()
   ! AssertionError<'static> {

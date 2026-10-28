@@ -18,10 +18,10 @@ import generated_model_fixtures { tinos, vazirmatn, vorgFont }
 import lib { FontRef, ReadError }
 import tables.hmtx { Hmtx }
 import font_types.lib { GlyphId, F48Dot16, F2Dot14, F26Dot6 }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
 import silk.option { Option }
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
@@ -151,10 +151,10 @@ import tables.glyf { Glyph }
 import tables.loca { Loca, LocaGlyph }
 import font_types.lib { Tag, BoundingBox }
 import model.metrics.extents { zeroExtents }
-import silk.u16
-import silk.u32
-import silk.i16
-import silk.f32
+import silk.num.u16
+import silk.num.u32
+import silk.num.i16
+import silk.num.f32
 
 fn absent<T>(value: &Option<T>) -> bool {
   return match &value.* {
@@ -590,9 +590,9 @@ test effect fn aReversedBoxStillMeasuresASize() -> ()
 }
 
 import test_font_builder as Builder
-import silk.slice { Slice }
-import silk.list { List }
-import silk.usize
+import silk.collections.slice { Slice }
+import silk.collections.list { List }
+import silk.num.usize
 
 struct Overlay<'a> {
   font: FontRef<'a>,
@@ -994,7 +994,7 @@ effect fn glyfBearingUsesHmtxTailThenFallsBackToZeroBody() -> ()
   run Testing.expect(checked, "tail outline checked")
 }
 
-import silk.i32
+import silk.num.i32
 
 test effect fn extendedMetricsInTheCachedFontModel() -> ()
   ! AssertionError<'static> {
@@ -1084,9 +1084,9 @@ effect fn drawnBounds<'a, 'b, 'c>(data: &'a [u8], expected: &'b [u8], coords: &'
   )
 }
 
-import silk.atomic { Atomic, MemoryOrder }
-import silk.pointer { Pointer }
-import silk.u64
+import silk.concurrency.atomic { Atomic, MemoryOrder }
+import silk.mem.pointer { Pointer }
+import silk.num.u64
 
 // Test counters live until all immutable provider snapshots have been dropped.
 struct Counted<'a> {

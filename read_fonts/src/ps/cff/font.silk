@@ -21,14 +21,14 @@ import model.error { Error }
 import model.optional { Maybe }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.effect { Effect }
-import silk.ownership { Copy }
-import silk.string { String, InvalidUtf8 }
-import silk.slice { Slice }
-import silk.usize
-import silk.u32
-import silk.u16
+import silk.core.result { Result }
+import silk.core.effect { Effect }
+import silk.core.ownership { Copy }
+import silk.text.string { String, InvalidUtf8 }
+import silk.collections.slice { Slice }
+import silk.num.usize
+import silk.num.u32
+import silk.num.u16
 
 fn optionOf<T: Copy>(value: &Maybe<T>) -> Option<T> {
   return match &value.* {

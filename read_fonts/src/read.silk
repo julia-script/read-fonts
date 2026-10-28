@@ -2,8 +2,8 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_types.lib { Tag }
 import font_data { FontData }
-import silk.result { Result }
-import silk.ownership { Copy }
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
 
 pub union ReadError {
   OutOfBounds,
@@ -53,7 +53,7 @@ pub fn computeSize<Args, T: ComputeSize<Args>>(args: Args) -> Result<usize, Read
 }
 
 import silk.option { Option }
-import silk.usize
+import silk.num.usize
 
 pub interface VarSize {
   fn readLenAt(data: FontData, position: usize) -> Option<usize>

@@ -3,10 +3,10 @@ import generated_avar { Avar, SegmentMaps }
 import generated_variations { ItemVariationStore, DeltaSetIndexMap, DeltaSetIndex }
 import font_types.lib { F48Dot16 }
 import array { VarLenIter }
-import silk.list { List }
-import silk.slice { Slice }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.f64
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.f64
 
 pub struct UserCoordinate {
   pub tag: Tag,
@@ -229,7 +229,7 @@ fn roundedDelta(value: f64) -> i32 {
   return f64.toI32(rounded)
 }
 
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 test effect fn avar2Preserves16dot16PrecisionUntilFinalRounding() -> ()
   ! AssertionError<'static> {

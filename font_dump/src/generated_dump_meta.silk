@@ -36,12 +36,12 @@ import font_types.lib {
 }
 import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.u64
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
 import read_fonts.tables.meta { Metadata, ScriptLangTag }
 
 pub effect fn dumpMeta<'a>(path: &mut DumpPath, value: Meta<'a>) -> ()
@@ -183,7 +183,7 @@ pub effect fn dumpTables<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> ()
 
 // Handwritten extension from font_dump/src/extensions_dump_meta.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import silk.string { String }
+import silk.text.string { String }
 
 pub effect fn dumpMetadata<'a>(path: &mut DumpPath, value: Metadata<'a>) -> ()
   ! WriterError

@@ -2,7 +2,7 @@
 import scalar { Scalar, rawByteLen, readScalar, writeScalar }
 import integer_types { Offset16, Offset24, Offset32, Uint24 }
 import silk.option { Option }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 
 pub interface OffsetValue {
   fn offsetValue(value: Self) -> u32

@@ -14,11 +14,11 @@ import read_fonts.tables.math {
 }
 import font_types.lib { GlyphId }
 import dump_support { DumpPath, scalar, absent }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.u16
-import silk.u32
+import silk.io.writer { Writer, WriterError }
+import silk.num.u16
+import silk.num.u32
 
 effect fn dumpValue(path: &mut DumpPath, value: MathValue) -> ()
   ! WriterError

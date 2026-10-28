@@ -1,8 +1,8 @@
 // Test-only builders ported from font-test-data/src/extended.rs.
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import silk.usize
-import silk.u16
-import silk.u32
+import silk.num.usize
+import silk.num.u16
+import silk.num.u32
 
 pub fn put16(out: &mut [u8], at: usize, value: u16) -> () {
   out[at] = u16.toU8(value / 256)
@@ -16,7 +16,7 @@ pub fn put32(out: &mut [u8], at: usize, value: u32) -> () {
   out[at + 3] = u32.toU8(value & 255)
 }
 
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 
 pub struct TestTable<'a> {
   pub tag: u32,
@@ -205,7 +205,7 @@ pub fn metricData(out: &mut [u8], count: usize, trailing: usize, advance: u16) -
   return count * 4 + trailing * 2
 }
 
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 
 pub fn metricsFont(out: &mut [u8], extended: bool, legacy: bool, outline: u32) -> usize {
   let mut head: [u8; 54] = [0; 54]

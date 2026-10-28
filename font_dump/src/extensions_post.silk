@@ -2,9 +2,9 @@ import read_fonts.tables.post { Post, GlyphNames, GlyphNameEntry }
 import font_types.lib { GlyphId, GlyphId16 }
 import dump_support { DumpPath, scalar, absent, bytes }
 import silk.option { Option }
-import silk.string { String }
-import silk.writer { Writer, WriterError }
-import silk.usize
+import silk.text.string { String }
+import silk.io.writer { Writer, WriterError }
+import silk.num.usize
 
 pub effect fn dumpPost<'a>(path: &mut DumpPath, table: Post<'a>) -> ()
   ! WriterError

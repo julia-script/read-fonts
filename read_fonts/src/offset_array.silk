@@ -5,10 +5,10 @@ import array { ScalarArray }
 import read { FontRead, ReadError }
 import offset { resolveWithArgs, resolveNullableWithArgs }
 import font_types.lib { Scalar, OffsetValue, Nullable }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.option { Option }
-import silk.result { Result }
-import silk.usize
+import silk.core.result { Result }
+import silk.num.usize
 
 pub struct ArrayOfOffsets<'a, Args: Copy, T: FontRead<'a, Args>, O: Scalar + OffsetValue + Copy> {
   offsets: ScalarArray<'a, O>,

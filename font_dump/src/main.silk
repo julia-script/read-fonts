@@ -1,17 +1,17 @@
 //! Command-line entry for the differential font dumper.
 import dump { dump }
 import buffered_stdout { BufferedStdout }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.bytes { Bytes }
-import silk.effect { Effect }
-import silk.host_input { HostInput, HostInputError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.bytes { Bytes }
+import silk.core.effect { Effect }
+import silk.system.host_input { HostInput, HostInputError }
 import silk.option { Option }
-import silk.os_writer { StdoutWriter, StderrWriter }
-import silk.result { Result }
-import silk.string { InvalidUtf8 }
-import silk.writer { Writer, WriterError }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.os_filesystem { OsFileSystem }
+import silk.io.writer_native { StdoutWriter, StderrWriter }
+import silk.core.result { Result }
+import silk.text.string { InvalidUtf8 }
+import silk.io.writer { Writer, WriterError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.system.filesystem_native { OsFileSystem }
 
 effect fn stderr(text: string) -> ()
   ! WriterError {

@@ -9,9 +9,9 @@ import complex
 import arabic
 import view { View }
 import font_types.lib { Tag, F2Dot14 }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub struct ShapePlan<'a> {
   pub substitutions: OtPlan<'a>,

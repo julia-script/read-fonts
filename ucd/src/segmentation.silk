@@ -8,9 +8,9 @@ import lib { GraphemeBreak as G, WordBreak as W, SentenceBreak as S, IndicConjun
 import generated_unicode as Data
 import generated_properties { graphemeBreakValue, indicConjunctBreakValue }
 import utf8
-import silk.u32
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.num.u32
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 fn graphemeControl(value: G) -> bool {
   return value == G.Control || value == G.CR || value == G.LF

@@ -1,6 +1,6 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import read { VarSize }
-import silk.string { String, InvalidUtf8 }
+import silk.text.string { String, InvalidUtf8 }
 
 pub fn dlng() -> Tag {
   return Tag.fromU32(1684827751)
@@ -98,4 +98,4 @@ impl<'a> FontRead<'a, ()> for ScriptLangTag<'a> {
   }
 }
 
-import silk.slice { Slice }
+import silk.collections.slice { Slice }

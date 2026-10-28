@@ -1,5 +1,5 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import silk.string { String }
+import silk.text.string { String }
 
 pub effect fn dumpMetadata<'a>(path: &mut DumpPath, value: Metadata<'a>) -> ()
   ! WriterError

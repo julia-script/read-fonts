@@ -4,7 +4,7 @@ import ps.num { parseInt, BcdComponents, DynamicFixed }
 import ps.transform { Transform, ScaledFontMatrix, isDegenerate, combineScaled }
 import font_data { FontData, Cursor }
 import font_types.lib { Fixed, Matrix }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
 import silk.equal { Equal }
 
@@ -13,7 +13,7 @@ fn equal<T: Equal>(a: T, b: T) -> bool {
   return &a == &b
 }
 
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn must<T, E>(result: Result<T, E>) -> T
   ! AssertionError<'static> {

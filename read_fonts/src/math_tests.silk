@@ -26,12 +26,12 @@ import tables.layout { CoverageTable }
 import generated_misc_table_fixtures as Fixtures
 import test_font_builder as Builder
 import font_types.lib { GlyphId, GlyphId16, FWord, UfWord }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.slice { Slice }
-import silk.testing { Testing, AssertionError }
-import silk.usize
-import silk.u8
+import silk.collections.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.usize
+import silk.num.u8
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

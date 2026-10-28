@@ -1,5 +1,5 @@
 //! Public buffer, glyph, and serialization bit masks.
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 
 pub struct BufferFlags {
   bits: u32,

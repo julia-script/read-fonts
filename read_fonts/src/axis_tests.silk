@@ -10,14 +10,14 @@ import read { ReadError }
 import read_args { ReadArgs2 }
 import font_types.lib { Fixed, F2Dot14, Tag, NameId }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.slice { Slice }
-import silk.usize
-import silk.u16
-import silk.f64
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.collections.slice { Slice }
+import silk.num.usize
+import silk.num.u16
+import silk.num.f64
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

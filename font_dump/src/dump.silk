@@ -3,7 +3,7 @@ import generated_dump_varc
 import extensions_math
 import extensions_bitmaps
 import extensions_model
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 import extensions_cff
 import extensions_morx
 import extensions_mort
@@ -35,8 +35,8 @@ import read_fonts.lib {
 }
 import font_types.lib { Tag }
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
 import silk.format { Format }
 import extensions_metric_variations
 import extensions_glyphs
@@ -81,7 +81,7 @@ import generated_dump_eblc
 import generated_dump_colr
 import generated_dump_math
 import dump_support { DumpPath }
-import silk.u32
+import silk.num.u32
 
 effect fn text(value: string) -> ()
   ! WriterError

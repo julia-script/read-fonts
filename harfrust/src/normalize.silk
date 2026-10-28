@@ -7,11 +7,11 @@ import unicode
 import arabic
 import font_types.lib { GlyphId }
 import silk.option { Option }
-import silk.u32
-import silk.u8
-import silk.list { List }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.num.u32
+import silk.num.u8
+import silk.collections.list { List }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub effect fn normalize<F: FontFuncs>(
   font: &ConfiguredShaper<F>,

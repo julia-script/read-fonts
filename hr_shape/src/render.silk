@@ -13,12 +13,12 @@ import harfrust.lib {
   ShapeError,
   serialize
 }
-import silk.sync { Mutex, MutexGuard }
+import silk.concurrency.sync { Mutex, MutexGuard }
 import silk.option { Option }
-import silk.list { List }
-import silk.string { String }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.text.string { String }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub effect fn render(data: &ShaperData, text: string, options: &Options) -> String
   ! OutOfMemoryError

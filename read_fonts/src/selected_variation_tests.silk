@@ -9,10 +9,10 @@ import font { FontRef }
 import read { ReadError }
 import font_types.lib { Tag, Fixed, F2Dot14 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.testing { Testing, AssertionError }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

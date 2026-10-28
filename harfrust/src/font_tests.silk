@@ -1,7 +1,7 @@
 import test_fonts
-import silk.bytes { Bytes }
-import silk.filesystem { FileError }
-import silk.host_input { HostInputError }
+import silk.collections.bytes { Bytes }
+import silk.system.filesystem { FileError }
+import silk.system.host_input { HostInputError }
 //! Callback regressions from upstream tests/font_funcs.rs, scaling.rs and advances.rs.
 import font { ShaperData, ConfiguredShaper, FontFuncs, NominalGlyphs, Advances }
 import shape { shapeWithFeatures, ShapeError }
@@ -11,13 +11,13 @@ import generated_fixtures as Fixtures
 import read_fonts.lib { FontRef, ReadError }
 import read_fonts.model.metrics { GlyphExtents }
 import font_types.lib { GlyphId }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.sync { Mutex, MutexGuard }
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.concurrency.sync { Mutex, MutexGuard }
 
 struct Overrides {}
 

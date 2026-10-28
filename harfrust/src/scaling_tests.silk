@@ -1,7 +1,7 @@
 import test_fonts
-import silk.bytes { Bytes }
-import silk.filesystem { FileError }
-import silk.host_input { HostInputError }
+import silk.collections.bytes { Bytes }
+import silk.system.filesystem { FileError }
+import silk.system.host_input { HostInputError }
 //! Negative variable advances, clamping, and positioned scaling from upstream.
 import font { ShaperData, ConfiguredShaper, DefaultFontFuncs }
 import shape { shapeWithFeatures }
@@ -10,13 +10,13 @@ import generated_fixtures as Fixtures
 import font_types.lib { Tag, GlyphId }
 import read_fonts.lib { FontRef, ReadError }
 import read_fonts.model.variation { Variation }
-import silk.list { List }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u16
-import silk.usize
+import silk.collections.list { List }
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u16
+import silk.num.usize
 
 effect fn cases() -> ()
   ! AssertionError<'static> | OutOfMemoryError | FileError | HostInputError

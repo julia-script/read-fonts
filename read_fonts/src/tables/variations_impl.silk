@@ -20,7 +20,7 @@ fn itemVariationDataLen(count: u16, words: u16, regions: u16) -> usize {
 
 import font_types.lib { F48Dot16 }
 import font_data { Cursor }
-import silk.i8
+import silk.num.i8
 
 pub const NO_VARIATION_INDEX: u32 = 4294967295
 

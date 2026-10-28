@@ -16,11 +16,11 @@ import read_fonts.tables.varc {
 import read_fonts.tables.variations { PackedDeltas, DeltaRunIter }
 import font_types.lib { GlyphId, Matrix, F2Dot14, Offset32 }
 import dump_support { DumpPath, scalar, absent, readError }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.u32
-import silk.f32
+import silk.io.writer { Writer, WriterError }
+import silk.num.u32
+import silk.num.f32
 
 effect fn optional(path: &DumpPath, value: Option<u32>) -> ()
   ! WriterError

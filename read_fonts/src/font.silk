@@ -5,11 +5,11 @@ import read { ReadError }
 import array { ScalarArray }
 import font_types.lib { Tag, MajorMinor }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 pub struct TableDirectory<'a> {
   bytes: FontData<'a>,

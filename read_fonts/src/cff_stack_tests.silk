@@ -7,9 +7,9 @@ import generated_cff_fixtures { exampleCff2 }
 import font_data { FontData }
 import font_types.lib { Fixed, F2Dot14 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
 
 effect fn must<T, E>(result: Result<T, E>) -> T
   ! AssertionError<'static> {

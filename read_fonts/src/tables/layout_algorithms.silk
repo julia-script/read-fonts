@@ -1,6 +1,6 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Coverage, class, and packed device algorithms from the pinned layout extensions.
-import silk.i8
+import silk.num.i8
 
 struct LayoutRange {
   start: u32,
@@ -784,7 +784,7 @@ impl<'a> DeviceIter<'a> {
 }
 
 // Upstream layout::tests::bit_storage_tests; kept beside the private helper.
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 test effect fn bitStorageTests() -> ()
   ! AssertionError<'static> {

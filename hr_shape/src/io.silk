@@ -1,7 +1,7 @@
-import silk.bytes { Bytes }
-import silk.string { String }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.bytes { Bytes }
+import silk.text.string { String }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub effect fn read(base: &Path, name: string) -> Bytes
   ! FileError | OutOfMemoryError

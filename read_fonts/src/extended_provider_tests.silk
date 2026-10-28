@@ -12,12 +12,12 @@ import font_types.lib { GlyphId, Tag }
 import generated_variation_fixtures as Fixtures
 import test_font_builder as Builder
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
-import silk.u32
-import silk.usize
-import silk.i32
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.num.u32
+import silk.num.usize
+import silk.num.i32
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

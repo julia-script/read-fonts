@@ -15,16 +15,16 @@ import generated_model_fixtures { tinos, mplusVertical, vorgFont }
 import lib { FontRef, ReadError, FontData, TableProvider }
 import tables.vorg { Vorg }
 import font_types.lib { GlyphId, F48Dot16, F2Dot14, F26Dot6, Tag }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.list { List }
-import silk.u16
-import silk.u32
-import silk.i16
-import silk.f32
+import silk.collections.list { List }
+import silk.num.u16
+import silk.num.u32
+import silk.num.i16
+import silk.num.f32
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -748,7 +748,7 @@ effect fn aSuppliedLineIsTakenAsItWasGivenBody() -> ()
 import model.metrics { Metrics }
 import font_types.lib { BoundingBox }
 import test_font_builder as Builder
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 
 struct Rounding {
   ppem: f32,

@@ -5,14 +5,14 @@ import generated_language_cases as Cases
 import generated_scripts as Scripts
 import view { View }
 import font_types.lib { Tag }
-import silk.string { String }
-import silk.slice { Slice }
+import silk.text.string { String }
+import silk.collections.slice { Slice }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u16
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u16
 
 effect fn cases() -> ()
   ! AssertionError<'static> | OutOfMemoryError

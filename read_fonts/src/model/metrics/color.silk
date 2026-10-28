@@ -74,14 +74,14 @@ import array { ComputedArray }
 import table_ref { ByteRange }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.effect { Effect }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.f32
-import silk.u8
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.core.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.f32
+import silk.num.u8
+import silk.num.u32
+import silk.num.usize
 
 unsafe extern "C" fn sinf(value: f32) -> f32
 
@@ -973,7 +973,7 @@ import tables.hmtx { GlyphMetricRecords }
 import ps.cff.font { CffFontRef }
 import generated_misc_table_fixtures as ColorFixtures
 import generated_model_fixtures as ColorExpected
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn cmRead<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

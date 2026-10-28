@@ -371,8 +371,8 @@ def byte_function(name, data):
 def generate():
     runpy.run_path(str(ROOT / "scripts/fetch-unicode"))["fetch"]()
     props, enums, defaults, sets, pairs, compositions = load()
-    data = [HEADER, "import silk.u8\nimport silk.u32\n"]
-    api = [HEADER, "import generated_unicode as Data\nimport silk.u32\n"]
+    data = [HEADER, "import silk.num.u8\nimport silk.num.u32\n"]
+    api = [HEADER, "import generated_unicode as Data\nimport silk.num.u32\n"]
     def read_expr(stage, size, index):
         if size == 1:
             return f"u8.toUsize({stage}()[{index}])"

@@ -1,16 +1,16 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 // Sparse ordered u32 membership, with stable page storage and a sorted page map.
 import collections.int_set.bitpage { BitPage, U32Range }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
-import silk.hash { Hash, HashKey, HashSeed }
-import silk.u32
-import silk.u64
-import silk.usize
+import silk.collections.hash { Hash, HashKey, HashSeed }
+import silk.num.u32
+import silk.num.u64
+import silk.num.usize
 
 struct PageInfo {
   major: u32,

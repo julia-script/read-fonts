@@ -1,7 +1,7 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 //! Owned or static font bytes. Borrowed views never outlive their Blob.
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub union Blob {
   Static { pub bytes: &'static [u8] },

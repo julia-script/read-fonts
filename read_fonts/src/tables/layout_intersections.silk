@@ -1,8 +1,8 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 // IntSet-dependent layout extensions, appended by scripts/generate.
 import collections.int_set { IntSet, IntSetIter, Bound }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u64
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u64
 
 fn glyphSetFirst(glyphs: &IntSet<GlyphId>) -> u32 {
   return GlyphId.toU32(IntSet<GlyphId>.first(glyphs) |> Option<GlyphId>.unwrapOr(GlyphId.new(0)))

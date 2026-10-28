@@ -3,17 +3,17 @@ import fixed { F2Dot14, F4Dot12, F6Dot10, Fixed, F26Dot6, F48Dot16 }
 import fixed_format { decimalRepresentation }
 import tag { Tag }
 import silk.format { Format, Display, ParseError }
-import silk.writer { Writer, WriterError }
-import silk.effect { Effect }
-import silk.testing { Testing, AssertionError }
-import silk.string { String, InvalidUtf8 }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.i16
-import silk.i32
-import silk.i64
-import silk.u64
-import silk.f64
+import silk.io.writer { Writer, WriterError }
+import silk.core.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
+import silk.text.string { String, InvalidUtf8 }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.num.i16
+import silk.num.i32
+import silk.num.i64
+import silk.num.u64
+import silk.num.f64
 
 struct Capture {
   bytes: [u8; 128],

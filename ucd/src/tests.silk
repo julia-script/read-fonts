@@ -18,7 +18,7 @@ import lib {
   VerticalOrientation,
 }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 test effect fn categoriesAndScripts() -> ()
   ! AssertionError<'static> {

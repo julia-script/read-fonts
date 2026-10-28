@@ -8,13 +8,13 @@ import collections.int_set {
   BranchFactor,
   toSparseBitSetWithBf
 }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u32
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u32
 
 effect fn decoded(data: &[u8]) -> IntSet<u32>
   ! AssertionError<'static> | OutOfMemoryError

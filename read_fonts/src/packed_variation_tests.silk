@@ -10,17 +10,17 @@ import generated_variations {
 import font_data { FontData, Cursor }
 import read { ReadError }
 import font_types.lib { Fixed }
-import silk.testing { Testing, AssertionError }
-import silk.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.slice { Slice }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u32
-import silk.usize
-import silk.i32
-import silk.f32
+import silk.collections.slice { Slice }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u32
+import silk.num.usize
+import silk.num.i32
+import silk.num.f32
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

@@ -23,15 +23,15 @@ import array { ScalarArray, ComputedArray }
 import font_types.lib { GlyphId, Point, Fixed, F2Dot14 }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.i16
-import silk.i32
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.i16
+import silk.num.i32
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 // Rust f32::hypot uses the platform math implementation as well.
 unsafe extern "C" fn hypotf(x: f32, y: f32) -> f32

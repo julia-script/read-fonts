@@ -2,8 +2,8 @@ import feature { Feature }
 import direction { Direction, ParseError }
 import scale { Scale }
 import font_types.lib { Tag }
-import silk.testing { Testing, AssertionError }
-import silk.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.result { Result }
 
 effect fn check(text: string, value: u32, start: u32, end: u32) -> ()
   ! AssertionError<'static> {

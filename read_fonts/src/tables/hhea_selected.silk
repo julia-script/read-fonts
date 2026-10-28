@@ -2,8 +2,8 @@
 import generated_hhea { Hhea, HheaExtended }
 import font_types.lib { Version16Dot16, MajorMinor, FWord, UfWord, Uint24 }
 import silk.option { Option }
-import silk.ownership { Copy }
-import silk.u16
+import silk.core.ownership { Copy }
+import silk.num.u16
 
 pub union SelectedHhea<'a> {
   Original { pub table: Hhea<'a> },

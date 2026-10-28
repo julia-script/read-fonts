@@ -3,16 +3,16 @@ pub import collections.int_set.bitset { U32Set, U32SetIter, U32SetRangeIter, U32
 pub import collections.int_set.bitpage { U32Range }
 import font_types.lib { GlyphId, GlyphId16, NameId, Tag }
 import silk.option { Option }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
-import silk.hash { Hash, HashKey, HashSeed }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.u64
-import silk.usize
+import silk.collections.hash { Hash, HashKey, HashSeed }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
+import silk.num.usize
 
 pub struct InDomain {
   raw: u32,
@@ -1003,7 +1003,7 @@ impl Domain for NameId {
 }
 
 import silk.format { Display, Formatter }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 impl<T: Domain + Copy + Display> Display for IntSet<T> {
   effect fn display(self: &Self, formatter: &mut Formatter) -> ()
@@ -1032,8 +1032,8 @@ pub import collections.int_set.sparse_bit_set {
   toSparseBitSetWithBf
 }
 import collections.int_set.sparse_bit_set
-import silk.list { List }
-import silk.result { Result }
+import silk.collections.list { List }
+import silk.core.result { Result }
 
 impl<T> IntSet<T> {
   pub effect fn fromSparseBitSet<'a>(data: &'a [u8]) -> Result<IntSet<u32>, DecodingError>

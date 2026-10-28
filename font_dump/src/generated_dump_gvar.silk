@@ -43,12 +43,12 @@ import font_types.lib {
 }
 import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.u64
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
 import read_fonts.tables.gvar { U16Or32 }
 import read_fonts.tables.variations { Tuple, TupleVariationHeader, TupleVariationCount }
 import generated_dump_variations { dumpTuple }

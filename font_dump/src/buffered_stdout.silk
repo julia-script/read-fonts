@@ -1,10 +1,10 @@
 //! Fixed-capacity output buffering for large differential dumps.
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.layout { Layout }
-import silk.effect { Effect }
-import silk.raw_buffer { RawBuffer }
-import silk.writer { Writer, WriterError }
-import silk.os_writer { StdoutWriter }
+import silk.core.effect { Effect }
+import silk.mem.raw_buffer { RawBuffer }
+import silk.io.writer { Writer, WriterError }
+import silk.io.writer_native { StdoutWriter }
 
 const CAPACITY: usize = 65536
 

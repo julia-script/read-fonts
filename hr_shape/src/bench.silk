@@ -12,20 +12,20 @@ import harfrust.lib {
   ShapeError
 }
 import read_fonts.lib { FontRef, ReadError }
-import silk.bytes { Bytes }
-import silk.string { String, Split, InvalidUtf8 }
-import silk.list { List }
+import silk.collections.bytes { Bytes }
+import silk.text.string { String, Split, InvalidUtf8 }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.writer { Writer, WriterError }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.io.writer { Writer, WriterError }
 import silk.format { Format }
-import silk.u8
-import silk.u32
-import silk.u64
-import silk.i32
-import silk.i64
+import silk.num.u8
+import silk.num.u32
+import silk.num.u64
+import silk.num.i32
+import silk.num.i64
 
 pub effect fn execute(base: &Path, fontPath: string, textPath: string, repeatText: string) -> i32
   ! OutOfMemoryError | FileError | WriterError

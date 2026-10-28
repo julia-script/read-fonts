@@ -1,6 +1,6 @@
 [package]
 name = "font_types"
 version = "0.1.0"
-silk-version = "0.1.0-dev.25+584955edf9ef"
+silk-version = "0.1.0-dev.27+323ceb59e7ee"
 kind = "library"
 exports = ["cast", "lib"]

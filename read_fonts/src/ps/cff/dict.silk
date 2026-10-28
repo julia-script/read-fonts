@@ -14,13 +14,13 @@ import generated_support { signedCount }
 import model.error { Error }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.effect { Effect }
-import silk.ownership { Copy }
+import silk.core.result { Result }
+import silk.core.effect { Effect }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
-import silk.slice { Slice }
-import silk.i32
-import silk.usize
+import silk.collections.slice { Slice }
+import silk.num.i32
+import silk.num.usize
 
 pub enum Operator {
   Version,

@@ -24,13 +24,13 @@ import lib {
 import array { representableLen }
 import font_types.lib { Tag, Offset16, Nullable, writeScalar }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.ownership { Copy }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.ownership { Copy }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

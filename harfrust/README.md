@@ -16,7 +16,7 @@ and cluster levels, custom font callbacks, reusable plans, and tracing.
 ## Library
 
 Add a path dependency on `harfrust` and import `harfrust.lib`. All manifests
-pin `0.1.0-dev.25+584955edf9ef`.
+pin `0.1.0-dev.27+323ceb59e7ee`.
 
 ```silk
 import harfrust.lib { Buffer, ShaperData, shape, ShapeOptions }

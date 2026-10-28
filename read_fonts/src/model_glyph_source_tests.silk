@@ -1,10 +1,10 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import model.glyph { GlyphSource, GlyphSourceOrder, GlyphSources }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.effect { Effect }
 import silk.format { Format }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 effect fn expectSources(order: GlyphSourceOrder, expected: &[GlyphSource]) -> ()
   ! AssertionError<'static> {
@@ -146,7 +146,7 @@ test effect fn everySourceRoundTripsThroughAnOrder() -> ()
 
 import model.glyph.bitmap { BitmapSource }
 import model.glyph.outline { OutlineSource }
-import silk.result { Result }
+import silk.core.result { Result }
 
 test effect fn narrowSourcesRoundTrip() -> ()
   ! AssertionError<'static> {

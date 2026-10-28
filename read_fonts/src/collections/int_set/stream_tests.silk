@@ -2,12 +2,12 @@
 import collections.int_set.branch_factor { BranchFactor }
 import collections.int_set.input_bit_stream { InputBitStream, StreamHeader }
 import collections.int_set.output_bit_stream { OutputBitStream }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u32
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u32
 
 fn optional(input: Option<u32>, expected: i64) -> bool {
   return match move input {

@@ -13,11 +13,11 @@ import model.optional { Maybe }
 import font_types.lib { BoundingBox, F48Dot16, F2Dot14, Fixed, FWord, UfWord, Tag }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.i16
-import silk.i32
-import silk.u16
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.num.i16
+import silk.num.i32
+import silk.num.u16
 
 pub struct LineExtents<T> {
   pub ascender: T,

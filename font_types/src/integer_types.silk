@@ -1,16 +1,16 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import scalar { Scalar, readScalar, writeScalar }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.i16
-import silk.i32
-import silk.i64
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.i16
+import silk.num.i32
+import silk.num.i64
 import cast
 
 pub struct Uint24 {
@@ -920,7 +920,7 @@ impl FixedSize for NameId {
   }
 }
 
-import silk.usize
+import silk.num.usize
 
 pub struct TryFromUint24Error {}
 

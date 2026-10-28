@@ -1,21 +1,21 @@
 import test_fonts
-import silk.bytes { Bytes }
-import silk.filesystem { FileError }
-import silk.host_input { HostInputError }
+import silk.collections.bytes { Bytes }
+import silk.system.filesystem { FileError }
+import silk.system.host_input { HostInputError }
 //! Behavioral ports of upstream tests/tracing.rs.
 import buffer { Buffer, ContentType, GlyphInfos, GlyphPositions }
 import font { ShaperData, ConfiguredShaper, FontFuncs, DefaultFontFuncs }
 import shape { shapeWithFeatures }
 import serialize { serialize, serializeWithoutFont }
 import generated_fixtures as Fixtures
-import silk.sync { Mutex, MutexGuard }
-import silk.string { String }
-import silk.list { List }
-import silk.result { Result }
+import silk.concurrency.sync { Mutex, MutexGuard }
+import silk.text.string { String }
+import silk.collections.list { List }
+import silk.core.result { Result }
 import read_fonts.lib { FontRef, ReadError }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 struct Message {
   text: String,

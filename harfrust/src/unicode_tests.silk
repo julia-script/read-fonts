@@ -1,6 +1,6 @@
 import normalize
 import unicode
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 test effect fn unicode18ScriptsAndProperties() -> ()
   ! AssertionError<'static> {

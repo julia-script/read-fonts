@@ -2,7 +2,7 @@
 //! Bounds of clips and composite paint groups (model/glyph/color/bounds.rs).
 import font_types.lib { BoundingBox, Matrix, Point }
 import tables.colr { CompositeMode }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import model.metrics.base_outline { minNumber, maxNumber }
 
 pub union Bounds {
@@ -125,7 +125,7 @@ pub fn transformBounds(matrix: Matrix<f32>, box: BoundingBox<f32>) -> BoundingBo
   return result
 }
 
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 
 fn boxed(x: f32, y: f32, right: f32, top: f32) -> Bounds {
   return Bounds.Bounded { box: BoundingBox<f32> { xMin: x, yMin: y, xMax: right, yMax: top } }

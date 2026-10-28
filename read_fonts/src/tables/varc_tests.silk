@@ -13,10 +13,10 @@ import generated_variations { PackedDeltaFetcher }
 import generated_misc_table_fixtures as VarcFixtures
 import test_font_builder as VarcBuilder
 import font_types.cast as VarcCast
-import silk.slice { Slice }
-import silk.testing { Testing, AssertionError }
-import silk.f32
-import silk.i8
+import silk.collections.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.f32
+import silk.num.i8
 
 effect fn vmust<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

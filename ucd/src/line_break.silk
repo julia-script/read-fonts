@@ -20,11 +20,11 @@ import generated_properties { lineBreakNumber, lineBreakValue }
 import utf8
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
-import silk.list { List }
-import silk.slice { Slice }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u32
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u32
 
 /// How a break opportunity may be taken.
 pub enum BreakKind {

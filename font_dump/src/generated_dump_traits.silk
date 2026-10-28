@@ -2,7 +2,7 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import read_fonts.lib { FontRead }
 import dump_support { DumpPath }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 pub interface DumpTable<'a> {
   effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer

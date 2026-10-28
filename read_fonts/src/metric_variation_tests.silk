@@ -17,15 +17,15 @@ import font_data { FontData }
 import array { ComputedArray }
 import read { ReadError }
 import font_types.lib { Fixed, F2Dot14, F48Dot16, GlyphId, Tag }
-import silk.testing { Testing, AssertionError }
-import silk.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.slice { Slice }
-import silk.u16
-import silk.f64
-import silk.f32
-import silk.i32
-import silk.u32
+import silk.collections.slice { Slice }
+import silk.num.u16
+import silk.num.f64
+import silk.num.f32
+import silk.num.i32
+import silk.num.u32
 import font_types.lib { readScalar, Offset32 }
 import generated_fvar { Fvar }
 import generated_variations { ItemVariationData, DeltaSetIndex }

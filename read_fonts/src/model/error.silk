@@ -1,9 +1,9 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import read { ReadError }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
 import silk.format { Display, Debug, Formatter }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 pub enum Error {
   Malformed,

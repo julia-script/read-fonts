@@ -6,16 +6,16 @@ import language { Language }
 import font { ShaperData, Shaper }
 import font_types.lib { Tag }
 import read_fonts.lib { FontRef, ReadError }
-import silk.result { Result }
+import silk.core.result { Result }
 import buffer { Buffer, Glyph }
 import direction { Direction }
 import feature { Feature }
 import scale { Scale }
 import view { View }
-import silk.list { List }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.collections.list { List }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 // Two glyph classes drive a push/mark followed by an action. All offsets are
 // table-relative, including the byte-indexed classic state table.

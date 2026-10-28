@@ -12,14 +12,14 @@ import harfrust.lib {
   ShapeError
 }
 import read_fonts.lib { FontRef, ReadError }
-import silk.bytes { Bytes }
-import silk.list { List }
+import silk.collections.bytes { Bytes }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.writer { Writer, WriterError }
-import silk.usize
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.io.writer { Writer, WriterError }
+import silk.num.usize
 
 effect fn apply(
   base: &Path,

@@ -34,11 +34,11 @@ import tables.cmap {
 }
 import font_types.lib { GlyphId }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.usize
-import silk.u32
-import silk.testing { Testing, AssertionError }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.num.usize
+import silk.num.u32
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -74,7 +74,7 @@ fn uv(cp: u32, selector: u32, glyph: i64) -> UvsMappingEntry {
   return UvsMappingEntry { codepoint: cp, selector: selector, mapping: mapping }
 }
 
-import silk.i64
+import silk.num.i64
 
 fn mapped(value: Option<GlyphId>) -> i64 {
   return match move value {

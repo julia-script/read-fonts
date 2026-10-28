@@ -4,9 +4,9 @@ import tables.hmtx { Hmtx }
 import tables.os2 { Os2 }
 import font_types.lib { GlyphId }
 import silk.option { Option }
-import silk.result { Result }
-import silk.usize
-import silk.testing { Testing, AssertionError }
+import silk.core.result { Result }
+import silk.num.usize
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

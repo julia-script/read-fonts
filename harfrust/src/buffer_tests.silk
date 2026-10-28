@@ -13,10 +13,10 @@ import silk.option { Option }
 import normalize
 import syllable
 import direction { Direction }
-import silk.list { List }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.collections.list { List }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 effect fn cases() -> ()
   ! AssertionError<'static> | OutOfMemoryError

@@ -1,16 +1,16 @@
 //! BCP 47 to OpenType language-system candidates, including private-use tags.
 import generated_languages as Data
 import view { View }
-import silk.ownership { Copy }
-import silk.string { String, InvalidUtf8 }
-import silk.slice { Slice }
+import silk.core.ownership { Copy }
+import silk.text.string { String, InvalidUtf8 }
+import silk.collections.slice { Slice }
 import silk.option { Option }
-import silk.result { Result }
-import silk.u8
-import silk.u32
+import silk.core.result { Result }
+import silk.num.u8
+import silk.num.u32
 import font_types.lib { Tag }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 /// Owned, normalized BCP 47 bytes. Invalid UTF-8 is retained by asBytes.
 pub struct Language {

@@ -21,13 +21,13 @@ import generated_cff_fixtures {
   cantarellTable
 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.string { String }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.text.string { String }
 import silk.equal { Equal }
-import silk.testing { Testing, AssertionError }
-import silk.usize
-import silk.i32
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.usize
+import silk.num.i32
 
 effect fn must<T, E>(value: Result<T, E>) -> T
   ! AssertionError<'static> {
@@ -422,7 +422,7 @@ import model.glyph.outline { PathSink, NullSink as NullPathSink }
 import generated_cff_fixtures { notoSansCffTable, notoSansCff2Table, notoSansCff2Font }
 import font { FontRef }
 import tables.fvar { Fvar }
-import silk.u16
+import silk.num.u16
 
 struct CommandCounter {
   count: usize,

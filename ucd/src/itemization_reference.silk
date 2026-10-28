@@ -2,15 +2,15 @@
 //! Prints actual ScriptRun byte ranges and numeric ISO tags for one UTF-8 argument.
 import itemization { ScriptRun }
 import itemization
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.bytes { Bytes }
-import silk.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.bytes { Bytes }
+import silk.core.effect { Effect }
 import silk.format { Format }
-import silk.host_input { HostInput, HostInputError }
-import silk.list { List }
+import silk.system.host_input { HostInput, HostInputError }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.os_writer { StdoutWriter, StderrWriter }
-import silk.writer { Writer, WriterError }
+import silk.io.writer_native { StdoutWriter, StderrWriter }
+import silk.io.writer { Writer, WriterError }
 
 effect fn report() -> i32
   ! HostInputError | OutOfMemoryError | WriterError

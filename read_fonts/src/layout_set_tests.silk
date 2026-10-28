@@ -6,11 +6,11 @@ import font_types.lib { GlyphId }
 import font_data { FontData }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u16
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u16
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

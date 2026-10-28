@@ -31,11 +31,11 @@ import generated_cff_fixtures {
   cantarellFont
 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.string { String }
-import silk.testing { Testing, AssertionError }
-import silk.usize
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.text.string { String }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.usize
 
 effect fn must<T, E>(result: Result<T, E>) -> T
   ! AssertionError<'static> {

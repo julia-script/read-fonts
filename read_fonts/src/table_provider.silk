@@ -4,12 +4,12 @@ import font { FontRef }
 import read { FontRead, ReadError, readWithArgs }
 import font_types.lib { Tag }
 import silk.option { Option }
-import silk.result { Result }
+import silk.core.result { Result }
 import tables.head { Head }
 import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
 import tables.cmap { Cmap, Dmap }
 import tables.hhea { Hhea, HheaExtended, SelectedHhea }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import tables.hmtx { Hmtx, HmtxExtended, GlyphMetricRecords }
 import tables.name { Name }
 import tables.os2 { Os2 }

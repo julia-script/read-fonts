@@ -12,11 +12,11 @@ import generated_variations {
 }
 import font_types.lib { Fixed, F2Dot14, F48Dot16, GlyphId, writeScalar }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
-import silk.usize
-import silk.f64
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.num.usize
+import silk.num.f64
 import generated_variations { Tuple, IntermediateTuples, scalarFor }
 
 test effect fn scalarForIgnoresInvalidIntermediateRegion() -> ()

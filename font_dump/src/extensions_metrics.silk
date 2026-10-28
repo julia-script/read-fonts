@@ -3,8 +3,8 @@ import read_fonts.tables.hmtx { Hmtx, HmtxExtended, LongMetric }
 import font_types.lib { GlyphId }
 import dump_support { DumpPath, scalar, absent }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.usize
+import silk.io.writer { Writer, WriterError }
+import silk.num.usize
 
 pub effect fn dumpHmtx<'a>(path: &mut DumpPath, table: Hmtx<'a>) -> ()
   ! WriterError

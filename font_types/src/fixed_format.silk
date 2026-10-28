@@ -1,12 +1,12 @@
 //! Exact shortest decimal formatting without 128-bit integer intermediates.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import silk.format { Format, Formatter }
-import silk.writer { Writer, WriterError }
-import silk.string { String, InvalidUtf8 }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.u64
-import silk.i64
+import silk.io.writer { Writer, WriterError }
+import silk.text.string { String, InvalidUtf8 }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.num.u64
+import silk.num.i64
 import cast
 
 pub struct Decimal {

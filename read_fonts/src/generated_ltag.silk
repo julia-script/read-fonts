@@ -38,20 +38,20 @@ import font_types.lib {
   Nullable
 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
 import silk.format { Debug, Formatter }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
-import silk.usize
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.u64
-import silk.i16
-import silk.i32
+import silk.num.usize
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
+import silk.num.i16
+import silk.num.i32
 
 /// The [language tag](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6ltag.html) table.
 pub struct Ltag<'a> {
@@ -242,7 +242,7 @@ impl<'a> FontReadAt<'a, ()> for FTStringRange<'a> {
 
 // Handwritten extension from read_fonts/src/tables/ltag_impl.silk
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
-import silk.string { String, InvalidUtf8 }
+import silk.text.string { String, InvalidUtf8 }
 
 pub struct TagIndex<'a> {
   pub index: u32,

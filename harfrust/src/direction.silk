@@ -1,6 +1,6 @@
-import silk.result { Result }
-import silk.string { String }
-import silk.u8
+import silk.core.result { Result }
+import silk.text.string { String }
+import silk.num.u8
 
 pub enum Direction {
   Invalid,

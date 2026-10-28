@@ -12,16 +12,16 @@ import read_fonts.tables.layout { FeatureVariations, LookupVariations }
 import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
 import read_fonts.model.error { Error }
 import read_fonts.lib { ReadError, FontData }
-import silk.result { Result }
-import silk.usize
+import silk.core.result { Result }
+import silk.num.usize
 import font_types.lib { Tag, F2Dot14, F48Dot16 }
-import silk.ownership { Copy }
-import silk.list { List }
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u16
-import silk.u32
-import silk.u64
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
 
 struct CachedLookup {
   digest: SetDigest,

@@ -10,11 +10,11 @@ import generated_fixtures as Fixtures
 import font_types.lib { Tag, GlyphId }
 import silk.option { Option }
 import read_fonts.lib { FontRef, ReadError }
-import silk.list { List }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.collections.list { List }
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 effect fn planCases() -> ()
   ! AssertionError<'static> | OutOfMemoryError

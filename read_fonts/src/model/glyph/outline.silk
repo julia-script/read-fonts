@@ -27,7 +27,7 @@ impl PathSink for NullSink {
 }
 
 import model.glyph { GlyphSource }
-import silk.result { Result }
+import silk.core.result { Result }
 
 pub enum OutlineSource {
   Glyf,

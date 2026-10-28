@@ -11,10 +11,10 @@ import font_types.lib { Fixed, F2Dot14, Offset32 }
 import model.error { Error }
 import ps.read { take, takeRead, require }
 import silk.option { Option }
-import silk.result { Result }
-import silk.effect { Effect }
-import silk.ownership { Copy }
-import silk.u16
+import silk.core.result { Result }
+import silk.core.effect { Effect }
+import silk.core.ownership { Copy }
+import silk.num.u16
 
 pub struct BlendState<'a, 'c> {
   store: ItemVariationStore<'a>,

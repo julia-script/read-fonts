@@ -10,11 +10,11 @@ import ucd.lib as Ucd
 import ucd.lib { LineBreak }
 import ucd.utf8 as Utf8
 import ucd.dictionary { DictionarySegmenter }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u8
-import silk.u32
-import silk.usize
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u8
+import silk.num.u32
+import silk.num.usize
 
 pub struct IcuDictionary {}
 

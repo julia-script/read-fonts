@@ -2,11 +2,11 @@ import vertical { Orientation, OrientationRun }
 import vertical
 import lib as Ucd
 import lib { VerticalOrientation }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.list { List }
-import silk.string { String }
-import silk.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.collections.list { List }
+import silk.text.string { String }
+import silk.testing.testing { Testing, AssertionError }
 
 effect fn expectRuns(text: string, ends: &[usize], values: &[Orientation]) -> ()
   ! AssertionError<'static> | OutOfMemoryError
