@@ -49,6 +49,9 @@ struct Context<'a, 's> {
   restrictSyllable: bool,
   /// Whether multiple and ligature substitutions may start an output pass at their first edit.
   outputPass: bool,
+  /// Whether the current step group enables its lookup for every glyph (`enabledEverywhere`),
+  /// so matching skips the per-glyph check.
+  everywhere: bool,
   classTables: &'s [ClassTable],
   classValues: &'s [u16],
   /// Per rule set digests of contextual subtables' second input values (`OtPlan.ruleDigests`).
@@ -231,6 +234,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     shaper: buffer.shaper,
     restrictSyllable: false,
     outputPass: false,
+    everywhere: false,
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -332,6 +336,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         steps[step].subtableCount,
       )
       let everywhere = enabledEverywhere(&context, step, end)
+      context.everywhere = everywhere
       let pairs = steps[step].pairs && context.positioning
       if !mayApply {
         // Nothing in the buffer is covered.
@@ -593,6 +598,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     shaper: 0,
     restrictSyllable: false,
     outputPass: false,
+    everywhere: false,
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -1567,7 +1573,8 @@ effect fn substitute<F: FontFuncs>(
         }
         cursor = found & (MISMATCH - 1)
         if (found & MISMATCH) != 0
-          || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
+          || (!context.everywhere
+            && enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0)
           || !compatibleComponents(
             &context.*,
             &buffer.*,
@@ -1768,6 +1775,21 @@ effect fn substitute<F: FontFuncs>(
 
 // Contextual matches obey the same component boundaries as ligatures.
 fn compatibleComponents(
+  context: &Context,
+  buffer: &Buffer,
+  lookup: Lookup,
+  at: usize,
+  item: &Glyph,
+) -> bool with Intrinsic.inlineAlways() {
+  // Most first glyphs are no ligature component, which needs only the matched glyph.
+  let first = &List<Glyph>.asSlice(&buffer.glyphs)[at]
+  if first.ligatureId == 0 || first.component == 0 {
+    return item.ligatureId == 0 || item.component == 0 || item.ligatureId == first.ligatureId
+  }
+  return componentOfSameLigature(context, buffer, lookup, at, item)
+}
+
+fn componentOfSameLigature(
   context: &Context,
   buffer: &Buffer,
   lookup: Lookup,
@@ -2337,7 +2359,7 @@ fn format3Fails(
     }
     cursor = found
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
-    if enabled(context, &glyphs[cursor], first, last) == 0
+    if (!context.everywhere && enabled(context, &glyphs[cursor], first, last) == 0)
       || !compatibleComponents(context, buffer, lookup, at, &glyphs[cursor]) {
       return true
     }
@@ -2788,7 +2810,8 @@ effect fn contextual<F: FontFuncs>(
       }
       cursor = found & (MISMATCH - 1)
       if (found & MISMATCH) != 0
-        || enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0
+        || (!context.everywhere
+          && enabled(&context.*, &List<Glyph>.asSlice(&buffer.glyphs)[cursor], first, last) == 0)
         || !compatibleComponents(
           &context.*,
           &buffer.*,
