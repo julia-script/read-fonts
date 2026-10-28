@@ -1082,6 +1082,7 @@ effect fn applyLookup<F: FontFuncs>(
         last,
         depth,
         kind == 6 || kind == 8,
+        false,
       )
     } else if context.positioning && known != 0 && subtables[i].kern != 0
       && (subtables[i].kern <= 2 || !context.variable) {
@@ -1246,6 +1247,7 @@ effect fn applyContextual<F: FontFuncs>(
     let table = View.tail(&context.table, subtables[i].offset)
     let kind = subtables[i].kind
     let chained = kind == 6 || kind == 8
+    let mut checked = false
     if known != 0 && View.u16(&table, 0) == 3 && (buffer.flags & 64) == 0 && context.budget != 0
       && buffer.successful
       && subtables[i].contextDigests != usize.MAX {
@@ -1277,6 +1279,7 @@ effect fn applyContextual<F: FontFuncs>(
         i = i + 1
         continue
       }
+      checked = true
     }
     let digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
     let starts = Slice.view(
@@ -1300,6 +1303,7 @@ effect fn applyContextual<F: FontFuncs>(
       last,
       0,
       chained,
+      checked,
     )
     if result.yes {
       return result
@@ -2950,6 +2954,7 @@ effect fn contextual<F: FontFuncs>(
   last: usize,
   depth: usize,
   chained: bool,
+  checked: bool,
 ) -> Applied
   ! OutOfMemoryError
   ? &mut Allocator {
@@ -2978,8 +2983,10 @@ effect fn contextual<F: FontFuncs>(
   }
 
   // Most format 3 rules whose first input matches still fail. Without unsafe-to-concat tracking
-  // a failed rule only spends its budget unit, so check the rule before the general setup.
-  if rawFormat == 3 && (buffer.flags & 64) == 0 && context.budget != 0 && buffer.successful
+  // a failed rule only spends its budget unit, so check the rule before the general setup,
+  // unless the caller just did.
+  if rawFormat == 3 && !checked && (buffer.flags & 64) == 0 && context.budget != 0
+    && buffer.successful
     && format3Fails(
       &context.*,
       &buffer.*,
