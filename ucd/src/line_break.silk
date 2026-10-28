@@ -10,7 +10,8 @@
 //! class tailoring, then KeepAll suppression / optional dictionary word breaks.
 //! BreakAll preserves graphemes and disables hyphenation; None suppresses SHY.
 //! Manual SHY opportunities are Hyphenated, never invented automatic hyphens.
-//! The caller clears output. Results are sorted, unique, with canonical EOF.
+//! The caller clears output. Offsets are sorted and unique, and the last one is
+//! a Mandatory break at the end of the text (offset 0 for empty text).
 //! Standard breaking uses constant scratch storage and decodes each scalar once.
 import lib as Ucd
 import lib { LineBreak }
@@ -19,11 +20,28 @@ import generated_properties { lineBreakValue }
 import utf8
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
-import text { TextBreak, TextBreakKind, TextCursor }
 import silk.list { List }
 import silk.ownership { Copy }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.u32
+
+/// How a break opportunity may be taken.
+pub enum BreakKind {
+  /// An optional break (UAX #14 ÷).
+  Allowed,
+  /// A mandatory break after a hard line break character, and at the end of text.
+  Mandatory,
+  /// An optional break after a soft hyphen; a renderer shows a hyphen if it breaks here.
+  Hyphenated
+}
+
+/// A break opportunity before byte `offset`. Line content ends at `offset`.
+pub struct BreakOpportunity {
+  pub offset: usize,
+  pub kind: BreakKind
+}
+
+impl Copy for BreakOpportunity {}
 
 pub enum LineBreakMode {
   Auto,
@@ -487,17 +505,13 @@ fn opportunity(
   return true
 }
 
-effect fn append(output: &mut List<TextBreak>, at: usize, end: usize, kind: TextBreakKind) -> ()
+effect fn append(output: &mut List<BreakOpportunity>, at: usize, kind: BreakKind) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
-  let mut cursor = TextCursor { unit: 0, offset: at }
-  if at == end {
-    cursor = TextCursor { unit: 1, offset: 0 }
-  }
-  run output.append(TextBreak { at: cursor, kind: kind })
+  run output.append(BreakOpportunity { offset: at, kind: kind })
 }
 
-effect fn anywhere(text: &[u8], output: &mut List<TextBreak>) -> ()
+effect fn anywhere(text: &[u8], output: &mut List<BreakOpportunity>) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut cursor = GraphemeCursor.make()
@@ -510,11 +524,11 @@ effect fn anywhere(text: &[u8], output: &mut List<TextBreak>) -> ()
       previous = Ucd.lineBreak(decoded.cp)
       scalarAt = decoded.next
     }
-    let mut kind = TextBreakKind.Soft
+    let mut kind = BreakKind.Allowed
     if hard(previous) || at == text.length {
-      kind = TextBreakKind.Forced
+      kind = BreakKind.Mandatory
     }
-    run append(&mut output, at, text.length, kind)
+    run append(&mut output, at, kind)
     if at == text.length {
       break
     }
@@ -525,7 +539,7 @@ effect fn segment(
   text: &[u8],
   options: LineOptions,
   dictionary: &List<usize>,
-  output: &mut List<TextBreak>,
+  output: &mut List<BreakOpportunity>,
 ) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
@@ -581,13 +595,13 @@ effect fn segment(
       allowed = false
     }
     if allowed {
-      let mut kind = TextBreakKind.Soft
+      let mut kind = BreakKind.Allowed
       if hard(left.cls) {
-        kind = TextBreakKind.Forced
+        kind = BreakKind.Mandatory
       } else if left.cp == 0xad {
-        kind = TextBreakKind.Hyphenated
+        kind = BreakKind.Hyphenated
       }
-      run append(&mut output, right.start, text.length, kind)
+      run append(&mut output, right.start, kind)
     }
     before = left
     left = right
@@ -595,10 +609,10 @@ effect fn segment(
     next = afterNext
     afterNext = reader.next()
   }
-  run append(&mut output, text.length, text.length, TextBreakKind.Forced)
+  run append(&mut output, text.length, BreakKind.Mandatory)
 }
 
-pub effect fn breaks(text: &[u8], options: LineOptions, output: &mut List<TextBreak>) -> ()
+pub effect fn breaks(text: &[u8], options: LineOptions, output: &mut List<BreakOpportunity>) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
   let dictionary = List<usize>.make()
@@ -613,7 +627,7 @@ pub effect fn withDictionary<D: DictionarySegmenter>(
   text: &[u8],
   options: LineOptions,
   dictionary: &D,
-  output: &mut List<TextBreak>,
+  output: &mut List<BreakOpportunity>,
 ) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
