@@ -16,7 +16,7 @@ and cluster levels, custom font callbacks, reusable plans, and tracing.
 ## Library
 
 Add a path dependency on `harfrust` and import `harfrust.lib`. All manifests
-pin `0.1.0-dev.23+538c9053f62a`.
+pin `0.1.0-dev.24+912a664401ae`.
 
 ```silk
 import harfrust.lib { Buffer, ShaperData, shape, ShapeOptions }
@@ -147,20 +147,20 @@ check identical glyph/cluster/position checksums. Wall times for the Rust twin
 are tens of milliseconds and too noisy to compare, so the ratios below are
 callgrind instruction counts for one iteration
 (`scripts/bench-shaping --callgrind --iterations 1 --samples 1`), Silk
-`0.1.0-dev.23+538c9053f62a` with Clang 22.1.8 against Rust 1.99.1, both release
+`0.1.0-dev.24+912a664401ae` with Clang 22.1.8 against Rust 1.99.1, both release
 builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.18668e+07 | 6.53272e+07 | 0.95× |
-| Roboto / English words | 8.50932e+07 | 8.7936e+07 | 0.97× |
-| Noto Nastaliq Urdu / Persian Little Prince | 7.9769e+08 | 7.89359e+08 | 1.01× |
-| Noto Nastaliq Urdu / Persian words | 7.73297e+08 | 8.46944e+08 | 0.91× |
-| Noto Sans Devanagari / Hindi words | 2.23475e+08 | 2.25202e+08 | 0.99× |
-| Amiri / Persian Little Prince | 3.34678e+08 | 3.73885e+08 | 0.90× |
-| Source Serif Variable / react-dom | 8.03538e+08 | 1.00439e+09 | 0.80× |
+| Roboto / English Little Prince | 5.82153e+07 | 6.53272e+07 | 0.89× |
+| Roboto / English words | 7.50386e+07 | 8.7936e+07 | 0.85× |
+| Noto Nastaliq Urdu / Persian Little Prince | 7.42392e+08 | 7.89359e+08 | 0.94× |
+| Noto Nastaliq Urdu / Persian words | 7.10913e+08 | 8.46944e+08 | 0.84× |
+| Noto Sans Devanagari / Hindi words | 2.04169e+08 | 2.25202e+08 | 0.91× |
+| Amiri / Persian Little Prince | 3.22033e+08 | 3.73885e+08 | 0.86× |
+| Source Serif Variable / react-dom | 7.6049e+08 | 1.00439e+09 | 0.76× |
 
-The geometric mean is **0.93×**, down from 11.25× for the initial port. Plans
+The geometric mean is **0.86×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -281,7 +281,10 @@ A format 3 rule that a context step already checked is not checked again in `con
 Adding text counts scalars with a loop that vectorizes and converts byte offsets to clusters without a check per scalar.
 Clearing a buffer empties its language in place instead of dropping and replacing it.
 The per-glyph feature check, the second-input search and the nested lookup header read are inlined into their callers.
-The remaining gap is mostly per-glyph table walking that harfrust
+Moving to Silk dev.24, whose slice and list accesses no longer reload the list's base pointer and whose
+large struct literals are stored field by field, took the geometric mean from 0.93× to 0.86× with no source
+changes; every workload is now below Rust.
+The remaining cost is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
