@@ -293,10 +293,7 @@ effect fn outputCases() -> ()
     "outputGlyph and copyGlyph copy the current glyph without advancing",
   )
   drop run Buffer.syncOutput(&mut buffer)
-  run Testing.expect(
-    idsAre(&buffer, &[40, 41, 7, 8, 9, 68]),
-    "skipGlyph drops the current glyph",
-  )
+  run Testing.expect(idsAre(&buffer, &[40, 41, 7, 8, 9, 68]), "skipGlyph drops the current glyph")
   Buffer.clearOutput(&mut buffer)
   run Buffer.nextGlyphs(&mut buffer, 6)
   run Buffer.outputGlyph(&mut buffer, 42)
@@ -351,10 +348,7 @@ effect fn outputCases() -> ()
     "rewinding past the input start opens a gap",
   )
   drop run Buffer.syncOutput(&mut buffer)
-  run Testing.expect(
-    idsAre(&buffer, &[65, 5, 6, 7, 67, 68]),
-    "rewound output reads back as input",
-  )
+  run Testing.expect(idsAre(&buffer, &[65, 5, 6, 7, 67, 68]), "rewound output reads back as input")
 
   // Cluster merges that reach the end of the output continue into the input.
   Buffer.clear(&mut buffer)
