@@ -401,7 +401,13 @@ fn mirror<F: FontFuncs>(
   let mut i: usize = 0
   while i < glyphs.length {
     let original = glyphs[i].codepoint
-    let cp = unicode.mirror(original)
+
+    // No code point below U+0028 or in U+00BC..U+0F39, which holds the Arabic and Hebrew
+    // blocks, has a mirror.
+    let mut cp = original
+    if original >= 0x28 && (original < 0xbc || original >= 0xf3a) {
+      cp = unicode.mirror(original)
+    }
     if cp != original && ConfiguredShaper.hasGlyph(font, cp) {
       glyphs[i].codepoint = cp
     } else {
