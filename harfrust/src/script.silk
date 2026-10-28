@@ -6,86 +6,39 @@ import unicode
 import silk.option { Option }
 import silk.result { Result }
 import silk.ownership { Copy }
-import silk.string { String }
+pub import ucd.lib { Script }
 import silk.slice { Slice }
-import silk.u8
 
-pub struct Script {
-  pub value: u32,
+pub fn parse(text: string) -> Result<Script, ParseError> {
+  return match move Script.parse(text) {
+    Option<Script>.Some { value: script } => Result<Script, ParseError>.succeed(script)
+    _ => Result<Script, ParseError>.failResult(ParseError.InvalidSetting)
+  }
 }
 
-impl Copy for Script {}
+pub fn tag(script: Script) -> Tag {
+  return Tag.fromU32(script.value)
+}
 
-impl Script {
-  pub fn fromIso15924Tag(tag: Tag) -> Option<Self> {
-    let value = Tag.toU32(tag)
-    if value == 0 {
-      return Option<Self>.None
-    }
-    let mut result = (value & 0xdfdfdfdf) | 0x00202020
-    if (result & 0xe0e0e0e0) != 0x40606060 {
-      result = 0x5a7a7a7a
-    }
-    result = match result {
-      0x4172616e => 0x41726162
-      0x43797273 => 0x4379726c
-      0x47656f6b => 0x47656f72
-      0x48616e73 => 0x48616e69
-      0x48616e74 => 0x48616e69
-      0x4a616d6f => 0x48616e67
-      0x4c617466 => 0x4c61746e
-      0x4c617467 => 0x4c61746e
-      0x53797265 => 0x53797263
-      0x5379726a => 0x53797263
-      0x5379726e => 0x53797263
-      _ => result
-    }
-    return Option<Self>.some(Self { value: result })
+pub fn horizontalDirection(script: Script) -> Direction {
+  if unicode.isRtl(script.value) {
+    return Direction.RightToLeft
   }
+  return Direction.LeftToRight
+}
 
-  pub fn parse(text: string) -> Result<Self, ParseError> {
-    let bytes = String.utf8Bytes(text)
-    let mut value: u32 = 0
-    let mut i: usize = 0
-    while i < 4 {
-      value = value * 256
-      if i < bytes.length {
-        value = value + u8.toU32(bytes[i])
-      } else {
-        value = value + 32
-      }
-      i = i + 1
-    }
-    return match move Script.fromIso15924Tag(Tag.fromU32(value)) {
-      Option<Self>.Some { value: script } => Result<Self, ParseError>.succeed(script)
-      _ => Result<Self, ParseError>.failResult(ParseError.InvalidSetting)
-    }
+pub fn tags(script: Script) -> ScriptTags {
+  return ScriptTags.forLanguage(script.value, &Language.empty())
+}
+
+pub fn tagsForLanguage(script: Option<Script>, language: &Language) -> SegmentTags {
+  let value = match move script {
+    Option<Script>.Some { value } => value.value
+    _ => 0
   }
-
-  pub fn tag(self: Self) -> Tag {
-    return Tag.fromU32(self.value)
-  }
-
-  pub fn horizontalDirection(self: Self) -> Direction {
-    if unicode.isRtl(self.value) {
-      return Direction.RightToLeft
-    }
-    return Direction.LeftToRight
-  }
-
-  pub fn tags(self: Self) -> ScriptTags {
-    return ScriptTags.forLanguage(self.value, &Language.empty())
-  }
-
-  pub fn tagsForLanguage(script: Option<Self>, language: &Language) -> SegmentTags {
-    let value = match move script {
-      Option<Self>.Some { value } => value.value
-      _ => 0
-    }
-    return SegmentTags {
-      scripts: ScriptTags.forLanguage(value, language),
-      languages: LanguageTags.fromLanguage(language),
-    }
+  return SegmentTags {
+    scripts: ScriptTags.forLanguage(value, language),
+    languages: LanguageTags.fromLanguage(language),
   }
 }
 

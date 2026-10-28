@@ -24,6 +24,15 @@ jobs:
       - run: silk test --manifest-path font_types/silk.toml --root src/tests.silk
       - run: silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
 
+  unicode:
+    name: Unicode properties
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-silk
+      - run: silk test --manifest-path ucd/silk.toml --root src/tests.silk
+
   codegen:
     name: Generated code, formatting and tools
     runs-on: ubuntu-24.04
