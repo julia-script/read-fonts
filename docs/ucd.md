@@ -328,11 +328,11 @@ checksums, reference versions and the measured source revision:
 | Algorithm | Reference | Silk/reference instruction range |
 |---|---|---:|
 | Bidi | unicode-bidi | 0.24–0.79x |
-| Line breaks | unicode-linebreak | 3.50–4.54x |
-| Line breaks | ICU4X | 1.20–1.38x |
-| Graphemes | ICU4X | 0.38–1.19x |
-| Words | unicode-segmentation | 0.66–0.79x |
-| Sentences | ICU4X | 0.82–1.36x |
+| Line breaks | unicode-linebreak | 2.82–3.49x |
+| Line breaks | ICU4X | 0.89–1.11x |
+| Graphemes | ICU4X | 0.38–1.10x |
+| Words | unicode-segmentation | 0.65–0.76x |
+| Sentences | ICU4X | 0.64–1.16x |
 
 `unicode-linebreak` implements only the default UAX #14 pair table: no CSS
 strictness, word-break or hyphenation options and no dictionary segmentation
