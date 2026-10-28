@@ -1688,9 +1688,9 @@ fn setGlyph(
   ligature: bool,
   multiplied: bool,
 ) -> () {
-  let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  substituteGlyph(context, &mut item, &mut buffer.digest, glyphId, ligature, multiplied)
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+  // In place, rather than copying the whole glyph out and back.
+  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  substituteGlyph(context, &mut glyphs[at], &mut buffer.digest, glyphId, ligature, multiplied)
 }
 
 fn substituteGlyph(
