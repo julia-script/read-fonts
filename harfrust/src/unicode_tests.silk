@@ -53,6 +53,16 @@ test effect fn canonicalPairsAndHangul() -> ()
     unicode.mirror(40) == 41 && unicode.mirror(41) == 40 && unicode.mirror(65) == 65,
     "bidi mirroring",
   )
+
+  // `shape.mirror` skips the lookup for these ranges.
+  let mut cp: u32 = 0
+  while cp < 0xf3a {
+    run Testing.expect(
+      (cp >= 0x28 && cp < 0xbc) || unicode.mirror(cp) == cp,
+      "no mirror below U+0028 or in U+00BC..U+0F39",
+    )
+    cp = cp + 1
+  }
 }
 
 test effect fn hebrewFallbackPresentationForms() -> ()
