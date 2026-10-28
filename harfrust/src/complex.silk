@@ -257,17 +257,18 @@ pub effect fn setup(buffer: &mut Buffer) -> ()
   if buffer.shaper == 0 {
     return
   }
+  let universal = buffer.shaper == 4
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
   let mut i: usize = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    let cat = syllable.indicCategory(item.codepoint)
-    item.category = u16.toU8(cat & 255)
-    item.order = u16.toU8(cat / 256)
-    if buffer.shaper == 4 {
-      item.category = syllable.useCategory(item.codepoint)
+  while i < slots.length {
+    let codepoint = slots[i].codepoint
+    let cat = syllable.indicCategory(codepoint)
+    slots[i].category = u16.toU8(cat & 255)
+    slots[i].order = u16.toU8(cat / 256)
+    if universal {
+      slots[i].category = syllable.useCategory(codepoint)
     }
-    item.featureMask = 0
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
+    slots[i].featureMask = 0
     i = i + 1
   }
   let machine = buffer.shaper
@@ -363,69 +364,93 @@ pub effect fn pause<F: FontFuncs>(
 ) -> bool
   ! OutOfMemoryError
   ? &mut Allocator {
-  let kind = buffer.shaper
-  let mut changed = false
   if stage == 2 && arabic.usesScript(buffer.script) {
     arabic.recordStretch(&mut buffer, plan)
   }
   if buffer.script == 0x41726162 && stage == 11 {
     arabic.fallback(font, &mut buffer, plan, features)
-    changed = true
+    return true
   }
-  if kind == 1 && stage == 2
-    && (run trace.message(font, &buffer.*, "start reordering indic initial")) {
-    run indic.initial(font, &mut buffer, plan)
-    changed = true
-    drop run trace.message(font, &buffer.*, "end reordering indic initial")
+
+  // Each shaper's stages, checked by shaper first so that a call does only its own tests.
+  let kind = buffer.shaper
+  if kind == 1 {
+    if stage == 2 && (run trace.message(font, &buffer.*, "start reordering indic initial")) {
+      run indic.initial(font, &mut buffer, plan)
+      drop run trace.message(font, &buffer.*, "end reordering indic initial")
+      return true
+    }
+    if stage == 13 && (run trace.message(font, &buffer.*, "start reordering indic final")) {
+      indic.final(font, &mut buffer)
+      drop run trace.message(font, &buffer.*, "end reordering indic final")
+      return true
+    }
+    if stage == 14 {
+      clearSyllables(&mut buffer)
+    }
+    return false
   }
-  if kind == 1 && stage == 13
-    && (run trace.message(font, &buffer.*, "start reordering indic final")) {
-    indic.final(font, &mut buffer)
-    changed = true
-    drop run trace.message(font, &buffer.*, "end reordering indic final")
+  if kind == 2 {
+    if stage == 1 && (run trace.message(font, &buffer.*, "start reordering khmer")) {
+      run dotted(font, &mut buffer, 1, 11, 14)
+      khmer(&mut buffer)
+      drop run trace.message(font, &buffer.*, "end reordering khmer")
+      return true
+    }
+    if stage == 2 {
+      clearSyllables(&mut buffer)
+    }
+    return false
   }
-  if kind == 2 && stage == 1 && (run trace.message(font, &buffer.*, "start reordering khmer")) {
-    run dotted(font, &mut buffer, 1, 11, 14)
-    khmer(&mut buffer)
-    changed = true
-    drop run trace.message(font, &buffer.*, "end reordering khmer")
+  if kind == 3 {
+    if stage == 2 && (run trace.message(font, &buffer.*, "start reordering myanmar")) {
+      run dotted(font, &mut buffer, 2, 11, 255)
+      myanmar(&mut buffer)
+      drop run trace.message(font, &buffer.*, "end reordering myanmar")
+      return true
+    }
+    if stage == 6 {
+      clearSyllables(&mut buffer)
+    }
+    return false
   }
-  if kind == 3 && stage == 2 && (run trace.message(font, &buffer.*, "start reordering myanmar")) {
-    run dotted(font, &mut buffer, 2, 11, 255)
-    myanmar(&mut buffer)
-    changed = true
-    drop run trace.message(font, &buffer.*, "end reordering myanmar")
-  }
-  if kind == 4 && stage == 3 {
-    record(&mut buffer, 18, true)
-  }
-  if kind == 4 && stage == 4 {
-    record(&mut buffer, 22, false)
-  }
-  if kind == 4 && stage == 5 && (run trace.message(font, &buffer.*, "start reordering USE")) {
-    run dotted(font, &mut buffer, 8, 1, 18)
-    reorderUse(&mut buffer)
-    changed = true
-    drop run trace.message(font, &buffer.*, "end reordering USE")
-  }
-  if kind == 4 && (stage == 2 || stage == 3) {
-    let mut i: usize = 0
-    while i < Buffer.len(&buffer.*) {
+  if kind == 4 {
+    if stage == 3 {
+      record(&mut buffer, 18, true)
+    }
+    if stage == 4 {
+      record(&mut buffer, 22, false)
+    }
+    if stage == 2 || stage == 3 {
       let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-      slots[i].substituted = false
-      i = i + 1
+      let mut i: usize = 0
+      while i < slots.length {
+        slots[i].substituted = false
+        i = i + 1
+      }
+    }
+    if stage == 5 {
+      let mut changed = false
+      if run trace.message(font, &buffer.*, "start reordering USE") {
+        run dotted(font, &mut buffer, 8, 1, 18)
+        reorderUse(&mut buffer)
+        changed = true
+        drop run trace.message(font, &buffer.*, "end reordering USE")
+      }
+      clearSyllables(&mut buffer)
+      return changed
     }
   }
-  if (kind == 2 && stage == 2) || (kind == 3 && stage == 6) || (kind == 4 && stage == 5)
-    || (kind == 1 && stage == 14) {
-    let mut i: usize = 0
-    while i < Buffer.len(&buffer.*) {
-      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-      slots[i].syllable = 0
-      i = i + 1
-    }
+  return false
+}
+
+fn clearSyllables(buffer: &mut Buffer) -> () {
+  let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  let mut i: usize = 0
+  while i < slots.length {
+    slots[i].syllable = 0
+    i = i + 1
   }
-  return changed
 }
 
 pub effect fn dotted<F: FontFuncs>(
@@ -448,7 +473,7 @@ pub effect fn dotted<F: FontFuncs>(
   let mut hasBroken = false
   let mut n: usize = 0
   while n < Buffer.len(&buffer.*) {
-    if u8.toU32(List<Glyph>.get(&buffer.glyphs, n).syllable & 15) == broken {
+    if u8.toU32(List<Glyph>.asSlice(&buffer.glyphs)[n].syllable & 15) == broken {
       hasBroken = true
       break
     }
@@ -478,7 +503,7 @@ pub effect fn dotted<F: FontFuncs>(
       item.form = first.form
       item.glyphClass = 1
       let mut at = start
-      while at < end && List<Glyph>.get(&buffer.glyphs, at).category == repha {
+      while at < end && List<Glyph>.asSlice(&buffer.glyphs)[at].category == repha {
         at = at + 1
       }
       run List<Glyph>.insert(&mut buffer.glyphs, at, item)
@@ -577,7 +602,7 @@ fn khmer(buffer: &mut Buffer) -> () {
   let mut start: usize = 0
   while start < Buffer.len(&buffer.*) {
     let end = syllable.next(&buffer.*, start)
-    if (List<Glyph>.get(&buffer.glyphs, start).syllable & 15) != 2 {
+    if (List<Glyph>.asSlice(&buffer.glyphs)[start].syllable & 15) != 2 {
       let mut i = start + 1
       while i < end {
         let mut item = List<Glyph>.get(&buffer.glyphs, i)
@@ -588,10 +613,10 @@ fn khmer(buffer: &mut Buffer) -> () {
       let mut coengs: u32 = 0
       i = start + 1
       while i < end {
-        let cat = List<Glyph>.get(&buffer.glyphs, i).category
+        let cat = List<Glyph>.asSlice(&buffer.glyphs)[i].category
         if cat == 4 && coengs <= 2 && i + 1 < end {
           coengs = coengs + 1
-          if List<Glyph>.get(&buffer.glyphs, i + 1).category == 15 {
+          if List<Glyph>.asSlice(&buffer.glyphs)[i + 1].category == 15 {
             let mut j = i
             while j < i + 2 {
               let mut item = List<Glyph>.get(&buffer.glyphs, j)
@@ -630,9 +655,9 @@ pub fn consonant(item: &Glyph) -> bool {
 pub fn sort(buffer: &mut Buffer, start: usize, end: usize) -> () {
   let mut i = start + 1
   while i < end {
-    let order = List<Glyph>.get(&buffer.glyphs, i).order
+    let order = List<Glyph>.asSlice(&buffer.glyphs)[i].order
     let mut j = i
-    while j > start && List<Glyph>.get(&buffer.glyphs, j - 1).order > order {
+    while j > start && List<Glyph>.asSlice(&buffer.glyphs)[j - 1].order > order {
       j = j - 1
     }
     if j != i {
@@ -647,11 +672,11 @@ fn myanmar(buffer: &mut Buffer) -> () {
   let mut start: usize = 0
   while start < Buffer.len(&buffer.*) {
     let end = syllable.next(&buffer.*, start)
-    let kind = List<Glyph>.get(&buffer.glyphs, start).syllable & 15
+    let kind = List<Glyph>.asSlice(&buffer.glyphs)[start].syllable & 15
     if kind == 0 || kind == 2 {
-      let reph = start + 3 <= end && List<Glyph>.get(&buffer.glyphs, start).category == 15
-        && List<Glyph>.get(&buffer.glyphs, start + 1).category == 32
-        && List<Glyph>.get(&buffer.glyphs, start + 2).category == 4
+      let reph = start + 3 <= end && List<Glyph>.asSlice(&buffer.glyphs)[start].category == 15
+        && List<Glyph>.asSlice(&buffer.glyphs)[start + 1].category == 32
+        && List<Glyph>.asSlice(&buffer.glyphs)[start + 2].category == 4
       let mut limit = start
       if reph {
         limit = limit + 3
@@ -681,7 +706,7 @@ fn myanmar(buffer: &mut Buffer) -> () {
         } else if c == 22 {
           item.order = 2
         } else if c == 40 && i > start {
-          item.order = List<Glyph>.get(&buffer.glyphs, i - 1).order
+          item.order = List<Glyph>.asSlice(&buffer.glyphs)[i - 1].order
         } else if position == 5 && c == 21 {
           position = 8
           item.order = position
@@ -700,14 +725,14 @@ fn myanmar(buffer: &mut Buffer) -> () {
       }
       sort(&mut buffer, start, end)
       let mut last = start
-      while last < end && List<Glyph>.get(&buffer.glyphs, last).order == 2 {
+      while last < end && List<Glyph>.asSlice(&buffer.glyphs)[last].order == 2 {
         last = last + 1
       }
       reverseRange(&mut buffer.glyphs, start, last)
       let mut j = start
       i = start
       while i < last {
-        if List<Glyph>.get(&buffer.glyphs, i).category == 22 {
+        if List<Glyph>.asSlice(&buffer.glyphs)[i].category == 22 {
           reverseRange(&mut buffer.glyphs, j, i + 1)
           j = i + 1
         }

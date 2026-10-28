@@ -66,9 +66,9 @@ pub fn next(buffer: &Buffer, start: usize) -> usize {
   if start >= Buffer.len(buffer) {
     return Buffer.len(buffer)
   }
-  let syllable = List<Glyph>.get(&buffer.glyphs, start).syllable
+  let syllable = List<Glyph>.asSlice(&buffer.glyphs)[start].syllable
   let mut end = start + 1
-  while end < Buffer.len(buffer) && List<Glyph>.get(&buffer.glyphs, end).syllable == syllable {
+  while end < Buffer.len(buffer) && List<Glyph>.asSlice(&buffer.glyphs)[end].syllable == syllable {
     end = end + 1
   }
   return end

@@ -163,7 +163,7 @@ pub effect fn normalize<F: FontFuncs>(
       let mut shortest = true
       if isMark(item.codepoint)
         || (i + 1 < Buffer.len(&buffer.*)
-          && isMark(List<Glyph>.get(&buffer.glyphs, i + 1).codepoint)) {
+          && isMark(List<Glyph>.asSlice(&buffer.glyphs)[i + 1].codepoint)) {
         shortest = false
       }
       if buffer.shaper != 0 {
@@ -211,7 +211,7 @@ pub effect fn normalize<F: FontFuncs>(
           let item = List<Glyph>.get(&buffer.glyphs, j)
           let mut pos = j
           while pos > i
-            && List<Glyph>.get(&buffer.glyphs, pos - 1).combiningClass > item.combiningClass {
+            && List<Glyph>.asSlice(&buffer.glyphs)[pos - 1].combiningClass > item.combiningClass {
             pos = pos - 1
           }
           if pos != j {
@@ -512,7 +512,7 @@ pub fn nativeDirection(buffer: &mut Buffer) -> () with Intrinsic.inlineAlways() 
     let mut letter = false
     let mut i: usize = 0
     while i < Buffer.len(&buffer.*) {
-      let cp = List<Glyph>.get(&buffer.glyphs, i).codepoint
+      let cp = List<Glyph>.asSlice(&buffer.glyphs)[i].codepoint
       let gc = unicode.generalCategory(cp)
       number = number || gc == 13 || (cp >= 0x1f1e6 && cp <= 0x1f1ff)
       letter = letter || (gc >= 5 && gc <= 9)
@@ -533,7 +533,7 @@ pub fn nativeDirection(buffer: &mut Buffer) -> () with Intrinsic.inlineAlways() 
     let mut start: usize = 0
     let mut i: usize = 1
     while i <= length {
-      if i == length || !List<Glyph>.get(&buffer.glyphs, i).continuation {
+      if i == length || !List<Glyph>.asSlice(&buffer.glyphs)[i].continuation {
         reverseRange(&mut buffer.glyphs, start, i)
         start = i
       }
@@ -574,7 +574,7 @@ effect fn reorderMarks(buffer: &mut Buffer, start: usize, end: usize) -> ()
     let mut i = start
     let mut cc: u8 = 220
     while cc <= 230 {
-      while i < end && List<Glyph>.get(&buffer.glyphs, i).combiningClass < cc {
+      while i < end && List<Glyph>.asSlice(&buffer.glyphs)[i].combiningClass < cc {
         i = i + 1
       }
       let mut j = i
@@ -606,9 +606,9 @@ effect fn reorderMarks(buffer: &mut Buffer, start: usize, end: usize) -> ()
   } else if buffer.script == 0x48656272 {
     let mut i = start
     while i + 2 < end {
-      let a = List<Glyph>.get(&buffer.glyphs, i).combiningClass
-      let b = List<Glyph>.get(&buffer.glyphs, i + 1).combiningClass
-      let c = List<Glyph>.get(&buffer.glyphs, i + 2).combiningClass
+      let a = List<Glyph>.asSlice(&buffer.glyphs)[i].combiningClass
+      let b = List<Glyph>.asSlice(&buffer.glyphs)[i + 1].combiningClass
+      let c = List<Glyph>.asSlice(&buffer.glyphs)[i + 2].combiningClass
       if (a == unicode.modifiedCombiningClass(0x5b7) || a == unicode.modifiedCombiningClass(0x5b8))
         && (b == unicode.modifiedCombiningClass(0x5b0)
           || b == unicode.modifiedCombiningClass(0x5b4))
