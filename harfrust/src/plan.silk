@@ -50,6 +50,9 @@ pub struct LookupStep {
   /// One past the last of the steps from this one on that share its lookup and stage, which
   /// `ot.apply` runs together; set once the steps are sorted.
   pub groupEnd: usize,
+  /// Whether the lookup has subtables and all of them adjust pairs (`LookupSubtable.kern`), so
+  /// `ot.applyPairs` applies it.
+  pub pairs: bool,
 }
 
 impl Copy for LookupStep {}
@@ -273,6 +276,12 @@ impl<'a> OtPlan<'a> {
       lookupOffset = cached.lookupOffset
     }
     let groupEnd = List<LookupStep>.length(&self.steps) + 1
+    let mut pairs = count != 0
+    let mut k: usize = 0
+    while k < count && pairs {
+      pairs = List<LookupSubtable>.asSlice(&self.subtables)[first + k].kern != 0
+      k = k + 1
+    }
     run List<LookupStep>.append(
       &mut self.steps,
       LookupStep {
@@ -288,6 +297,7 @@ impl<'a> OtPlan<'a> {
         stage: stage,
         plain: plainFeature(tag),
         groupEnd: groupEnd,
+        pairs: pairs,
       },
     )
   }
