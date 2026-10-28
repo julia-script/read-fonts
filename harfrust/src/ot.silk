@@ -280,8 +280,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   }
 
   // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
-  // glyph walk. Positioning never changes glyphs, so only substitution refreshes it.
-  let mut glyphDigest = SetDigest.new()
+  // glyph walk. Substitutions add their glyphs to it, so only a pause, which can change glyphs
+  // in other ways, refreshes it, as in harfrust.
   let mut digestStale = true
   let tracing = trace.enabled(font, &buffer.*)
   let paused = complex.pausedStages(buffer.shaper, buffer.script)
@@ -296,13 +296,13 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       && buffer.successful {
       let end = steps[step].groupEnd
       if digestStale {
-        glyphDigest = bufferDigest(&buffer.*)
+        buffer.digest = bufferDigest(&buffer.*)
         digestStale = false
       }
 
       // A lookup that cannot match the buffer's glyphs does nothing; without tracing, it is
       // skipped before any setup.
-      let mayApply = stepMayApply(&steps[step], &glyphDigest, &buffer.*)
+      let mayApply = stepMayApply(&steps[step], &buffer.digest, &buffer.*)
       if !mayApply && !tracing {
         step = end
         continue
@@ -354,7 +354,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       if !mayApply {
         // Nothing in the buffer is covered.
       } else if lookup.kind == 8 && !context.positioning {
-        digestStale = true
+        digestStale = Buffer.len(&buffer.*) <= 32
         let mut i = Buffer.len(&buffer.*)
         while i > 0 && context.budget != 0 && buffer.successful {
           i = i - 1
@@ -412,7 +412,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
             )
           }
           if result.yes {
-            digestStale = true
             if !buffer.haveOutput {
               buffer.idx = result.next
             }
@@ -460,7 +459,8 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
             )
           }
           if result.yes {
-            if !context.positioning {
+            // A short buffer's digest is cheap to refresh, and an exact one skips more lookups.
+            if !context.positioning && Buffer.len(&buffer.*) <= 32 {
               digestStale = true
             }
             i = result.next
@@ -1230,17 +1230,19 @@ fn setGlyph(
   multiplied: bool,
 ) -> () {
   let mut item = List<Glyph>.get(&buffer.glyphs, at)
-  substituteGlyph(context, &mut item, glyphId, ligature, multiplied)
+  substituteGlyph(context, &mut item, &mut buffer.digest, glyphId, ligature, multiplied)
   List<Glyph>.set(&mut buffer.glyphs, at, item)
 }
 
 fn substituteGlyph(
   context: &Context,
   item: &mut Glyph,
+  digest: &mut SetDigest,
   glyphId: u32,
   ligature: bool,
   multiplied: bool,
 ) -> () {
+  SetDigest.add(&mut digest, glyphId)
   item.info.glyphId = glyphId
   item.substituted = true
   if ligature {
@@ -1380,7 +1382,14 @@ effect fn substitute<F: FontFuncs>(
           if View.len(&context.glyphClasses.view) == 0 && glyph.glyphClass == 2 {
             item.glyphClass = 1
           }
-          substituteGlyph(&context.*, &mut item, View.uint(&set, 2 + i * width, width), false, true)
+          substituteGlyph(
+            &context.*,
+            &mut item,
+            &mut buffer.digest,
+            View.uint(&set, 2 + i * width, width),
+            false,
+            true,
+          )
           run Buffer.outputItem(&mut buffer, item)
           i = i + 1
         }
