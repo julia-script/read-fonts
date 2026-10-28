@@ -818,13 +818,13 @@ effect fn applyLookup<F: FontFuncs>(
         && format3Fails(
           &context.*,
           &buffer.*,
-          lookup.*,
+          lookup,
           table,
           at,
           first,
           last,
           kind == 6 || kind == 8,
-          format3Digests(&context.*, subtables, i),
+          subtables[i].contextDigests,
         ) {
         context.budget = context.budget - 1
         i = i + 1
@@ -924,7 +924,9 @@ effect fn applyLookup<F: FontFuncs>(
 }
 
 /// `applyLookup` for a top-level lookup whose subtables all adjust pairs (`kern != 0`): the same
-/// subtable skips, budget charges and results, without the branches for other kinds.
+/// subtable skips, budget charges and results, without the branches for other kinds. A pair
+/// subtable's digest holds every glyph of its coverage, so an expanded coverage is checked
+/// without it, and no pair subtable spends budget on a miss.
 effect fn applyPairs<F: FontFuncs>(
   font: &ConfiguredShaper<F>,
   context: &mut Context,
@@ -949,11 +951,7 @@ effect fn applyPairs<F: FontFuncs>(
     while i < subtables.length && budget != 0 {
       budget = budget - 1
       let sub = &subtables[i]
-      if SetDigest.mayHave(&sub.digest, glyph) {
-        if sub.coverageCount == 0 {
-          found = true
-          break
-        }
+      if sub.coverageCount != 0 {
         if glyph >= sub.coverageFirst
           && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
           known = u16.toU32(
@@ -964,9 +962,9 @@ effect fn applyPairs<F: FontFuncs>(
           found = true
           break
         }
-        if sub.missSpends && budget != 0 {
-          budget = budget - 1
-        }
+      } else if SetDigest.mayHave(&sub.digest, glyph) {
+        found = true
+        break
       }
       i = i + 1
     }
@@ -1865,6 +1863,45 @@ const BACK_NONE: u64 = 0x200000000
 
 const BACK_SKIPPABLE: u64 = 0x100000000
 
+/// `outsideFirst` for glyph values, with the lookup borrowed and no class definitions.
+fn outsideGlyph(
+  context: &Context,
+  buffer: &Buffer,
+  lookup: &Lookup,
+  at: usize,
+  backward: bool,
+) -> u64 {
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  let syllable = glyphs[at].syllable
+  let mut i = at
+  while true {
+    if backward {
+      if i == 0 {
+        return BACK_NONE
+      }
+      i = i - 1
+    } else {
+      i = i + 1
+      if i >= glyphs.length {
+        return BACK_NONE
+      }
+    }
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != syllable {
+      break
+    }
+    if ignored(context, lookup.*, item) {
+      continue
+    }
+    if item.ignorable && !item.substituted && (!item.hidden || context.positioning)
+      && (item.codepoint != 0x200c || context.positioning || context.autoZwnj) {
+      return BACK_SKIPPABLE
+    }
+    return u32.toU64(item.info.glyphId)
+  }
+  return BACK_NONE
+}
+
 /// The value for `kind` of the glyph a rule's first backtrack value (or, forward, a single-input
 /// rule's first lookahead value) is compared with: the first one before (or after) `at` that
 /// matching does not ignore.
@@ -1913,15 +1950,11 @@ fn outsideFirst(
 }
 
 /// A cached 16-bit format 3 contextual subtable's `contextDigests`, or none.
-fn format3Digests<'a, 's>(
-  context: &Context<'a, 's>,
-  subtables: &[LookupSubtable],
-  index: usize,
-) -> &'s [SetDigest] {
-  if index < subtables.length && subtables[index].contextDigests != usize.MAX {
-    return Slice.view(context.contextDigests, subtables[index].contextDigests, 3)
+fn format3DigestsAt(subtables: &[LookupSubtable], index: usize) -> usize {
+  if index < subtables.length {
+    return subtables[index].contextDigests
   }
-  return Slice.view(context.contextDigests, 0, 0)
+  return usize.MAX
 }
 
 /// Whether the rule loop in `contextual` would reject the 16-bit format 3 rule at `at`, whose
@@ -1929,15 +1962,14 @@ fn format3Digests<'a, 's>(
 fn format3Fails(
   context: &Context,
   buffer: &Buffer,
-  lookup: Lookup,
+  lookupRef: &Lookup,
   table: View,
   at: usize,
   first: usize,
   last: usize,
   chained: bool,
-  digests: &[SetDigest],
+  digestsAt: usize,
 ) -> bool {
-  let classes = noClasses(context)
   let mut pos: usize = 2
   let mut backPos: usize = 0
   let mut backCount: usize = 0
@@ -1958,8 +1990,9 @@ fn format3Fails(
   // The plan's digests rule out most failing rules from the glyphs next to the first one,
   // before the rest of the rule is read or any coverage is searched: the second input, or the
   // first lookahead of a single input, and the first backtrack.
-  if digests.length == 3 {
-    let next = outsideFirst(context, buffer, lookup, at, false, 2, classes)
+  if digestsAt != usize.MAX {
+    let digests = Slice.view(context.contextDigests, digestsAt, 3)
+    let next = outsideGlyph(context, buffer, lookupRef, at, false)
     let mut nextDigest = &digests[0]
     if inputCount == 1 {
       nextDigest = &digests[2]
@@ -1972,7 +2005,7 @@ fn format3Fails(
       return true
     }
     if backCount != 0 {
-      let back = outsideFirst(context, buffer, lookup, at, true, 2, classes)
+      let back = outsideGlyph(context, buffer, lookupRef, at, true)
       if back == BACK_NONE
         || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.toU32(back))) {
         return true
@@ -1983,6 +2016,8 @@ fn format3Fails(
   if inputCount == 0 || inputCount > 64 || !tail.valid {
     return true
   }
+  let lookup = lookupRef.*
+  let classes = noClasses(context)
   let mut cursor = at
   let mut n: usize = 1
   while n < inputCount {
@@ -2148,13 +2183,13 @@ effect fn contextual<F: FontFuncs>(
     && format3Fails(
       &context.*,
       &buffer.*,
-      lookup,
+      &lookup,
       table,
       at,
       first,
       last,
       chained,
-      format3Digests(&context.*, subtables, subtableIndex),
+      format3DigestsAt(subtables, subtableIndex),
     ) {
     context.budget = context.budget - 1
     return no()
