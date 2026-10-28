@@ -59,6 +59,9 @@ pub struct LookupStep {
   /// Whether the lookup has subtables and all of them are positioning subtables other than
   /// contextual and kerning ones, so `ot.applyPositionStep` applies it.
   pub positions: bool,
+  /// Whether the lookup has subtables and all of them are single, multiple, alternate or
+  /// ligature substitutions, so `ot.applySubstituteStep` applies it.
+  pub substitutes: bool,
   /// `ZWJ_*` bits for the step's feature under the plan's shaper and script: whether matching
   /// skips joiners automatically, and whether substitution stays within a syllable.
   pub zwj: u8,
@@ -363,6 +366,13 @@ impl<'a> OtPlan<'a> {
       positions = sub.kind >= 1 && sub.kind <= 6 && sub.kern == 0
       k = k + 1
     }
+    let mut substitutes = count != 0 && !self.positioning
+    k = 0
+    while k < count && substitutes {
+      let kind = List<LookupSubtable>.asSlice(&self.subtables)[first + k].kind
+      substitutes = kind >= 1 && kind <= 4
+      k = k + 1
+    }
     let header = View.tail(&self.table, lookupOffset)
     run List<LookupStep>.append(
       &mut self.steps,
@@ -382,6 +392,7 @@ impl<'a> OtPlan<'a> {
         pairs: pairs,
         contextual: contextual,
         positions: positions,
+        substitutes: substitutes,
         zwj: 0,
         kind: View.u16(&header, 0),
         lookupFlags: View.u16(&header, 2),
