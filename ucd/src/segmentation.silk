@@ -74,7 +74,13 @@ impl GraphemeCursor {
       let conjunct = indicConjunctBreakValue(u32.shiftRight(info, 5) & 3)
       let pictographic = info >= 128
       let mut boundary = true
-      if self.previous == G.CR && current == G.LF {
+      if current == G.Other && self.previous != G.Prepend && !self.linkerExtend
+        && !self.pictographicZWJ {
+        boundary = true // Only GB4 or GB999 can apply.
+      } else if (current == G.Extend || current == G.SpacingMark)
+        && !graphemeControl(self.previous) {
+        boundary = false // GB9, GB9a: nothing before them can apply.
+      } else if self.previous == G.CR && current == G.LF {
         boundary = false // GB3
       } else if graphemeControl(self.previous) || graphemeControl(current) {
         boundary = true // GB4, GB5 precede the extending rules.
