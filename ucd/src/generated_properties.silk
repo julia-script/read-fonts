@@ -710,6 +710,61 @@ pub fn lineBreakValue(value: u32) -> LineBreak with Intrinsic.inlineAlways() {
   }
 }
 
+// Package-internal: the class's row and column in Data.linePairs.
+pub fn lineBreakNumber(c: LineBreak) -> usize with Intrinsic.inlineAlways() {
+  return match c {
+    LineBreak.AI => 0
+    LineBreak.AK => 1
+    LineBreak.AL => 2
+    LineBreak.AP => 3
+    LineBreak.AS => 4
+    LineBreak.B2 => 5
+    LineBreak.BA => 6
+    LineBreak.BB => 7
+    LineBreak.BK => 8
+    LineBreak.CB => 9
+    LineBreak.CJ => 10
+    LineBreak.CL => 11
+    LineBreak.CM => 12
+    LineBreak.CP => 13
+    LineBreak.CR => 14
+    LineBreak.EB => 15
+    LineBreak.EM => 16
+    LineBreak.EX => 17
+    LineBreak.GL => 18
+    LineBreak.H2 => 19
+    LineBreak.H3 => 20
+    LineBreak.HH => 21
+    LineBreak.HL => 22
+    LineBreak.HY => 23
+    LineBreak.ID => 24
+    LineBreak.IN => 25
+    LineBreak.IS => 26
+    LineBreak.JL => 27
+    LineBreak.JT => 28
+    LineBreak.JV => 29
+    LineBreak.LF => 30
+    LineBreak.NL => 31
+    LineBreak.NS => 32
+    LineBreak.NU => 33
+    LineBreak.OP => 34
+    LineBreak.PO => 35
+    LineBreak.PR => 36
+    LineBreak.QU => 37
+    LineBreak.RI => 38
+    LineBreak.SA => 39
+    LineBreak.SG => 40
+    LineBreak.SP => 41
+    LineBreak.SY => 42
+    LineBreak.VF => 43
+    LineBreak.VI => 44
+    LineBreak.WJ => 45
+    LineBreak.XX => 46
+    LineBreak.ZW => 47
+    LineBreak.ZWJ => 48
+  }
+}
+
 pub enum EastAsianWidth {
   A,
   F,

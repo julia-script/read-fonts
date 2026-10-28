@@ -16,7 +16,7 @@
 import lib as Ucd
 import lib { LineBreak }
 import generated_unicode as Data
-import generated_properties { lineBreakValue }
+import generated_properties { lineBreakNumber, lineBreakValue }
 import utf8
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
@@ -210,7 +210,7 @@ struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-  fn make(text: &'a [u8], at: usize, options: LineOptions) -> Self {
+  fn make(text: &'a [u8], at: usize, options: LineOptions) -> Self with Intrinsic.inlineAlways() {
     let mut reader = Self {
       text: text,
       at: at,
@@ -357,6 +357,8 @@ impl Context {
 
 // `reader` is positioned after `right`; it is only peeked for the few rules that
 // look past the pair.
+// Always inlined: a call would take the loop's tokens, reader and context by
+// pointer and keep them in memory for the whole scan.
 fn opportunity(
   left: Token,
   right: Token,
@@ -365,7 +367,7 @@ fn opportunity(
   context: &Context,
   options: LineOptions,
   dictionary: bool,
-) -> bool {
+) -> bool with Intrinsic.inlineAlways() {
   let a = left.cls
   let b = right.cls
 
@@ -545,6 +547,15 @@ fn opportunity(
   return true
 }
 
+// Data.linePairs() is a CLASSES x CLASSES table of these decisions.
+const CLASSES: usize = 49
+
+const PAIR_RULES: u8 = 0
+
+const PAIR_KEEP: u8 = 1
+
+const PAIR_BREAK: u8 = 2
+
 // Opportunities are staged in a local buffer, so the scanning loop rarely calls out.
 const STAGED: usize = 64
 
@@ -601,6 +612,33 @@ effect fn segment(
     return
   }
 
+  // The untailored profile gets its own copy of the loop with constant options,
+  // so tailoring and dictionary state drop out of the hot loop.
+  if !css(options) && options.wordBreak == WordBreakMode.Normal
+    && dictionary.asSlice().length == 0 {
+    let untailored = LineOptions {
+      lineBreak: LineBreakMode.Auto,
+      wordBreak: WordBreakMode.Normal,
+      hyphens: options.hyphens,
+      language: LineLanguage.Default,
+    }
+    run scan(text, untailored, dictionary, &mut output, false)
+  } else {
+    run scan(text, options, dictionary, &mut output, true)
+  }
+}
+
+// `tailored` is a constant at both call sites; false promises the untailored
+// profile and no dictionary boundaries.
+effect fn scan(
+  text: &[u8],
+  options: LineOptions,
+  dictionary: &List<usize>,
+  output: &mut List<BreakOpportunity>,
+  tailored: bool,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator with Intrinsic.inlineAlways() {
   let mut graphemes = GraphemeCursor.make()
   let mut reader = Reader.make(text, 0, options)
   let mut left = reader.next()
@@ -613,6 +651,7 @@ effect fn segment(
   let breakAll = options.wordBreak == WordBreakMode.BreakAll
   let suppressHyphens = options.hyphens == Hyphens.None || breakAll
   let keepAll = options.wordBreak == WordBreakMode.KeepAll
+  let pairs = Data.linePairs()
   let mut staged: [BreakOpportunity; 64] = [
     BreakOpportunity { offset: 0, kind: BreakKind.Allowed }; 64
   ]
@@ -620,7 +659,7 @@ effect fn segment(
   while !right.isEof() {
     context.advance(left)
     let mut dictionaryBreak = false
-    if left.has(SA) && right.has(SA) {
+    if tailored && left.has(SA) && right.has(SA) {
       // Boundaries are sorted, so the cursor only moves forward.
       while dictionaryIndex < boundaries.length && boundaries[dictionaryIndex] < right.start {
         dictionaryIndex = dictionaryIndex + 1
@@ -629,13 +668,24 @@ effect fn segment(
         && boundaries[dictionaryIndex] == right.start
     }
 
+    // Untailored, most pairs are decided by their classes alone (generated from
+    // the rules below by scripts/generate-unicode). LB8a needs the ZWJ flag.
+    let mut pair = PAIR_RULES
+    if !tailored && !left.has(ZWJ) {
+      pair = pairs[lineBreakNumber(left.cls) * CLASSES + lineBreakNumber(right.cls)]
+    }
+
     // LB23/LB25/LB28 join every AL/HL/NU pair. Resolve that context-independent
     // block, spaces and pairs involving ideographs before passing five token
     // records through the contextual rules.
     // BreakAll has already reclassified eligible characters; SA dictionary
     // boundaries must bypass the alphabetic no-break rule.
     let mut allowed = false
-    if !dictionaryBreak && joining(left.cls) && joining(right.cls) {
+    if pair == PAIR_KEEP {
+      allowed = false
+    } else if pair == PAIR_BREAK {
+      allowed = true
+    } else if !dictionaryBreak && joining(left.cls) && joining(right.cls) {
       allowed = false
     } else if right.cls == LineBreak.SP && !hard(left.cls) {
       // LB7.
