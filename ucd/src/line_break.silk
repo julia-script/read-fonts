@@ -21,6 +21,7 @@ import utf8
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
 import silk.list { List }
+import silk.slice { Slice }
 import silk.ownership { Copy }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.u32
@@ -544,6 +545,19 @@ fn opportunity(
   return true
 }
 
+// Opportunities are staged in a local buffer, so the scanning loop rarely calls out.
+const STAGED: usize = 64
+
+effect fn flush(
+  output: &mut List<BreakOpportunity>,
+  staged: &[BreakOpportunity],
+  count: usize,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  run output.appendSlice(Slice.view<BreakOpportunity>(staged, 0, count))
+}
+
 effect fn append(output: &mut List<BreakOpportunity>, at: usize, kind: BreakKind) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
@@ -599,6 +613,10 @@ effect fn segment(
   let breakAll = options.wordBreak == WordBreakMode.BreakAll
   let suppressHyphens = options.hyphens == Hyphens.None || breakAll
   let keepAll = options.wordBreak == WordBreakMode.KeepAll
+  let mut staged: [BreakOpportunity; 64] = [
+    BreakOpportunity { offset: 0, kind: BreakKind.Allowed }; 64
+  ]
+  let mut stagedCount: usize = 0
   while !right.isEof() {
     context.advance(left)
     let mut dictionaryBreak = false
@@ -650,12 +668,18 @@ effect fn segment(
       } else if left.cp == 0xad {
         kind = BreakKind.Hyphenated
       }
-      run append(&mut output, right.start, kind)
+      staged[stagedCount] = BreakOpportunity { offset: right.start, kind: kind }
+      stagedCount = stagedCount + 1
+      if stagedCount == STAGED {
+        run flush(&mut output, &staged, stagedCount)
+        stagedCount = 0
+      }
     }
     before = left
     left = right
     right = reader.next()
   }
+  run flush(&mut output, &staged, stagedCount)
   run append(&mut output, text.length, BreakKind.Mandatory)
 }
 
