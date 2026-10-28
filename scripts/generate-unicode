@@ -242,6 +242,17 @@ def table(values, default):
 
 
 ASCII_TABLES = {"lineBreakInfo", "wordBreak", "sentenceBreak"}
+# Hot per-scalar tables also get a two-stage BMP table: one load fewer than the trie.
+BMP_TABLES = {"graphemeInfo", "sentenceBreak", "wordBreak"}
+
+
+def bmp_table(values, default):
+    bmp = [values[cp] if cp < len(values) else default for cp in range(0x10000)]
+    candidates = []
+    for shift in range(4, 9):
+        indexes, leaves = unique_blocks(bmp, 1 << shift, default)
+        candidates.append((len(indexes) * width(indexes) + len(leaves) * width(leaves), shift, [indexes, leaves]))
+    return min(candidates, key=lambda item: item[:2])
 
 
 def byte_function(name, data):
@@ -261,7 +272,9 @@ def generate():
     for fn, values in props.items():
         default = defaults[fn]
         full = values
-        end, cost, shift, middle_shift, stages = table(values, default)
+        # The trie only answers supplementary scalars for tables with a BMP stage.
+        trie = [default] * 0x10000 + list(values[0x10000:]) if fn in BMP_TABLES else values
+        end, cost, shift, middle_shift, stages = table(trie, default)
         widths = []
         for i, values in enumerate(stages):
             payload, size = packed(values)
@@ -273,11 +286,24 @@ def generate():
             payload, size = packed([full[cp] if cp < len(full) else default for cp in range(128)])
             data.append(byte_function(fn + "Ascii", payload))
             read_ascii = f"u8.toU32({fn}Ascii()[u32.toUsize(cp)])" if size == 1 else f"be{size * 8}({fn}Ascii(), u32.toUsize(cp) * {size})"
+        if fn in BMP_TABLES:
+            bmp_cost, bmp_shift, bmp_stages = bmp_table(full, default)
+            bmp_widths = []
+            for i, values in enumerate(bmp_stages):
+                payload, size = packed(values)
+                bmp_widths.append(size)
+                data.append(byte_function(fn + "Bmp" + str(i), payload))
+            data.append(f"// BMP: {bmp_cost} bytes; leaf block {1 << bmp_shift}.\n")
         data.append(f"// {cost} bytes; leaf block {1 << shift}" + (f", middle block {1 << middle_shift}" if middle_shift else "") + ".\n")
         data.append(f"// lookup {fn} {end} {default} {shift} {middle_shift} " + ",".join(map(str, widths)) + "\n")
         data.append(f"pub fn {fn}(cp: u32) -> u32 with Intrinsic.inlineAlways() {{\n")
         if read_ascii:
             data.append(f"  if cp < 128 {{ return {read_ascii} }}\n")
+        if fn in BMP_TABLES:
+            block = read_expr(fn + "Bmp0", bmp_widths[0], f"u32.toUsize(cp) / {1 << bmp_shift}")
+            index = f"block * {1 << bmp_shift} + (u32.toUsize(cp) & {(1 << bmp_shift) - 1})"
+            leaf = f"u8.toU32({fn}Bmp1()[{index}])" if bmp_widths[1] == 1 else f"be{bmp_widths[1] * 8}({fn}Bmp1(), ({index}) * {bmp_widths[1]})"
+            data.append(f"  if cp < 0x10000 {{\n    let block = {block}\n    return {leaf}\n  }}\n")
         data.append(f"  if cp >= {end} {{ return {default} }}\n  let u = u32.toUsize(cp)\n")
         if middle_shift:
             first = read_expr(fn + "0", widths[0], f"u / {1 << (shift + middle_shift)}")
