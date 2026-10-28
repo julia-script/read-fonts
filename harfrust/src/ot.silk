@@ -231,7 +231,10 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   // A digest of the buffer's glyphs lets a lookup that cannot apply to any of them skip the
   // glyph walk. Substitutions add their glyphs to it, so only a pause, which can change glyphs
   // in other ways, refreshes it, as in harfrust.
-  buffer.digest = bufferDigest(&buffer.*)
+  if !plan.positioning || !buffer.digestFresh {
+    buffer.digest = bufferDigest(&buffer.*)
+  }
+  buffer.digestFresh = false
   let mut digestStale = false
   let tracing = trace.enabled(font, &buffer.*)
   let paused = complex.pausedStages(buffer.shaper, buffer.script)
@@ -250,6 +253,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       i = i + 1
     }
     if !any {
+      buffer.digestFresh = !plan.positioning
       drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
       return
     }
@@ -514,6 +518,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   if context.budget == 0 {
     buffer.successful = false
   }
+  buffer.digestFresh = !plan.positioning && !digestStale
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
 }
 
@@ -1011,14 +1016,14 @@ effect fn applyLookup<F: FontFuncs>(
           if ahead == BACK_NONE {
             rejected = inputCount > 1 || (chained && View.u16(&table, pos + inputCount * 2) != 0)
           } else if ahead < BACK_SKIPPABLE {
-            rejected = !SetDigest.mayHave(aheadDigest, u64.toU32(ahead))
+            rejected = !SetDigest.mayHave(aheadDigest, u64.wrappingToU32(ahead))
           }
           if !rejected && backCount != 0 {
             if back == BACK_UNKNOWN {
               back = outsideGlyph(&context.*, &buffer.*, lookup, at, true)
             }
             rejected = back == BACK_NONE
-              || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.toU32(back)))
+              || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.wrappingToU32(back)))
           }
         }
         if rejected
@@ -2363,13 +2368,13 @@ fn format3Fails(
       && (inputCount > 1 || (chained && View.u16(&table, pos + inputCount * 2) != 0)) {
       return true
     }
-    if next < BACK_SKIPPABLE && !SetDigest.mayHave(nextDigest, u64.toU32(next)) {
+    if next < BACK_SKIPPABLE && !SetDigest.mayHave(nextDigest, u64.wrappingToU32(next)) {
       return true
     }
     if backCount != 0 {
       let back = outsideGlyph(context, buffer, lookupRef, at, true)
       if back == BACK_NONE
-        || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.toU32(back))) {
+        || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.wrappingToU32(back))) {
         return true
       }
     }
