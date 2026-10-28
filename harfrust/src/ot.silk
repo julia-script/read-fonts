@@ -3436,237 +3436,396 @@ effect fn position<F: FontFuncs>(
     return yes(second)
   }
   if kind == 3 && format == 1 {
-    if coverage >= u32.toUsize(View.uint(&table, header, width)) {
-      return no()
+    if wide {
+      return run cursive(
+        font,
+        context,
+        &mut buffer,
+        lookup,
+        table,
+        subtables,
+        subtableIndex,
+        coverage,
+        at,
+        3,
+        6,
+        4,
+      )
     }
-    let entry = anchor(context, View.offset(&table, header + width + coverage * width * 2, width))
-    if !entry.valid {
-      return no()
-    }
-    let previous = previousPositioned(context, List<Glyph>.asSlice(&buffer.glyphs), lookup, at)
-    if previous == SECOND_NONE {
-      Buffer.unsafeToConcat(&mut buffer, 0, at + 1)
-      return no()
-    }
-    let index = match move View.coverage(
-      &View.offset(&table, 2, coverageWidth),
-      List<Glyph>.asSlice(&buffer.glyphs)[previous].info.glyphId,
-    ) {
-      Option<u32>.Some { value } => u32.toUsize(value)
-      _ => {
-        return no()
-      }
-    }
-    let exit = anchor(context, View.offset(&table, header + width * 2 + index * width * 2, width))
-    if !exit.valid {
-      Buffer.unsafeToConcat(&mut buffer, previous, at + 1)
-      return no()
-    }
-    drop run trace.pair(
+    return run cursive(
       font,
-      &buffer.*,
-      "cursive attaching glyph at ",
-      previous,
-      " to glyph at ",
+      context,
+      &mut buffer,
+      lookup,
+      table,
+      subtables,
+      subtableIndex,
+      coverage,
       at,
-      "",
+      2,
+      4,
+      2,
     )
-    let direction = buffer.direction
-    let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-    let left = &mut glyphs[previous].position
-    if direction == Direction.LeftToRight {
-      left.xAdvance = add(exit.x, left.xOffset)
-    } else if direction == Direction.RightToLeft {
-      let d = add(exit.x, left.xOffset)
-      left.xAdvance = sub(left.xAdvance, d)
-      left.xOffset = sub(left.xOffset, d)
-    } else if direction == Direction.TopToBottom {
-      left.yAdvance = add(exit.y, left.yOffset)
-    } else {
-      let d = add(exit.y, left.yOffset)
-      left.yAdvance = sub(left.yAdvance, d)
-      left.yOffset = sub(left.yOffset, d)
-    }
-    let right = &mut glyphs[at].position
-    if direction == Direction.LeftToRight {
-      let d = add(entry.x, right.xOffset)
-      right.xAdvance = sub(right.xAdvance, d)
-      right.xOffset = sub(right.xOffset, d)
-    } else if direction == Direction.RightToLeft {
-      right.xAdvance = add(entry.x, right.xOffset)
-    } else if direction == Direction.TopToBottom {
-      let d = add(entry.y, right.yOffset)
-      right.yAdvance = sub(right.yAdvance, d)
-      right.yOffset = sub(right.yOffset, d)
-    } else {
-      right.yAdvance = entry.y
-    }
-    let mut child = previous
-    let mut parent = at
-    let mut x = sub(entry.x, exit.x)
-    let mut y = sub(entry.y, exit.y)
-    if (lookup.flags & 1) == 0 {
-      child = at
-      parent = previous
-      x = sub(0, x)
-      y = sub(0, y)
-    }
-    reverseCursive(&mut buffer, child, parent, 0)
-    buffer.haveAttachments = true
-    let horizontal = Direction.isHorizontal(buffer.direction)
-    let attached = List<Glyph>.asMutSlice(&mut buffer.glyphs)
-    let chain = usize.toI64(parent) - usize.toI64(child)
-    let changed = &mut attached[child]
-    changed.attach = 0
-    if chain >= -32768 && chain <= 32767 {
-      changed.attach = i64.toI32(chain)
-    }
-    changed.attachType = 2
-    if horizontal {
-      changed.position.yOffset = y
-    } else {
-      changed.position.xOffset = x
-    }
-    let link = changed.attach
-    let ancestor = &mut attached[parent]
-    if ancestor.attach == -link {
-      ancestor.attach = 0
-      if horizontal {
-        ancestor.position.yOffset = 0
-      } else {
-        ancestor.position.xOffset = 0
-      }
-    }
-    drop run trace.pair(
-      font,
-      &buffer.*,
-      "cursive attached glyph at ",
-      previous,
-      " to glyph at ",
-      at,
-      "",
-    )
-    Buffer.unsafeToBreak(&mut buffer, previous, at + 1)
-    return yes(at + 1)
   }
   if kind >= 4 && kind <= 6 && format == 1 {
-    let mut base = at
-    let mut props = lookup
-    if kind == 6 {
-      props.flags = props.flags & 65521
-    } else {
-      props.flags = 8
+    if wide {
+      return run attachMark(
+        font,
+        context,
+        &mut buffer,
+        lookup,
+        table,
+        subtables,
+        subtableIndex,
+        kind,
+        coverage,
+        at,
+        3,
+        6,
+        4,
+      )
     }
-    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
-    while true {
-      if base == 0 {
-        return no()
-      }
-      base = base - 1
-      let candidate = &glyphs[base]
-      if ignored(context, props, candidate) || (candidate.ignorable && !candidate.ligated) {
-        continue
-      }
-      if kind != 6 && candidate.glyphClass == 3 {
-        continue
-      }
-      if kind == 6 && candidate.glyphClass != 3 {
-        return no()
-      }
-      if kind != 6 && candidate.multiplied && candidate.component != 0 {
-        let mut accept = false
-        if kind == 4 && base > 0 {
-          let prev = &glyphs[base - 1]
-          accept = prev.glyphClass == 3 || !prev.multiplied
-            || candidate.ligatureId != prev.ligatureId
-            || candidate.component != prev.component + 1
-        }
-        if !accept
-          && !hasCoverage(View.offset(&table, header, coverageWidth), candidate.info.glyphId) {
-          continue
-        }
-      }
-      break
-    }
-    let item = &glyphs[at]
-    let baseGlyph = &glyphs[base]
-    if kind == 6 {
-      if item.ligatureId == baseGlyph.ligatureId {
-        if item.ligatureId != 0 && item.component != baseGlyph.component {
-          return no()
-        }
-      } else if !(item.ligatureId > 0 && item.component == 0)
-        && !(baseGlyph.ligatureId > 0 && baseGlyph.component == 0) {
-        return no()
-      }
-    }
-    let baseIndex = match move View.coverage(
-      &View.offset(&table, header, coverageWidth),
-      baseGlyph.info.glyphId,
-    ) {
-      Option<u32>.Some { value } => u32.toUsize(value)
-      _ => {
-        return no()
-      }
-    }
-    let marks = View.offset(&table, header + coverageWidth + 2, coverageWidth)
-    if coverage >= u32.toUsize(View.uint(&marks, 0, width)) {
-      return no()
-    }
-    let markClass = u16.toUsize(View.u16(&marks, width + coverage * (2 + width)))
-    let classCount = u16.toUsize(View.u16(&table, header + coverageWidth))
-    if markClass >= classCount {
-      return no()
-    }
-    let mark = anchor(context, View.offset(&marks, width + 2 + coverage * (2 + width), width))
-    let mut bases = View.offset(&table, header + coverageWidth * 2 + 2, coverageWidth)
-    let mut baseHeader = width
-    if kind == 6 {
-      baseHeader = 2
-    }
-    if baseIndex >= u32.toUsize(View.uint(&bases, 0, baseHeader)) {
-      return no()
-    }
-    let mut row = baseIndex
-    if kind == 5 {
-      bases = View.offset(&bases, width + baseIndex * width, width)
-      baseHeader = 2
-      let components = u16.toUsize(View.u16(&bases, 0))
-      if components == 0 {
-        return no()
-      }
-      row = components - 1
-      if item.ligatureId != 0 && item.ligatureId == baseGlyph.ligatureId && item.component > 0
-        && u32.toUsize(item.component) <= components {
-        row = u32.toUsize(item.component) - 1
-      }
-    }
-    let target = anchor(
+    return run attachMark(
+      font,
       context,
-      View.offset(&bases, offset(baseHeader, offset(markClass, row, classCount), width), width),
+      &mut buffer,
+      lookup,
+      table,
+      subtables,
+      subtableIndex,
+      kind,
+      coverage,
+      at,
+      2,
+      4,
+      2,
     )
-    if !mark.valid || !target.valid || at - base > 32768 {
-      return no()
-    }
-    drop run trace.pair(font, &buffer.*, "attaching mark glyph at ", at, " to glyph at ", base, "")
-    let cross = crossOffset(&buffer.*, base)
-    buffer.haveAttachments = true
-    let horizontal = Direction.isHorizontal(buffer.direction)
-    let changed = &mut List<Glyph>.asMutSlice(&mut buffer.glyphs)[at]
-    changed.position.xOffset = sub(target.x, mark.x)
-    changed.position.yOffset = sub(target.y, mark.y)
-    if horizontal {
-      changed.position.yOffset = add(changed.position.yOffset, cross)
-    } else {
-      changed.position.xOffset = add(changed.position.xOffset, cross)
-    }
-    changed.attach = -usize.toI32(at - base)
-    changed.attachType = 1
-    drop run trace.pair(font, &buffer.*, "attached mark glyph at ", at, " to glyph at ", base, "")
-    Buffer.unsafeToBreak(&mut buffer, base, at + 1)
-    return yes(at + 1)
   }
   return no()
+}
+
+/// The coverage index of `glyph` in the subtable's first coverage, read from the plan's
+/// expansion when there is one.
+fn subtableCoverage(
+  context: &Context,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
+  table: &View,
+  coverageWidth: usize,
+  glyph: u32,
+) -> Option<u32> with Intrinsic.inlineAlways() {
+  if subtableIndex < subtables.length && subtables[subtableIndex].coverageCount != 0 {
+    let sub = &subtables[subtableIndex]
+    if glyph >= sub.coverageFirst && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+      let value = context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)]
+      if value != 0 {
+        return Option<u32>.some(u16.toU32(value) - 1)
+      }
+    }
+    return Option<u32>.None
+  }
+  return View.coverage(&View.offset(&table, 2, coverageWidth), glyph)
+}
+
+/// The coverage index of `glyph` in a mark attachment subtable's base coverage, read from
+/// the plan's expansion when there is one.
+fn baseCoverage(
+  context: &Context,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
+  table: &View,
+  header: usize,
+  coverageWidth: usize,
+  glyph: u32,
+) -> Option<u32> with Intrinsic.inlineAlways() {
+  if subtableIndex < subtables.length && subtables[subtableIndex].baseCount != 0 {
+    let sub = &subtables[subtableIndex]
+    if glyph >= sub.baseFirst && u32.toUsize(glyph - sub.baseFirst) < sub.baseCount {
+      let value = context.coverageValues[sub.baseStart + u32.toUsize(glyph - sub.baseFirst)]
+      if value != 0 {
+        return Option<u32>.some(u16.toU32(value) - 1)
+      }
+    }
+    return Option<u32>.None
+  }
+  return View.coverage(&View.offset(&table, header, coverageWidth), glyph)
+}
+
+/// `position` for a cursive attachment subtable whose offsets are `width` bytes, after a
+/// `header`-byte header, with `coverageWidth`-byte coverage offsets. Called with constant
+/// widths so that each read compiles to one load.
+effect fn cursive<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &Context,
+  buffer: &mut Buffer,
+  lookup: Lookup,
+  table: View,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
+  coverage: usize,
+  at: usize,
+  width: usize,
+  header: usize,
+  coverageWidth: usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator with Intrinsic.inlineAlways() {
+  if coverage >= u32.toUsize(View.uint(&table, header, width)) {
+    return no()
+  }
+  let entry = anchor(context, View.offset(&table, header + width + coverage * width * 2, width))
+  if !entry.valid {
+    return no()
+  }
+  let previous = previousPositioned(context, List<Glyph>.asSlice(&buffer.glyphs), lookup, at)
+  if previous == SECOND_NONE {
+    Buffer.unsafeToConcat(&mut buffer, 0, at + 1)
+    return no()
+  }
+  let index = match move subtableCoverage(
+    context,
+    subtables,
+    subtableIndex,
+    &table,
+    coverageWidth,
+    List<Glyph>.asSlice(&buffer.glyphs)[previous].info.glyphId,
+  ) {
+    Option<u32>.Some { value } => u32.toUsize(value)
+    _ => {
+      return no()
+    }
+  }
+  let exit = anchor(context, View.offset(&table, header + width * 2 + index * width * 2, width))
+  if !exit.valid {
+    Buffer.unsafeToConcat(&mut buffer, previous, at + 1)
+    return no()
+  }
+  drop run trace.pair(
+    font,
+    &buffer.*,
+    "cursive attaching glyph at ",
+    previous,
+    " to glyph at ",
+    at,
+    "",
+  )
+  let direction = buffer.direction
+  let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  let left = &mut glyphs[previous].position
+  if direction == Direction.LeftToRight {
+    left.xAdvance = add(exit.x, left.xOffset)
+  } else if direction == Direction.RightToLeft {
+    let d = add(exit.x, left.xOffset)
+    left.xAdvance = sub(left.xAdvance, d)
+    left.xOffset = sub(left.xOffset, d)
+  } else if direction == Direction.TopToBottom {
+    left.yAdvance = add(exit.y, left.yOffset)
+  } else {
+    let d = add(exit.y, left.yOffset)
+    left.yAdvance = sub(left.yAdvance, d)
+    left.yOffset = sub(left.yOffset, d)
+  }
+  let right = &mut glyphs[at].position
+  if direction == Direction.LeftToRight {
+    let d = add(entry.x, right.xOffset)
+    right.xAdvance = sub(right.xAdvance, d)
+    right.xOffset = sub(right.xOffset, d)
+  } else if direction == Direction.RightToLeft {
+    right.xAdvance = add(entry.x, right.xOffset)
+  } else if direction == Direction.TopToBottom {
+    let d = add(entry.y, right.yOffset)
+    right.yAdvance = sub(right.yAdvance, d)
+    right.yOffset = sub(right.yOffset, d)
+  } else {
+    right.yAdvance = entry.y
+  }
+  let mut child = previous
+  let mut parent = at
+  let mut x = sub(entry.x, exit.x)
+  let mut y = sub(entry.y, exit.y)
+  if (lookup.flags & 1) == 0 {
+    child = at
+    parent = previous
+    x = sub(0, x)
+    y = sub(0, y)
+  }
+  reverseCursive(&mut buffer, child, parent, 0)
+  buffer.haveAttachments = true
+  let horizontal = Direction.isHorizontal(buffer.direction)
+  let attached = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+  let chain = usize.toI64(parent) - usize.toI64(child)
+  let changed = &mut attached[child]
+  changed.attach = 0
+  if chain >= -32768 && chain <= 32767 {
+    changed.attach = i64.toI32(chain)
+  }
+  changed.attachType = 2
+  if horizontal {
+    changed.position.yOffset = y
+  } else {
+    changed.position.xOffset = x
+  }
+  let link = changed.attach
+  let ancestor = &mut attached[parent]
+  if ancestor.attach == -link {
+    ancestor.attach = 0
+    if horizontal {
+      ancestor.position.yOffset = 0
+    } else {
+      ancestor.position.xOffset = 0
+    }
+  }
+  drop run trace.pair(
+    font,
+    &buffer.*,
+    "cursive attached glyph at ",
+    previous,
+    " to glyph at ",
+    at,
+    "",
+  )
+  Buffer.unsafeToBreak(&mut buffer, previous, at + 1)
+  return yes(at + 1)
+}
+
+/// `position` for a mark-to-base, mark-to-ligature or mark-to-mark subtable (`kind` 4 to 6),
+/// with widths as for `cursive`.
+effect fn attachMark<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &Context,
+  buffer: &mut Buffer,
+  lookup: Lookup,
+  table: View,
+  subtables: &[LookupSubtable],
+  subtableIndex: usize,
+  kind: u16,
+  coverage: usize,
+  at: usize,
+  width: usize,
+  header: usize,
+  coverageWidth: usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator with Intrinsic.inlineAlways() {
+  let mut base = at
+  let mut props = lookup
+  if kind == 6 {
+    props.flags = props.flags & 65521
+  } else {
+    props.flags = 8
+  }
+  let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+  while true {
+    if base == 0 {
+      return no()
+    }
+    base = base - 1
+    let candidate = &glyphs[base]
+    if ignored(context, props, candidate) || (candidate.ignorable && !candidate.ligated) {
+      continue
+    }
+    if kind != 6 && candidate.glyphClass == 3 {
+      continue
+    }
+    if kind == 6 && candidate.glyphClass != 3 {
+      return no()
+    }
+    if kind != 6 && candidate.multiplied && candidate.component != 0 {
+      let mut accept = false
+      if kind == 4 && base > 0 {
+        let prev = &glyphs[base - 1]
+        accept = prev.glyphClass == 3 || !prev.multiplied || candidate.ligatureId != prev.ligatureId
+          || candidate.component != prev.component + 1
+      }
+      if !accept
+        && !hasCoverage(View.offset(&table, header, coverageWidth), candidate.info.glyphId) {
+        continue
+      }
+    }
+    break
+  }
+  let item = &glyphs[at]
+  let baseGlyph = &glyphs[base]
+  if kind == 6 {
+    if item.ligatureId == baseGlyph.ligatureId {
+      if item.ligatureId != 0 && item.component != baseGlyph.component {
+        return no()
+      }
+    } else if !(item.ligatureId > 0 && item.component == 0)
+      && !(baseGlyph.ligatureId > 0 && baseGlyph.component == 0) {
+      return no()
+    }
+  }
+  let baseIndex = match move baseCoverage(
+    context,
+    subtables,
+    subtableIndex,
+    &table,
+    header,
+    coverageWidth,
+    baseGlyph.info.glyphId,
+  ) {
+    Option<u32>.Some { value } => u32.toUsize(value)
+    _ => {
+      return no()
+    }
+  }
+  let marks = View.offset(&table, header + coverageWidth + 2, coverageWidth)
+  if coverage >= u32.toUsize(View.uint(&marks, 0, width)) {
+    return no()
+  }
+  let markClass = u16.toUsize(View.u16(&marks, width + coverage * (2 + width)))
+  let classCount = u16.toUsize(View.u16(&table, header + coverageWidth))
+  if markClass >= classCount {
+    return no()
+  }
+  let mark = anchor(context, View.offset(&marks, width + 2 + coverage * (2 + width), width))
+  let mut bases = View.offset(&table, header + coverageWidth * 2 + 2, coverageWidth)
+  let mut baseHeader = width
+  if kind == 6 {
+    baseHeader = 2
+  }
+  if baseIndex >= u32.toUsize(View.uint(&bases, 0, baseHeader)) {
+    return no()
+  }
+  let mut row = baseIndex
+  if kind == 5 {
+    bases = View.offset(&bases, width + baseIndex * width, width)
+    baseHeader = 2
+    let components = u16.toUsize(View.u16(&bases, 0))
+    if components == 0 {
+      return no()
+    }
+    row = components - 1
+    if item.ligatureId != 0 && item.ligatureId == baseGlyph.ligatureId && item.component > 0
+      && u32.toUsize(item.component) <= components {
+      row = u32.toUsize(item.component) - 1
+    }
+  }
+  let target = anchor(
+    context,
+    View.offset(&bases, offset(baseHeader, offset(markClass, row, classCount), width), width),
+  )
+  if !mark.valid || !target.valid || at - base > 32768 {
+    return no()
+  }
+  drop run trace.pair(font, &buffer.*, "attaching mark glyph at ", at, " to glyph at ", base, "")
+  let cross = crossOffset(&buffer.*, base)
+  buffer.haveAttachments = true
+  let horizontal = Direction.isHorizontal(buffer.direction)
+  let changed = &mut List<Glyph>.asMutSlice(&mut buffer.glyphs)[at]
+  changed.position.xOffset = sub(target.x, mark.x)
+  changed.position.yOffset = sub(target.y, mark.y)
+  if horizontal {
+    changed.position.yOffset = add(changed.position.yOffset, cross)
+  } else {
+    changed.position.xOffset = add(changed.position.xOffset, cross)
+  }
+  changed.attach = -usize.toI32(at - base)
+  changed.attachType = 1
+  drop run trace.pair(font, &buffer.*, "attached mark glyph at ", at, " to glyph at ", base, "")
+  Buffer.unsafeToBreak(&mut buffer, base, at + 1)
+  return yes(at + 1)
 }
 
 fn reverseCursive(buffer: &mut Buffer, at: usize, parent: usize, depth: usize) -> () {
