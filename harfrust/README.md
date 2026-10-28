@@ -152,13 +152,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.71443e+07 | 6.53273e+07 | 1.03× |
-| Roboto / English words | 9.00441e+07 | 8.7936e+07 | 1.02× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.85748e+08 | 7.89359e+08 | 1.12× |
-| Noto Nastaliq Urdu / Persian words | 8.15716e+08 | 8.46944e+08 | 0.96× |
-| Noto Sans Devanagari / Hindi words | 2.34365e+08 | 2.25202e+08 | 1.04× |
-| Amiri / Persian Little Prince | 3.98504e+08 | 3.73885e+08 | 1.07× |
-| Source Serif Variable / react-dom | 8.60951e+08 | 1.00439e+09 | 0.86× |
+| Roboto / English Little Prince | 6.71548e+07 | 6.53273e+07 | 1.03× |
+| Roboto / English words | 9.00527e+07 | 8.7936e+07 | 1.02× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.87886e+08 | 7.89359e+08 | 1.12× |
+| Noto Nastaliq Urdu / Persian words | 8.17411e+08 | 8.46944e+08 | 0.97× |
+| Noto Sans Devanagari / Hindi words | 2.33295e+08 | 2.25202e+08 | 1.04× |
+| Amiri / Persian Little Prince | 3.87168e+08 | 3.73885e+08 | 1.04× |
+| Source Serif Variable / react-dom | 8.6098e+08 | 1.00439e+09 | 0.86× |
 
 The geometric mean is **1.01×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -264,6 +264,8 @@ Each lookup step stores its joiner handling, worked out once per plan rather tha
 from its tag on every apply, along with its lookup's header fields and whether the
 step's group is on for every glyph.
 `calt`'s Hangul jamo check rejects code points below U+1100 with one compare.
+A format 3 contextual subtable keeps its backtrack, input and lookahead counts, so the
+digest pre-check does not read them from the table.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
