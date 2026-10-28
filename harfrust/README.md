@@ -143,12 +143,12 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 7.56943e+07 | 65.3M | 1.16× |
-| Roboto / English words | 1.06249e+08 | 87.9M | 1.21× |
-| Noto Nastaliq Urdu / Persian Little Prince | 9.93643e+08 | 789M | 1.26× |
-| Noto Nastaliq Urdu / Persian words | 9.03154e+08 | 847M | 1.07× |
-| Noto Sans Devanagari / Hindi words | 2.6334e+08 | 225M | 1.17× |
-| Amiri / Persian Little Prince | 4.38893e+08 | 374M | 1.17× |
+| Roboto / English Little Prince | 7.56959e+07 | 65.3M | 1.16× |
+| Roboto / English words | 1.0625e+08 | 87.9M | 1.21× |
+| Noto Nastaliq Urdu / Persian Little Prince | 9.93642e+08 | 789M | 1.26× |
+| Noto Nastaliq Urdu / Persian words | 9.0317e+08 | 847M | 1.07× |
+| Noto Sans Devanagari / Hindi words | 2.62331e+08 | 225M | 1.16× |
+| Amiri / Persian Little Prince | 4.38895e+08 | 374M | 1.17× |
 | Source Serif Variable / react-dom | 1.01551e+09 | 1,004M | 1.01× |
 
 The geometric mean is **1.15×**, down from 11.25× for the initial port. Plans

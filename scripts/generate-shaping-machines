@@ -53,7 +53,21 @@ def action_code(text, kinds):
         elif v == 'p=(te)-1;': instructions += [4, 0]
         elif m[1]: instructions += [5, int(m[1])]
         elif m[2]: instructions += [6, kinds[m[2]]]
-    return instructions
+    # Fuse the two common ways a syllable ends: `te = p; p -= 1; found(k)` becomes [8, k] and
+    # `p = te - 1; found(k)` becomes [9, k].
+    fused = []
+    i = 0
+    while i < len(instructions):
+        if instructions[i:i + 5] == [2, 0, 3, 0, 6] and i + 5 < len(instructions):
+            fused += [8, instructions[i + 5]]
+            i += 6
+        elif instructions[i:i + 3] == [4, 0, 6] and i + 3 < len(instructions):
+            fused += [9, instructions[i + 3]]
+            i += 4
+        else:
+            fused += instructions[i:i + 2]
+            i += 2
+    return fused
 
 
 def machine(name):

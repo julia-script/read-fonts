@@ -140,10 +140,10 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   let skips = machine == 4
   let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
 
-  // Per-state flags: whether entering the state starts a token, and whether leaving it
-  // resets the token start.
-  let toState = Slice.view(states, 4, stateCount)
-  let fromState = Slice.view(states, 4 + stateCount, stateCount)
+  // Per-state flags: whether a step from the state starts a token (Ragel's from-state
+  // action), and whether a step into it resets the token start (its to-state action).
+  let fromState = Slice.view(states, 4, stateCount)
+  let toState = Slice.view(states, 4 + stateCount, stateCount)
 
   // Positions are unsigned; stepping back from 0 wraps past `len` and ends the scan, as a
   // negative position would.
@@ -159,7 +159,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if state >= stateCount {
       break
     }
-    if toState[state] != 0 {
+    if fromState[state] != 0 {
       ts = p
     }
     let mut category: usize = 59
@@ -183,7 +183,19 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
       }
       let arg = actions[pc + 1]
       pc = pc + 2
-      match op {
+
+      // Ops 8 and 9 are the generator's fused syllable endings: `te = p; p -= 1; found` and
+      // `p = te - 1; found`.
+      let mut kind = op
+      if op == 8 {
+        te = p
+        p = usize.wrappingSubtract(p, 1)
+        kind = 6
+      } else if op == 9 {
+        p = usize.wrappingSubtract(te, 1)
+        kind = 6
+      }
+      match kind {
         1 => {
           te = p + 1
         }
@@ -227,7 +239,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if p == len {
       break
     }
-    if state < stateCount && fromState[state] != 0 {
+    if state < stateCount && toState[state] != 0 {
       ts = 0
     }
     p = usize.wrappingAdd(p, 1)
