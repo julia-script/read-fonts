@@ -318,6 +318,21 @@ pub effect fn sentences(text: &[u8], output: &mut List<usize>) -> ()
     let decoded = utf8.decode(text, at)
     let current = Ucd.sentenceBreak(decoded.cp)
     let ignored = sentenceIgnored(current)
+    if !sentenceTerminal(terminal) && !paragraphSeparator(rawPrevious)
+      && !sentenceTerminal(current) {
+      // Inside a sentence only SB4 and the terminal rules can break, so
+      // ordinary text just moves the significant history along (SB998).
+      if !ignored {
+        before = previous
+        previous = current
+      } else if at == 0 {
+        before = previous
+        previous = S.Other
+      }
+      rawPrevious = current
+      at = decoded.next
+      continue
+    }
     let mut boundary = false
     if rawPrevious == S.CR && current == S.LF {
       boundary = false // SB3
