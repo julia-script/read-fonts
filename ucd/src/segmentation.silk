@@ -5,7 +5,10 @@
 //! The scans use constant auxiliary storage; lookahead never rescans prefixes.
 import lib as Ucd
 import lib { GraphemeBreak as G, WordBreak as W, SentenceBreak as S, IndicConjunctBreak as I }
+import generated_unicode as Data
+import generated_properties { graphemeBreakValue, indicConjunctBreakValue }
 import utf8
+import silk.u32
 import silk.list { List }
 import silk.allocator { Allocator, OutOfMemoryError }
 
@@ -39,12 +42,37 @@ impl GraphemeCursor {
 
   /// Returns the next boundary after zero; returns EOF repeatedly when exhausted.
   pub fn next(self: &mut Self, text: &[u8]) -> usize {
+    return self.advance(text)
+  }
+
+  // Inlined into the package's own scanning loops.
+  fn advance(self: &mut Self, text: &[u8]) -> usize with Intrinsic.inlineAlways() {
     while self.at < text.length {
       let at = self.at
+      let byte = text[at]
+      if byte >= 0x20 && byte < 0x7f && self.previous != G.Prepend {
+        // Printable ASCII is Other with no InCB or pictographic state, so only
+        // GB9b can join it to the previous character; GB999 breaks before it.
+        let emit = self.started
+        self.previous = G.Other
+        self.oddRI = false
+        self.pictographicExtend = false
+        self.pictographicZWJ = false
+        self.linkerExtend = false
+        self.started = true
+        self.at = at + 1
+        if emit {
+          return at
+        }
+        continue
+      }
       let decoded = utf8.decode(text, at)
-      let current = Ucd.graphemeBreak(decoded.cp)
-      let conjunct = Ucd.indicConjunctBreak(decoded.cp)
-      let pictographic = Ucd.isExtendedPictographic(decoded.cp)
+
+      // One packed lookup: Grapheme_Cluster_Break, InCB << 5, Extended_Pictographic << 7.
+      let info = Data.graphemeInfo(decoded.cp)
+      let current = graphemeBreakValue(info & 31)
+      let conjunct = indicConjunctBreakValue(u32.shiftRight(info, 5) & 3)
+      let pictographic = info >= 128
       let mut boundary = true
       if self.previous == G.CR && current == G.LF {
         boundary = false // GB3
@@ -104,7 +132,7 @@ pub effect fn graphemes(text: &[u8], output: &mut List<usize>) -> ()
   let mut cursor = GraphemeCursor.make()
   let mut at: usize = 0
   while at < text.length {
-    at = GraphemeCursor.next(&mut cursor, text)
+    at = cursor.advance(text)
     run List<usize>.append(&mut output, at)
   }
 }

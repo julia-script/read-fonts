@@ -153,9 +153,50 @@ def load():
     props["composesAsSecond"] = array("I", [0]) * LIMIT
     for _, second, _ in compositions:
         props["composesAsSecond"][second] = 1
+    derive_algorithm_tables(props, enums)
     defaults = {fn: values[-1] for fn, values in props.items()}
     defaults["scriptExtensions"] = set_ids[(tag("Unknown"),)]
     return props, enums, defaults, sets, pairs, compositions
+
+
+# Packed per-algorithm records, so each scalar needs one lookup in the hot loops.
+# Keep the bit layouts in sync with ucd/src/line_break.silk and segmentation.silk.
+LINE_EAST, LINE_CURRENCY_WIDE, LINE_PI, LINE_PF, LINE_LETTER, LINE_EMOJI, LINE_SA, LINE_CJ = (1 << bit for bit in range(6, 14))
+
+
+def derive_algorithm_tables(props, enums):
+    index = lambda fn: {name: i for i, name in enumerate(enums[fn][1])}
+    lb, gc, ea, gcb = index("lineBreak"), index("generalCategory"), index("eastAsianWidth"), index("graphemeBreak")
+    assert len(lb) <= 64 and len(gcb) <= 32
+    letters = {gc[name] for name in ("Lu", "Ll", "Lt", "Lm", "Lo")}
+    marks = {gc["Mn"], gc["Mc"]}
+    east = {ea[name] for name in ("F", "W", "H")}
+    currency_wide = {ea[name] for name in ("A", "F", "W")}
+    alphabetic = {lb[name] for name in ("AI", "SG", "XX")}
+    line = array("I", [0]) * LIMIT
+    grapheme = array("I", [0]) * LIMIT
+    pictographic = props["isExtendedPictographic"]
+    for cp in range(LIMIT):
+        raw, category, width = props["lineBreak"][cp], props["generalCategory"][cp], props["eastAsianWidth"][cp]
+        cls, flags = raw, 0
+        if raw in alphabetic:
+            cls = lb["AL"]
+        elif raw == lb["SA"]:
+            cls = lb["CM"] if category in marks else lb["AL"]
+            if cls != lb["CM"]:
+                flags |= LINE_SA
+        elif raw == lb["CJ"]:
+            cls, flags = lb["NS"], LINE_CJ
+        flags |= LINE_EAST if width in east else 0
+        flags |= LINE_CURRENCY_WIDE if width in currency_wide else 0
+        flags |= LINE_PI if category == gc["Pi"] else 0
+        flags |= LINE_PF if category == gc["Pf"] else 0
+        flags |= LINE_LETTER if category in letters else 0
+        flags |= LINE_EMOJI if category == gc["Cn"] and pictographic[cp] else 0
+        line[cp] = cls | flags
+        grapheme[cp] = props["graphemeBreak"][cp] | props["indicConjunctBreak"][cp] << 5 | pictographic[cp] << 7
+    props["lineBreakInfo"] = line
+    props["graphemeInfo"] = grapheme
 
 
 def width(values):
@@ -236,7 +277,8 @@ def generate():
         if fn in enums:
             typ, variants, numbers, fallback = enums[fn]
             api.append(f"pub enum {typ} {{\n" + "".join(f"  {v},\n" for v in variants) + "}\n")
-            api.append(f"pub fn {fn}(cp: u32) -> {typ} with Intrinsic.inlineAlways() {{\n  return match Data.{fn}(cp) {{\n")
+            api.append(f"pub fn {fn}(cp: u32) -> {typ} with Intrinsic.inlineAlways() {{ return {fn}Value(Data.{fn}(cp)) }}\n")
+            api.append(f"// Package-internal: converts a packed table value.\npub fn {fn}Value(value: u32) -> {typ} with Intrinsic.inlineAlways() {{\n  return match value {{\n")
             api.extend(f"    {value} => {typ}.{variant}\n" for variant, value in zip(variants, numbers) if variant != fallback)
             api.append(f"    _ => {typ}.{fallback}\n  }}\n}}\n")
             if fn == "combiningClass":
