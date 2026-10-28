@@ -145,13 +145,13 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 77.5M | 65.3M | 1.19× |
 | Roboto / English words | 111M | 87.9M | 1.26× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1.12G | 789M | 1.42× |
-| Noto Nastaliq Urdu / Persian words | 957M | 847M | 1.13× |
-| Noto Sans Devanagari / Hindi words | 278M | 225M | 1.23× |
-| Amiri / Persian Little Prince | 488M | 374M | 1.31× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1.11G | 789M | 1.40× |
+| Noto Nastaliq Urdu / Persian words | 936M | 847M | 1.10× |
+| Noto Sans Devanagari / Hindi words | 276M | 225M | 1.23× |
+| Amiri / Persian Little Prince | 481M | 374M | 1.29× |
 | Source Serif Variable / react-dom | 1.03G | 1,004M | 1.02× |
 
-The geometric mean is **1.22×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.21×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
