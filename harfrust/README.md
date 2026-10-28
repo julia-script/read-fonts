@@ -152,15 +152,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.2542e+07 | 6.53273e+07 | 0.96× |
-| Roboto / English words | 8.61337e+07 | 8.7936e+07 | 0.98× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.87903e+08 | 7.89359e+08 | 1.12× |
-| Noto Nastaliq Urdu / Persian words | 8.18512e+08 | 8.46944e+08 | 0.97× |
-| Noto Sans Devanagari / Hindi words | 2.33899e+08 | 2.25202e+08 | 1.04× |
-| Amiri / Persian Little Prince | 3.85783e+08 | 3.73885e+08 | 1.03× |
-| Source Serif Variable / react-dom | 8.05912e+08 | 1.00439e+09 | 0.80× |
+| Roboto / English Little Prince | 6.26094e+07 | 6.53273e+07 | 0.96× |
+| Roboto / English words | 8.60637e+07 | 8.7936e+07 | 0.98× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.86721e+08 | 7.89359e+08 | 1.12× |
+| Noto Nastaliq Urdu / Persian words | 8.19102e+08 | 8.46944e+08 | 0.97× |
+| Noto Sans Devanagari / Hindi words | 2.32784e+08 | 2.25202e+08 | 1.03× |
+| Amiri / Persian Little Prince | 3.58454e+08 | 3.73885e+08 | 0.96× |
+| Source Serif Variable / react-dom | 8.10952e+08 | 1.00439e+09 | 0.81× |
 
-The geometric mean is **0.98×**, down from 11.25× for the initial port. Plans
+The geometric mean is **0.97×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -268,6 +268,8 @@ A format 3 contextual subtable keeps its backtrack, input and lookahead counts, 
 digest pre-check does not read them from the table.
 Kerning steps run their glyph loop in a function of their own with the pair lookup inlined,
 so each glyph no longer pays for a call.
+Steps whose subtables are all 16-bit format 3 contextual ones get the same treatment: their
+digest rejections run in the step's glyph loop, and only a possible match calls `contextual`.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 

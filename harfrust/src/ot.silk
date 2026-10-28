@@ -449,6 +449,20 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         buffer.idx = 0
       } else if pairs {
         run applyPairsStep(font, &mut context, &mut buffer, &lookup, subtables, step, end)
+      } else if steps[step].format3 && !tracing {
+        // A short buffer's digest is cheap to refresh, and an exact one skips more lookups.
+        let applied = run applyFormat3Step(
+          font,
+          &mut context,
+          &mut buffer,
+          &lookup,
+          subtables,
+          step,
+          end,
+        )
+        if applied && !context.positioning && Buffer.len(&buffer.*) <= 32 {
+          digestStale = true
+        }
       } else {
         let mut i: usize = 0
         while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
@@ -1112,6 +1126,164 @@ effect fn applyLookup<F: FontFuncs>(
         depth,
       )
     }
+    if result.yes {
+      return result
+    }
+    i = i + 1
+  }
+  return no()
+}
+
+/// Applies a step whose subtables are all 16-bit format 3 contextual ones at each glyph in turn,
+/// as `applyLookup` would, with the digest checks and their per-subtable setup in the glyph loop.
+/// Returns whether the lookup applied anywhere.
+effect fn applyFormat3Step<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  step: usize,
+  end: usize,
+) -> bool
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let everywhere = context.everywhere
+  let mut applied = false
+  let mut i: usize = 0
+  while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
+    i = nextCandidate(List<Glyph>.asSlice(&buffer.glyphs), i, &context.steps[step].digest)
+    if i >= Buffer.len(&buffer.*) {
+      break
+    }
+    let mut result = no()
+    let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+    if everywhere || enabled(&context.*, glyph, step, end) != 0 {
+      result = run applyFormat3(font, &mut context, &mut buffer, lookup, subtables, i, step, end)
+    }
+    if result.yes {
+      applied = true
+      i = result.next
+    } else {
+      i = i + 1
+    }
+  }
+  return applied
+}
+
+/// `applyLookup` at depth 0 for a lookup whose cached subtables are all 16-bit format 3
+/// contextual ones: the same budget charges, digest and `format3Fails` rejections, and calls of
+/// `contextual`, inlined into `applyFormat3Step`.
+effect fn applyFormat3<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  at: usize,
+  first: usize,
+  last: usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator with Intrinsic.inlineAlways() {
+  if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    return no()
+  }
+  context.budget = context.budget - 1
+  let glyph = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
+  let mut ahead = BACK_UNKNOWN
+  let mut back = BACK_UNKNOWN
+  let mut i: usize = 0
+  while i < subtables.length && context.budget != 0 && buffer.successful {
+    let mut known: u32 = 0
+    let mut budget = context.budget
+    let mut found = false
+    while i < subtables.length && budget != 0 {
+      budget = budget - 1
+      let sub = &subtables[i]
+      if SetDigest.mayHave(&sub.digest, glyph) {
+        if sub.coverageCount == 0 {
+          found = true
+          break
+        }
+        if glyph >= sub.coverageFirst
+          && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+          known = u16.toU32(
+            context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
+          )
+        }
+        if known != 0 {
+          found = true
+          break
+        }
+        if sub.missSpends && budget != 0 {
+          budget = budget - 1
+        }
+      }
+      i = i + 1
+    }
+    context.budget = budget
+    if !found {
+      return no()
+    }
+    let table = View.tail(&context.table, subtables[i].offset)
+    let kind = subtables[i].kind
+    let chained = kind == 6 || kind == 8
+    if known != 0 && View.u16(&table, 0) == 3 && (buffer.flags & 64) == 0 && context.budget != 0
+      && buffer.successful {
+      let digests = Slice.view(context.contextDigests, subtables[i].contextDigests, 3)
+      let inputCount = subtables[i].inputCount
+      let mut aheadDigest = &digests[0]
+      if inputCount == 1 {
+        aheadDigest = &digests[2]
+      }
+      if ahead == BACK_UNKNOWN {
+        ahead = outsideGlyph(&context.*, &buffer.*, lookup, at, false)
+      }
+      let mut rejected = false
+      if ahead == BACK_NONE {
+        rejected = inputCount > 1 || subtables[i].aheadCount != 0
+      } else if ahead < BACK_SKIPPABLE {
+        rejected = !SetDigest.mayHave(aheadDigest, u64.wrappingToU32(ahead))
+      }
+      if !rejected && subtables[i].backCount != 0 {
+        if back == BACK_UNKNOWN {
+          back = outsideGlyph(&context.*, &buffer.*, lookup, at, true)
+        }
+        rejected = back == BACK_NONE
+          || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.wrappingToU32(back)))
+      }
+      if rejected
+        || format3Fails(&context.*, &buffer.*, lookup, table, at, first, last, chained, usize.MAX) {
+        context.budget = context.budget - 1
+        i = i + 1
+        continue
+      }
+    }
+    let digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
+    let starts = Slice.view(
+      context.ruleSecondStarts,
+      subtables[i].ruleDigests,
+      subtables[i].ruleSets,
+    )
+    let result = run contextual(
+      font,
+      &mut context,
+      &mut buffer,
+      lookup.*,
+      table,
+      subtables,
+      i,
+      digests,
+      starts,
+      known,
+      at,
+      first,
+      last,
+      0,
+      chained,
+    )
     if result.yes {
       return result
     }
