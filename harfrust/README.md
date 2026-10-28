@@ -152,13 +152,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.99855e+07 | 65.3M | 1.07× |
-| Roboto / English words | 9.92998e+07 | 87.9M | 1.13× |
-| Noto Nastaliq Urdu / Persian Little Prince | 9.5009e+08 | 789M | 1.20× |
-| Noto Nastaliq Urdu / Persian words | 8.56197e+08 | 847M | 1.01× |
-| Noto Sans Devanagari / Hindi words | 2.5598e+08 | 225M | 1.14× |
-| Amiri / Persian Little Prince | 4.31341e+08 | 374M | 1.15× |
-| Source Serif Variable / react-dom | 9.05343e+08 | 1,004M | 0.90× |
+| Roboto / English Little Prince | 6.99738e+07 | 65.3M | 1.07× |
+| Roboto / English words | 9.92264e+07 | 87.9M | 1.13× |
+| Noto Nastaliq Urdu / Persian Little Prince | 9.50904e+08 | 789M | 1.20× |
+| Noto Nastaliq Urdu / Persian words | 8.55843e+08 | 847M | 1.01× |
+| Noto Sans Devanagari / Hindi words | 2.55567e+08 | 225M | 1.13× |
+| Amiri / Persian Little Prince | 4.29235e+08 | 374M | 1.15× |
+| Source Serif Variable / react-dom | 8.97207e+08 | 1,004M | 0.89× |
 
 The geometric mean is **1.08×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -248,6 +248,8 @@ the lookups they apply through the plan's lookup offsets, and the plan lists
 each nested lookup once however many rules apply it. Input matching skips the
 per-glyph feature check when the step group enables its lookup everywhere, and
 checks ligature components inline unless the first glyph is itself a component.
+Each lookup step records which per-glyph feature conditions apply to its feature, so
+the feature check tests only those.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
