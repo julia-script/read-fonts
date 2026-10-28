@@ -53,9 +53,49 @@ pub struct LookupStep {
   /// Whether the lookup has subtables and all of them adjust pairs (`LookupSubtable.kern`), so
   /// `ot.applyPairs` applies it.
   pub pairs: bool,
+  /// `ZWJ_*` bits for the step's feature under the plan's shaper and script: whether matching
+  /// skips joiners automatically, and whether substitution stays within a syllable.
+  pub zwj: u8,
 }
 
 impl Copy for LookupStep {}
+
+pub const ZWJ_AUTO: u8 = 1
+
+pub const ZWNJ_AUTO: u8 = 2
+
+pub const ZWJ_PER_SYLLABLE: u8 = 4
+
+/// The `ZWJ_*` bits for feature `tag` under `shaper` and `script`.
+fn zwjBits(shaper: u32, script: u32, tag: u32) -> u8 {
+  let mut autoZwj = true
+  let mut autoZwnj = true
+  let common = tag == 0x63636d70 || tag == 0x6c6f636c
+  if shaper != 0 && !common && tag != 0x7276726e {
+    autoZwj = false
+    if shaper == 1 || shaper == 2 {
+      autoZwnj = false
+    }
+  }
+  if arabic.usesScript(script)
+    && (common || arabic.isFeature(tag) || tag == 0x726c6967 || tag == 0x63616c74
+      || tag == 0x6c696761
+      || tag == 0x636c6967
+      || tag == 0x6d736574) {
+    autoZwj = false
+  }
+  let mut bits: u8 = 0
+  if autoZwj {
+    bits = bits | ZWJ_AUTO
+  }
+  if autoZwnj {
+    bits = bits | ZWNJ_AUTO
+  }
+  if complex.perSyllable(shaper, tag) {
+    bits = bits | ZWJ_PER_SYLLABLE
+  }
+  return bits
+}
 
 /// A lookup subtable resolved through any extension, with the digest of the glyphs it can
 /// start at. A subtable whose digest rejects the current glyph is skipped without parsing it.
@@ -306,6 +346,7 @@ impl<'a> OtPlan<'a> {
         checks: featureChecks(tag),
         groupEnd: groupEnd,
         pairs: pairs,
+        zwj: 0,
       },
     )
   }
@@ -1150,6 +1191,7 @@ impl<'a> OtPlan<'a> {
     i = steps.length
     while i > 0 {
       i = i - 1
+      steps[i].zwj = zwjBits(buffer.shaper, buffer.script, steps[i].tag)
       steps[i].groupEnd = i + 1
       if i + 1 < steps.length && steps[i + 1].index == steps[i].index
         && steps[i + 1].stage == steps[i].stage {
