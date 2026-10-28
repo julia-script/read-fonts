@@ -61,6 +61,15 @@ produce HarfBuzz text formats. `SerializeFlags`, `BufferFlags`, `GlyphFlags`,
 corresponding public options and queries. See the ordinary tests for complete
 examples, including custom callbacks and plan reuse.
 
+Unicode properties and the ISO `Script` value are supplied by the independent
+[`ucd` package](../docs/ucd.md). `harfrust.unicode` forwards the property queries
+and keeps shaping-specific modified combining classes and RTL policy.
+Font-specific script operations are functions in `harfrust.script`:
+`tag(script)`, `horizontalDirection(script)`, `tags(script)`, and
+`tagsForLanguage(script, language)`. `Script.fromIso15924Tag` now accepts a `u32`,
+not a font `Tag`; `Script.parse` returns `Option<Script>`, while
+`harfrust.script.parse` retains `Result<Script, ParseError>`.
+
 ## CLI
 
 From the repository root:

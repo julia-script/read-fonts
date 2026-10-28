@@ -8,3 +8,4 @@ exports = ["lib", "unicode", "script", "generated_scripts"]
 [dependencies]
 font_types = { path = "../font_types" }
 read_fonts = { path = "../read_fonts" }
+ucd = { path = "../ucd" }

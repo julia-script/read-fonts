@@ -22,6 +22,7 @@ import harfrust.lib {
   GlyphPosition,
   shapeWithFeatures
 }
+import harfrust.script as ScriptTags
 import read_fonts.lib { FontRef, ReadError, TableProvider, Fvar }
 import read_fonts.tables.fvar { AxisInstanceArrays, VariationAxisRecord }
 import read_fonts.model.metrics.global { Metrics, LineBox }
@@ -250,7 +251,7 @@ effect fn shapeRequest(
   }
   if scriptLength != 0 {
     if let Option<string>.Some { value } = text(&scriptBytes) {
-      if let Result<Script, ParseError>.Success { value: script } = Script.parse(value) {
+      if let Result<Script, ParseError>.Success { value: script } = ScriptTags.parse(value) {
         buffer.script = script.value
       }
     }

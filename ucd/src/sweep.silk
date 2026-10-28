@@ -1,0 +1,70 @@
+//! Full code-point-domain no-trap checks, separate from the focused test root.
+import lib as unicode
+import lib { Decomposed }
+import silk.option { Option }
+import silk.testing { Testing, AssertionError }
+import silk.u8
+
+test effect fn fullUnicodeRangeNoTrap() -> ()
+  ! AssertionError<'static> {
+  let mut cp: u32 = 0
+  let mut classes: u32 = 0
+  let mut scripts: u32 = 0
+  let mut selectors: u32 = 0
+  let mut ignorables: u32 = 0
+  let mut pictographs: u32 = 0
+  let mut seconds: u32 = 0
+  while cp <= 0x10ffff {
+    let category = unicode.generalCategory(cp)
+    run Testing.expect(category <= 29, "general-category range")
+    run Testing.expect(
+      unicode.isMark(cp) == (category >= 10 && category <= 12),
+      "mark classification",
+    )
+    classes = classes + u8.toU32(unicode.combiningClass(cp))
+    scripts = scripts | unicode.script(cp)
+    run Testing.expect(unicode.mirror(cp) <= 0x10ffff, "mirror result range")
+    run Testing.expect(unicode.vertical(cp) <= 0x10ffff, "vertical result range")
+    run Testing.expect(unicode.joining(cp) <= 6, "joining state range")
+    if unicode.isVariationSelector(cp) {
+      selectors = selectors + 1
+    }
+    if unicode.isDefaultIgnorable(cp) {
+      ignorables = ignorables + 1
+    }
+    if unicode.isExtendedPictographic(cp) {
+      pictographs = pictographs + 1
+    }
+    if unicode.composesAsSecond(cp) {
+      seconds = seconds + 1
+    }
+    let parts = unicode.decomposeRaw(cp)
+    run Testing.expect(
+      parts.first <= 0x10ffff && parts.second <= 0x10ffff,
+      "raw decomposition range",
+    )
+    let same = match move unicode.decompose(cp) {
+      Option<Decomposed>.None => parts.first == 0 && parts.second == 0
+      Option<Decomposed>.Some { value: Decomposed.Singleton { codepoint } } => parts.first
+        == codepoint
+        && parts.second == 0
+      Option<Decomposed>.Some { value: Decomposed.Pair { first, second } } => parts.first == first
+        && parts.second == second
+    }
+    run Testing.expect(same, "optional and raw decompositions agree")
+    let asFirst = unicode.composeRaw(cp, 0x301)
+    let asSecond = unicode.composeRaw(0x41, cp)
+    run Testing.expect(asFirst <= 0x10ffff && asSecond <= 0x10ffff, "composition input domains")
+    run Testing.expect(
+      (unicode.compose(cp, 0x301) |> Option<u32>.unwrapOr(0)) == asFirst,
+      "optional and raw compositions agree",
+    )
+    cp = cp + 1
+  }
+  run Testing.expect(classes > 0 && scripts != 0, "class and script tables were traversed")
+  run Testing.expect(selectors == 256, "both selector ranges were traversed")
+  run Testing.expect(
+    ignorables > 0 && pictographs > 0 && seconds > 0,
+    "boolean tables were traversed",
+  )
+}

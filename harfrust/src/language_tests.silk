@@ -1,5 +1,6 @@
 import language { Language, LanguageTags, subtagMatches }
 import script { Script, ScriptTags }
+import script
 import generated_language_cases as Cases
 import generated_scripts as Scripts
 import view { View }
@@ -56,20 +57,20 @@ effect fn cases() -> ()
     Option<Language>.Some { value } => move value
     _ => Language.empty()
   }
-  let tags = Script.tagsForLanguage(Option<Script>.some(Scripts.latin()), &private)
+  let tags = script.tagsForLanguage(Option<Script>.some(Scripts.latin()), &private)
   run Testing.expect(
     tags.scripts.length == 1 && tags.scripts.values[0] == 0x64657632
       && tags.languages.values[0] == 0x41424320,
     "private script and language overrides stop at subtag boundaries",
   )
-  let devanagari = Script.tags(Scripts.devanagari())
+  let devanagari = script.tags(Scripts.devanagari())
   run Testing.expect(
     devanagari.length == 3 && devanagari.values[0] == 0x64657633
       && devanagari.values[1] == 0x64657632
       && devanagari.values[2] == 0x64657661,
     "Indic script tag preference",
   )
-  let hiragana = Script.tags(Scripts.hiragana())
+  let hiragana = script.tags(Scripts.hiragana())
   run Testing.expect(
     hiragana.length == 1 && hiragana.values[0] == 0x6b616e61,
     "Hiragana shares the kana OpenType tag",

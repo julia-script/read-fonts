@@ -35,29 +35,6 @@ pub fn usesScript(script: u32) -> bool {
     || script == 0x4f756772
 }
 
-fn joining(cp: u32) -> usize {
-  let data = Data.joining()
-  let u = u32.toUsize(cp)
-  let mut result: usize = 7
-  if u < 125260 {
-    let nibble = (usize.shiftRight(u8.toUsize(data[(u / 512) / 2]), ((u / 512) & 1) * 4)) & 15
-    let index = u8.toUsize(
-      data[209 + u8.toUsize(data[123 + nibble * 8 + ((u / 64) & 7)]) + ((u / 8) & 7)],
-    )
-      * 8
-      + (u & 7)
-    result = (usize.shiftRight(u8.toUsize(data[441 + index / 2]), (index & 1) * 4)) & 15
-  }
-  if result == 7 {
-    let gc = unicode.generalCategory(cp)
-    if gc == 1 || gc == 11 || gc == 12 {
-      return 6
-    }
-    return 0
-  }
-  return result
-}
-
 fn actionTag(action: u8) -> u32 {
   return match action {
     0 => 0x69736f6c
@@ -116,7 +93,7 @@ pub fn setup(buffer: &mut Buffer) -> () {
   let mut previous = Buffer.len(&buffer.*)
   let mut i: usize = 0
   while i < List<u32>.length(&buffer.preContext) {
-    let kind = joining(List<u32>.get(&buffer.preContext, i))
+    let kind = unicode.joining(List<u32>.get(&buffer.preContext, i))
     if kind != 6 {
       state = u8.toUsize(states[(state * 6 + kind) * 3 + 2])
       break
@@ -126,7 +103,7 @@ pub fn setup(buffer: &mut Buffer) -> () {
   i = 0
   while i < Buffer.len(&buffer.*) {
     let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    let kind = joining(item.codepoint)
+    let kind = unicode.joining(item.codepoint)
     if kind == 6 {
       item.form = 0
       List<Glyph>.set(&mut buffer.glyphs, i, item)
@@ -159,7 +136,7 @@ pub fn setup(buffer: &mut Buffer) -> () {
   }
   i = 0
   while i < List<u32>.length(&buffer.postContext) {
-    let kind = joining(List<u32>.get(&buffer.postContext, i))
+    let kind = unicode.joining(List<u32>.get(&buffer.postContext, i))
     if kind != 6 {
       let action = states[(state * 6 + kind) * 3]
       let length = Buffer.len(&buffer.*)

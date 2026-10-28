@@ -1,0 +1,261 @@
+//! Unicode 18 properties and canonical composition from the pinned Harfrust data.
+import generated_unicode as Data
+pub import script { Script }
+import silk.ownership { Copy }
+import silk.option { Option }
+import silk.u8
+import silk.u32
+import silk.usize
+import silk.i32
+import silk.i64
+
+fn be16(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
+  return u32.shiftLeft(u8.toU32(data[index]), 8) | u8.toU32(data[index + 1])
+}
+
+fn be32(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
+  return u32.shiftLeft(u8.toU32(data[index]), 24) | u32.shiftLeft(u8.toU32(data[index + 1]), 16)
+    | u32.shiftLeft(u8.toU32(data[index + 2]), 8)
+    | u8.toU32(data[index + 3])
+}
+
+fn beI32(data: &[u8], index: usize) -> i32 with Intrinsic.inlineAlways() {
+  let value = be32(data, index)
+  if value <= 2147483647 {
+    return u32.toI32(value)
+  }
+  return -1 - u32.toI32(4294967295 - value)
+}
+
+fn byte(index: usize) -> usize with Intrinsic.inlineAlways() {
+  return u8.toUsize(Data.ucd_u8()[index])
+}
+
+fn word(index: usize) -> usize with Intrinsic.inlineAlways() {
+  return u32.toUsize(be16(Data.ucd_u16(), index * 2))
+}
+
+pub fn generalCategory(cp: u32) -> u8 {
+  let u = u32.toUsize(cp)
+  if u >= 1114110 {
+    return 2
+  }
+  return Data.ucd_u8()[7944
+    + byte(2176 + word(byte(u / 512) * 32 + ((u / 16) & 31)) + ((u / 2) & 7)) * 2
+    + (u & 1)]
+}
+
+pub fn combiningClass(cp: u32) -> u8 {
+  let u = u32.toUsize(cp)
+  if u >= 125259 {
+    return 0
+  }
+  return Data.ucd_u8()[10432
+    + byte(9308 + byte(8577 + byte(8332 + u / 512) * 16 + ((u / 32) & 15)) * 8 + ((u / 4) & 7)) * 4
+    + (u & 3)]
+}
+
+pub fn script(cp: u32) -> u32 {
+  let u = u32.toUsize(cp)
+  if u >= 918000 {
+    return 0x5a7a7a7a
+  }
+  let i = byte(
+    12721 + word(4520 + word(3392 + byte(11824 + u / 1024) * 16 + ((u / 64) & 15)) + ((u / 8) & 7))
+      + (u & 7),
+  )
+  return be32(Data.scripts(), i * 4)
+}
+
+pub fn mirror(cp: u32) -> u32 {
+  let u = u32.toUsize(cp)
+  if u >= 121617 {
+    return cp
+  }
+  let i = u / 512
+  let nibble = usize.shiftRight(byte(10952 + i / 2), (i & 1) * 4) & 15
+  let palette = byte(
+    11624 + byte(11272 + byte(11071 + nibble * 16 + ((u / 32) & 15)) * 8 + ((u / 4) & 7)) + (u & 3),
+  )
+  let delta = beI32(Data.ucd_palette(), palette * 4)
+  return i64.toU32(u32.toI64(cp) + i32.toI64(delta))
+}
+
+pub struct Decomposition {
+  pub first: u32,
+  pub second: u32,
+}
+
+impl Copy for Decomposition {}
+
+pub fn decomposeRaw(cp: u32) -> Decomposition {
+  if cp >= 0xac00 && cp < 0xac00 + 11172 {
+    let n = cp - 0xac00
+    if n % 28 != 0 {
+      return Decomposition { first: cp - n % 28, second: 0x11a7 + n % 28 }
+    }
+    return Decomposition { first: 0x1100 + n / 588, second: 0x1161 + (n % 588) / 28 }
+  }
+  let u = u32.toUsize(cp)
+  if u >= 195102 {
+    return Decomposition { first: 0, second: 0 }
+  }
+  let code = word(7816 + byte(19095 + byte(18713 + u / 512) * 32 + ((u / 16) & 31)) * 16 + (u & 15))
+  if code == 0 {
+    return Decomposition { first: 0, second: 0 }
+  }
+  let index = code - 1
+  if index < 825 {
+    return Decomposition { first: be16(Data.ucd_dm1_p0_map(), index * 2), second: 0 }
+  }
+  if index < 935 {
+    return Decomposition {
+      first: 0x20000 | be16(Data.ucd_dm1_p2_map(), (index - 825) * 2),
+      second: 0,
+    }
+  }
+  let data = Data.decompositions()
+  return Decomposition {
+    first: be32(data, (index - 935) * 12),
+    second: be32(data, (index - 935) * 12 + 4),
+  }
+}
+
+/// Whether `cp` is the second code point of some canonical composition.
+pub fn composesAsSecond(cp: u32) -> bool {
+  return Data.composesAsSecond(cp)
+}
+
+pub fn composeRaw(a: u32, b: u32) -> u32 {
+  if a >= 0x1100 && a < 0x1113 && b >= 0x1161 && b < 0x1176 {
+    return 0xac00 + (a - 0x1100) * 588 + (b - 0x1161) * 28
+  }
+  if a >= 0xac00 && a <= 0xd788 && (a - 0xac00) % 28 == 0 && b > 0x11a7 && b < 0x11c3 {
+    return a + b - 0x11a7
+  }
+
+  // Most marks never compose, so they skip the table search.
+  if !Data.composesAsSecond(b) {
+    return 0
+  }
+  let data = Data.compositions()
+  let mut lo: usize = 0
+  let mut hi = data.length / 12
+  while lo < hi {
+    let mid = lo + (hi - lo) / 2
+    let first = be32(data, mid * 12)
+    let second = be32(data, mid * 12 + 4)
+    if first < a || (first == a && second < b) {
+      lo = mid + 1
+    } else if first == a && second == b {
+      return be32(data, mid * 12 + 8)
+    } else {
+      hi = mid
+    }
+  }
+  return 0
+}
+
+pub fn isMark(cp: u32) -> bool {
+  let gc = generalCategory(cp)
+  return gc >= 10 && gc <= 12
+}
+
+pub fn isVariationSelector(cp: u32) -> bool {
+  return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef)
+}
+
+pub fn isDefaultIgnorable(cp: u32) -> bool {
+  return cp == 0xad || cp == 0x34f || cp == 0x61c || (cp >= 0x17b4 && cp <= 0x17b5)
+    || (cp >= 0x180b && cp <= 0x180f)
+    || (cp >= 0x200b && cp <= 0x200f)
+    || (cp >= 0x202a && cp <= 0x202e)
+    || (cp >= 0x2060 && cp <= 0x206f)
+    || (cp >= 0xfe00 && cp <= 0xfe0f)
+    || cp == 0xfeff
+    || (cp >= 0xfff0 && cp <= 0xfff8)
+    || (cp >= 0x1d173 && cp <= 0x1d17a)
+    || (cp >= 0xe0000 && cp <= 0xe0fff)
+}
+
+pub fn isExtendedPictographic(cp: u32) -> bool {
+  if cp >= 131070 {
+    return false
+  }
+  let u = u32.toUsize(cp)
+  let data = Data.emoji()
+  let i = u / 1024
+  let nibble = (u8.toUsize(data[i / 2]) / power16(i & 1)) & 15
+  let bit = u8.toUsize(data[64 + nibble * 16 + ((u / 64) & 15)]) * 64 + (u & 63)
+  return (usize.shiftRight(u8.toUsize(data[224 + bit / 8]), bit & 7) & 1) != 0
+}
+
+fn power16(parity: usize) -> usize {
+  if parity == 0 {
+    return 1
+  }
+  return 16
+}
+
+pub fn vertical(cp: u32) -> u32 {
+  let data = Data.vertical()
+  let mut i: usize = 0
+  while i + 8 <= data.length {
+    if be32(data, i) == cp {
+      return be32(data, i + 4)
+    }
+    i = i + 8
+  }
+  return cp
+}
+
+/// Joining state values: U=0, L=1, R=2, D=3, ALAPH=4, DALATH_RISH=5, T=6.
+/// The Syriac group values are retained for shaping state-machine consumers.
+pub fn joining(cp: u32) -> usize {
+  let data = Data.joining()
+  let u = u32.toUsize(cp)
+  let mut result: usize = 7
+  if u < 125260 {
+    let nibble = (usize.shiftRight(u8.toUsize(data[(u / 512) / 2]), ((u / 512) & 1) * 4)) & 15
+    let index = u8.toUsize(
+      data[209 + u8.toUsize(data[123 + nibble * 8 + ((u / 64) & 7)]) + ((u / 8) & 7)],
+    )
+      * 8
+      + (u & 7)
+    result = (usize.shiftRight(u8.toUsize(data[441 + index / 2]), (index & 1) * 4)) & 15
+  }
+  if result == 7 {
+    let gc = generalCategory(cp)
+    if gc == 1 || gc == 11 || gc == 12 {
+      return 6
+    }
+    return 0
+  }
+  return result
+}
+
+pub union Decomposed {
+  Singleton { pub codepoint: u32 },
+  Pair { pub first: u32, pub second: u32 },
+}
+
+impl Copy for Decomposed {}
+
+pub fn compose(first: u32, second: u32) -> Option<u32> {
+  let result = composeRaw(first, second)
+  if result == 0 {
+    return Option<u32>.None
+  }
+  return Option<u32>.some(result)
+}
+
+pub fn decompose(cp: u32) -> Option<Decomposed> {
+  let result = decomposeRaw(cp)
+  if result.first == 0 {
+    return Option<Decomposed>.None
+  }
+  if result.second == 0 {
+    return Option<Decomposed>.some(Decomposed.Singleton { codepoint: result.first })
+  }
+  return Option<Decomposed>.some(Decomposed.Pair { first: result.first, second: result.second })
+}

@@ -12,6 +12,8 @@ shaping, OpenType and AAT layout, and the `hr_shape` CLI.
 - `font_types/`: endian scalars, tags, identifiers, fixed-point numbers and geometry.
 - `read_fonts/`: borrowed parsing, generated tables, integer sets and the font model.
 - `font_dump/`: CLI that prints every parsed field of a font as text.
+- `ucd/`: font-independent Unicode properties and canonical composition queries
+  shared by shaping; see [the package API](docs/ucd.md).
 - `harfrust/`: native text shaping, reusable plans, custom font callbacks and tracing.
 - `hr_shape/`: glyph-string CLI, data-driven shaping suite and benchmark runner.
 - `font_bench/`: library workloads (cmap lookups, glyf decoding, hmtx advances) timed
@@ -36,12 +38,13 @@ stable Rust toolchain.
 ## Checks
 
 Pull request CI ([ci.yml](.github/workflows/ci.yml)) has a hard 15 minute budget
-and runs four jobs in parallel:
+and runs bounded jobs in parallel:
 
 ```sh
 # Silk tests
 silk test --manifest-path font_types/silk.toml --root src/tests.silk
 silk test --manifest-path read_fonts/silk.toml --root src/tests.silk
+silk test --manifest-path ucd/silk.toml --root src/tests.silk
 # Generated code, formatting and tools
 scripts/generate --check   # regenerates and runs silk format; fails on any change
 python3 -m unittest discover -s scripts/tests

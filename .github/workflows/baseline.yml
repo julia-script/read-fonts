@@ -15,6 +15,15 @@ env:
   READ_FONTS_PROFILE: release
 
 jobs:
+  unicode:
+    name: Full Unicode property sweep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-silk
+      - run: silk test --release --manifest-path ucd/silk.toml --root src/sweep.silk
+
   compare:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
