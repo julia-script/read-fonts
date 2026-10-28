@@ -799,6 +799,51 @@ fn next(context: &Context, buffer: &Buffer, lookup: Lookup, start: usize, backwa
   }
 }
 
+/// `next` forward from `start` while positioning, where every ignorable glyph is skipped:
+/// the following glyph `lookup` does not skip, or `SECOND_NONE`.
+fn nextPositioned(
+  context: &Context,
+  glyphs: &[Glyph],
+  lookup: Lookup,
+  start: usize,
+) -> usize with Intrinsic.inlineAlways() {
+  let syllable = glyphs[start].syllable
+  let mut i = start + 1
+  while i < glyphs.length {
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != syllable {
+      return SECOND_NONE
+    }
+    if !ignored(context, lookup, item) && !(item.ignorable && !item.substituted) {
+      return i
+    }
+    i = i + 1
+  }
+  return SECOND_NONE
+}
+
+/// `nextPositioned` backward from `start`.
+fn previousPositioned(
+  context: &Context,
+  glyphs: &[Glyph],
+  lookup: Lookup,
+  start: usize,
+) -> usize with Intrinsic.inlineAlways() {
+  let syllable = glyphs[start].syllable
+  let mut i = start
+  while i != 0 {
+    i = i - 1
+    let item = &glyphs[i]
+    if context.restrictSyllable && item.syllable != syllable {
+      return SECOND_NONE
+    }
+    if !ignored(context, lookup, item) && !(item.ignorable && !item.substituted) {
+      return i
+    }
+  }
+  return SECOND_NONE
+}
+
 /// Applies the first subtable of `lookup` that matches at `at`. `subtables` is the plan's
 /// cached subtable list for this lookup; when it is empty the subtables are read from the table.
 effect fn applyLookup<F: FontFuncs>(
@@ -1102,9 +1147,13 @@ effect fn applyPairs<F: FontFuncs>(
     let mut result = no()
     if known != 0 && (sub.kern <= 2 || !context.variable) {
       if second == SECOND_UNKNOWN {
-        second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
-          Option<usize>.Some { value } => value
-          _ => SECOND_NONE
+        if context.positioning {
+          second = nextPositioned(&context.*, List<Glyph>.asSlice(&buffer.glyphs), lookup.*, at)
+        } else {
+          second = match move next(&context.*, &buffer.*, lookup.*, at, false) {
+            Option<usize>.Some { value } => value
+            _ => SECOND_NONE
+          }
         }
       }
       if second == SECOND_NONE {
@@ -3085,7 +3134,7 @@ effect fn kern<F: FontFuncs>(
   secondAt: usize,
 ) -> Applied
   ! OutOfMemoryError
-  ? &mut Allocator {
+  ? &mut Allocator with Intrinsic.inlineAlways() {
   let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
   let left = glyphs[at].info.glyphId
   let right = glyphs[secondAt].info.glyphId
@@ -3240,11 +3289,9 @@ effect fn position<F: FontFuncs>(
     return yes(at + 1)
   }
   if kind == 2 {
-    let second = match move next(context, &buffer.*, lookup, at, false) {
-      Option<usize>.Some { value } => value
-      _ => {
-        return no()
-      }
+    let second = nextPositioned(context, List<Glyph>.asSlice(&buffer.glyphs), lookup, at)
+    if second == SECOND_NONE {
+      return no()
     }
     let right = List<Glyph>.get(&buffer.glyphs, second).info.glyphId
     let vf1 = View.u16(&table, header)
@@ -3362,12 +3409,10 @@ effect fn position<F: FontFuncs>(
     if !entry.valid {
       return no()
     }
-    let previous = match move next(context, &buffer.*, lookup, at, true) {
-      Option<usize>.Some { value } => value
-      _ => {
-        Buffer.unsafeToConcat(&mut buffer, 0, at + 1)
-        return no()
-      }
+    let previous = previousPositioned(context, List<Glyph>.asSlice(&buffer.glyphs), lookup, at)
+    if previous == SECOND_NONE {
+      Buffer.unsafeToConcat(&mut buffer, 0, at + 1)
+      return no()
     }
     let index = match move View.coverage(
       &View.offset(&table, 2, coverageWidth),
