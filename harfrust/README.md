@@ -152,15 +152,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.72985e+07 | 6.53266e+07 | 1.03× |
-| Roboto / English words | 9.04749e+07 | 8.79354e+07 | 1.03× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.85433e+08 | 7.89358e+08 | 1.12× |
-| Noto Nastaliq Urdu / Persian words | 8.23227e+08 | 8.46943e+08 | 0.97× |
-| Noto Sans Devanagari / Hindi words | 2.36796e+08 | 2.25201e+08 | 1.05× |
-| Amiri / Persian Little Prince | 4.03402e+08 | 3.73885e+08 | 1.08× |
-| Source Serif Variable / react-dom | 8.63205e+08 | 1.00439e+09 | 0.86× |
+| Roboto / English Little Prince | 6.71443e+07 | 6.53273e+07 | 1.03× |
+| Roboto / English words | 9.00441e+07 | 8.7936e+07 | 1.02× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.85748e+08 | 7.89359e+08 | 1.12× |
+| Noto Nastaliq Urdu / Persian words | 8.15716e+08 | 8.46944e+08 | 0.96× |
+| Noto Sans Devanagari / Hindi words | 2.34365e+08 | 2.25202e+08 | 1.04× |
+| Amiri / Persian Little Prince | 4.02706e+08 | 3.73885e+08 | 1.08× |
+| Source Serif Variable / react-dom | 8.60951e+08 | 1.00439e+09 | 0.86× |
 
-The geometric mean is **1.02×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.01×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -261,7 +261,8 @@ does not inline.
 Positioning reuses the digest substitution leaves, since it does not change glyphs.
 A glyph's small properties are bytes, so a glyph is 64 bytes and moves cost less.
 Each lookup step stores its joiner handling, worked out once per plan rather than
-from its tag on every apply.
+from its tag on every apply, along with its lookup's header fields and whether the
+step's group is on for every glyph.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 

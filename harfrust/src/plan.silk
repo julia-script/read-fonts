@@ -56,6 +56,13 @@ pub struct LookupStep {
   /// `ZWJ_*` bits for the step's feature under the plan's shaper and script: whether matching
   /// skips joiners automatically, and whether substitution stays within a syllable.
   pub zwj: u8,
+  /// The lookup's type, flags and mark filtering set, read once from its header.
+  pub kind: u16,
+  pub lookupFlags: u16,
+  pub markSet: u16,
+  /// Whether some step from this one to `groupEnd` applies to every glyph when the buffer has
+  /// no user features: it is required, or its feature is on with no per-glyph checks.
+  pub everywhere: bool,
 }
 
 impl Copy for LookupStep {}
@@ -330,6 +337,7 @@ impl<'a> OtPlan<'a> {
       pairs = List<LookupSubtable>.asSlice(&self.subtables)[first + k].kern != 0
       k = k + 1
     }
+    let header = View.tail(&self.table, lookupOffset)
     run List<LookupStep>.append(
       &mut self.steps,
       LookupStep {
@@ -347,6 +355,10 @@ impl<'a> OtPlan<'a> {
         groupEnd: groupEnd,
         pairs: pairs,
         zwj: 0,
+        kind: View.u16(&header, 0),
+        lookupFlags: View.u16(&header, 2),
+        markSet: View.u16(&header, 6 + u16.toUsize(View.u16(&header, 4)) * 2),
+        everywhere: false,
       },
     )
   }
@@ -1193,9 +1205,11 @@ impl<'a> OtPlan<'a> {
       i = i - 1
       steps[i].zwj = zwjBits(buffer.shaper, buffer.script, steps[i].tag)
       steps[i].groupEnd = i + 1
+      steps[i].everywhere = steps[i].required || (steps[i].checks == 0 && steps[i].value != 0)
       if i + 1 < steps.length && steps[i + 1].index == steps[i].index
         && steps[i + 1].stage == steps[i].stage {
         steps[i].groupEnd = steps[i + 1].groupEnd
+        steps[i].everywhere = steps[i].everywhere || steps[i + 1].everywhere
       }
     }
     let mut probes: [SetDigest; 5] = [SetDigest.new(); 5]
