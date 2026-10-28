@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 77.8M | 65.3M | 1.19× |
-| Roboto / English words | 111M | 87.9M | 1.26× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1.04G | 789M | 1.32× |
-| Noto Nastaliq Urdu / Persian words | 959M | 847M | 1.13× |
-| Noto Sans Devanagari / Hindi words | 279M | 225M | 1.24× |
-| Amiri / Persian Little Prince | 491M | 374M | 1.31× |
-| Source Serif Variable / react-dom | 1.03G | 1,004M | 1.03× |
+| Roboto / English Little Prince | 77.5M | 65.3M | 1.19× |
+| Roboto / English words | 108M | 87.9M | 1.23× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1.04G | 789M | 1.31× |
+| Noto Nastaliq Urdu / Persian words | 945M | 847M | 1.12× |
+| Noto Sans Devanagari / Hindi words | 274M | 225M | 1.21× |
+| Amiri / Persian Little Prince | 490M | 374M | 1.31× |
+| Source Serif Variable / react-dom | 1.02G | 1,004M | 1.02× |
 
-The geometric mean is **1.21×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.20×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -230,7 +230,9 @@ classes straight from the plan, and plans fill expanded coverages and class rang
 48 glyphs, multiple and ligature substitution lookups write their results to an
 output list in one pass, started at the first edit, instead of moving the rest of
 the buffer for every edit; deleting a glyph merges its cluster into the output
-read so far. The remaining gap is mostly per-glyph table walking that harfrust
+read so far. The scratch lists a lookup application needs, its saved input and
+contextual input positions, live in the buffer, so each table's application
+neither creates nor frees them. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
