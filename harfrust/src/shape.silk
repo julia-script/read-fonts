@@ -212,6 +212,13 @@ effect fn execute<'a, 's, F: FontFuncs>(
   let vertical = !Direction.isHorizontal(buffer.direction)
   let zeroShaperMarks = zeroMarks && (buffer.shaper == 3 || buffer.shaper == 4)
   i = 0
+  if !vertical {
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    while i < glyphs.length && (glyphs[i].spaceFallback == 0 || glyphs[i].substituted)
+      && (!zeroShaperMarks || glyphs[i].glyphClass != 3) {
+      i = i + 1
+    }
+  }
   while i < Buffer.len(&buffer.*) {
     let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
     if !vertical && (current.spaceFallback == 0 || current.substituted)
@@ -338,6 +345,16 @@ effect fn execute<'a, 's, F: FontFuncs>(
     haveInvisible = true
   }
   i = 0
+
+  // Most runs have no selector fallbacks or ignorables, so the first one is found without
+  // copying glyphs out.
+  if true {
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    while i < glyphs.length && !glyphs[i].selectorFallback
+      && (!glyphs[i].ignorable || glyphs[i].substituted) {
+      i = i + 1
+    }
+  }
   while i < Buffer.len(&buffer.*) {
     let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
     if !current.selectorFallback && (!current.ignorable || current.substituted) {
