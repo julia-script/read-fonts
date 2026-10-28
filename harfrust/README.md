@@ -152,15 +152,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.27756e+07 | 6.53272e+07 | 0.96× |
-| Roboto / English words | 8.59252e+07 | 8.7936e+07 | 0.98× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.08386e+08 | 7.89359e+08 | 1.02× |
-| Noto Nastaliq Urdu / Persian words | 7.75064e+08 | 8.46944e+08 | 0.92× |
-| Noto Sans Devanagari / Hindi words | 2.26868e+08 | 2.25202e+08 | 1.01× |
-| Amiri / Persian Little Prince | 3.51352e+08 | 3.73885e+08 | 0.94× |
-| Source Serif Variable / react-dom | 8.14064e+08 | 1.00439e+09 | 0.81× |
+| Roboto / English Little Prince | 6.2762e+07 | 6.53272e+07 | 0.96× |
+| Roboto / English words | 8.58434e+07 | 8.7936e+07 | 0.98× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.04375e+08 | 7.89359e+08 | 1.02× |
+| Noto Nastaliq Urdu / Persian words | 7.75316e+08 | 8.46944e+08 | 0.92× |
+| Noto Sans Devanagari / Hindi words | 2.26827e+08 | 2.25202e+08 | 1.01× |
+| Amiri / Persian Little Prince | 3.51395e+08 | 3.73885e+08 | 0.94× |
+| Source Serif Variable / react-dom | 8.13753e+08 | 1.00439e+09 | 0.81× |
 
-The geometric mean is **0.95×**, down from 11.25× for the initial port. Plans
+The geometric mean is **0.94×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -275,7 +275,7 @@ calling `position` only for a covered glyph.
 Single, multiple, alternate and ligature substitution steps do the same with `substitute`.
 A multiple substitution moves the rest of the buffer once, however many glyphs it inserts.
 Substituted glyphs are updated in place, not copied out of the buffer and back.
-An output pass appends a single passed-over glyph directly instead of through a slice copy.
+An output pass appends each passed-over glyph directly, in `nextGlyph`, instead of through a slice copy.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 

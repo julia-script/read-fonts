@@ -1278,7 +1278,11 @@ impl Buffer {
     ! OutOfMemoryError
     ? &mut Allocator with Intrinsic.inlineAlways() {
     if self.haveOutput {
-      if self.separateOutput || self.outLen != self.idx {
+      if self.separateOutput && self.idx < Buffer.len(&self.*) {
+        // The common copy, appended here rather than through a call.
+        run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[self.idx])
+        self.outLen = self.outLen + 1
+      } else if self.separateOutput || self.outLen != self.idx {
         run Buffer.copyToOutput(&mut self, 1)
       } else {
         self.outLen = self.outLen + 1
