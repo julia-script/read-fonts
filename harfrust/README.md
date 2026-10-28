@@ -154,10 +154,10 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 6.18668e+07 | 6.53272e+07 | 0.95× |
 | Roboto / English words | 8.50932e+07 | 8.7936e+07 | 0.97× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.0177e+08 | 7.89359e+08 | 1.02× |
-| Noto Nastaliq Urdu / Persian words | 7.7547e+08 | 8.46944e+08 | 0.92× |
-| Noto Sans Devanagari / Hindi words | 2.23737e+08 | 2.25202e+08 | 0.99× |
-| Amiri / Persian Little Prince | 3.34586e+08 | 3.73885e+08 | 0.89× |
+| Noto Nastaliq Urdu / Persian Little Prince | 7.9769e+08 | 7.89359e+08 | 1.01× |
+| Noto Nastaliq Urdu / Persian words | 7.73297e+08 | 8.46944e+08 | 0.91× |
+| Noto Sans Devanagari / Hindi words | 2.23475e+08 | 2.25202e+08 | 0.99× |
+| Amiri / Persian Little Prince | 3.34678e+08 | 3.73885e+08 | 0.90× |
 | Source Serif Variable / react-dom | 8.03538e+08 | 1.00439e+09 | 0.80× |
 
 The geometric mean is **0.93×**, down from 11.25× for the initial port. Plans
@@ -280,7 +280,7 @@ When the output outgrows the input, the output so far moves out in slices, not o
 A format 3 rule that a context step already checked is not checked again in `contextual`.
 Adding text counts scalars with a loop that vectorizes and converts byte offsets to clusters without a check per scalar.
 Clearing a buffer empties its language in place instead of dropping and replacing it.
-The per-glyph feature check is inlined into the step loops that call it.
+The per-glyph feature check, the second-input search and the nested lookup header read are inlined into their callers.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
