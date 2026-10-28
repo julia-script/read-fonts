@@ -501,7 +501,7 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
   }
 }
 
-pub fn nativeDirection(buffer: &mut Buffer) -> () {
+pub fn nativeDirection(buffer: &mut Buffer) -> () with Intrinsic.inlineAlways() {
   let mut rtl = unicode.isRtl(buffer.script)
   if rtl && buffer.direction == Direction.LeftToRight {
     let mut number = false
