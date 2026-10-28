@@ -152,15 +152,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.71548e+07 | 6.53273e+07 | 1.03× |
-| Roboto / English words | 9.00527e+07 | 8.7936e+07 | 1.02× |
-| Noto Nastaliq Urdu / Persian Little Prince | 8.87886e+08 | 7.89359e+08 | 1.12× |
-| Noto Nastaliq Urdu / Persian words | 8.17411e+08 | 8.46944e+08 | 0.97× |
-| Noto Sans Devanagari / Hindi words | 2.33295e+08 | 2.25202e+08 | 1.04× |
-| Amiri / Persian Little Prince | 3.87168e+08 | 3.73885e+08 | 1.04× |
-| Source Serif Variable / react-dom | 8.6098e+08 | 1.00439e+09 | 0.86× |
+| Roboto / English Little Prince | 6.2542e+07 | 6.53273e+07 | 0.96× |
+| Roboto / English words | 8.61337e+07 | 8.7936e+07 | 0.98× |
+| Noto Nastaliq Urdu / Persian Little Prince | 8.87903e+08 | 7.89359e+08 | 1.12× |
+| Noto Nastaliq Urdu / Persian words | 8.18512e+08 | 8.46944e+08 | 0.97× |
+| Noto Sans Devanagari / Hindi words | 2.33899e+08 | 2.25202e+08 | 1.04× |
+| Amiri / Persian Little Prince | 3.85783e+08 | 3.73885e+08 | 1.03× |
+| Source Serif Variable / react-dom | 8.05912e+08 | 1.00439e+09 | 0.80× |
 
-The geometric mean is **1.01×**, down from 11.25× for the initial port. Plans
+The geometric mean is **0.98×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -266,6 +266,8 @@ step's group is on for every glyph.
 `calt`'s Hangul jamo check rejects code points below U+1100 with one compare.
 A format 3 contextual subtable keeps its backtrack, input and lookahead counts, so the
 digest pre-check does not read them from the table.
+Kerning steps run their glyph loop in a function of their own with the pair lookup inlined,
+so each glyph no longer pays for a call.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
