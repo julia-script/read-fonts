@@ -2,9 +2,8 @@
 //! Run from the repository root after scripts/fetch-unicode:
 //! silk test --release --manifest-path ucd/silk.toml --root src/line_break_conformance.silk
 import line_break
-import line_break { LineOptions }
+import line_break { LineOptions, BreakOpportunity }
 import test_support as Scan
-import text { TextBreak }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.bytes { Bytes }
 import silk.effect { Effect }
@@ -30,7 +29,7 @@ effect fn conformance() -> ()
   let data = Bytes.asSlice(&content)
   let mut input = List<u8>.make()
   let mut expected = List<usize>.make()
-  let mut actual = List<TextBreak>.make()
+  let mut actual = List<BreakOpportunity>.make()
   let mut at: usize = 0
   let mut lineNumber: usize = 0
   let mut cases: usize = 0
@@ -79,13 +78,7 @@ effect fn conformance() -> ()
     let mut same = actual.length() == expected.length()
     let mut i: usize = 0
     while same && i < expected.length() {
-      let boundary = actual.get(i).at
-      let want = expected.get(i)
-      if want == input.length() {
-        same = boundary.unit == 1 && boundary.offset == 0
-      } else {
-        same = boundary.unit == 0 && boundary.offset == want
-      }
+      same = actual.get(i).offset == expected.get(i)
       i = i + 1
     }
     if !same {

@@ -1,7 +1,14 @@
 import line_break
-import line_break { LineOptions, LineBreakMode, WordBreakMode, Hyphens, LineLanguage }
+import line_break {
+  LineOptions,
+  LineBreakMode,
+  WordBreakMode,
+  Hyphens,
+  LineLanguage,
+  BreakOpportunity,
+  BreakKind
+}
 import dictionary { DictionarySegmenter }
-import text { TextBreak, TextBreakKind }
 import silk.allocator { Allocator, OutOfMemoryError }
 import silk.effect { Effect }
 import silk.list { List }
@@ -12,25 +19,22 @@ effect fn positions(text: string, options: LineOptions, expected: &[usize]) -> (
   ! AssertionError<'static> | OutOfMemoryError
   ? &mut Allocator {
   let bytes = String.utf8Bytes(text)
-  let mut output = List<TextBreak>.make()
+  let mut output = List<BreakOpportunity>.make()
   run line_break.breaks(bytes, options, &mut output)
   run expectPositions(&output, bytes.length, expected)
 }
 
-effect fn expectPositions(output: &List<TextBreak>, length: usize, expected: &[usize]) -> ()
+effect fn expectPositions(output: &List<BreakOpportunity>, length: usize, expected: &[usize]) -> ()
   ! AssertionError<'static> {
   run Testing.expect(output.length() == expected.length, "line opportunity count")
   let mut i: usize = 0
   while i < expected.length {
     let result = output.get(i)
     if expected[i] == length {
-      run Testing.expect(result.at.unit == 1 && result.at.offset == 0, "canonical EOF cursor")
-      run Testing.expect(result.kind == TextBreakKind.Forced, "EOF is mandatory")
+      run Testing.expect(result.offset == length, "EOF offset")
+      run Testing.expect(result.kind == BreakKind.Mandatory, "EOF is mandatory")
     } else {
-      run Testing.expect(
-        result.at.unit == 0 && result.at.offset == expected[i],
-        "original UTF8 opportunity",
-      )
+      run Testing.expect(result.offset == expected[i], "original UTF8 opportunity")
     }
     i = i + 1
   }
@@ -62,9 +66,9 @@ effect fn standardCases() -> ()
 
   // The quotation context must survive intervening spaces and combining marks.
   run positions("“  a”, b", options, &[11, 12])
-  let mut output = List<TextBreak>.make()
+  let mut output = List<BreakOpportunity>.make()
   run line_break.breaks(b"a\r\nb", options, &mut output)
-  run Testing.expect(output.get(0).kind == TextBreakKind.Forced, "CRLF forced break")
+  run Testing.expect(output.get(0).kind == BreakKind.Mandatory, "CRLF forced break")
   output.clear()
   run line_break.breaks(b"a\xff b", options, &mut output)
   run expectPositions(&output, 4, &[3, 4])
@@ -130,11 +134,11 @@ effect fn hyphenCases() -> ()
   ! AssertionError<'static> | OutOfMemoryError
   ? &mut Allocator {
   let mut options = LineOptions.make()
-  let mut output = List<TextBreak>.make()
+  let mut output = List<BreakOpportunity>.make()
   let bytes = String.utf8Bytes("ab\u{00ad}cd")
   run line_break.breaks(bytes, options, &mut output)
   run expectPositions(&output, bytes.length, &[4, 6])
-  run Testing.expect(output.get(0).kind == TextBreakKind.Hyphenated, "manual soft hyphen")
+  run Testing.expect(output.get(0).kind == BreakKind.Hyphenated, "manual soft hyphen")
   options.hyphens = Hyphens.None
   run positions("ab\u{00ad}cd", options, &[6])
 
@@ -146,10 +150,7 @@ effect fn hyphenCases() -> ()
   run line_break.breaks(bytes, options, &mut output)
   let mut i: usize = 0
   while i < output.length() {
-    run Testing.expect(
-      output.get(i).kind != TextBreakKind.Hyphenated,
-      "break-all does not hyphenate",
-    )
+    run Testing.expect(output.get(i).kind != BreakKind.Hyphenated, "break-all does not hyphenate")
     i = i + 1
   }
   options.lineBreak = LineBreakMode.Anywhere
@@ -157,10 +158,7 @@ effect fn hyphenCases() -> ()
   run line_break.breaks(bytes, options, &mut output)
   i = 0
   while i < output.length() {
-    run Testing.expect(
-      output.get(i).kind != TextBreakKind.Hyphenated,
-      "anywhere does not hyphenate",
-    )
+    run Testing.expect(output.get(i).kind != BreakKind.Hyphenated, "anywhere does not hyphenate")
     i = i + 1
   }
 }
@@ -190,7 +188,7 @@ effect fn dictionaryCases() -> ()
   ? &mut Allocator {
   let dictionary = EveryByte {}
   let mut options = LineOptions.make()
-  let mut output = List<TextBreak>.make()
+  let mut output = List<BreakOpportunity>.make()
   let plain = String.utf8Bytes("กขค")
   run line_break.breaks(plain, options, &mut output)
   run expectPositions(&output, plain.length, &[9])

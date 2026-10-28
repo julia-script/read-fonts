@@ -169,27 +169,52 @@ stdlib NFC/NFD. No compiler/stdlib data is patched or vendored.
 
 ## Text algorithms
 
-Algorithms accept UTF-8 `&[u8]` and append to caller-cleared lists. Offsets refer
-to the original bytes. Invalid UTF-8 consumes one byte as U+FFFD, so malformed
-input cannot stall a scan. Reuse output capacity between calls.
+Algorithms accept UTF-8 `&[u8]`. Every position is a byte offset into that
+input, and every range is `[start, end)`; nothing depends on a layout engine's
+types. Invalid UTF-8 consumes one byte as U+FFFD, so malformed input cannot
+stall a scan. List results are appended to a caller-cleared list; reuse the
+list to keep its capacity.
 
 | Module | Entry point | Result |
 |---|---|---|
-| `ucd.bidi` | `analyze(text, direction, &mut workspace, &mut analysis)` | Layout-compatible `TextAnalysis` |
-| `ucd.line_break` | `breaks(text, options, &mut output)` | `List<TextBreak>` |
+| `ucd.bidi` | `analysis.analyze(text, direction)` | `BidiAnalysis`: `paragraphs()`, `runs()` |
+| `ucd.line_break` | `breaks(text, options, &mut output)` | `List<BreakOpportunity>` |
 | `ucd.segmentation` | `graphemes`, `words`, `sentences` | `List<usize>` byte boundaries |
 | `ucd.itemization` | `scripts(text, &mut output)` | `List<ScriptRun>` with ISO script tags |
 | `ucd.vertical` | `orientations(text, &mut output)` | `List<OrientationRun>` |
 
-`BidiWorkspace.make()` retains scratch capacity. `ParagraphDirection` is `Auto`,
-`Ltr`, or `Rtl`; automatic direction is resolved separately for each paragraph.
-The complete UAX #9 implementation includes explicit embeddings, isolates,
-overflow handling, canonical bracket pairs, N0, and X9 removal affinity.
-`TextAnalysis` preserves pre-L1 levels for shaping, whole-paragraph L1
-`unwrappedLevel` values, removed-source ranges, and paragraph metadata.
-`reorder(levels, &mut indices)` performs L2 after the caller applies L1 for an
-actual wrapped line and excludes X9 characters. `ucd.text` uses layout's
-cursor semantics: this slice is unit 0; canonical EOF is `{ unit: 1, offset: 0 }`.
+```silk
+import ucd.bidi { BidiAnalysis, ParagraphDirection }
+import ucd.line_break as LineBreaking
+import ucd.line_break { LineOptions, BreakOpportunity }
+
+let mut bidi = BidiAnalysis.make()             // reuse it across texts
+run bidi.analyze(text, ParagraphDirection.Auto)
+// bidi.runs()[i]: start, end, level (shape with it), unwrappedLevel, removed
+
+let mut breaks = List<BreakOpportunity>.make()
+run LineBreaking.breaks(text, LineOptions.make(), &mut breaks)
+// breaks[i].offset ends a line; breaks[i].kind is Allowed, Mandatory or Hyphenated
+```
+
+`BidiAnalysis.analyze` replaces the analysis' contents and keeps its storage.
+`ParagraphDirection` is `Auto`, `Ltr`, or `Rtl`; `Auto` resolves each paragraph
+separately. `paragraphs()` lists every P1 paragraph (`start`, `end` including
+its separator, `level`, `hasStrong`); empty text has one empty paragraph.
+`runs()` are maximal contiguous ranges that never cross a paragraph, each with
+the resolved `level` (before L1; shape with it), `unwrappedLevel` (after L1
+with the whole paragraph as one line) and `removed` (X9: explicit formatting
+and BN, which keep their bytes and take the preceding level). `runAt(offset)`
+and `paragraphAt(offset)` look results up by byte. The complete UAX #9
+implementation includes explicit embeddings, isolates, overflow handling,
+canonical bracket pairs, N0, and X9 removal affinity. Paragraphs without RTL
+characters, Arabic numbers or explicit formatting take a fast path.
+
+For a wrapped line, apply L1 to the line's levels and call
+`reorder(levels, &mut indices)` for L2 (excluding X9 characters). The lower-level
+`BidiWorkspace` with `analyzeClasses`/`analyzeCodepoints` resolves one paragraph
+of classes or code points and exposes per-character `level`, `unwrappedLevel`,
+`isRemoved` and `visualOrder`; the conformance runners use it.
 
 `LineOptions.make()` selects untailored UAX #14 with manual soft hyphens.
 `LineBreakMode` supports `Auto`, `Loose`, `Normal`, `Strict`, and `Anywhere`;
@@ -197,9 +222,10 @@ cursor semantics: this slice is unit 0; canonical EOF is `{ unit: 1, offset: 0 }
 `LineLanguage.Japanese` or `.Chinese` for CSS CJK punctuation tailoring.
 Mandatory breaks take precedence; `Anywhere` preserves extended graphemes and
 overrides `word-break`. `Hyphens.Manual` marks U+00AD opportunities as
-`TextBreakKind.Hyphenated`; `.None` suppresses them. No automatic hyphenation
-patterns are included. The default SA behavior needs the optional dictionary
-provider for language-specific word opportunities.
+`BreakKind.Hyphenated`; `.None` suppresses them. No automatic hyphenation
+patterns are included. The output always ends with a `Mandatory` opportunity
+at the end of the text (offset 0 for empty text). The default SA behavior needs
+the optional dictionary provider for language-specific word opportunities.
 
 Segmentation implements extended graphemes, default UAX #29 words, and default
 sentences, not locale-specific word tailoring. Boundary lists contain zero and

@@ -1,10 +1,8 @@
 //! Reusable-output Unicode workloads matching scripts/rust-ucd-bench.
-import ucd.bidi as Bidi
-import ucd.bidi { BidiWorkspace, ParagraphDirection }
+import ucd.bidi { BidiAnalysis, ParagraphDirection }
 import ucd.segmentation as Segmentation
 import ucd.line_break as LineBreak
-import ucd.line_break { LineOptions }
-import ucd.text { TextAnalysis, TextBreak, TextCursor }
+import ucd.line_break { LineOptions, BreakOpportunity }
 import silk.list { List }
 import silk.bytes { Bytes }
 import silk.string { String, InvalidUtf8 }
@@ -33,13 +31,6 @@ enum Algorithm {
 
 fn mix(hash: u64, value: u64) -> u64 with Intrinsic.inlineAlways() {
   return u64.wrappingMultiply(hash ^ value, 1099511628211)
-}
-
-fn offset(cursor: TextCursor, length: usize) -> usize with Intrinsic.inlineAlways() {
-  if cursor.unit == 0 {
-    return cursor.offset
-  }
-  return length
 }
 
 effect fn process() -> i32
@@ -100,9 +91,8 @@ effect fn process() -> i32
     return 2
   }
   let mut positions = List<usize>.make()
-  let mut breaks = List<TextBreak>.make()
-  let mut analysis = TextAnalysis.uniform(1, 0, 0, false)
-  let mut workspace = BidiWorkspace.make()
+  let mut breaks = List<BreakOpportunity>.make()
+  let mut analysis = BidiAnalysis.make()
   let mut checksum: u64 = 0
   let mut boundaries: u64 = 0
   let mut iteration: u32 = 0
@@ -111,22 +101,16 @@ effect fn process() -> i32
     let mut amount: u64 = 0
     match algorithm {
       Algorithm.Bidi => {
-        analysis.levels.clear()
-        analysis.paragraphs.clear()
-        run Bidi.analyze(text, ParagraphDirection.Auto, &mut workspace, &mut analysis)
-        let levels = analysis.levels.asSlice()
+        run analysis.analyze(text, ParagraphDirection.Auto)
+        let runs = analysis.runs()
         let mut runIndex: usize = 0
         let mut at: usize = 0
         while at < text.length {
           if (text[at] & 0xc0) != 0x80 {
-            while runIndex < levels.length && offset(levels[runIndex].end, text.length) <= at {
+            while runs[runIndex].end <= at {
               runIndex = runIndex + 1
             }
-            let mut level = analysis.level
-            if runIndex < levels.length && levels[runIndex].start.offset <= at {
-              level = levels[runIndex].unwrappedLevel
-            }
-            hash = mix(mix(hash, usize.toU64(at)), u8.toU64(level))
+            hash = mix(mix(hash, usize.toU64(at)), u8.toU64(runs[runIndex].unwrappedLevel))
             amount = amount + 1
           }
           at = at + 1
@@ -138,7 +122,7 @@ effect fn process() -> i32
         let result = breaks.asSlice()
         let mut at: usize = 0
         while at < result.length {
-          hash = mix(hash, usize.toU64(offset(result[at].at, text.length)))
+          hash = mix(hash, usize.toU64(result[at].offset))
           amount = amount + 1
           at = at + 1
         }
