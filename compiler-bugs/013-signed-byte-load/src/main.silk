@@ -1,0 +1,35 @@
+import silk.u8
+import silk.u32
+import silk.i32
+
+fn palette() -> &'static [u8] {
+  return b"\x00\x00\x00\x00\x00\x00\x00\x01\xff\xff\xff\xff\x00\x00\x00\x02\xff\xff\xff\xfe\x00\x00\x00\x28\xff\xff\xff\xd8\x00\x00\x01\x2c\xff\xff\xfe\xd4\x00\x00\x04\x00\xff\xff\xfc\x00\x00\x00\x30\x39\xff\xff\xcf\xc7\x00\x01\x00\x00\xff\xff\x00\x00\x00\x00\x00\x2a"
+}
+
+fn word(index: u32) -> u32 with Intrinsic.inlineAlways() {
+  let bytes = palette()
+  let offset = u32.toUsize(index % 16) * 4
+  return u32.shiftLeft(u8.toU32(bytes[offset]), 24) | u32.shiftLeft(u8.toU32(bytes[offset + 1]), 16)
+    | u32.shiftLeft(u8.toU32(bytes[offset + 2]), 8)
+    | u8.toU32(bytes[offset + 3])
+}
+
+export "C" fn unsignedRead(index: u32) -> u32 {
+  return word(index)
+}
+
+export "C" fn signedRead(index: u32) -> i64 {
+  return i32.toI64(u32.wrappingToI32(word(index)))
+}
+
+pub fn main() -> i32 {
+  unsafe {
+    if signedRead(2) != -1 || unsignedRead(2) != 4294967295 {
+      return 1
+    }
+    if signedRead(4) != -2 || signedRead(5) != 40 || signedRead(6) != -40 {
+      return 2
+    }
+  }
+  return 0
+}

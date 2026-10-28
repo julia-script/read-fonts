@@ -28,6 +28,12 @@ OpenType script tags remain in harfrust. No property table is generated twice.
 Focused package tests run in their own bounded PR CI job; the full code-point
 sweep runs in the scheduled/manual baseline workflow.
 
+Shaping extraction is gated with the full harfrust suite, regressions, Rust
+comparison, tracing, malformed-font campaign and all seven callgrind workloads.
+Clear `build/llvm` and `build/cache` before release builds (Silk #2468).
+For before/after instruction counts, use identical executable and corpus paths:
+process startup and path handling are included in callgrind's totals.
+
 ## API
 
 ```silk

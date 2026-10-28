@@ -6,8 +6,6 @@ import silk.option { Option }
 import silk.u8
 import silk.u32
 import silk.usize
-import silk.i32
-import silk.i64
 
 fn be16(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
   if index >= data.length || data.length - index < 2 {
@@ -23,10 +21,6 @@ fn be32(data: &[u8], index: usize) -> u32 with Intrinsic.inlineAlways() {
   return u32.shiftLeft(u8.toU32(data[index]), 24) | u32.shiftLeft(u8.toU32(data[index + 1]), 16)
     | u32.shiftLeft(u8.toU32(data[index + 2]), 8)
     | u8.toU32(data[index + 3])
-}
-
-fn beI32(data: &[u8], index: usize) -> i32 with Intrinsic.inlineAlways() {
-  return u32.wrappingToI32(be32(data, index))
 }
 
 fn byte(index: usize) -> usize with Intrinsic.inlineAlways() {
@@ -79,8 +73,10 @@ pub fn mirror(cp: u32) -> u32 with Intrinsic.inlineAlways() {
   let palette = byte(
     11624 + byte(11272 + byte(11071 + nibble * 16 + ((u / 32) & 15)) * 8 + ((u / 4) & 7)) + (u & 3),
   )
-  let delta = beI32(Data.ucd_palette(), palette * 4)
-  return i64.toU32(u32.toI64(cp) + i32.toI64(delta))
+
+  // The palette stores two's-complement deltas; every mapped result is a code point.
+  // Avoid widening before addition: compiler-bugs/013 (silk-lang/silk#2474).
+  return u32.wrappingAdd(cp, be32(Data.ucd_palette(), palette * 4))
 }
 
 pub struct Decomposition {
