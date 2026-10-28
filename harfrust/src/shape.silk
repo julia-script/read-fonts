@@ -126,28 +126,17 @@ effect fn execute<'a, 's, F: FontFuncs>(
   normalize.nativeDirection(&mut buffer)
   let mut i: usize = 0
   if !Direction.isForward(direction) {
-    while i < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, i)
-      let cp = unicode.mirror(item.codepoint)
-      if cp != item.codepoint && ConfiguredShaper.hasGlyph(font, cp) {
-        item.codepoint = cp
-      } else {
-        item.mirrored = true
-      }
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
-      i = i + 1
-    }
+    mirror(font, List<Glyph>.asMutSlice(&mut buffer.glyphs))
   }
   if !Direction.isHorizontal(direction) {
     if !hasFeature(substitutions, 0x76657274) {
       i = 0
-      while i < Buffer.len(&buffer.*) {
-        let mut item = List<Glyph>.get(&buffer.glyphs, i)
-        let cp = unicode.vertical(item.codepoint)
+      let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      while i < glyphs.length {
+        let cp = unicode.vertical(glyphs[i].codepoint)
         if ConfiguredShaper.hasGlyph(font, cp) {
-          item.codepoint = cp
+          glyphs[i].codepoint = cp
         }
-        List<Glyph>.set(&mut buffer.glyphs, i, item)
         i = i + 1
       }
     }
@@ -334,20 +323,10 @@ effect fn execute<'a, 's, F: FontFuncs>(
   if !Direction.isForward(buffer.direction) {
     Buffer.reverse(&mut buffer)
   }
-  let mut invisible: u32 = 0
-  let mut haveInvisible = false
-  let invisibleOption = match &buffer.invisibleGlyph {
-    Option<GlyphId>.Some { value } => Option<GlyphId>.some(value)
-    _ => ConfiguredShaper.nominalGlyph(font, 32)
-  }
-  if let Option<GlyphId>.Some { value } = move invisibleOption {
-    invisible = GlyphId.toU32(value)
-    haveInvisible = true
-  }
   i = 0
 
   // Most runs have no selector fallbacks or ignorables, so the first one is found without
-  // copying glyphs out.
+  // copying glyphs out, and the invisible glyph is only looked up when there is one.
   if true {
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
     while i < glyphs.length && !glyphs[i].selectorFallback
@@ -355,27 +334,53 @@ effect fn execute<'a, 's, F: FontFuncs>(
       i = i + 1
     }
   }
+  let mut invisible: u32 = 0
+  let mut haveInvisible = false
+  if i < Buffer.len(&buffer.*) {
+    let invisibleOption = match &buffer.invisibleGlyph {
+      Option<GlyphId>.Some { value } => Option<GlyphId>.some(value)
+      _ => ConfiguredShaper.nominalGlyph(font, 32)
+    }
+    if let Option<GlyphId>.Some { value } = move invisibleOption {
+      invisible = GlyphId.toU32(value)
+      haveInvisible = true
+    }
+  }
+  let mut notFoundSelector: u32 = 0
+  let mut haveNotFoundSelector = false
+  if let Option<u32>.Some { value } = &buffer.notFoundVariationSelectorGlyph {
+    notFoundSelector = value
+    haveNotFoundSelector = true
+  }
+  let hideIgnorables = (buffer.flags & 4) == 0
+  let removeIgnorables = (buffer.flags & 8) != 0 || !haveInvisible
   while i < Buffer.len(&buffer.*) {
-    let current = &List<Glyph>.asSlice(&buffer.glyphs)[i]
-    if !current.selectorFallback && (!current.ignorable || current.substituted) {
-      i = i + 1
-      continue
-    }
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    if item.selectorFallback {
-      if let Option<u32>.Some { value } = &buffer.notFoundVariationSelectorGlyph {
-        item.info.glyphId = value
+    let mut remove = false
+    if true {
+      let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      while i < glyphs.length && !glyphs[i].selectorFallback
+        && (!glyphs[i].ignorable || glyphs[i].substituted) {
+        i = i + 1
+      }
+      if i == glyphs.length {
+        break
+      }
+      let item = &mut glyphs[i]
+      if item.selectorFallback && haveNotFoundSelector {
+        item.info.glyphId = notFoundSelector
         item.position = GlyphPosition.zero()
-        List<Glyph>.set(&mut buffer.glyphs, i, item)
+      }
+      if item.ignorable && !item.substituted && hideIgnorables {
+        if removeIgnorables {
+          remove = true
+        } else {
+          item.info.glyphId = invisible
+        }
       }
     }
-    if item.ignorable && !item.substituted && (buffer.flags & 4) == 0 {
-      if (buffer.flags & 8) != 0 || !haveInvisible {
-        Buffer.deleteGlyph(&mut buffer, i)
-        continue
-      }
-      item.info.glyphId = invisible
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+    if remove {
+      Buffer.deleteGlyph(&mut buffer, i)
+      continue
     }
     i = i + 1
   }
@@ -385,6 +390,25 @@ effect fn execute<'a, 's, F: FontFuncs>(
   buffer.direction = direction
   Buffer.leave(&mut buffer)
   return Result<(), ShapeError>.succeed(())
+}
+
+/// Replaces code points with their mirrored forms where the font has one, and marks the rest
+/// as mirrored.
+fn mirror<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  glyphs: &mut [Glyph],
+) -> () with Intrinsic.inlineNever() {
+  let mut i: usize = 0
+  while i < glyphs.length {
+    let original = glyphs[i].codepoint
+    let cp = unicode.mirror(original)
+    if cp != original && ConfiguredShaper.hasGlyph(font, cp) {
+      glyphs[i].codepoint = cp
+    } else {
+      glyphs[i].mirrored = true
+    }
+    i = i + 1
+  }
 }
 
 fn hasFeature(plan: &OtPlan, tag: u32) -> bool {
