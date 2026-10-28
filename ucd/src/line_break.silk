@@ -88,21 +88,20 @@ impl LineOptions {
   }
 }
 
-// Token flags. The low eight come from the generated lineBreakInfo table
+// Token flags. The low nine come from the generated lineBreakInfo table
 // (scripts/generate-unicode keeps the same layout, shifted by six class bits).
 const EAST: u16 = 1 // East_Asian_Width F, W or H
 const CURRENCY_WIDE: u16 = 2 // East_Asian_Width A, F or W
 const PI: u16 = 4 // General_Category Pi
 const PF: u16 = 8 // General_Category Pf
-const LETTER: u16 = 16 // General_Category L*
+const WORD: u16 = 16 // a word character for word-break: keep-all
 const EMOJI: u16 = 32 // unassigned Extended_Pictographic
 const SA: u16 = 64 // SA resolved to AL
 const CJ: u16 = 128 // CJ resolved to NS
 const ZWJ: u16 = 256 // the base or its last combining mark is ZWJ
-const WORD: u16 = 512 // a word character for word-break: keep-all
 const EOF: u16 = 1024 // past the end of the text
 
-// One LB9 combining sequence: 16 bytes, so the five-token window stays in registers.
+// One LB9 combining sequence: 16 bytes, so the three-token window stays in registers.
 struct Token {
   start: usize,
   cp: u32,
@@ -132,6 +131,16 @@ fn hard(c: LineBreak) -> bool {
 
 fn alpha(c: LineBreak) -> bool {
   return c == LineBreak.AL || c == LineBreak.HL
+}
+
+// Classes that LB23, LB25 and LB28 keep together.
+fn joining(c: LineBreak) -> bool with Intrinsic.inlineAlways() {
+  return alpha(c) || c == LineBreak.NU
+}
+
+// Joining classes plus ID: no rule looks at a pair of these beyond LB8a.
+fn plain(c: LineBreak) -> bool with Intrinsic.inlineAlways() {
+  return joining(c) || c == LineBreak.ID
 }
 
 fn hangul(c: LineBreak) -> bool {
@@ -200,10 +209,10 @@ struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-  fn make(text: &'a [u8], options: LineOptions) -> Self {
+  fn make(text: &'a [u8], at: usize, options: LineOptions) -> Self {
     let mut reader = Self {
       text: text,
-      at: 0,
+      at: at,
       upcoming: Token.eof(0),
       options: options,
       tailored: css(options) || options.wordBreak == WordBreakMode.BreakAll,
@@ -221,15 +230,9 @@ impl<'a> Reader<'a> {
     self.at = decoded.next
     let info = Data.lineBreakInfo(decoded.cp)
     let mut cls = lineBreakValue(info & 63)
-    let mut flags = u32.wrappingToU16(u32.shiftRight(info, 6))
+    let flags = u32.wrappingToU16(u32.shiftRight(info, 6))
     if (flags & CJ) != 0 && loose(self.options) {
       cls = LineBreak.ID
-    }
-    if cls == LineBreak.ZWJ {
-      flags = flags | ZWJ
-    }
-    if (flags & LETTER) != 0 || alpha(cls) || cls == LineBreak.NU || cls == LineBreak.ID {
-      flags = flags | WORD
     }
     return Token { start: start, cp: decoded.cp, cls: cls, flags: flags }
   }
@@ -243,7 +246,7 @@ impl<'a> Reader<'a> {
     if token.cls == LineBreak.CM || token.cls == LineBreak.ZWJ {
       // LB10: all properties become those of LATIN CAPITAL LETTER A.
       token.cls = LineBreak.AL
-      token.flags = (token.flags & (SA | ZWJ)) | LETTER | WORD
+      token.flags = (token.flags & (SA | ZWJ)) | WORD
     }
     if !hard(token.cls) && token.cls != LineBreak.SP && token.cls != LineBreak.ZW {
       while self.upcoming.cls == LineBreak.CM || self.upcoming.cls == LineBreak.ZWJ {
@@ -252,34 +255,60 @@ impl<'a> Reader<'a> {
       }
     }
     if self.tailored {
-      return self.tailor(token)
+      token.cls = tailor(self.options, token.cls, token.cp, token.flags)
     }
     return token
   }
 
-  fn tailor(self: &Self, token: Token) -> Token with Intrinsic.inlineNever() {
-    let mut result = token
-    if css(self.options) {
-      if loose(self.options) && result.cls == LineBreak.NS && iteration(result.cp) {
-        result.cls = LineBreak.ID
-      }
-      if cjk(self.options) && self.options.lineBreak != LineBreakMode.Strict
-        && (result.cp == 0x301c || result.cp == 0x30a0) {
-        result.cls = LineBreak.ID
-      }
-    }
-
-    // Small kana and iteration marks remain controlled by line-break, not
-    // word-break. Hangul already breaks between complete syllables.
-    if self.options.wordBreak == WordBreakMode.BreakAll
-      && (alpha(result.cls) || result.cls == LineBreak.NU || result.has(SA)
-        || result.cls == LineBreak.AK
-        || result.cls == LineBreak.AP
-        || result.cls == LineBreak.AS) {
-      result.cls = LineBreak.ID
-    }
-    return result
+  // The token `count` places after the one `next` would return. Only rare rules
+  // look past the pair; a fresh reader keeps this one in registers.
+  fn ahead(self: &Self, count: usize) -> Token with Intrinsic.inlineAlways() {
+    return lookAhead(self.text, self.upcoming.start, self.options, count)
   }
+}
+
+// Rare CSS and word-break tailoring of a class, out of line. It takes plain values
+// so the caller's reader can stay in registers.
+fn tailor(
+  options: LineOptions,
+  cls: LineBreak,
+  cp: u32,
+  flags: u16,
+) -> LineBreak with Intrinsic.inlineNever() {
+  if css(options) {
+    if loose(options) && cls == LineBreak.NS && iteration(cp) {
+      return LineBreak.ID
+    }
+    if cjk(options) && options.lineBreak != LineBreakMode.Strict && (cp == 0x301c || cp == 0x30a0) {
+      return LineBreak.ID
+    }
+  }
+
+  // Small kana and iteration marks remain controlled by line-break, not
+  // word-break. Hangul already breaks between complete syllables.
+  if options.wordBreak == WordBreakMode.BreakAll
+    && (alpha(cls) || cls == LineBreak.NU || (flags & SA) != 0 || cls == LineBreak.AK
+      || cls == LineBreak.AP
+      || cls == LineBreak.AS) {
+    return LineBreak.ID
+  }
+  return cls
+}
+
+fn lookAhead(
+  text: &[u8],
+  at: usize,
+  options: LineOptions,
+  count: usize,
+) -> Token with Intrinsic.inlineNever() {
+  let mut reader = Reader.make(text, at, options)
+  let mut token = reader.next()
+  let mut skipped: usize = 0
+  while skipped < count {
+    token = reader.next()
+    skipped = skipped + 1
+  }
+  return token
 }
 
 // Only classes survive from earlier tokens; LineBreak.XX means none (start of text).
@@ -322,11 +351,12 @@ impl Context {
   }
 }
 
+// `reader` is positioned after `right`; it is only peeked for the few rules that
+// look past the pair.
 fn opportunity(
   left: Token,
   right: Token,
-  next: Token,
-  afterNext: Token,
+  reader: &Reader,
   before: Token,
   context: &Context,
   options: LineOptions,
@@ -334,7 +364,6 @@ fn opportunity(
 ) -> bool {
   let a = left.cls
   let b = right.cls
-  let n = next.cls
 
   // LB4-LB12. LB9/LB10 have already folded combining sequences.
   if a == LineBreak.CR && b == LineBreak.LF {
@@ -368,10 +397,13 @@ fn opportunity(
   if context.nonspace == LineBreak.OP || context.quoteInitial {
     return false
   }
-  if b == LineBreak.QU && right.has(PF) && (next.isEof() || finalQuote(n)) {
-    return false
+  if b == LineBreak.QU && right.has(PF) {
+    let next = reader.ahead(0)
+    if next.isEof() || finalQuote(next.cls) {
+      return false
+    }
   }
-  if a == LineBreak.SP && b == LineBreak.IS && n == LineBreak.NU {
+  if a == LineBreak.SP && b == LineBreak.IS && reader.ahead(0).cls == LineBreak.NU {
     return true
   }
   if b == LineBreak.IS && !beforeCentered {
@@ -392,7 +424,7 @@ fn opportunity(
   if (b == LineBreak.QU && !right.has(PI)) || (a == LineBreak.QU && !left.has(PF)) {
     return false
   }
-  if b == LineBreak.QU && (!left.has(EAST) || next.isEof() || !next.has(EAST)) {
+  if b == LineBreak.QU && (!left.has(EAST) || !reader.ahead(0).has(EAST)) {
     return false
   }
   if a == LineBreak.QU && (!right.has(EAST) || before.isEof() || !before.has(EAST)) {
@@ -451,10 +483,14 @@ fn opportunity(
     return false
   }
   if prefix || a == LineBreak.PO {
-    if b == LineBreak.NU
-      || (b == LineBreak.OP
-        && (n == LineBreak.NU || (n == LineBreak.IS && afterNext.cls == LineBreak.NU))) {
+    if b == LineBreak.NU {
       return false
+    }
+    if b == LineBreak.OP {
+      let n = reader.ahead(0).cls
+      if n == LineBreak.NU || (n == LineBreak.IS && reader.ahead(1).cls == LineBreak.NU) {
+        return false
+      }
     }
   }
   if b == LineBreak.NU && (a == LineBreak.HY || a == LineBreak.IS || context.numeric) {
@@ -484,7 +520,7 @@ fn opportunity(
   if aksara(before) && a == LineBreak.VI && (b == LineBreak.AK || right.cp == 0x25cc) {
     return false
   }
-  if aksara(left) && aksara(right) && n == LineBreak.VF {
+  if aksara(left) && aksara(right) && reader.ahead(0).cls == LineBreak.VF {
     return false
   }
   if a == LineBreak.IS && alpha(b) {
@@ -547,12 +583,11 @@ effect fn segment(
     run anywhere(text, &mut output)
     return
   }
+
   let mut graphemes = GraphemeCursor.make()
-  let mut reader = Reader.make(text, options)
+  let mut reader = Reader.make(text, 0, options)
   let mut left = reader.next()
   let mut right = reader.next()
-  let mut next = reader.next()
-  let mut afterNext = reader.next()
   let mut context = Context.make()
   let mut before = Token.eof(0)
   let boundaries = dictionary.asSlice()
@@ -560,6 +595,7 @@ effect fn segment(
   let mut graphemeAt: usize = 0
   let breakAll = options.wordBreak == WordBreakMode.BreakAll
   let suppressHyphens = options.hyphens == Hyphens.None || breakAll
+  let keepAll = options.wordBreak == WordBreakMode.KeepAll
   while !right.isEof() {
     context.advance(left)
     let mut dictionaryBreak = false
@@ -573,23 +609,27 @@ effect fn segment(
     }
 
     // LB23/LB25/LB28 join every AL/HL/NU pair. Resolve that context-independent
-    // block before passing five token records through the contextual rules.
+    // block, spaces and pairs involving ideographs before passing five token
+    // records through the contextual rules.
     // BreakAll has already reclassified eligible characters; SA dictionary
     // boundaries must bypass the alphabetic no-break rule.
     let mut allowed = false
-    if dictionaryBreak
-      || !((alpha(left.cls) || left.cls == LineBreak.NU)
-        && (alpha(right.cls) || right.cls == LineBreak.NU)) {
-      allowed = opportunity(
-        left,
-        right,
-        next,
-        afterNext,
-        before,
-        &context,
-        options,
-        dictionaryBreak,
-      )
+    if !dictionaryBreak && joining(left.cls) && joining(right.cls) {
+      allowed = false
+    } else if right.cls == LineBreak.SP && !hard(left.cls) {
+      // LB7.
+      allowed = false
+    } else if left.cls == LineBreak.SP && plain(right.cls) {
+      // After spaces only LB14 (OP SP*) and LB15a (initial quote SP*) can
+      // still apply to a plain class; otherwise LB18 breaks.
+      allowed = context.nonspace != LineBreak.OP && !context.quoteInitial
+    } else if !dictionaryBreak && !keepAll && !left.has(ZWJ) && plain(left.cls)
+      && plain(right.cls) {
+      // An ideograph next to a letter, digit or ideograph: once LB8a (ZWJ) and
+      // keep-all are ruled out, every rule through LB30b passes and LB31 breaks.
+      allowed = true
+    } else {
+      allowed = opportunity(left, right, &reader, before, &context, options, dictionaryBreak)
     }
     if breakAll {
       while graphemeAt < right.start {
@@ -611,9 +651,7 @@ effect fn segment(
     }
     before = left
     left = right
-    right = next
-    next = afterNext
-    afterNext = reader.next()
+    right = reader.next()
   }
   run append(&mut output, text.length, BreakKind.Mandatory)
 }

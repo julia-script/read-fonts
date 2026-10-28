@@ -1,6 +1,7 @@
 //! Allocation-free scalar decoding for byte-oriented text algorithms.
 //! Invalid UTF-8 consumes one byte and yields U+FFFD; offsets always refer to input bytes.
 import silk.ownership { Copy }
+import silk.slice { Slice }
 import silk.u8
 import silk.u32
 
@@ -19,12 +20,12 @@ pub fn decode(bytes: &[u8], at: usize) -> Decoded with Intrinsic.inlineAlways() 
   return decodeMultibyte(bytes, at)
 }
 
-fn continuation(bytes: &[u8], at: usize) -> u32 with Intrinsic.inlineAlways() {
-  return u8.toU32(bytes[at]) & 0x3f
-}
-
 fn isContinuation(byte: u8) -> bool with Intrinsic.inlineAlways() {
   return (byte & 0xc0) == 0x80
+}
+
+fn payload(byte: u8, mask: u8, shift: u32) -> u32 with Intrinsic.inlineAlways() {
+  return u32.shiftLeft(u8.toU32(byte & mask), shift)
 }
 
 // RFC 3629 well-formed sequences only: no overlongs, surrogates or values past U+10FFFF.
@@ -32,18 +33,17 @@ fn decodeMultibyte(bytes: &[u8], at: usize) -> Decoded with Intrinsic.inlineAlwa
   if at >= bytes.length {
     return Decoded { cp: 0xfffd, next: bytes.length }
   }
-  let lead = bytes[at]
-  let remaining = bytes.length - at
+
+  // Indexing a view by constants lets the length checks below cover every access.
+  let rest = Slice.view<u8>(bytes, at, bytes.length - at)
+  let lead = rest[0]
   if lead >= 0xc2 && lead <= 0xdf {
-    if remaining >= 2 && isContinuation(bytes[at + 1]) {
-      return Decoded {
-        cp: u32.shiftLeft(u8.toU32(lead) & 0x1f, 6) | continuation(bytes, at + 1),
-        next: at + 2,
-      }
+    if rest.length >= 2 && isContinuation(rest[1]) {
+      return Decoded { cp: payload(lead, 0x1f, 6) | payload(rest[1], 0x3f, 0), next: at + 2 }
     }
   } else if lead >= 0xe0 && lead <= 0xef {
-    if remaining >= 3 {
-      let second = bytes[at + 1]
+    if rest.length >= 3 {
+      let second = rest[1]
       let mut low: u8 = 0x80
       let mut high: u8 = 0xbf
       if lead == 0xe0 {
@@ -51,18 +51,16 @@ fn decodeMultibyte(bytes: &[u8], at: usize) -> Decoded with Intrinsic.inlineAlwa
       } else if lead == 0xed {
         high = 0x9f
       }
-      if second >= low && second <= high && isContinuation(bytes[at + 2]) {
+      if second >= low && second <= high && isContinuation(rest[2]) {
         return Decoded {
-          cp: u32.shiftLeft(u8.toU32(lead) & 0x0f, 12)
-            | u32.shiftLeft(continuation(bytes, at + 1), 6)
-            | continuation(bytes, at + 2),
+          cp: payload(lead, 0x0f, 12) | payload(second, 0x3f, 6) | payload(rest[2], 0x3f, 0),
           next: at + 3,
         }
       }
     }
   } else if lead >= 0xf0 && lead <= 0xf4 {
-    if remaining >= 4 {
-      let second = bytes[at + 1]
+    if rest.length >= 4 {
+      let second = rest[1]
       let mut low: u8 = 0x80
       let mut high: u8 = 0xbf
       if lead == 0xf0 {
@@ -70,13 +68,10 @@ fn decodeMultibyte(bytes: &[u8], at: usize) -> Decoded with Intrinsic.inlineAlwa
       } else if lead == 0xf4 {
         high = 0x8f
       }
-      if second >= low && second <= high && isContinuation(bytes[at + 2])
-        && isContinuation(bytes[at + 3]) {
+      if second >= low && second <= high && isContinuation(rest[2]) && isContinuation(rest[3]) {
         return Decoded {
-          cp: u32.shiftLeft(u8.toU32(lead) & 0x07, 18)
-            | u32.shiftLeft(continuation(bytes, at + 1), 12)
-            | u32.shiftLeft(continuation(bytes, at + 2), 6)
-            | continuation(bytes, at + 3),
+          cp: payload(lead, 0x07, 18) | payload(second, 0x3f, 12) | payload(rest[2], 0x3f, 6)
+            | payload(rest[3], 0x3f, 0),
           next: at + 4,
         }
       }

@@ -161,7 +161,7 @@ def load():
 
 # Packed per-algorithm records, so each scalar needs one lookup in the hot loops.
 # Keep the bit layouts in sync with ucd/src/line_break.silk and segmentation.silk.
-LINE_EAST, LINE_CURRENCY_WIDE, LINE_PI, LINE_PF, LINE_LETTER, LINE_EMOJI, LINE_SA, LINE_CJ = (1 << bit for bit in range(6, 14))
+LINE_EAST, LINE_CURRENCY_WIDE, LINE_PI, LINE_PF, LINE_WORD, LINE_EMOJI, LINE_SA, LINE_CJ, LINE_ZWJ = (1 << bit for bit in range(6, 15))
 
 
 def derive_algorithm_tables(props, enums):
@@ -191,7 +191,10 @@ def derive_algorithm_tables(props, enums):
         flags |= LINE_CURRENCY_WIDE if width in currency_wide else 0
         flags |= LINE_PI if category == gc["Pi"] else 0
         flags |= LINE_PF if category == gc["Pf"] else 0
-        flags |= LINE_LETTER if category in letters else 0
+        # Word characters for keep-all; loose line breaking turns CJ into ID.
+        word = category in letters or raw == lb["CJ"] or cls in (lb["AL"], lb["HL"], lb["NU"], lb["ID"])
+        flags |= LINE_WORD if word else 0
+        flags |= LINE_ZWJ if cls == lb["ZWJ"] else 0
         flags |= LINE_EMOJI if category == gc["Cn"] and pictographic[cp] else 0
         line[cp] = cls | flags
         grapheme[cp] = props["graphemeBreak"][cp] | props["indicConjunctBreak"][cp] << 5 | pictographic[cp] << 7
@@ -238,6 +241,9 @@ def table(values, default):
     return end, cost, shift, middle_shift, stages
 
 
+ASCII_TABLES = {"lineBreakInfo", "wordBreak", "sentenceBreak"}
+
+
 def byte_function(name, data):
     literal = "".join(f"\\x{byte:02x}" for byte in data)
     return f'pub fn {name}() -> &\'static [u8] {{ return b"{literal}" }}\n'
@@ -254,15 +260,25 @@ def generate():
         return f"u32.toUsize(be{size * 8}({stage}(), ({index}) * {size}))"
     for fn, values in props.items():
         default = defaults[fn]
+        full = values
         end, cost, shift, middle_shift, stages = table(values, default)
         widths = []
         for i, values in enumerate(stages):
             payload, size = packed(values)
             widths.append(size)
             data.append(byte_function(fn + str(i), payload))
+        read_ascii = None
+        if fn in ASCII_TABLES:
+            # Text-algorithm loops mostly see ASCII; one direct load skips the trie.
+            payload, size = packed([full[cp] if cp < len(full) else default for cp in range(128)])
+            data.append(byte_function(fn + "Ascii", payload))
+            read_ascii = f"u8.toU32({fn}Ascii()[u32.toUsize(cp)])" if size == 1 else f"be{size * 8}({fn}Ascii(), u32.toUsize(cp) * {size})"
         data.append(f"// {cost} bytes; leaf block {1 << shift}" + (f", middle block {1 << middle_shift}" if middle_shift else "") + ".\n")
         data.append(f"// lookup {fn} {end} {default} {shift} {middle_shift} " + ",".join(map(str, widths)) + "\n")
-        data.append(f"pub fn {fn}(cp: u32) -> u32 with Intrinsic.inlineAlways() {{\n  if cp >= {end} {{ return {default} }}\n  let u = u32.toUsize(cp)\n")
+        data.append(f"pub fn {fn}(cp: u32) -> u32 with Intrinsic.inlineAlways() {{\n")
+        if read_ascii:
+            data.append(f"  if cp < 128 {{ return {read_ascii} }}\n")
+        data.append(f"  if cp >= {end} {{ return {default} }}\n  let u = u32.toUsize(cp)\n")
         if middle_shift:
             first = read_expr(fn + "0", widths[0], f"u / {1 << (shift + middle_shift)}")
             data.append(f"  let first = {first}\n")
