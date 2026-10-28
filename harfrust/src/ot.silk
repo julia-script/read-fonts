@@ -5,7 +5,20 @@ import view { View, read16, offset, valueSize }
 import set_digest { SetDigest }
 import buffer { Buffer, Glyph, GlyphPosition }
 import font { ConfiguredShaper, FontFuncs, Shaper }
-import plan { OtPlan, LookupStep, LookupSubtable, ClassTable, featureValue, RULE_STOP }
+import plan {
+  OtPlan,
+  LookupStep,
+  LookupSubtable,
+  ClassTable,
+  featureValue,
+  RULE_STOP,
+  CHECK_FORM,
+  CHECK_COMPLEX,
+  CHECK_JAMO,
+  CHECK_CALT,
+  CHECK_FRACTION,
+  CHECK_RTLM,
+}
 import feature { Feature }
 import arabic
 import complex
@@ -672,40 +685,38 @@ fn enabled(context: &Context, glyph: &Glyph, first: usize, last: usize) -> u32 {
     if step.required {
       return 1
     }
-    if step.plain {
-      let value = featureValue(step.tag, step.value, glyph.info.cluster, context.features)
-      if value > result {
-        result = value
-      }
-      i = i + 1
-      continue
-    }
+    let checks = step.checks
     let mut initial = step.value
-    if context.shaper != 1 && arabic.isFeature(step.tag) && glyph.form != step.tag {
-      initial = 0
-    }
-    if !context.positioning && !complex.featureEnabled(context.shaper, glyph, step.tag) {
-      initial = 0
-    }
-    if (step.tag == 0x6c6a6d6f || step.tag == 0x766a6d6f || step.tag == 0x746a6d6f)
-      && glyph.form != step.tag {
-      initial = 0
-    }
-    if step.tag == 0x63616c74 && preprocess.isJamo(glyph.codepoint) {
-      initial = 0
-    }
-    if step.tag == 0x66726163 || step.tag == 0x6e756d72 || step.tag == 0x646e6f6d {
-      initial = 0
-      if (step.tag == 0x66726163 && glyph.fraction != 0)
-        || (step.tag == 0x6e756d72 && glyph.fraction == 1)
-        || (step.tag == 0x646e6f6d && glyph.fraction == 2) {
-        initial = 1
+    if checks != 0 {
+      if (checks & CHECK_FORM) != 0 && context.shaper != 1 && glyph.form != step.tag {
+        initial = 0
+      }
+      if (checks & CHECK_COMPLEX) != 0 && !context.positioning
+        && !complex.featureEnabled(context.shaper, glyph, step.tag) {
+        initial = 0
+      }
+      if (checks & CHECK_JAMO) != 0 && glyph.form != step.tag {
+        initial = 0
+      }
+      if (checks & CHECK_CALT) != 0 && preprocess.isJamo(glyph.codepoint) {
+        initial = 0
+      }
+      if (checks & CHECK_FRACTION) != 0 {
+        initial = 0
+        if (step.tag == 0x66726163 && glyph.fraction != 0)
+          || (step.tag == 0x6e756d72 && glyph.fraction == 1)
+          || (step.tag == 0x646e6f6d && glyph.fraction == 2) {
+          initial = 1
+        }
+      }
+      if (checks & CHECK_RTLM) != 0 && !glyph.mirrored {
+        initial = 0
       }
     }
-    if step.tag == 0x72746c6d && !glyph.mirrored {
-      initial = 0
+    let mut value = initial
+    if context.features.length != 0 {
+      value = featureValue(step.tag, initial, glyph.info.cluster, context.features)
     }
-    let value = featureValue(step.tag, initial, glyph.info.cluster, context.features)
     if value > result {
       result = value
     }
@@ -723,7 +734,7 @@ fn enabledEverywhere(context: &Context, first: usize, last: usize) -> bool {
   let mut i = first
   while i < last {
     let step = &context.steps[i]
-    if step.required || (step.plain && step.value != 0) {
+    if step.required || (step.checks == 0 && step.value != 0) {
       return true
     }
     i = i + 1

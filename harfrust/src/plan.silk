@@ -44,9 +44,9 @@ pub struct LookupStep {
   pub tag: u32,
   pub value: u32,
   pub stage: u32,
-  /// Whether the step applies to every glyph by its value and the features' ranges alone, with
-  /// none of the per-glyph conditions of `ot.enabled`.
-  pub plain: bool,
+  /// The per-glyph conditions `ot.enabled` checks for the step's feature, as `CHECK_` bits; 0
+  /// when it applies to every glyph by its value and the features' ranges alone.
+  pub checks: u8,
   /// One past the last of the steps from this one on that share its lookup and stage, which
   /// `ot.apply` runs together; set once the steps are sorted.
   pub groupEnd: usize,
@@ -295,7 +295,7 @@ impl<'a> OtPlan<'a> {
         tag: tag,
         value: value,
         stage: stage,
-        plain: plainFeature(tag),
+        checks: featureChecks(tag),
         groupEnd: groupEnd,
         pairs: pairs,
       },
@@ -1163,19 +1163,46 @@ impl<'a> OtPlan<'a> {
   }
 }
 
-/// Whether `ot.enabled` checks nothing about a glyph for feature `tag` but its cluster: not
-/// an Arabic joining form, a complex shaper's per-glyph feature, a Hangul jamo feature, `calt`,
-/// a fraction feature or `rtlm`.
-fn plainFeature(tag: u32) -> bool {
-  return !arabic.isFeature(tag) && complex.featureBit(tag) == 0 && tag != 0x72706866
-    && tag != 0x6c6a6d6f
-    && tag != 0x766a6d6f
-    && tag != 0x746a6d6f
-    && tag != 0x63616c74
-    && tag != 0x66726163
-    && tag != 0x6e756d72
-    && tag != 0x646e6f6d
-    && tag != 0x72746c6d
+/// An Arabic joining form, enabled on glyphs of that form outside the Arabic shaper.
+pub const CHECK_FORM: u8 = 1
+
+/// A complex shaper's per-glyph feature (`complex.featureEnabled`).
+pub const CHECK_COMPLEX: u8 = 2
+
+/// A Hangul jamo feature, enabled on glyphs of that form.
+pub const CHECK_JAMO: u8 = 4
+
+/// `calt`, off on Hangul jamo.
+pub const CHECK_CALT: u8 = 8
+
+/// A fraction feature, enabled on the glyphs `fraction` marks for it.
+pub const CHECK_FRACTION: u8 = 16
+
+/// `rtlm`, enabled on mirrored glyphs.
+pub const CHECK_RTLM: u8 = 32
+
+/// The per-glyph conditions `ot.enabled` checks for feature `tag`, besides its cluster.
+fn featureChecks(tag: u32) -> u8 {
+  let mut checks: u8 = 0
+  if arabic.isFeature(tag) {
+    checks = checks | CHECK_FORM
+  }
+  if complex.featureBit(tag) != 0 || tag == 0x72706866 {
+    checks = checks | CHECK_COMPLEX
+  }
+  if tag == 0x6c6a6d6f || tag == 0x766a6d6f || tag == 0x746a6d6f {
+    checks = checks | CHECK_JAMO
+  }
+  if tag == 0x63616c74 {
+    checks = checks | CHECK_CALT
+  }
+  if tag == 0x66726163 || tag == 0x6e756d72 || tag == 0x646e6f6d {
+    checks = checks | CHECK_FRACTION
+  }
+  if tag == 0x72746c6d {
+    checks = checks | CHECK_RTLM
+  }
+  return checks
 }
 
 pub fn featureValue(tag: u32, default: u32, cluster: u32, features: &[Feature]) -> u32 {
