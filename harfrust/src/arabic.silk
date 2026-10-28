@@ -101,25 +101,25 @@ pub fn setup(buffer: &mut Buffer) -> () {
     i = i + 1
   }
   i = 0
-  while i < Buffer.len(&buffer.*) {
-    let mut item = List<Glyph>.get(&buffer.glyphs, i)
-    let kind = unicode.joining(item.codepoint)
+  let length = Buffer.len(&buffer.*)
+  while i < length {
+    let kind = unicode.joining(List<Glyph>.asSlice(&buffer.glyphs)[i].codepoint)
     if kind == 6 {
-      item.form = 0
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
+      let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      slots[i].form = 0
       i = i + 1
       continue
     }
     let at = (state * 6 + kind) * 3
     let prevAction = states[at]
-    if prevAction != 7 && previous < Buffer.len(&buffer.*) {
+    if prevAction != 7 && previous < length {
       let updated = actionTag(prevAction)
       let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
       slots[previous].form = updated
       Buffer.safeToInsertTatweel(&mut buffer, previous, i + 1)
     }
-    if prevAction == 7 || previous >= Buffer.len(&buffer.*) {
-      if previous < Buffer.len(&buffer.*) {
+    if prevAction == 7 || previous >= length {
+      if previous < length {
         if kind >= 2 || (state >= 2 && state <= 5) {
           Buffer.unsafeToConcat(&mut buffer, previous, i + 1)
         }
@@ -127,9 +127,8 @@ pub fn setup(buffer: &mut Buffer) -> () {
         Buffer.unsafeToConcat(&mut buffer, 0, i + 1)
       }
     }
-    item.info.flags = List<Glyph>.get(&buffer.glyphs, i).info.flags
-    item.form = actionTag(states[at + 1])
-    List<Glyph>.set(&mut buffer.glyphs, i, item)
+    let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    slots[i].form = actionTag(states[at + 1])
     state = u8.toUsize(states[at + 2])
     previous = i
     i = i + 1
