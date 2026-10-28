@@ -2,8 +2,7 @@
 import io
 import harfrust.lib {
   Buffer,
-  GlyphInfo,
-  GlyphPosition,
+  Glyph,
   ShaperData,
   Shaper,
   shape,
@@ -89,12 +88,13 @@ pub effect fn execute(base: &Path, fontPath: string, textPath: string, repeatTex
       ) {
         return 1
       }
+
+      // Shaped glyphs are read in place, as the Rust twin iterates its info and position slices.
+      let shaped = List<Glyph>.asSlice(&buffer.glyphs)
       let mut i: usize = 0
-      while i < Buffer.len(&buffer) {
-        let info = Buffer.glyphInfo(&buffer, i)
-          |> Option<GlyphInfo>.unwrapOr(GlyphInfo { glyphId: 0, cluster: 0, flags: 0 })
-        let position = Buffer.glyphPosition(&buffer, i)
-          |> Option<GlyphPosition>.unwrapOr(GlyphPosition.zero())
+      while i < shaped.length {
+        let info = &shaped[i].info
+        let position = &shaped[i].position
         checksum = mix(checksum, u32.toU64(info.glyphId))
         checksum = mix(checksum, u32.toU64(info.cluster))
         checksum = mix(checksum, bits(position.xAdvance))
