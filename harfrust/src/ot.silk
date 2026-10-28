@@ -30,7 +30,7 @@ import silk.u8
 import silk.u64
 
 struct Context<'a, 's> {
-  savedInput: List<Glyph>,
+  /// Whether `Buffer.savedInput` holds this lookup's input.
   haveSavedInput: bool,
   table: View<'a>,
   gdef: View<'a>,
@@ -68,8 +68,6 @@ struct Context<'a, 's> {
   coverageValues: &'s [u16],
   /// Second glyph digests of pair sets (`OtPlan.pairDigests`).
   pairDigests: &'s [SetDigest],
-  /// Contextual input positions, 64 per lookup nesting depth.
-  positionStack: List<usize>,
   glyphClasses: Classes<'a, 's>,
   markAttachClasses: Classes<'a, 's>,
   /// GDEF's variation store, read once; None without variation coordinates, as in harfrust.
@@ -216,7 +214,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
   let length = Buffer.len(&buffer.*)
   let maxLength = buffer.maxLength
   let mut context = Context {
-    savedInput: List<Glyph>.make(),
     haveSavedInput: false,
     table: plan.table,
     gdef: font.data.gdef,
@@ -235,7 +232,6 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     restrictSyllable: false,
     outputPass: false,
     positions: [0; 64],
-    positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -295,7 +291,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         continue
       }
       context.haveSavedInput = false
-      List<Glyph>.clear(&mut context.savedInput)
+      List<Glyph>.clear(&mut buffer.savedInput)
       let tag = steps[step].tag
       let mut messageTag = tag
       if steps[step].required {
@@ -457,8 +453,11 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
       }
       if !buffer.successful && context.haveSavedInput {
         digestStale = true
-        buffer.glyphs = move context.savedInput
-        context.savedInput = List<Glyph>.make()
+
+        // The failed lookup's glyphs become the next saved input's storage.
+        let saved = Intrinsic.replace(buffer.savedInput, List<Glyph>.make())
+        let failed = Intrinsic.replace(buffer.glyphs, move saved)
+        buffer.savedInput = move failed
         context.haveSavedInput = false
       }
       drop run trace.lookup(
@@ -577,7 +576,6 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     return false
   }
   let mut context = Context {
-    savedInput: List<Glyph>.make(),
     haveSavedInput: false,
     table: plan.table,
     gdef: font.data.gdef,
@@ -596,7 +594,6 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     restrictSyllable: false,
     outputPass: false,
     positions: [0; 64],
-    positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
     classValues: List<u16>.asSlice(&plan.classValues),
     ruleDigests: List<u64>.asSlice(&plan.ruleDigests),
@@ -1255,7 +1252,7 @@ effect fn substitute<F: FontFuncs>(
           run Buffer.nextGlyph(&mut buffer)
           return yes(at + 1)
         }
-        run saveInput(&mut context, &buffer.*)
+        run saveInput(&mut context, &mut buffer)
         let mut i: usize = 0
         while i < count {
           let mut item = glyph
@@ -1303,7 +1300,7 @@ effect fn substitute<F: FontFuncs>(
         )
         return yes(at + 1)
       }
-      run saveInput(&mut context, &buffer.*)
+      run saveInput(&mut context, &mut buffer)
       drop run trace.indexed(font, &buffer.*, "multiplying glyph at ", at, "")
       run Buffer.insertCopies(&mut buffer, at + 1, count - 1, glyph)
       let mut i: usize = 0
@@ -2496,9 +2493,9 @@ effect fn contextual<F: FontFuncs>(
   // Matched input positions live in this nesting depth's slot of the context's scratch list, so
   // each application neither zeroes nor copies a 64-entry array.
   let base = depth * 64
-  let stackLength = List<usize>.length(&context.positionStack)
+  let stackLength = List<usize>.length(&buffer.positionStack)
   if stackLength < base + 64 {
-    run List<usize>.appendRepeated(&mut context.positionStack, 0, base + 64 - stackLength)
+    run List<usize>.appendRepeated(&mut buffer.positionStack, 0, base + 64 - stackLength)
   }
 
   // The plan keeps each rule's second input value, so rules are skipped by reading those
@@ -2642,7 +2639,7 @@ effect fn contextual<F: FontFuncs>(
       ruleIndex = ruleIndex + 1
       continue
     }
-    List<usize>.set(&mut context.positionStack, base + 0, at)
+    List<usize>.set(&mut buffer.positionStack, base + 0, at)
     let mut n: usize = 1
     let mut cursor = at
     while n < inputCount {
@@ -2683,7 +2680,7 @@ effect fn contextual<F: FontFuncs>(
         ) {
         break
       }
-      List<usize>.set(&mut context.positionStack, base + n, cursor)
+      List<usize>.set(&mut buffer.positionStack, base + n, cursor)
       n = n + 1
     }
     if n != inputCount
@@ -2747,8 +2744,8 @@ effect fn contextual<F: FontFuncs>(
     while action < actionCount && buffer.successful {
       let sequence = u16.toUsize(View.u16(&rule, actionPos + action * 4))
       if sequence < matchedCount
-        && List<usize>.get(&context.positionStack, base + sequence) < Buffer.len(&buffer.*) {
-        let atAction = List<usize>.get(&context.positionStack, base + sequence)
+        && List<usize>.get(&buffer.positionStack, base + sequence) < Buffer.len(&buffer.*) {
+        let atAction = List<usize>.get(&buffer.positionStack, base + sequence)
         let mut moveCost = usize.saturatingSubtract(atAction, outputCursor)
         if outputCursor > atAction {
           moveCost = outputCursor - atAction
@@ -2806,13 +2803,13 @@ effect fn contextual<F: FontFuncs>(
             let mut j = matchedCount
             while j > sequence + 1 {
               j = j - 1
-              let moved = List<usize>.get(&context.positionStack, base + j) + delta
-              List<usize>.set(&mut context.positionStack, base + j + delta, moved)
+              let moved = List<usize>.get(&buffer.positionStack, base + j) + delta
+              List<usize>.set(&mut buffer.positionStack, base + j + delta, moved)
             }
             j = sequence + 1
             while j <= sequence + delta {
-              let moved = List<usize>.get(&context.positionStack, base + j - 1) + 1
-              List<usize>.set(&mut context.positionStack, base + j, moved)
+              let moved = List<usize>.get(&buffer.positionStack, base + j - 1) + 1
+              List<usize>.set(&mut buffer.positionStack, base + j, moved)
               j = j + 1
             }
             matchedCount = matchedCount + delta
@@ -2824,10 +2821,10 @@ effect fn contextual<F: FontFuncs>(
             let mut j = sequence + 1
             while j + delta < matchedCount {
               let moved = usize.saturatingSubtract(
-                List<usize>.get(&context.positionStack, base + j + delta),
+                List<usize>.get(&buffer.positionStack, base + j + delta),
                 delta,
               )
-              List<usize>.set(&mut context.positionStack, base + j, moved)
+              List<usize>.set(&mut buffer.positionStack, base + j, moved)
               j = j + 1
             }
             matchedCount = matchedCount - delta
@@ -3678,22 +3675,24 @@ fn hasCoverage(table: View, glyph: u32) -> bool {
 
 // A failed lookup discards its separate output, as upstream Buffer.sync does.
 // Save lazily on its first expansion, so ordinary substitutions allocate nothing.
-effect fn saveInput(context: &mut Context, buffer: &Buffer) -> ()
+effect fn saveInput(context: &mut Context, buffer: &mut Buffer) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
   if context.haveSavedInput {
     return
   }
   context.haveSavedInput = true
-  run List<Glyph>.reserve(&mut context.savedInput, glyphCount(buffer))
+  let mut saved = Intrinsic.replace(buffer.savedInput, List<Glyph>.make())
+  run List<Glyph>.reserve(&mut saved, glyphCount(&buffer.*))
   let mut from: usize = 0
   if buffer.haveOutput {
     // The buffer as matching sees it: the output so far, then the unread input.
-    run appendGlyphs(&mut context.savedInput, Buffer.outGlyphs(buffer))
+    run appendGlyphs(&mut saved, Buffer.outGlyphs(&buffer.*))
     from = buffer.idx
   }
   let input = List<Glyph>.asSlice(&buffer.glyphs)
-  run appendGlyphs(&mut context.savedInput, Slice.view(input, from, input.length - from))
+  run appendGlyphs(&mut saved, Slice.view(input, from, input.length - from))
+  buffer.savedInput = move saved
 }
 
 /// Appends `glyphs` in runs short enough that each copy stays a vector loop.

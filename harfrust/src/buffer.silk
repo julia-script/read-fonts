@@ -236,6 +236,11 @@ pub struct Buffer {
   pub idx: usize,
   /// How many glyphs the pass has output.
   pub outLen: usize,
+  /// Scratch for `ot.apply`: the input saved before a lookup's first expansion, so a failed
+  /// lookup can restore it. Kept across calls, so its allocation is reused.
+  pub savedInput: List<Glyph>,
+  /// Scratch for `ot.apply`: contextual input positions, 64 per lookup nesting depth.
+  pub positionStack: List<usize>,
 }
 
 impl Buffer {
@@ -269,6 +274,8 @@ impl Buffer {
       separateOutput: false,
       idx: 0,
       outLen: 0,
+      savedInput: List<Glyph>.make(),
+      positionStack: List<usize>.make(),
     }
   }
 
