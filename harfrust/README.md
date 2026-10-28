@@ -152,15 +152,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 6.85449e+07 | 65.3M | 1.05× |
-| Roboto / English words | 9.70845e+07 | 87.9M | 1.10× |
-| Noto Nastaliq Urdu / Persian Little Prince | 9.05914e+08 | 789M | 1.15× |
-| Noto Nastaliq Urdu / Persian words | 8.39261e+08 | 847M | 0.99× |
-| Noto Sans Devanagari / Hindi words | 2.47441e+08 | 225M | 1.10× |
-| Amiri / Persian Little Prince | 4.14004e+08 | 374M | 1.11× |
-| Source Serif Variable / react-dom | 8.76964e+08 | 1,004M | 0.87× |
+| Roboto / English Little Prince | 6.86811e+07 | 65.3M | 1.05× |
+| Roboto / English words | 9.19859e+07 | 87.9M | 1.05× |
+| Noto Nastaliq Urdu / Persian Little Prince | 9.0601e+08 | 789M | 1.15× |
+| Noto Nastaliq Urdu / Persian words | 8.40304e+08 | 847M | 0.99× |
+| Noto Sans Devanagari / Hindi words | 2.50951e+08 | 225M | 1.11× |
+| Amiri / Persian Little Prince | 4.14147e+08 | 374M | 1.11× |
+| Source Serif Variable / react-dom | 8.8056e+08 | 1,004M | 0.88× |
 
-The geometric mean is **1.05×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.04×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -254,6 +254,8 @@ A multiple substitution before a long tail moves the tail with one block move pe
 added glyph.
 Substitutions add their glyphs to the buffer's digest, as in harfrust, so a long
 buffer is rescanned only after a pause.
+A table none of whose lookups may apply to the glyphs returns before its context is
+set up, which most single words' substitution tables do.
 The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
