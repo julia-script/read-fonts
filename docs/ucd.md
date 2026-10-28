@@ -330,9 +330,9 @@ checksums, reference versions and the measured source revision:
 | Bidi | unicode-bidi | 0.24–0.79x |
 | Line breaks | unicode-linebreak | 2.82–3.49x |
 | Line breaks | ICU4X | 0.89–1.11x |
-| Graphemes | ICU4X | 0.38–1.10x |
-| Words | unicode-segmentation | 0.65–0.76x |
-| Sentences | ICU4X | 0.64–1.16x |
+| Graphemes | ICU4X | 0.38–0.93x |
+| Words | unicode-segmentation | 0.62–0.74x |
+| Sentences | ICU4X | 0.61–1.08x |
 
 `unicode-linebreak` implements only the default UAX #14 pair table: no CSS
 strictness, word-break or hyphenation options and no dictionary segmentation

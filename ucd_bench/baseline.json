@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_revision": "badad35 + line-break single decoding site",
+  "source_revision": "0355f44 + grapheme early exits, BMP segmentation tables",
   "platform": "x86_64 Linux (cloud container)",
   "silk": "0.1.0-dev.25+584955edf9ef",
   "clang": "22.1.8",
@@ -20,15 +20,15 @@
       "reference": "unicode-bidi",
       "reference_algorithm": "bidi",
       "measurements": {
-        "silk": 8047616,
-        "reference": 32988898
+        "silk": 8049028,
+        "reference": 32989513
       },
       "outputs": {
         "silk": "18252468243490926450 153600",
         "reference": "18252468243490926450 153600"
       },
       "matches": true,
-      "ratio": 0.24394922194733512
+      "ratio": 0.243987475656279
     },
     {
       "algorithm": "bidi",
@@ -37,15 +37,15 @@
       "reference": "unicode-bidi",
       "reference_algorithm": "bidi",
       "measurements": {
-        "silk": 51003775,
-        "reference": 64600908
+        "silk": 51005110,
+        "reference": 64601509
       },
       "outputs": {
         "silk": "7966888148462432114 117760",
         "reference": "7966888148462432114 117760"
       },
       "matches": true,
-      "ratio": 0.7895210234506301
+      "ratio": 0.78953434353987
     },
     {
       "algorithm": "bidi",
@@ -54,15 +54,15 @@
       "reference": "unicode-bidi",
       "reference_algorithm": "bidi",
       "measurements": {
-        "silk": 9351076,
-        "reference": 27611642
+        "silk": 9352488,
+        "reference": 27612257
       },
       "outputs": {
         "silk": "5117114185276974962 99840",
         "reference": "5117114185276974962 99840"
       },
       "matches": true,
-      "ratio": 0.3386642489425294
+      "ratio": 0.3387078426801547
     },
     {
       "algorithm": "bidi",
@@ -71,15 +71,15 @@
       "reference": "unicode-bidi",
       "reference_algorithm": "bidi",
       "measurements": {
-        "silk": 5145768,
-        "reference": 14232887
+        "silk": 5147208,
+        "reference": 14233478
       },
       "outputs": {
         "silk": "13977309080354998130 48640",
         "reference": "13977309080354998130 48640"
       },
       "matches": true,
-      "ratio": 0.3615407049883836
+      "ratio": 0.36162686308996295
     },
     {
       "algorithm": "bidi",
@@ -88,15 +88,15 @@
       "reference": "unicode-bidi",
       "reference_algorithm": "bidi",
       "measurements": {
-        "silk": 8760962,
-        "reference": 21908872
+        "silk": 8762241,
+        "reference": 21909487
       },
       "outputs": {
         "silk": "14914259373477683058 87040",
         "reference": "14914259373477683058 87040"
       },
       "matches": true,
-      "ratio": 0.3998819291107274
+      "ratio": 0.3999290809501838
     },
     {
       "algorithm": "line",
@@ -105,15 +105,15 @@
       "reference": "unicode-linebreak",
       "reference_algorithm": "line",
       "measurements": {
-        "silk": 24145687,
-        "reference": 7122068
+        "silk": 24146943,
+        "reference": 7122683
       },
       "outputs": {
         "silk": "11281785800345016690 28160",
         "reference": "11281785800345016690 28160"
       },
       "matches": true,
-      "ratio": 3.390263474035912
+      "ratio": 3.3901470836200347
     },
     {
       "algorithm": "line",
@@ -122,15 +122,15 @@
       "reference": "unicode-linebreak",
       "reference_algorithm": "line",
       "measurements": {
-        "silk": 20585776,
-        "reference": 5905947
+        "silk": 20587062,
+        "reference": 5906548
       },
       "outputs": {
         "silk": "15869726289785511794 20480",
         "reference": "15869726289785511794 20480"
       },
       "matches": true,
-      "ratio": 3.4856012084090833
+      "ratio": 3.4854642677922874
     },
     {
       "algorithm": "line",
@@ -139,15 +139,15 @@
       "reference": "unicode-linebreak",
       "reference_algorithm": "line",
       "measurements": {
-        "silk": 17423217,
-        "reference": 6179404
+        "silk": 17424489,
+        "reference": 6180019
       },
       "outputs": {
         "silk": "15522192070293719922 15360",
         "reference": "15522192070293719922 15360"
       },
       "matches": true,
-      "ratio": 2.8195626956903936
+      "ratio": 2.819487933613149
     },
     {
       "algorithm": "line",
@@ -156,15 +156,15 @@
       "reference": "unicode-linebreak",
       "reference_algorithm": "line",
       "measurements": {
-        "silk": 14592829,
-        "reference": 4959960
+        "silk": 14594113,
+        "reference": 4960551
       },
       "outputs": {
         "silk": "4246088783847942514 38400",
         "reference": "4246088783847942514 38400"
       },
       "matches": true,
-      "ratio": 2.942126347793127
+      "ratio": 2.9420346651007114
     },
     {
       "algorithm": "line",
@@ -173,15 +173,15 @@
       "reference": "unicode-linebreak",
       "reference_algorithm": "line",
       "measurements": {
-        "silk": 18320117,
-        "reference": 5774924
+        "silk": 18321389,
+        "reference": 5775539
       },
       "outputs": {
         "silk": "10780243193730909042 17920",
         "reference": "10780243193730909042 17920"
       },
       "matches": true,
-      "ratio": 3.172356380793929
+      "ratio": 3.172238816152051
     },
     {
       "algorithm": "line",
@@ -190,15 +190,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "icu-line",
       "measurements": {
-        "silk": 24145687,
-        "reference": 23848444
+        "silk": 24146943,
+        "reference": 23849059
       },
       "outputs": {
         "silk": "11281785800345016690 28160",
         "reference": "11281785800345016690 28160"
       },
       "matches": true,
-      "ratio": 1.012463832021913
+      "ratio": 1.0124903879855385
     },
     {
       "algorithm": "line",
@@ -207,15 +207,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "icu-line",
       "measurements": {
-        "silk": 20585776,
-        "reference": 19009923
+        "silk": 20587062,
+        "reference": 19010524
       },
       "outputs": {
         "silk": "15869726289785511794 20480",
         "reference": "15869726289785511794 20480"
       },
       "matches": true,
-      "ratio": 1.0828963378757506
+      "ratio": 1.082929749858552
     },
     {
       "algorithm": "line",
@@ -224,15 +224,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "icu-line",
       "measurements": {
-        "silk": 17423217,
-        "reference": 15676330
+        "silk": 17424489,
+        "reference": 15676945
       },
       "outputs": {
         "silk": "15522192070293719922 15360",
         "reference": "15522192070293719922 15360"
       },
       "matches": true,
-      "ratio": 1.1114346916657152
+      "ratio": 1.1114722288047831
     },
     {
       "algorithm": "line",
@@ -241,15 +241,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "icu-line",
       "measurements": {
-        "silk": 14592829,
-        "reference": 16433556
+        "silk": 14594113,
+        "reference": 16434147
       },
       "outputs": {
         "silk": "4246088783847942514 38400",
         "reference": "4246088783847942514 38400"
       },
       "matches": true,
-      "ratio": 0.8879897327151834
+      "ratio": 0.8880359290932471
     },
     {
       "algorithm": "line",
@@ -258,15 +258,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "icu-line",
       "measurements": {
-        "silk": 18320117,
-        "reference": 18523060
+        "silk": 18321389,
+        "reference": 18523675
       },
       "outputs": {
         "silk": "10780243193730909042 17920",
         "reference": "10780243193730909042 17920"
       },
       "matches": true,
-      "ratio": 0.9890437649070942
+      "ratio": 0.9890795967862749
     },
     {
       "algorithm": "grapheme",
@@ -275,15 +275,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "grapheme",
       "measurements": {
-        "silk": 7159640,
-        "reference": 19056390
+        "silk": 7160880,
+        "reference": 19057005
       },
       "outputs": {
         "silk": "15859069785481363126 153610",
         "reference": "15859069785481363126 153610"
       },
       "matches": true,
-      "ratio": 0.37570809581457976
+      "ratio": 0.3757610390509946
     },
     {
       "algorithm": "grapheme",
@@ -292,15 +292,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "grapheme",
       "measurements": {
-        "silk": 9458489,
-        "reference": 15492330
+        "silk": 8492063,
+        "reference": 15492931
       },
       "outputs": {
         "silk": "6714179733145130678 117770",
         "reference": "6714179733145130678 117770"
       },
       "matches": true,
-      "ratio": 0.610527209270652
+      "ratio": 0.5481250126267263
     },
     {
       "algorithm": "grapheme",
@@ -309,15 +309,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "grapheme",
       "measurements": {
-        "silk": 13816594,
-        "reference": 12530429
+        "silk": 11703287,
+        "reference": 12531044
       },
       "outputs": {
         "silk": "11035127978397348534 61450",
         "reference": "11035127978397348534 61450"
       },
       "matches": true,
-      "ratio": 1.1026433332809276
+      "ratio": 0.9339434926571162
     },
     {
       "algorithm": "grapheme",
@@ -326,15 +326,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "grapheme",
       "measurements": {
-        "silk": 8554646,
-        "reference": 11524514
+        "silk": 7173527,
+        "reference": 11525105
       },
       "outputs": {
         "silk": "17973627389835394230 48650",
         "reference": "17973627389835394230 48650"
       },
       "matches": true,
-      "ratio": 0.7422999355981519
+      "ratio": 0.6224261731238023
     },
     {
       "algorithm": "grapheme",
@@ -343,15 +343,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "grapheme",
       "measurements": {
-        "silk": 8536744,
-        "reference": 13350909
+        "silk": 8765827,
+        "reference": 13351524
       },
       "outputs": {
         "silk": "11390020453408916662 58890",
         "reference": "11390020453408916662 58890"
       },
       "matches": true,
-      "ratio": 0.639412941845383
+      "ratio": 0.656541305696638
     },
     {
       "algorithm": "word",
@@ -360,15 +360,15 @@
       "reference": "unicode-segmentation",
       "reference_algorithm": "word",
       "measurements": {
-        "silk": 19255992,
-        "reference": 29810592
+        "silk": 19610535,
+        "reference": 29811207
       },
       "outputs": {
         "silk": "1129853194858377910 61450",
         "reference": "1129853194858377910 61450"
       },
       "matches": true,
-      "ratio": 0.6459446360541917
+      "ratio": 0.6578242538116622
     },
     {
       "algorithm": "word",
@@ -377,15 +377,15 @@
       "reference": "unicode-segmentation",
       "reference_algorithm": "word",
       "measurements": {
-        "silk": 16715801,
-        "reference": 24597282
+        "silk": 16476438,
+        "reference": 24597883
       },
       "outputs": {
         "silk": "4371080065582505142 48650",
         "reference": "4371080065582505142 48650"
       },
       "matches": true,
-      "ratio": 0.6795791909041007
+      "ratio": 0.6698315460724811
     },
     {
       "algorithm": "word",
@@ -394,15 +394,15 @@
       "reference": "unicode-segmentation",
       "reference_algorithm": "word",
       "measurements": {
-        "silk": 16722443,
-        "reference": 22040248
+        "silk": 15822603,
+        "reference": 22040863
       },
       "outputs": {
         "silk": "6562623149953186486 38410",
         "reference": "6562623149953186486 38410"
       },
       "matches": true,
-      "ratio": 0.7587229962203692
+      "ratio": 0.7178758381647761
     },
     {
       "algorithm": "word",
@@ -411,15 +411,15 @@
       "reference": "unicode-segmentation",
       "reference_algorithm": "word",
       "measurements": {
-        "silk": 10704215,
-        "reference": 16100228
+        "silk": 10027107,
+        "reference": 16100819
       },
       "outputs": {
         "silk": "13459513710969487030 40970",
         "reference": "13459513710969487030 40970"
       },
       "matches": true,
-      "ratio": 0.6648486592860673
+      "ratio": 0.6227699969796567
     },
     {
       "algorithm": "word",
@@ -428,15 +428,15 @@
       "reference": "unicode-segmentation",
       "reference_algorithm": "word",
       "measurements": {
-        "silk": 13365173,
-        "reference": 17666638
+        "silk": 13043893,
+        "reference": 17667253
       },
       "outputs": {
         "silk": "2205567372244412086 35850",
         "reference": "2205567372244412086 35850"
       },
       "matches": true,
-      "ratio": 0.7565204539765857
+      "ratio": 0.7383090625350754
     },
     {
       "algorithm": "sentence",
@@ -445,15 +445,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "sentence",
       "measurements": {
-        "silk": 9307430,
-        "reference": 12834212
+        "silk": 9308728,
+        "reference": 12834827
       },
       "outputs": {
         "silk": "12217694514313524918 5130",
         "reference": "12217694514313524918 5130"
       },
       "matches": true,
-      "ratio": 0.7252046327425478
+      "ratio": 0.7252710145606169
     },
     {
       "algorithm": "sentence",
@@ -462,15 +462,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "sentence",
       "measurements": {
-        "silk": 8406810,
-        "reference": 10656821
+        "silk": 8108602,
+        "reference": 10657422
       },
       "outputs": {
         "silk": "17929573436165934774 2570",
         "reference": "17929573436165934774 2570"
       },
       "matches": true,
-      "ratio": 0.7888665860109689
+      "ratio": 0.7608408487531038
     },
     {
       "algorithm": "sentence",
@@ -479,15 +479,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "sentence",
       "measurements": {
-        "silk": 11666836,
-        "reference": 10090799
+        "silk": 10907904,
+        "reference": 10091414
       },
       "outputs": {
         "silk": "5593369974737408694 7690",
         "reference": "5593369974737408694 7690"
       },
       "matches": true,
-      "ratio": 1.1561855508171355
+      "ratio": 1.0809093750390184
     },
     {
       "algorithm": "sentence",
@@ -496,15 +496,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "sentence",
       "measurements": {
-        "silk": 6303112,
-        "reference": 9719804
+        "silk": 5889718,
+        "reference": 9720395
       },
       "outputs": {
         "silk": "15782462992456037046 5130",
         "reference": "15782462992456037046 5130"
       },
       "matches": true,
-      "ratio": 0.6484813891308919
+      "ratio": 0.6059134428179102
     },
     {
       "algorithm": "sentence",
@@ -513,15 +513,15 @@
       "reference": "ICU4X",
       "reference_algorithm": "sentence",
       "measurements": {
-        "silk": 7682311,
-        "reference": 12061118
+        "silk": 7591449,
+        "reference": 12061733
       },
       "outputs": {
         "silk": "1337184971664131254 2570",
         "reference": "1337184971664131254 2570"
       },
       "matches": true,
-      "ratio": 0.6369484984725297
+      "ratio": 0.6293829419039536
     }
   ]
 }
