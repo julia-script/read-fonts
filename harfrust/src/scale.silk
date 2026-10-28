@@ -23,6 +23,11 @@ impl Scale {
       && self.yfMult == other.yfMult
   }
 
+  /// Whether `xf` and `yf` leave whole values unchanged.
+  pub fn isUnit(self: &Self) -> bool {
+    return self.xfMult == 1.0 && self.yfMult == 1.0
+  }
+
   pub fn identity() -> Self {
     return Self { xMult: 65536, yMult: 65536, xfMult: 1.0, yfMult: 1.0 }
   }

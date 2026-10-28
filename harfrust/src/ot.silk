@@ -2962,12 +2962,25 @@ struct Anchor {
 impl Copy for Anchor {}
 
 fn anchor(context: &Context, table: View) -> Anchor {
-  if View.len(&table) < 6 || View.u16(&table, 0) == 0 || View.u16(&table, 0) > 3 {
+  if View.len(&table) < 6 {
     return Anchor { x: 0, y: 0, valid: false }
+  }
+  let format = View.u16(&table, 0)
+  if format == 0 || format > 3 {
+    return Anchor { x: 0, y: 0, valid: false }
+  }
+
+  // At unit scale a design-unit anchor without device deltas is already the result.
+  if format != 3 && Scale.isUnit(&context.scale) {
+    return Anchor {
+      x: i16.toI32(View.i16(&table, 2)),
+      y: i16.toI32(View.i16(&table, 4)),
+      valid: true,
+    }
   }
   let mut x = i16.toF32(View.i16(&table, 2))
   let mut y = i16.toF32(View.i16(&table, 4))
-  if View.u16(&table, 0) == 3 {
+  if format == 3 {
     x = x + deviceDelta(context, View.offset16(&table, 6))
     y = y + deviceDelta(context, View.offset16(&table, 8))
   }
