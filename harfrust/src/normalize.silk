@@ -256,6 +256,19 @@ pub effect fn normalize<F: FontFuncs>(
   i = 1
   while i < Buffer.len(&buffer.*) {
     let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    if !hebrew {
+      // Glyphs that cannot be the second half of a composition only move the starter.
+      while i < glyphs.length && glyphs[i].codepoint != 0x09bc
+        && !unicode.composesAsSecond(glyphs[i].codepoint) {
+        if glyphs[i].combiningClass == 0 {
+          starter = i
+        }
+        i = i + 1
+      }
+      if i == glyphs.length {
+        break
+      }
+    }
     let cp = glyphs[i].codepoint
     let combiningClass = glyphs[i].combiningClass
     if (hebrew || cp == 0x09bc || unicode.composesAsSecond(cp)) && isMark(cp)
