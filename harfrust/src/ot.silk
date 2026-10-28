@@ -449,6 +449,20 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         buffer.idx = 0
       } else if pairs {
         run applyPairsStep(font, &mut context, &mut buffer, &lookup, subtables, step, end)
+      } else if steps[step].substitutes && !tracing {
+        // A short buffer's digest is cheap to refresh, and an exact one skips more lookups.
+        let applied = run applySubstituteStep(
+          font,
+          &mut context,
+          &mut buffer,
+          &lookup,
+          subtables,
+          step,
+          end,
+        )
+        if applied && Buffer.len(&buffer.*) <= 32 {
+          digestStale = true
+        }
       } else if steps[step].positions && !tracing {
         run applyPositionStep(font, &mut context, &mut buffer, &lookup, subtables, step, end)
       } else if steps[step].contextual && !tracing {
@@ -1286,6 +1300,129 @@ effect fn applyContextual<F: FontFuncs>(
       last,
       0,
       chained,
+    )
+    if result.yes {
+      return result
+    }
+    i = i + 1
+  }
+  return no()
+}
+
+/// Applies a step whose subtables are all single, multiple, alternate or ligature substitutions
+/// at each glyph in turn, as `applyLookup` would. Returns whether the lookup applied anywhere.
+effect fn applySubstituteStep<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  step: usize,
+  end: usize,
+) -> bool
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let everywhere = context.everywhere
+  let mut applied = false
+  let mut i: usize = 0
+  while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
+    i = nextCandidate(List<Glyph>.asSlice(&buffer.glyphs), i, &context.steps[step].digest)
+    if i >= Buffer.len(&buffer.*) {
+      break
+    }
+    let mut result = no()
+    let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+    if everywhere || enabled(&context.*, glyph, step, end) != 0 {
+      result = run applySubstitution(
+        font,
+        &mut context,
+        &mut buffer,
+        lookup,
+        subtables,
+        i,
+        step,
+        end,
+      )
+    }
+    if result.yes {
+      applied = true
+      i = result.next
+    } else {
+      i = i + 1
+    }
+  }
+  return applied
+}
+
+/// `applyLookup` at depth 0 for a lookup whose cached subtables are all single, multiple,
+/// alternate or ligature substitutions: the same budget charges, subtable skips and calls of
+/// `substitute`.
+effect fn applySubstitution<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  context: &mut Context,
+  buffer: &mut Buffer,
+  lookup: &Lookup,
+  subtables: &[LookupSubtable],
+  at: usize,
+  first: usize,
+  last: usize,
+) -> Applied
+  ! OutOfMemoryError
+  ? &mut Allocator with Intrinsic.inlineAlways() {
+  if !buffer.successful || context.budget == 0 || at >= Buffer.len(&buffer.*)
+    || ignored(&context.*, lookup.*, &List<Glyph>.asSlice(&buffer.glyphs)[at]) {
+    return no()
+  }
+  context.budget = context.budget - 1
+  let glyph = List<Glyph>.asSlice(&buffer.glyphs)[at].info.glyphId
+  let mut i: usize = 0
+  while i < subtables.length && context.budget != 0 && buffer.successful {
+    let mut known: u32 = 0
+    let mut budget = context.budget
+    let mut found = false
+    while i < subtables.length && budget != 0 {
+      budget = budget - 1
+      let sub = &subtables[i]
+      if SetDigest.mayHave(&sub.digest, glyph) {
+        if sub.coverageCount == 0 {
+          found = true
+          break
+        }
+        if glyph >= sub.coverageFirst
+          && u32.toUsize(glyph - sub.coverageFirst) < sub.coverageCount {
+          known = u16.toU32(
+            context.coverageValues[sub.coverageStart + u32.toUsize(glyph - sub.coverageFirst)],
+          )
+        }
+        if known != 0 {
+          found = true
+          break
+        }
+        if sub.missSpends && budget != 0 {
+          budget = budget - 1
+        }
+      }
+      i = i + 1
+    }
+    context.budget = budget
+    if !found {
+      return no()
+    }
+    let table = View.tail(&context.table, subtables[i].offset)
+    let digests = Slice.view(context.ruleDigests, subtables[i].ruleDigests, subtables[i].ruleSets)
+    let result = run substitute(
+      font,
+      &mut context,
+      &mut buffer,
+      lookup.*,
+      table,
+      subtables[i].kind,
+      digests,
+      known,
+      at,
+      first,
+      last,
+      0,
     )
     if result.yes {
       return result
