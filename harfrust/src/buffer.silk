@@ -468,7 +468,17 @@ impl Buffer {
   pub effect fn insertCopies(self: &mut Self, at: usize, count: usize, item: Glyph) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
+    // A few copies before a long tail move it with `List.insert`, one block move each, which
+    // beats moving the glyphs one at a time.
     let length = Buffer.len(&self.*)
+    if count <= 4 && at + 8 <= length {
+      let mut n: usize = 0
+      while n < count {
+        run List<Glyph>.insert(&mut self.glyphs, at, item)
+        n = n + 1
+      }
+      return
+    }
     run List<Glyph>.appendRepeated(&mut self.glyphs, item, count)
 
     // The tail moves through a slice that starts at `at`, so the moves need no bounds checks.
