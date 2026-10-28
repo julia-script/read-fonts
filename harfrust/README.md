@@ -16,7 +16,7 @@ and cluster levels, custom font callbacks, reusable plans, and tracing.
 ## Library
 
 Add a path dependency on `harfrust` and import `harfrust.lib`. All manifests
-pin `0.1.0-dev.22+5cd5bc433c4e`.
+pin `0.1.0-dev.23+538c9053f62a`.
 
 ```silk
 import harfrust.lib { Buffer, ShaperData, shape, ShapeOptions }
@@ -147,20 +147,20 @@ check identical glyph/cluster/position checksums. Wall times for the Rust twin
 are tens of milliseconds and too noisy to compare, so the ratios below are
 callgrind instruction counts for one iteration
 (`scripts/bench-shaping --callgrind --iterations 1 --samples 1`), Silk
-`0.1.0-dev.22+5cd5bc433c4e` with Clang 22.1.8 against Rust 1.99.1, both release
+`0.1.0-dev.23+538c9053f62a` with Clang 22.1.8 against Rust 1.99.1, both release
 builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 7.04306e+07 | 65.3M | 1.08× |
-| Roboto / English words | 1.01249e+08 | 87.9M | 1.15× |
-| Noto Nastaliq Urdu / Persian Little Prince | 9.63756e+08 | 789M | 1.22× |
-| Noto Nastaliq Urdu / Persian words | 8.71217e+08 | 847M | 1.03× |
-| Noto Sans Devanagari / Hindi words | 2.59137e+08 | 225M | 1.15× |
-| Amiri / Persian Little Prince | 4.35394e+08 | 374M | 1.16× |
-| Source Serif Variable / react-dom | 9.19001e+08 | 1,004M | 0.91× |
+| Roboto / English Little Prince | 6.99893e+07 | 65.3M | 1.07× |
+| Roboto / English words | 9.93244e+07 | 87.9M | 1.13× |
+| Noto Nastaliq Urdu / Persian Little Prince | 9.5394e+08 | 789M | 1.21× |
+| Noto Nastaliq Urdu / Persian words | 8.58696e+08 | 847M | 1.01× |
+| Noto Sans Devanagari / Hindi words | 2.55684e+08 | 225M | 1.14× |
+| Amiri / Persian Little Prince | 4.35192e+08 | 374M | 1.16× |
+| Source Serif Variable / react-dom | 9.05392e+08 | 1,004M | 0.90× |
 
-The geometric mean is **1.10×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.08×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
