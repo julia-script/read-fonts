@@ -126,28 +126,17 @@ effect fn execute<'a, 's, F: FontFuncs>(
   normalize.nativeDirection(&mut buffer)
   let mut i: usize = 0
   if !Direction.isForward(direction) {
-    while i < Buffer.len(&buffer.*) {
-      let mut item = List<Glyph>.get(&buffer.glyphs, i)
-      let cp = unicode.mirror(item.codepoint)
-      if cp != item.codepoint && ConfiguredShaper.hasGlyph(font, cp) {
-        item.codepoint = cp
-      } else {
-        item.mirrored = true
-      }
-      List<Glyph>.set(&mut buffer.glyphs, i, item)
-      i = i + 1
-    }
+    mirror(font, List<Glyph>.asMutSlice(&mut buffer.glyphs))
   }
   if !Direction.isHorizontal(direction) {
     if !hasFeature(substitutions, 0x76657274) {
       i = 0
-      while i < Buffer.len(&buffer.*) {
-        let mut item = List<Glyph>.get(&buffer.glyphs, i)
-        let cp = unicode.vertical(item.codepoint)
+      let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+      while i < glyphs.length {
+        let cp = unicode.vertical(glyphs[i].codepoint)
         if ConfiguredShaper.hasGlyph(font, cp) {
-          item.codepoint = cp
+          glyphs[i].codepoint = cp
         }
-        List<Glyph>.set(&mut buffer.glyphs, i, item)
         i = i + 1
       }
     }
@@ -387,6 +376,25 @@ effect fn execute<'a, 's, F: FontFuncs>(
   buffer.direction = direction
   Buffer.leave(&mut buffer)
   return Result<(), ShapeError>.succeed(())
+}
+
+/// Replaces code points with their mirrored forms where the font has one, and marks the rest
+/// as mirrored.
+fn mirror<F: FontFuncs>(
+  font: &ConfiguredShaper<F>,
+  glyphs: &mut [Glyph],
+) -> () with Intrinsic.inlineNever() {
+  let mut i: usize = 0
+  while i < glyphs.length {
+    let original = glyphs[i].codepoint
+    let cp = unicode.mirror(original)
+    if cp != original && ConfiguredShaper.hasGlyph(font, cp) {
+      glyphs[i].codepoint = cp
+    } else {
+      glyphs[i].mirrored = true
+    }
+    i = i + 1
+  }
 }
 
 fn hasFeature(plan: &OtPlan, tag: u32) -> bool {
