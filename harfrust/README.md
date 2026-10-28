@@ -16,7 +16,7 @@ and cluster levels, custom font callbacks, reusable plans, and tracing.
 ## Library
 
 Add a path dependency on `harfrust` and import `harfrust.lib`. All manifests
-pin `0.1.0-dev.24+912a664401ae`.
+pin `0.1.0-dev.25+584955edf9ef`.
 
 ```silk
 import harfrust.lib { Buffer, ShaperData, shape, ShapeOptions }
@@ -147,18 +147,18 @@ check identical glyph/cluster/position checksums. Wall times for the Rust twin
 are tens of milliseconds and too noisy to compare, so the ratios below are
 callgrind instruction counts for one iteration
 (`scripts/bench-shaping --callgrind --iterations 1 --samples 1`), Silk
-`0.1.0-dev.24+912a664401ae` with Clang 22.1.8 against Rust 1.99.1, both release
+`0.1.0-dev.25+584955edf9ef` with Clang 22.1.8 against Rust 1.99.1, both release
 builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 5.82153e+07 | 6.53272e+07 | 0.89× |
-| Roboto / English words | 7.50386e+07 | 8.7936e+07 | 0.85× |
-| Noto Nastaliq Urdu / Persian Little Prince | 7.35067e+08 | 7.89359e+08 | 0.93× |
-| Noto Nastaliq Urdu / Persian words | 7.10112e+08 | 8.46944e+08 | 0.84× |
-| Noto Sans Devanagari / Hindi words | 2.04169e+08 | 2.25202e+08 | 0.91× |
-| Amiri / Persian Little Prince | 3.22027e+08 | 3.73885e+08 | 0.86× |
-| Source Serif Variable / react-dom | 7.6049e+08 | 1.00439e+09 | 0.76× |
+| Roboto / English Little Prince | 5.81938e+07 | 6.53272e+07 | 0.89× |
+| Roboto / English words | 7.50306e+07 | 8.7936e+07 | 0.85× |
+| Noto Nastaliq Urdu / Persian Little Prince | 7.3293e+08 | 7.89359e+08 | 0.93× |
+| Noto Nastaliq Urdu / Persian words | 7.0951e+08 | 8.46944e+08 | 0.84× |
+| Noto Sans Devanagari / Hindi words | 2.04276e+08 | 2.25202e+08 | 0.91× |
+| Amiri / Persian Little Prince | 3.22015e+08 | 3.73885e+08 | 0.86× |
+| Source Serif Variable / react-dom | 7.60465e+08 | 1.00439e+09 | 0.76× |
 
 The geometric mean is **0.86×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -281,7 +281,7 @@ A format 3 rule that a context step already checked is not checked again in `con
 Adding text counts scalars with a loop that vectorizes and converts byte offsets to clusters without a check per scalar.
 Clearing a buffer empties its language in place instead of dropping and replacing it.
 The per-glyph feature check, the second-input search and the nested lookup header read are inlined into their callers.
-Moving to Silk dev.24, whose slice and list accesses no longer reload the list's base pointer and whose
+Moving to Silk dev.24 (dev.25 is current), whose slice and list accesses no longer reload the list's base pointer and whose
 large struct literals are stored field by field, took the geometric mean from 0.93× to 0.86× with no source
 changes; every workload is now below Rust.
 Inserting copies of a glyph uses the list's own `insertRepeated`, which opens the gap with one block move.
