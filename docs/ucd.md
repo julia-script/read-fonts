@@ -33,6 +33,8 @@ comparison, tracing, malformed-font campaign and all seven callgrind workloads.
 Clear `build/llvm` and `build/cache` before release builds (Silk #2468).
 For before/after instruction counts, use identical executable and corpus paths:
 process startup and path handling are included in callgrind's totals.
+The hot mirror entrypoint inlines explicitly. Composition reads each search row
+through one bounded byte view, retaining the original binary-search layout.
 
 ## API
 
