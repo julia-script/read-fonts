@@ -18,6 +18,9 @@ import plan {
   CHECK_CALT,
   CHECK_FRACTION,
   CHECK_RTLM,
+  ZWJ_AUTO,
+  ZWNJ_AUTO,
+  ZWJ_PER_SYLLABLE,
 }
 import feature { Feature }
 import arabic
@@ -350,23 +353,10 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
         step = end
         continue
       }
-      context.restrictSyllable = !plan.positioning && complex.perSyllable(buffer.shaper, tag)
-      context.autoZwj = true
-      context.autoZwnj = true
-      let common = tag == 0x63636d70 || tag == 0x6c6f636c
-      if buffer.shaper != 0 && !common && tag != 0x7276726e {
-        context.autoZwj = false
-        if buffer.shaper == 1 || buffer.shaper == 2 {
-          context.autoZwnj = false
-        }
-      }
-      if arabic.usesScript(buffer.script)
-        && (common || arabic.isFeature(tag) || tag == 0x726c6967 || tag == 0x63616c74
-          || tag == 0x6c696761
-          || tag == 0x636c6967
-          || tag == 0x6d736574) {
-        context.autoZwj = false
-      }
+      let zwj = steps[step].zwj
+      context.restrictSyllable = !plan.positioning && (zwj & ZWJ_PER_SYLLABLE) != 0
+      context.autoZwj = (zwj & ZWJ_AUTO) != 0
+      context.autoZwnj = (zwj & ZWNJ_AUTO) != 0
       let lookup = lookupAt(&context, steps[step].lookupOffset)
       let subtables = Slice.view(
         List<LookupSubtable>.asSlice(&plan.subtables),
