@@ -101,6 +101,18 @@ def machine(name):
         offsets[ident] = len(programs)
         programs.extend(program)
     states = len(tables['eof_trans'])
+    froms = tables['from_state_actions']
+    tos = tables['to_state_actions']
+    if name == 'khmer':
+        froms = [bool(tables['actions'][n]) for n in froms]
+        tos = [bool(tables['actions'][n]) for n in tos]
+    assert states < 0x4000
+
+    # Each transition's target carries the target's to-state flag in bit 15 and its
+    # from-state flag in bit 14, so a step reads no per-state table.
+    def target(state):
+        return state | (0x8000 if tos[state] else 0) | (0x4000 if froms[state] else 0)
+
     matrix = bytearray()
     for state in range(states):
         for category in range(60):
@@ -135,14 +147,9 @@ def machine(name):
                 trans = tables['index_defaults'][state]
                 if lo <= ic <= hi: trans = tables['indices'][tables['index_offsets'][state] + ic - lo]
             if trans < 0:
-                matrix.extend(struct.pack('>HH', state, 0))
+                matrix.extend(struct.pack('>HH', target(state), 0))
             else:
-                matrix.extend(struct.pack('>HH', tables['cond_targs'][trans], offsets[tables['cond_actions'][trans]]))
-    froms = tables['from_state_actions']
-    tos = tables['to_state_actions']
-    if name == 'khmer':
-        froms = [bool(tables['actions'][n]) for n in froms]
-        tos = [bool(tables['actions'][n]) for n in tos]
+                matrix.extend(struct.pack('>HH', target(tables['cond_targs'][trans]), offsets[tables['cond_actions'][trans]]))
     header = struct.pack('>HH', start, kinds.get('BrokenCluster', 255))
     header += bytes(bool(x) for x in froms) + bytes(bool(x) for x in tos)
     return byte_function(name + 'States', header), byte_function(name + 'Transitions', matrix), byte_function(name + 'Actions', programs)

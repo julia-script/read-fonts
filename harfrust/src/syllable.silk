@@ -140,10 +140,10 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   let skips = machine == 4
   let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
 
-  // Per-state flags: whether a step from the state starts a token (Ragel's from-state
-  // action), and whether a step into it resets the token start (its to-state action).
+  // Whether a step from the state starts a token (Ragel's from-state action). Transitions
+  // carry their target's flags: bit 14 for this one, and bit 15 for whether a step into the
+  // target resets the token start (its to-state action).
   let fromState = Slice.view(states, 4, stateCount)
-  let toState = Slice.view(states, 4 + stateCount, stateCount)
 
   // Positions are unsigned; stepping back from 0 wraps past `len` and ends the scan, as a
   // negative position would.
@@ -152,6 +152,8 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   let mut te: usize = 0
   let mut act: u8 = 0
   let mut state = be16(states, 0)
+  let mut starts = state < stateCount && fromState[state] != 0
+  let mut resets = false
   let mut serial: u32 = 1
   let mut budget = length * 8 + 16
   while p <= len && budget != 0 {
@@ -159,7 +161,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if state >= stateCount {
       break
     }
-    if fromState[state] != 0 {
+    if starts {
       ts = p
     }
     let mut category: usize = 59
@@ -174,7 +176,10 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
       }
     }
     let entry = Slice.view(transitions, (state * 60 + category) * 4, 4)
-    state = u8.toUsize(entry[0]) * 256 + u8.toUsize(entry[1])
+    let target = u8.toUsize(entry[0]) * 256 + u8.toUsize(entry[1])
+    state = target & 0x3fff
+    starts = (target & 0x4000) != 0
+    resets = (target & 0x8000) != 0
     let mut pc = u8.toUsize(entry[2]) * 256 + u8.toUsize(entry[3])
     while pc + 1 < actions.length {
       let op = actions[pc]
@@ -239,7 +244,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if p == len {
       break
     }
-    if state < stateCount && toState[state] != 0 {
+    if resets {
       ts = 0
     }
     p = usize.wrappingAdd(p, 1)
