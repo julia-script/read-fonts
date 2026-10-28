@@ -228,6 +228,14 @@ pub struct Buffer {
   pub notFoundVariationSelectorGlyph: Option<u32>,
   pub preContext: List<u32>,
   pub postContext: List<u32>,
+  /// Output glyphs of a pass once they no longer fit in front of the unread input.
+  pub out: List<Glyph>,
+  pub haveOutput: bool,
+  pub separateOutput: bool,
+  /// The current input glyph during a pass.
+  pub idx: usize,
+  /// How many glyphs the pass has output.
+  pub outLen: usize,
 }
 
 impl Buffer {
@@ -256,6 +264,11 @@ impl Buffer {
       notFoundVariationSelectorGlyph: Option<u32>.None,
       preContext: List<u32>.make(),
       postContext: List<u32>.make(),
+      out: List<Glyph>.make(),
+      haveOutput: false,
+      separateOutput: false,
+      idx: 0,
+      outLen: 0,
     }
   }
 
@@ -297,6 +310,11 @@ impl Buffer {
     self.contentType = ContentType.None
     self.havePositions = false
     self.haveAttachments = false
+    List<Glyph>.clear(&mut self.out)
+    self.haveOutput = false
+    self.separateOutput = false
+    self.idx = 0
+    self.outLen = 0
   }
 
   pub fn reset(self: &mut Self) -> () {
@@ -1141,5 +1159,522 @@ impl Buffer {
     }
     self.maxOperations = self.maxOperations - count
     return true
+  }
+}
+
+// Output buffer for one pass over the glyphs, after HarfBuzz. The pass reads input glyphs at
+// `idx` and writes output glyphs at `outLen`. While no edit has written more glyphs than it
+// consumed, the output shares the input list: `glyphs[0..outLen]` is output and
+// `glyphs[idx..]` is unread input, so deleting or ligating glyphs needs no tail moves. The
+// first edit that would overrun `idx` copies the output so far into `out`, and later writes go
+// there. `syncOutput` makes the output the buffer, so a pass costs O(n) however many edits it
+// makes, and a pass that edited nothing costs O(1) to sync.
+impl Buffer {
+  /// Starts an output pass at the first glyph.
+  pub fn clearOutput(self: &mut Self) -> () {
+    self.haveOutput = true
+    self.havePositions = false
+    self.separateOutput = false
+    self.idx = 0
+    self.outLen = 0
+    List<Glyph>.truncate(&mut self.out, 0)
+  }
+
+  /// Ends the output pass: the unread input follows the output, and the output becomes the
+  /// buffer's glyphs. Returns false, leaving the glyphs as they are, when the buffer failed.
+  pub effect fn syncOutput(self: &mut Self) -> bool
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if !self.haveOutput {
+      return self.successful
+    }
+    let mut synced = false
+    if self.successful {
+      let remaining = Buffer.len(&self.*) - self.idx
+      run Buffer.nextGlyphs(&mut self, remaining)
+    }
+    if self.successful {
+      if self.separateOutput {
+        let input = Intrinsic.replace(self.glyphs, List<Glyph>.make())
+        let output = Intrinsic.replace(self.out, move input)
+        self.glyphs = move output
+      }
+      List<Glyph>.truncate(&mut self.glyphs, self.outLen)
+      synced = true
+    }
+    List<Glyph>.truncate(&mut self.out, 0)
+    self.haveOutput = false
+    self.separateOutput = false
+    self.idx = 0
+    self.outLen = 0
+    return synced
+  }
+
+  /// The output glyphs so far.
+  pub fn outGlyphs(self: &Self) -> &[Glyph] {
+    if self.separateOutput {
+      return List<Glyph>.asSlice(&self.out)
+    }
+    return Slice.view(List<Glyph>.asSlice(&self.glyphs), 0, self.outLen)
+  }
+
+  pub fn outGlyphsMut(self: &mut Self) -> &mut [Glyph] {
+    if self.separateOutput {
+      return List<Glyph>.asMutSlice(&mut self.out)
+    }
+    let length = self.outLen
+    return Slice.viewMut(List<Glyph>.asMutSlice(&mut self.glyphs), 0, length)
+  }
+
+  /// How many glyphs a backtrack can see: the output during a pass, else those before `idx`.
+  pub fn backtrackLen(self: &Self) -> usize {
+    if self.haveOutput {
+      return self.outLen
+    }
+    return self.idx
+  }
+
+  /// How many unread input glyphs remain from `idx`.
+  pub fn lookaheadLen(self: &Self) -> usize {
+    return Buffer.len(self) - self.idx
+  }
+
+  /// Copies the current glyph to the output and advances; without an output pass it only
+  /// advances.
+  pub effect fn nextGlyph(self: &mut Self) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator with Intrinsic.inlineAlways() {
+    if self.haveOutput {
+      if self.separateOutput || self.outLen != self.idx {
+        run Buffer.copyToOutput(&mut self, 1)
+      } else {
+        self.outLen = self.outLen + 1
+      }
+    }
+    self.idx = self.idx + 1
+  }
+
+  /// Copies `count` glyphs from the current one to the output and advances past them.
+  pub effect fn nextGlyphs(self: &mut Self, count: usize) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if self.haveOutput {
+      if self.separateOutput || self.outLen != self.idx {
+        run Buffer.copyToOutput(&mut self, count)
+      } else {
+        self.outLen = self.outLen + count
+      }
+    }
+    self.idx = self.idx + count
+  }
+
+  /// Advances past the current glyph without output.
+  pub fn skipGlyph(self: &mut Self) -> () {
+    self.idx = self.idx + 1
+  }
+
+  /// Outputs the current glyph with `glyphId` and advances.
+  pub effect fn replaceGlyph(self: &mut Self, glyphId: u32) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if self.idx >= Buffer.len(&self.*) {
+      self.successful = false
+      return
+    }
+    if self.separateOutput || self.outLen != self.idx {
+      run Buffer.copyToOutput(&mut self, 1)
+    } else {
+      self.outLen = self.outLen + 1
+    }
+    let at = self.outLen - 1
+    let out = Buffer.outGlyphsMut(&mut self)
+    out[at].info.glyphId = glyphId
+    self.idx = self.idx + 1
+  }
+
+  /// Outputs a copy of the current glyph with `glyphId` without advancing. At the end of the
+  /// input it copies the last output glyph instead; with neither there is nothing to copy.
+  pub effect fn outputGlyph(self: &mut Self, glyphId: u32) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let mut item = Glyph.new(0, 0)
+    if self.idx < Buffer.len(&self.*) {
+      item = List<Glyph>.asSlice(&self.glyphs)[self.idx]
+    } else if self.outLen != 0 {
+      item = Buffer.outGlyphs(&self.*)[self.outLen - 1]
+    } else {
+      return
+    }
+    item.info.glyphId = glyphId
+    run Buffer.outputItem(&mut self, item)
+  }
+
+  /// Outputs `item` without advancing.
+  pub effect fn outputItem(self: &mut Self, item: Glyph) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let room = run Buffer.makeRoomFor(&mut self, 0, 1)
+    if room {
+      run Buffer.writeOutput(&mut self, item)
+    }
+  }
+
+  /// Outputs a copy of the current glyph without advancing.
+  pub effect fn copyGlyph(self: &mut Self) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if self.idx >= Buffer.len(&self.*) {
+      self.successful = false
+      return
+    }
+    let item = List<Glyph>.asSlice(&self.glyphs)[self.idx]
+    run Buffer.outputItem(&mut self, item)
+  }
+
+  /// Replaces `count` input glyphs from the current one with one output glyph per id, each a
+  /// copy of the current glyph, after merging the replaced glyphs' clusters.
+  pub effect fn replaceGlyphs(self: &mut Self, count: usize, glyphIds: &[u32]) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if count == 0 || self.idx + count > Buffer.len(&self.*) {
+      self.successful = false
+      return
+    }
+    let room = run Buffer.makeRoomFor(&mut self, count, glyphIds.length)
+    if !room {
+      return
+    }
+    let at = self.idx
+    Buffer.mergeClusters(&mut self, at, at + count)
+    let item = List<Glyph>.asSlice(&self.glyphs)[self.idx]
+    let mut i: usize = 0
+    while i < glyphIds.length {
+      let mut copy = item
+      copy.info.glyphId = glyphIds[i]
+      run Buffer.writeOutput(&mut self, copy)
+      i = i + 1
+    }
+    self.idx = self.idx + count
+  }
+
+  /// Removes the current glyph, merging its cluster into a neighbour when it was the
+  /// cluster's only glyph, and advances.
+  pub fn deleteCurrent(self: &mut Self) -> () {
+    let length = Buffer.len(&self.*)
+    if self.idx >= length {
+      self.successful = false
+      return
+    }
+    let input = List<Glyph>.asSlice(&self.glyphs)
+    let cluster = input[self.idx].info.cluster
+    let flags = input[self.idx].info.flags
+    let survivesAhead = self.idx + 1 < length && input[self.idx + 1].info.cluster == cluster
+    if survivesAhead {
+      self.idx = self.idx + 1
+      return
+    }
+    if self.outLen != 0 {
+      // Merge backward into the output, as `deleteGlyph` does.
+      let out = Buffer.outGlyphsMut(&mut self)
+      let previous = out[out.length - 1].info.cluster
+      if cluster < previous {
+        let mut i = out.length
+        while i != 0 && out[i - 1].info.cluster == previous {
+          out[i - 1].info.cluster = cluster
+          out[i - 1].info.flags = out[i - 1].info.flags | flags
+          i = i - 1
+        }
+      }
+    } else if self.idx + 1 < length {
+      let at = self.idx
+      Buffer.mergeClusters(&mut self, at, at + 2)
+    }
+    self.idx = self.idx + 1
+  }
+
+  /// Moves the output position to `i`, the index the next output glyph will have, copying
+  /// input forward or output back as needed. Returns false when the buffer failed.
+  pub effect fn moveTo(self: &mut Self, i: usize) -> bool
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if !self.haveOutput {
+      self.idx = i
+      return true
+    }
+    if !self.successful {
+      return false
+    }
+    if self.outLen < i {
+      let count = i - self.outLen
+      if self.idx + count > Buffer.len(&self.*) {
+        self.successful = false
+        return false
+      }
+      if !Buffer.spendOperations(&mut self, count) {
+        return false
+      }
+      run Buffer.nextGlyphs(&mut self, count)
+    } else if self.outLen > i {
+      // Rewinding moves output glyphs back in front of the unread input.
+      let count = self.outLen - i
+      if self.idx < count {
+        let gap = count - self.idx
+        let shifted = run Buffer.shiftForward(&mut self, gap)
+        if !shifted {
+          return false
+        }
+      }
+      if !Buffer.spendOperations(&mut self, count) {
+        return false
+      }
+      self.idx = self.idx - count
+      self.outLen = self.outLen - count
+      if self.separateOutput {
+        let from = List<Glyph>.asSlice(&self.out)
+        let to = List<Glyph>.asMutSlice(&mut self.glyphs)
+        let mut k: usize = 0
+        while k < count {
+          to[self.idx + k] = from[self.outLen + k]
+          k = k + 1
+        }
+        List<Glyph>.truncate(&mut self.out, self.outLen)
+      } else {
+        // The destination starts at or after the source, so copy from the end.
+        let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+        let mut k = count
+        while k != 0 {
+          k = k - 1
+          slots[self.idx + k] = slots[self.outLen + k]
+        }
+      }
+    }
+    return true
+  }
+
+  /// Merges the clusters of output glyphs `start..end`, and of the unread input glyphs that
+  /// continue the output's last cluster.
+  pub fn mergeOutClusters(self: &mut Self, start: usize, end: usize) -> () {
+    if end < start + 2 || !ClusterLevel.isMonotone(self.clusterLevel) {
+      return
+    }
+    Buffer.mergeOutClusterRange(&mut self, start, end)
+  }
+
+  pub fn mergeOutGraphemeClusters(self: &mut Self, start: usize, end: usize) -> () {
+    if end < start + 2 || !ClusterLevel.isGraphemes(self.clusterLevel) {
+      return
+    }
+    Buffer.mergeOutClusterRange(&mut self, start, end)
+  }
+
+  /// Marks output glyphs from `start` and input glyphs before `end` unsafe to break and to
+  /// concatenate, skipping the glyphs in the lowest cluster among them.
+  pub fn unsafeToBreakFromOutput(self: &mut Self, start: usize, end: usize) -> () {
+    Buffer.markFlagsFromOutput(&mut self, start, end, 3)
+  }
+
+  /// Marks output glyphs from `start` and input glyphs before `end` unsafe to concatenate.
+  pub fn unsafeToConcatFromOutput(self: &mut Self, start: usize, end: usize) -> () {
+    if (self.flags & 64) != 0 {
+      Buffer.markFlagsFromOutput(&mut self, start, end, 2)
+    }
+  }
+
+  /// Copies `count` input glyphs from the current one to the end of the output.
+  effect fn copyToOutput(self: &mut Self, count: usize) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let from = self.idx
+    if from + count > Buffer.len(&self.*) {
+      self.successful = false
+      return
+    }
+    if self.separateOutput {
+      run List<Glyph>.reserve(&mut self.out, count)
+      let mut k: usize = 0
+      while k < count {
+        run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[from + k])
+        k = k + 1
+      }
+    } else {
+      // Shared output ends before the input it copies from, so copy from the start.
+      let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+      let mut k: usize = 0
+      while k < count {
+        slots[self.outLen + k] = slots[from + k]
+        k = k + 1
+      }
+    }
+    self.outLen = self.outLen + count
+  }
+
+  /// Makes sure `numOut` glyphs can be output in place of `numIn` input glyphs, moving the
+  /// output to `out` when it would overrun the unread input.
+  effect fn makeRoomFor(self: &mut Self, numIn: usize, numOut: usize) -> bool
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if usize.saturatingAdd(self.outLen, numOut) > self.maxLength {
+      self.successful = false
+      return false
+    }
+    if !self.separateOutput && self.outLen + numOut > self.idx + numIn {
+      self.separateOutput = true
+      List<Glyph>.truncate(&mut self.out, 0)
+      run List<Glyph>.reserve(&mut self.out, self.idx + numOut)
+      let mut k: usize = 0
+      while k < self.outLen {
+        run List<Glyph>.append(&mut self.out, List<Glyph>.asSlice(&self.glyphs)[k])
+        k = k + 1
+      }
+    }
+    return true
+  }
+
+  /// Writes `item` as the next output glyph, after `makeRoomFor`.
+  effect fn writeOutput(self: &mut Self, item: Glyph) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    if self.separateOutput {
+      run List<Glyph>.append(&mut self.out, item)
+    } else {
+      let at = self.outLen
+      let slots = List<Glyph>.asMutSlice(&mut self.glyphs)
+      slots[at] = item
+    }
+    self.outLen = self.outLen + 1
+  }
+
+  /// Opens a gap of `count` blank glyphs before the unread input.
+  effect fn shiftForward(self: &mut Self, count: usize) -> bool
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let length = Buffer.len(&self.*)
+    if usize.saturatingAdd(length, count) > self.maxLength {
+      self.successful = false
+      return false
+    }
+    let moved = length - self.idx
+    if !Buffer.spendOperations(&mut self, moved) {
+      return false
+    }
+    let blank = Glyph.new(0, 0)
+    run List<Glyph>.appendRepeated(&mut self.glyphs, blank, count)
+    let window = Slice.viewMut(List<Glyph>.asMutSlice(&mut self.glyphs), self.idx, moved + count)
+    let mut i = moved
+    while i != 0 {
+      i = i - 1
+      window[count + i] = window[i]
+    }
+    i = moved
+    while i < count {
+      window[i] = blank
+      i = i + 1
+    }
+    self.idx = self.idx + count
+    return true
+  }
+
+  fn mergeOutClusterRange(self: &mut Self, start: usize, end: usize) -> () {
+    drop Buffer.spendOperations(&mut self, end - start)
+    let outLen = self.outLen
+    if end > outLen {
+      self.successful = false
+      return
+    }
+    let out = Buffer.outGlyphsMut(&mut self)
+    let mut cluster = out[start].info.cluster
+    let mut i = start + 1
+    while i < end {
+      if out[i].info.cluster < cluster {
+        cluster = out[i].info.cluster
+      }
+      i = i + 1
+    }
+    let mut from = start
+    let mut to = end
+    while from != 0 && out[from - 1].info.cluster == out[from].info.cluster {
+      from = from - 1
+    }
+    while to < outLen && out[to - 1].info.cluster == out[to].info.cluster {
+      to = to + 1
+    }
+    let last = out[to - 1].info.cluster
+    i = from
+    while i < to {
+      if out[i].info.cluster != cluster {
+        out[i].info.flags = 0
+      }
+      out[i].info.cluster = cluster
+      i = i + 1
+    }
+
+    // When the merge reaches the end of the output, it continues into the unread input.
+    if to == outLen {
+      let input = List<Glyph>.asMutSlice(&mut self.glyphs)
+      let mut k = self.idx
+      while k < input.length && input[k].info.cluster == last {
+        if last != cluster {
+          input[k].info.flags = 0
+        }
+        input[k].info.cluster = cluster
+        k = k + 1
+      }
+    }
+  }
+
+  /// Adds `flags` to output glyphs from `start` and input glyphs from `idx` to `end`. Unsafe
+  /// to break skips the glyphs in the lowest cluster among them; unsafe to concatenate (flags
+  /// 2) marks all of them.
+  fn markFlagsFromOutput(self: &mut Self, start: usize, end: usize, flags: u32) -> () {
+    if end < start || end - start > 255 {
+      return
+    }
+    let length = Buffer.len(&self.*)
+    let mut stop = end
+    if stop > length {
+      stop = length
+    }
+    if !self.haveOutput {
+      markFlags(&mut self, start, stop, flags)
+      return
+    }
+    if start > self.outLen || stop < self.idx {
+      return
+    }
+    let mut cluster: u32 = 4294967295
+    if flags != 2 {
+      let input = List<Glyph>.asSlice(&self.glyphs)
+      let mut i = self.idx
+      while i < stop {
+        if input[i].info.cluster < cluster {
+          cluster = input[i].info.cluster
+        }
+        i = i + 1
+      }
+      let out = Buffer.outGlyphs(&self.*)
+      i = start
+      while i < out.length {
+        if out[i].info.cluster < cluster {
+          cluster = out[i].info.cluster
+        }
+        i = i + 1
+      }
+    }
+    let out = Buffer.outGlyphsMut(&mut self)
+    let mut i = start
+    while i < out.length {
+      if out[i].info.cluster != cluster || flags == 2 {
+        out[i].info.flags = out[i].info.flags | flags
+      }
+      i = i + 1
+    }
+    let input = List<Glyph>.asMutSlice(&mut self.glyphs)
+    i = self.idx
+    while i < stop {
+      if input[i].info.cluster != cluster || flags == 2 {
+        input[i].info.flags = input[i].info.flags | flags
+      }
+      i = i + 1
+    }
   }
 }
