@@ -242,17 +242,20 @@ impl<'a> Reader<'a> {
     if token.isEof() {
       return token
     }
-    self.upcoming = self.scalar()
     if token.cls == LineBreak.CM || token.cls == LineBreak.ZWJ {
       // LB10: all properties become those of LATIN CAPITAL LETTER A.
       token.cls = LineBreak.AL
       token.flags = (token.flags & (SA | ZWJ)) | WORD
     }
-    if !hard(token.cls) && token.cls != LineBreak.SP && token.cls != LineBreak.ZW {
-      while self.upcoming.cls == LineBreak.CM || self.upcoming.cls == LineBreak.ZWJ {
-        token.flags = (token.flags & ~ZWJ) | (self.upcoming.flags & ZWJ)
-        self.upcoming = self.scalar()
+
+    // One decoding site: read ahead, folding marks into bases that take them.
+    let absorbs = !hard(token.cls) && token.cls != LineBreak.SP && token.cls != LineBreak.ZW
+    while true {
+      self.upcoming = self.scalar()
+      if !absorbs || (self.upcoming.cls != LineBreak.CM && self.upcoming.cls != LineBreak.ZWJ) {
+        break
       }
+      token.flags = (token.flags & ~ZWJ) | (self.upcoming.flags & ZWJ)
     }
     if self.tailored {
       token.cls = tailor(self.options, token.cls, token.cp, token.flags)
