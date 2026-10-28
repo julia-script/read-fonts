@@ -18,6 +18,7 @@ import lib { LineBreak }
 import generated_unicode as Data
 import generated_properties { lineBreakValue }
 import utf8
+import utf8 { ScalarDecoder }
 import segmentation { GraphemeCursor }
 import dictionary { DictionarySegmenter }
 import silk.list { List }
@@ -201,22 +202,24 @@ fn cjk(options: LineOptions) -> bool {
 // LB9 consumes CM/ZWJ once, retaining the base's *all* relevant properties.
 // The reader decodes one scalar ahead to find each sequence's end; with the
 // segmenter's three-token window, LB25 needs no rescanning or allocation.
-struct Reader<'a> {
+struct Reader<'a, D: ScalarDecoder> {
   text: &'a [u8],
   at: usize,
   upcoming: Token,
   options: LineOptions,
   tailored: bool,
+  decoder: D,
 }
 
-impl<'a> Reader<'a> {
-  fn make(text: &'a [u8], at: usize, options: LineOptions) -> Self {
+impl<'a, D> Reader<'a, D> {
+  fn make(text: &'a [u8], at: usize, options: LineOptions, decoder: D) -> Self {
     let mut reader = Self {
       text: text,
       at: at,
       upcoming: Token.eof(0),
       options: options,
       tailored: css(options) || options.wordBreak == WordBreakMode.BreakAll,
+      decoder: move decoder,
     }
     reader.upcoming = reader.scalar()
     return move reader
@@ -227,7 +230,7 @@ impl<'a> Reader<'a> {
       return Token.eof(self.at)
     }
     let start = self.at
-    let decoded = utf8.decode(self.text, start)
+    let decoded = ScalarDecoder.scalarAt(&self.decoder, self.text, start)
     self.at = decoded.next
     let info = Data.lineBreakInfo(decoded.cp)
     let mut cls = lineBreakValue(info & 63)
@@ -305,7 +308,8 @@ fn lookAhead(
   options: LineOptions,
   count: usize,
 ) -> Token with Intrinsic.inlineNever() {
-  let mut reader = Reader.make(text, at, options)
+  // Rare: checked decoding keeps one copy of this reader.
+  let mut reader = Reader.make(text, at, options, utf8.Checked {})
   let mut token = reader.next()
   let mut skipped: usize = 0
   while skipped < count {
@@ -357,10 +361,10 @@ impl Context {
 
 // `reader` is positioned after `right`; it is only peeked for the few rules that
 // look past the pair.
-fn opportunity(
+fn opportunity<D: ScalarDecoder>(
   left: Token,
   right: Token,
-  reader: &Reader,
+  reader: &Reader<D>,
   before: Token,
   context: &Context,
   options: LineOptions,
@@ -601,8 +605,25 @@ effect fn segment(
     return
   }
 
+  // Validating up front is much cheaper than checking each sequence while scanning.
+  if utf8.valid(text) {
+    run scan(text, options, &dictionary, &mut output, utf8.Trusted {})
+  } else {
+    run scan(text, options, &dictionary, &mut output, utf8.Checked {})
+  }
+}
+
+effect fn scan<D: ScalarDecoder>(
+  text: &[u8],
+  options: LineOptions,
+  dictionary: &List<usize>,
+  output: &mut List<BreakOpportunity>,
+  decoder: D,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
   let mut graphemes = GraphemeCursor.make()
-  let mut reader = Reader.make(text, 0, options)
+  let mut reader = Reader.make(text, 0, options, move decoder)
   let mut left = reader.next()
   let mut right = reader.next()
   let mut context = Context.make()
