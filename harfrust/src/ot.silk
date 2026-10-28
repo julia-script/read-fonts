@@ -828,6 +828,10 @@ effect fn applyLookup<F: FontFuncs>(
   }
 
   let mut second = SECOND_UNKNOWN
+
+  // The glyphs format 3 rules' digests are checked against, found once for all the subtables.
+  let mut ahead = BACK_UNKNOWN
+  let mut back = BACK_UNKNOWN
   let mut i: usize = 0
   while i < count && context.budget != 0 && buffer.successful {
     let mut table = View.empty()
@@ -890,21 +894,62 @@ effect fn applyLookup<F: FontFuncs>(
       // A covered 16-bit format 3 rule that fails is rejected here, spending the budget unit
       // `contextual` would, without the call and its setup.
       if known != 0 && View.u16(&table, 0) == 3 && (buffer.flags & 64) == 0 && context.budget != 0
-        && buffer.successful
-        && format3Fails(
-          &context.*,
-          &buffer.*,
-          lookup,
-          table,
-          at,
-          first,
-          last,
-          kind == 6 || kind == 8,
-          subtables[i].contextDigests,
-        ) {
-        context.budget = context.budget - 1
-        i = i + 1
-        continue
+        && buffer.successful {
+        // The plan's digests rule out most failing rules from the glyphs next to the first one,
+        // before the rest of the rule is read: the second input, or the first lookahead of a
+        // single input, and the first backtrack.
+        let chained = kind == 6 || kind == 8
+        let digestsAt = subtables[i].contextDigests
+        let mut rejected = false
+        if digestsAt != usize.MAX {
+          let mut pos: usize = 2
+          let mut backCount: usize = 0
+          if chained {
+            backCount = u16.toUsize(View.u16(&table, 2))
+            pos = 4 + backCount * 2
+          }
+          let inputCount = u16.toUsize(View.u16(&table, pos))
+          pos = pos + 2
+          if !chained {
+            pos = pos + 2
+          }
+          let digests = Slice.view(context.contextDigests, digestsAt, 3)
+          let mut aheadDigest = &digests[0]
+          if inputCount == 1 {
+            aheadDigest = &digests[2]
+          }
+          if ahead == BACK_UNKNOWN {
+            ahead = outsideGlyph(&context.*, &buffer.*, lookup, at, false)
+          }
+          if ahead == BACK_NONE {
+            rejected = inputCount > 1 || (chained && View.u16(&table, pos + inputCount * 2) != 0)
+          } else if ahead < BACK_SKIPPABLE {
+            rejected = !SetDigest.mayHave(aheadDigest, u64.toU32(ahead))
+          }
+          if !rejected && backCount != 0 {
+            if back == BACK_UNKNOWN {
+              back = outsideGlyph(&context.*, &buffer.*, lookup, at, true)
+            }
+            rejected = back == BACK_NONE
+              || (back < BACK_SKIPPABLE && !SetDigest.mayHave(&digests[1], u64.toU32(back)))
+          }
+        }
+        if rejected
+          || format3Fails(
+            &context.*,
+            &buffer.*,
+            lookup,
+            table,
+            at,
+            first,
+            last,
+            chained,
+            usize.MAX,
+          ) {
+          context.budget = context.budget - 1
+          i = i + 1
+          continue
+        }
       }
       let mut digests = Slice.view(context.ruleDigests, 0, 0)
       let mut starts = Slice.view(context.ruleSecondStarts, 0, 0)
