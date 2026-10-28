@@ -3062,10 +3062,9 @@ effect fn position<F: FontFuncs>(
         return no()
       }
     }
-    let mut left = List<Glyph>.get(&buffer.glyphs, previous)
     let index = match move View.coverage(
       &View.offset(&table, 2, coverageWidth),
-      left.info.glyphId,
+      List<Glyph>.asSlice(&buffer.glyphs)[previous].info.glyphId,
     ) {
       Option<u32>.Some { value } => u32.toUsize(value)
       _ => {
@@ -3086,30 +3085,36 @@ effect fn position<F: FontFuncs>(
       at,
       "",
     )
-    let mut right = List<Glyph>.get(&buffer.glyphs, at)
-    if buffer.direction == Direction.LeftToRight {
-      left.position.xAdvance = add(exit.x, left.position.xOffset)
-      let d = add(entry.x, right.position.xOffset)
-      right.position.xAdvance = sub(right.position.xAdvance, d)
-      right.position.xOffset = sub(right.position.xOffset, d)
-    } else if buffer.direction == Direction.RightToLeft {
-      let d = add(exit.x, left.position.xOffset)
-      left.position.xAdvance = sub(left.position.xAdvance, d)
-      left.position.xOffset = sub(left.position.xOffset, d)
-      right.position.xAdvance = add(entry.x, right.position.xOffset)
-    } else if buffer.direction == Direction.TopToBottom {
-      left.position.yAdvance = add(exit.y, left.position.yOffset)
-      let d = add(entry.y, right.position.yOffset)
-      right.position.yAdvance = sub(right.position.yAdvance, d)
-      right.position.yOffset = sub(right.position.yOffset, d)
+    let direction = buffer.direction
+    let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+    let left = &mut glyphs[previous].position
+    if direction == Direction.LeftToRight {
+      left.xAdvance = add(exit.x, left.xOffset)
+    } else if direction == Direction.RightToLeft {
+      let d = add(exit.x, left.xOffset)
+      left.xAdvance = sub(left.xAdvance, d)
+      left.xOffset = sub(left.xOffset, d)
+    } else if direction == Direction.TopToBottom {
+      left.yAdvance = add(exit.y, left.yOffset)
     } else {
-      let d = add(exit.y, left.position.yOffset)
-      left.position.yAdvance = sub(left.position.yAdvance, d)
-      left.position.yOffset = sub(left.position.yOffset, d)
-      right.position.yAdvance = entry.y
+      let d = add(exit.y, left.yOffset)
+      left.yAdvance = sub(left.yAdvance, d)
+      left.yOffset = sub(left.yOffset, d)
     }
-    List<Glyph>.set(&mut buffer.glyphs, previous, left)
-    List<Glyph>.set(&mut buffer.glyphs, at, right)
+    let right = &mut glyphs[at].position
+    if direction == Direction.LeftToRight {
+      let d = add(entry.x, right.xOffset)
+      right.xAdvance = sub(right.xAdvance, d)
+      right.xOffset = sub(right.xOffset, d)
+    } else if direction == Direction.RightToLeft {
+      right.xAdvance = add(entry.x, right.xOffset)
+    } else if direction == Direction.TopToBottom {
+      let d = add(entry.y, right.yOffset)
+      right.yAdvance = sub(right.yAdvance, d)
+      right.yOffset = sub(right.yOffset, d)
+    } else {
+      right.yAdvance = entry.y
+    }
     let mut child = previous
     let mut parent = at
     let mut x = sub(entry.x, exit.x)
@@ -3121,29 +3126,30 @@ effect fn position<F: FontFuncs>(
       y = sub(0, y)
     }
     reverseCursive(&mut buffer, child, parent, 0)
-    let mut changed = List<Glyph>.get(&buffer.glyphs, child)
+    buffer.haveAttachments = true
+    let horizontal = Direction.isHorizontal(buffer.direction)
+    let attached = List<Glyph>.asMutSlice(&mut buffer.glyphs)
     let chain = usize.toI64(parent) - usize.toI64(child)
+    let changed = &mut attached[child]
     changed.attach = 0
     if chain >= -32768 && chain <= 32767 {
       changed.attach = i64.toI32(chain)
     }
-    buffer.haveAttachments = true
     changed.attachType = 2
-    if Direction.isHorizontal(buffer.direction) {
+    if horizontal {
       changed.position.yOffset = y
     } else {
       changed.position.xOffset = x
     }
-    List<Glyph>.set(&mut buffer.glyphs, child, changed)
-    let mut ancestor = List<Glyph>.get(&buffer.glyphs, parent)
-    if ancestor.attach == -changed.attach {
+    let link = changed.attach
+    let ancestor = &mut attached[parent]
+    if ancestor.attach == -link {
       ancestor.attach = 0
-      if Direction.isHorizontal(buffer.direction) {
+      if horizontal {
         ancestor.position.yOffset = 0
       } else {
         ancestor.position.xOffset = 0
       }
-      List<Glyph>.set(&mut buffer.glyphs, parent, ancestor)
     }
     drop run trace.pair(
       font,
@@ -3159,19 +3165,20 @@ effect fn position<F: FontFuncs>(
   }
   if kind >= 4 && kind <= 6 && format == 1 {
     let mut base = at
+    let mut props = lookup
+    if kind == 6 {
+      props.flags = props.flags & 65521
+    } else {
+      props.flags = 8
+    }
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
     while true {
       if base == 0 {
         return no()
       }
       base = base - 1
-      let candidate = List<Glyph>.get(&buffer.glyphs, base)
-      let mut props = lookup
-      if kind == 6 {
-        props.flags = props.flags & 65521
-      } else {
-        props.flags = 8
-      }
-      if ignored(context, props, &candidate) || (candidate.ignorable && !candidate.ligated) {
+      let candidate = &glyphs[base]
+      if ignored(context, props, candidate) || (candidate.ignorable && !candidate.ligated) {
         continue
       }
       if kind != 6 && candidate.glyphClass == 3 {
@@ -3183,7 +3190,7 @@ effect fn position<F: FontFuncs>(
       if kind != 6 && candidate.multiplied && candidate.component != 0 {
         let mut accept = false
         if kind == 4 && base > 0 {
-          let prev = List<Glyph>.get(&buffer.glyphs, base - 1)
+          let prev = &glyphs[base - 1]
           accept = prev.glyphClass == 3 || !prev.multiplied
             || candidate.ligatureId != prev.ligatureId
             || candidate.component != prev.component + 1
@@ -3195,8 +3202,8 @@ effect fn position<F: FontFuncs>(
       }
       break
     }
-    let item = List<Glyph>.get(&buffer.glyphs, at)
-    let baseGlyph = List<Glyph>.get(&buffer.glyphs, base)
+    let item = &glyphs[at]
+    let baseGlyph = &glyphs[base]
     if kind == 6 {
       if item.ligatureId == baseGlyph.ligatureId {
         if item.ligatureId != 0 && item.component != baseGlyph.component {
@@ -3256,19 +3263,19 @@ effect fn position<F: FontFuncs>(
       return no()
     }
     drop run trace.pair(font, &buffer.*, "attaching mark glyph at ", at, " to glyph at ", base, "")
-    let mut changed = item
+    let cross = crossOffset(&buffer.*, base)
+    buffer.haveAttachments = true
+    let horizontal = Direction.isHorizontal(buffer.direction)
+    let changed = &mut List<Glyph>.asMutSlice(&mut buffer.glyphs)[at]
     changed.position.xOffset = sub(target.x, mark.x)
     changed.position.yOffset = sub(target.y, mark.y)
-    let cross = crossOffset(&buffer.*, base)
-    if Direction.isHorizontal(buffer.direction) {
+    if horizontal {
       changed.position.yOffset = add(changed.position.yOffset, cross)
     } else {
       changed.position.xOffset = add(changed.position.xOffset, cross)
     }
     changed.attach = -usize.toI32(at - base)
-    buffer.haveAttachments = true
     changed.attachType = 1
-    List<Glyph>.set(&mut buffer.glyphs, at, changed)
     drop run trace.pair(font, &buffer.*, "attached mark glyph at ", at, " to glyph at ", base, "")
     Buffer.unsafeToBreak(&mut buffer, base, at + 1)
     return yes(at + 1)
@@ -3314,7 +3321,7 @@ fn crossOffset(buffer: &Buffer, at: usize) -> i32 {
   let mut budget: usize = 100
   while index < Buffer.len(buffer) && budget > 0 {
     budget = budget - 1
-    let item = List<Glyph>.get(&buffer.glyphs, index)
+    let item = &List<Glyph>.asSlice(&buffer.glyphs)[index]
     if Direction.isHorizontal(buffer.direction) {
       result = add(result, item.position.yOffset)
     } else {
