@@ -328,11 +328,10 @@ pub effect fn sentences(text: &[u8], output: &mut List<usize>) -> ()
       && !sentenceTerminal(current) {
       // Inside a sentence only SB4 and the terminal rules can break, so
       // ordinary text just moves the significant history along (SB998).
+      // `before` is read only after an ATerm, which takes the slow path.
       if !ignored {
-        before = previous
         previous = current
       } else if at == 0 {
-        before = previous
         previous = S.Other
       }
       rawPrevious = current
