@@ -394,8 +394,9 @@ impl Buffer {
     let mut count: usize = 0
     let mut j: usize = 0
     while j < bytes.length {
+      // At most one per byte, so the count cannot wrap; wrapping lets the loop vectorize.
       if (bytes[j] & 0xc0) != 0x80 {
-        count = count + 1
+        count = usize.wrappingAdd(count, 1)
       }
       j = j + 1
     }
@@ -411,6 +412,12 @@ impl Buffer {
         i = i + 1
       }
       return
+    }
+
+    // Byte offsets are clusters, so a text too long for them traps, as converting the first
+    // offset past `u32` would; the loop then converts without checking.
+    if utf8Clusters && bytes.length > 0xffffffff {
+      Intrinsic.trap("Buffer.pushText: the text is too long for UTF-8 clusters")
     }
     let mut k = base
     let mut offset: usize = 0
@@ -440,7 +447,7 @@ impl Buffer {
       }
       let mut cluster = index
       if utf8Clusters {
-        cluster = usize.toU32(offset)
+        cluster = usize.wrappingToU32(offset)
       }
 
       // Slots already hold Glyph.new(0, 0); only the code point dependent fields change.
