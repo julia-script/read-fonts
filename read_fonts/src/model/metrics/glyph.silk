@@ -211,6 +211,15 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
     return F48Dot16.toF32(GlyphMetrics.hAdvanceExact(self, glyph))
   }
 
+  /// The hmtx long metric records when advances come from them alone, with no variation
+  /// deltas to apply; otherwise empty.
+  pub fn staticHRecords(self: &Self) -> &'a [u8] {
+    if self.coords.length != 0 {
+      return Slice.view<u8>(b"", 0, 0)
+    }
+    return self.hRecords
+  }
+
   pub fn hAdvanceExact(self: &Self, glyph: GlyphId) -> F48Dot16 with Intrinsic.inlineAlways() {
     let records = self.hRecords.length / 4
     if records == 0 {

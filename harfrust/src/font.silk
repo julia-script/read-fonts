@@ -10,6 +10,7 @@ import read_fonts.model.metrics {
 import view { View }
 import generated_unicode as Data
 import silk.u32
+import silk.u8
 import silk.u64
 import scale { Scale, sub }
 import read_fonts.lib { FontRef, FontData, ReadError, TableProvider }
@@ -632,6 +633,28 @@ impl<'a, 's, 'c, F> Metrics<'a, 's, 'c, F> {
     )
       && Scale.same(&self.font.scale, &Scale.identity()) {
       let exact = ScaledGlyphMetrics<'a, 'c, 'static, Scale, i32, NoExtents>.exact(scaled)
+
+      // Static hmtx advances are whole units, read straight from the records.
+      let records = GlyphMetrics.staticHRecords(exact)
+      if records.length >= 4 {
+        let last = records.length / 4 - 1
+        let count = GlyphMetrics.numGlyphs(exact)
+        let glyphs = &mut advances.glyphs
+        while i < glyphs.length {
+          let id = glyphs[i].info.glyphId
+          let mut advance: i32 = 0
+          if id < count {
+            let mut index = u32.toUsize(id)
+            if index > last {
+              index = last
+            }
+            advance = u8.toI32(records[index * 4]) * 256 + u8.toI32(records[index * 4 + 1])
+          }
+          glyphs[i].position.xAdvance = advance
+          i = i + 1
+        }
+        return
+      }
       while i < Advances.len(&advances.*) {
         let glyph = Advances.glyph(&advances.*, i)
         let value = GlyphMetrics.hAdvanceExact(exact, glyph)
