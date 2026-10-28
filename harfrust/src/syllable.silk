@@ -3,14 +3,14 @@ import generated_machines as data
 import buffer { Buffer, Glyph }
 import view { View }
 import unicode
-import silk.list { List }
-import silk.slice { Slice }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.i32
-import silk.usize
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.i32
+import silk.num.usize
 
 pub fn indicCategory(cp: u32) -> u16 {
   let d = View.bytes(data.indicData())

@@ -2,8 +2,8 @@
 //! `hypotf`). The standalone wasm32 runtime links no C library, so on wasm32 these forward to the
 //! host's `Math` (see `js/`). Other targets link the system libm.
 static if Intrinsic.targetArchitecture() == "wasm32" {
-  import silk.f32
-  import silk.f64
+  import silk.num.f32
+  import silk.num.f64
 
   unsafe extern "C" fn hostSin(
     value: f64,

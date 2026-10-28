@@ -4,12 +4,12 @@ import font_types.lib { Scalar, BigEndian, readScalar, rawByteLen }
 import read { ReadError, FontRead }
 import array { ScalarArray }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.ownership { Copy }
-import silk.usize
-import silk.u8
-import silk.u32
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.core.ownership { Copy }
+import silk.num.usize
+import silk.num.u8
+import silk.num.u32
 
 pub struct FontData<'a> {
   bytes: &'a [u8],

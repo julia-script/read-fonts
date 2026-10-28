@@ -9,18 +9,18 @@ import harfrust.lib {
   Language
 }
 import font_types.lib { InvalidTag }
-import silk.ownership { Copy }
-import silk.list { List }
-import silk.string { String, Split }
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
+import silk.text.string { String, Split }
 import silk.option { Option }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u8
-import silk.u32
-import silk.i32
-import silk.f32
-import silk.f64
-import silk.i64
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u8
+import silk.num.u32
+import silk.num.i32
+import silk.num.f32
+import silk.num.f64
+import silk.num.i64
 
 pub struct Options {
   pub features: List<Feature>,

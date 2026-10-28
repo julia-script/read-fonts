@@ -15,8 +15,8 @@ import read_fonts.tables.cmap {
 import font_types.lib { GlyphId }
 import dump_support { DumpPath, scalar, absent, integers }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.u32
+import silk.io.writer { Writer, WriterError }
+import silk.num.u32
 
 fn mapped(value: Option<GlyphId>) -> i64 {
   return match move value {

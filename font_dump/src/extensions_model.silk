@@ -36,17 +36,17 @@ import read_fonts.tables.cmap { CmapMapping }
 import read_fonts.lib { FontData, ReadError, ComputedArray }
 import font_types.lib { GlyphId, F48Dot16, F26Dot6, F2Dot14, Tag }
 import dump_support { DumpPath, DumpValue, scalar, absent, bytes }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.string { String }
-import silk.list { List }
-import silk.slice { Slice }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u16
-import silk.u32
-import silk.usize
-import silk.f32
+import silk.core.result { Result }
+import silk.text.string { String }
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
+import silk.num.f32
 
 effect fn field<T: DumpValue>(path: &mut DumpPath, key: string<'static>, value: T) -> ()
   ! WriterError

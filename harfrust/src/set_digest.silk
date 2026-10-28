@@ -1,8 +1,8 @@
 //! HarfBuzz's three-mask Bloom filter for rejecting lookup coverage misses.
-import silk.ownership { Copy }
-import silk.u32
-import silk.u64
-import silk.u16
+import silk.core.ownership { Copy }
+import silk.num.u32
+import silk.num.u64
+import silk.num.u16
 import view { View }
 
 pub struct SetDigest {

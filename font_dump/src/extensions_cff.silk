@@ -23,13 +23,13 @@ import generated_dump_cff2
 import generated_dump_variations
 import dump_support { DumpPath, DumpValue, scalar, absent, readError, bytes }
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
-import silk.string { String }
-import silk.slice { Slice }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
+import silk.text.string { String }
+import silk.collections.slice { Slice }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn field<T: DumpValue>(path: &mut DumpPath, name: string<'static>, value: T) -> ()
   ! WriterError

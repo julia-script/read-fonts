@@ -9,10 +9,10 @@ import read_fonts.tables.name {
 }
 import dump_support { DumpPath, scalar, absent, readError, bytes }
 import silk.option { Option }
-import silk.result { Result }
-import silk.char
-import silk.string { String }
-import silk.writer { Writer, WriterError }
+import silk.core.result { Result }
+import silk.text.char
+import silk.text.string { String }
+import silk.io.writer { Writer, WriterError }
 
 effect fn text<'a>(path: &mut DumpPath, value: Result<NameString<'a>, ReadError>) -> ()
   ! WriterError

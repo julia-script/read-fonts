@@ -4,8 +4,8 @@
 import model.glyph.outline { PathSink }
 import tables.glyf { PointFlags }
 import font_types.lib { Point }
-import silk.ownership { Copy }
-import silk.u16
+import silk.core.ownership { Copy }
+import silk.num.u16
 
 pub enum(u8) PathContourStart {
   ScanBackward = 0,
@@ -209,8 +209,8 @@ impl PendingState {
 
 // Upstream tables/glyf/outline/path.rs tests, recording the same commands in
 // fixed buffers. The metric path uses f32; the 26.6 examples convert exactly.
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
 import model.glyph.outline { NullSink }
 
 struct Spec {
@@ -573,4 +573,4 @@ test effect fn invalidCubicRunsAreRefused() -> ()
   }
 }
 
-import silk.usize
+import silk.num.usize

@@ -1,12 +1,12 @@
 //! Lazily constructed messages for statically dispatched FontFuncs observers.
 import font { ConfiguredShaper, FontFuncs }
 import buffer { Buffer }
-import silk.string { String, InvalidUtf8 }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.usize
-import silk.u32
+import silk.text.string { String, InvalidUtf8 }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.usize
+import silk.num.u32
 
 pub fn enabled<F: FontFuncs>(font: &ConfiguredShaper<F>, buffer: &Buffer) -> bool {
   return FontFuncs.tracing(&font.funcs) && buffer.tracing

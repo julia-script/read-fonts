@@ -16,10 +16,10 @@
 import lib as Ucd
 import lib { Script, ScriptSet, BidiPairedBracketType }
 import utf8
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 
 pub struct ScriptRun {
   pub start: usize,

@@ -6,13 +6,13 @@ import model.metrics.convert { MetricConverter }
 import model.glyph { GlyphSourceOrder }
 import model.optional { Maybe }
 import font_types.lib { F48Dot16, F26Dot6, Fixed, GlyphId, BoundingBox }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.i32
-import silk.i64
-import silk.u16
-import silk.f32
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.i32
+import silk.num.i64
+import silk.num.u16
+import silk.num.f32
 
 pub interface Scale<V> {
   fn add(a: V, b: V) -> V

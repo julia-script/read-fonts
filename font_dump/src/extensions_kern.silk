@@ -35,12 +35,12 @@ import extensions_aat_common {
 }
 import generated_dump_kern
 import dump_support { DumpPath, scalar, bytes, readError, absent }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.io.writer { Writer, WriterError }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 pub effect fn dump<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> ()
   ! WriterError

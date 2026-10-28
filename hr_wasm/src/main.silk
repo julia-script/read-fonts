@@ -28,21 +28,21 @@ import read_fonts.tables.fvar { AxisInstanceArrays, VariationAxisRecord }
 import read_fonts.model.metrics.global { Metrics, LineBox }
 import read_fonts.model.name.glyph { GlyphNameMap, GlyphName }
 import font_types.lib { F2Dot14, F48Dot16, Fixed, GlyphId, Tag }
-import silk.bytes { Bytes }
-import silk.list { List }
+import silk.collections.bytes { Bytes }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.string { String, InvalidUtf8 }
-import silk.effect { Effect }
-import silk.pointer { Pointer }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.f32
-import silk.i32
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.i16
-import silk.usize
+import silk.core.result { Result }
+import silk.text.string { String, InvalidUtf8 }
+import silk.core.effect { Effect }
+import silk.mem.pointer { Pointer }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.f32
+import silk.num.i32
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.i16
+import silk.num.usize
 
 /// Input slots the host fills.
 const FONT: u32 = 0

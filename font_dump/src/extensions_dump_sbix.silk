@@ -27,4 +27,4 @@ pub effect fn dumpStrikeGlyphs<'a>(path: &mut DumpPath, value: Strike<'a>) -> ()
   DumpPath.pop(&mut path)
 }
 
-import silk.usize
+import silk.num.usize

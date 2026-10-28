@@ -15,15 +15,15 @@ import array { ScalarArray }
 import font_types.lib { Fixed, Point, BoundingBox, GlyphId, Matrix }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.effect { Effect }
-import silk.ownership { Copy }
-import silk.slice { Slice }
-import silk.string { String }
-import silk.i32
-import silk.i64
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.effect { Effect }
+import silk.core.ownership { Copy }
+import silk.collections.slice { Slice }
+import silk.text.string { String }
+import silk.num.i32
+import silk.num.i64
+import silk.num.u32
+import silk.num.usize
 
 pub const NESTING_DEPTH_LIMIT: u32 = 10
 
@@ -1359,8 +1359,8 @@ fn signedU32(raw: i32) -> usize {
 }
 
 import generated_support { signedCount }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 effect fn resizeBuildChar(list: &mut List<Fixed>, count: usize) -> ()
   ! OutOfMemoryError
@@ -1607,7 +1607,7 @@ impl<'s, S: CommandSink> CommandSink for NopFilterSink<'s, S> {
 }
 
 // Upstream charstring tests. Kept here to test private interpreter state.
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 import generated_cff_fixtures { exampleCff2 }
 import tables.variations { ItemVariationStore }
 import font_types.lib { F2Dot14 }

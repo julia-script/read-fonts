@@ -3,12 +3,12 @@ import font_data { FontData }
 import read { ReadError }
 import font_types.lib { Uint24 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.usize
-import silk.slice { Slice }
+import silk.core.result { Result }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
+import silk.collections.slice { Slice }
 import table_ref { ByteRange }
 
 pub fn readOffset<'a>(index: usize, count: usize, width: u8, data: FontData<'a>) -> Option<usize> {

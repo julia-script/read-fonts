@@ -13,14 +13,14 @@ import read_fonts.model.glyph.outline { PathSink }
 import read_fonts.lib { FontData }
 import font_types.lib { GlyphId, F2Dot14 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.u16
-import silk.u32
-import silk.u64
-import silk.i16
-import silk.i32
-import silk.usize
-import silk.f32
+import silk.core.result { Result }
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
+import silk.num.i16
+import silk.num.i32
+import silk.num.usize
+import silk.num.f32
 
 /// Maps every Unicode scalar value through the best cmap subtable.
 pub fn cmap<'a>(font: &FontRef<'a>) -> u64 {

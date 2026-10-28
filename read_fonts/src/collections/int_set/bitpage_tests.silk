@@ -2,13 +2,13 @@
 // Ports of all 27 upstream collections/int_set/bitpage.rs tests.
 import collections.int_set.bitpage { BitPage, BitIter, PageIter, RangeIter, U32Range }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.hash { Hash }
-import silk.hash_set { HashSet }
-import silk.u32
-import silk.u64
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.collections.hash { Hash }
+import silk.collections.hash_set { HashSet }
+import silk.num.u32
+import silk.num.u64
 
 fn page(values: &[u32]) -> BitPage {
   let mut result = BitPage.newZeroes()

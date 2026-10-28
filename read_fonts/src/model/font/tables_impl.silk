@@ -7,12 +7,12 @@ import read { ReadError }
 import table_provider { TableProvider, GlyfLoca }
 import font_types.lib { Tag }
 import silk.option { Option }
-import silk.result { Result }
-import silk.list { List }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.collections.list { List }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u32
+import silk.num.usize
 
 pub interface TableCallback {
   effect fn table(self: &Self, tag: Tag) -> Option<Blob> ! OutOfMemoryError ? &mut Allocator

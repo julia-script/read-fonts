@@ -21,13 +21,13 @@ import tables.loca { Loca, LocaGlyph }
 import generated_variation_fixtures as Fixtures
 import font_types.lib { GlyphId, Point, Fixed, F2Dot14, F26Dot6, writeScalar }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
-import silk.i32
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.num.i32
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

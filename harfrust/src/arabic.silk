@@ -7,20 +7,20 @@ import font { ConfiguredShaper, FontFuncs, ShaperData, Shaper, Metrics, metrics 
 import font_types.lib { GlyphId }
 import direction { Direction }
 import scale { add, sub, clamp }
-import silk.i32
-import silk.i64
-import silk.usize
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.num.i32
+import silk.num.i64
+import silk.num.usize
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 import feature { Feature }
 import plan { OtPlan, LookupStep, featureValue }
 import buffer { Buffer, Glyph }
-import silk.slice { Slice }
-import silk.usize
-import silk.list { List }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.collections.slice { Slice }
+import silk.num.usize
+import silk.collections.list { List }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 pub fn usesScript(script: u32) -> bool {
   return script == 0x41726162 || script == 0x53797263 || script == 0x4d6f6e67

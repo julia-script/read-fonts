@@ -1,6 +1,6 @@
 //! Optional dictionary providers for complex-context line breaking.
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub interface DictionarySegmenter {
   /// Append sorted UTF-8 byte boundaries, including 0 and text.length once.

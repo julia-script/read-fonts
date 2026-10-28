@@ -3,24 +3,24 @@
 //! in the pinned NormalizationTest, including all five input columns.
 import lib as Ucd
 import test_support as Scan
-import silk.unicode { Unicode }
-import silk.unicode_tables { UnicodeTables }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.bytes { Bytes }
-import silk.effect { Effect }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.host_input { HostInputError }
-import silk.native_host_input { NativeHostInput }
-import silk.os_filesystem { OsFileSystem }
-import silk.os_writer { StdoutWriter, StderrWriter }
-import silk.writer { Writer, WriterError }
+import silk.text.unicode { Unicode }
+import silk.text.unicode_tables { UnicodeTables }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.bytes { Bytes }
+import silk.core.effect { Effect }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.system.host_input { HostInputError }
+import silk.platform.native.host_input { NativeHostInput }
+import silk.system.filesystem_native { OsFileSystem }
+import silk.io.writer_native { StdoutWriter, StderrWriter }
+import silk.io.writer { Writer, WriterError }
 import silk.format { Format }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.string { String, InvalidUtf8 }
-import silk.testing { Testing, AssertionError }
-import silk.u8
+import silk.core.result { Result }
+import silk.text.string { String, InvalidUtf8 }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.u8
 
 // Raw stdlib tables exclude algorithmic Hangul; NormalizationTest covers it.
 effect fn composition(first: u32, second: u32) -> usize

@@ -2,8 +2,8 @@
 //! Owned big-endian scalar bytes. Arrays use borrowed views in read_fonts.
 import scalar { Scalar, rawByteLen, readScalar, writeScalar }
 import silk.option { Option }
-import silk.ownership { Copy }
-import silk.slice { Slice }
+import silk.core.ownership { Copy }
+import silk.collections.slice { Slice }
 
 pub struct BigEndian<T: Scalar> {
   bytes: [u8; 8],
@@ -63,7 +63,7 @@ impl<T: Scalar> FixedSize for BigEndian<T> {
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
 import silk.format { Display, Debug, Formatter }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 impl<T> BigEndian<T> {
   /// A raw slice replaces Rust's associated fixed-length Raw array type.

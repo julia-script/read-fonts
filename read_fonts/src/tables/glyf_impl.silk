@@ -2,8 +2,8 @@
 import font_data { Cursor }
 import font_types.lib { Point, F26Dot6 }
 import silk.ops { Add, Multiply }
-import silk.i8
-import silk.f32
+import silk.num.i8
+import silk.num.f32
 
 pub const PHANTOM_POINT_COUNT: usize = 4
 

@@ -13,11 +13,11 @@ import generated_misc_table_fixtures as Fixtures
 import generated_model_fixtures as Expected
 import lib { FontRef, FontData, ReadError }
 import font_types.lib { GlyphId, F48Dot16, BoundingBox, F2Dot14 }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -231,8 +231,8 @@ fn scaledNoSize<'a, 'c>(base: GlyphMetrics<'a, 'c>, scale: NoSize) -> ScaledGlyp
 
 import model.metrics.varc { VarcOutlines }
 import model.optional { Maybe }
-import silk.u32
-import silk.usize
+import silk.num.u32
+import silk.num.usize
 
 // upstream model/metrics/glyph.rs::a_varc_composite_measures_by_what_it_draws
 test effect fn aVarcCompositeMeasuresByWhatItDraws() -> ()
@@ -516,12 +516,12 @@ effect fn compareColor(
   run Testing.expect(tested > 0, "color glyphs measured")
 }
 
-import silk.list { List }
+import silk.collections.list { List }
 import model.metrics { IdentityConverter }
 import model.glyph { GlyphSource }
 import generated_cff_fixtures as CffFixtures
-import silk.atomic { Atomic, MemoryOrder }
-import silk.pointer { Pointer }
+import silk.concurrency.atomic { Atomic, MemoryOrder }
+import silk.mem.pointer { Pointer }
 
 fn equalOptional(a: &Option<GlyphExtents<F48Dot16>>, b: &Option<GlyphExtents<F48Dot16>>) -> bool {
   return match &a.* {
@@ -659,7 +659,7 @@ effect fn sourceOrders() -> ()
   }
 }
 
-import silk.u16
+import silk.num.u16
 
 struct SourceProbe<'a> {
   font: FontRef<'a>,

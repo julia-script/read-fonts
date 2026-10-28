@@ -36,10 +36,10 @@ import generated_gpos { ValueFormat, ValueRecord }
 import font_types.lib { GlyphId16, Offset16, Nullable }
 import generated_layout_fixtures
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.u16
-import silk.usize
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.u16
+import silk.num.usize
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -356,8 +356,8 @@ test effect fn lazyFieldsOutOfBounds() -> ()
   )
 }
 
-import silk.i16
-import silk.u32
+import silk.num.i16
+import silk.num.u32
 import generated_layout {
   CoverageTable,
   CoverageFormat1,
@@ -1195,7 +1195,7 @@ test effect fn anchorformat3() -> ()
 }
 
 import font_types.lib { readScalar }
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 import generated_layout { ScriptTags, SelectedScript, TaggedElement }
 
 fn tag(bytes: &[u8]) -> Tag {

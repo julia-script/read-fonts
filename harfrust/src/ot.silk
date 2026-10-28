@@ -1,5 +1,5 @@
 //! Bounded OpenType lookup execution. Subtables borrow checked font views.
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 import trace
 import view { View, read16, offset, valueSize }
 import set_digest { SetDigest }
@@ -31,19 +31,19 @@ import direction { Direction }
 import font_types.lib { F2Dot14, F48Dot16 }
 import read_fonts.lib { ReadError, FontData }
 import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.ownership { Copy }
-import silk.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.u16
-import silk.u32
-import silk.i16
-import silk.i32
-import silk.i64
-import silk.usize
-import silk.u8
-import silk.u64
+import silk.core.result { Result }
+import silk.num.u16
+import silk.num.u32
+import silk.num.i16
+import silk.num.i32
+import silk.num.i64
+import silk.num.usize
+import silk.num.u8
+import silk.num.u64
 
 struct Context<'a, 's> {
   /// Whether `Buffer.savedInput` holds this lookup's input.

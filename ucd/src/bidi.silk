@@ -20,13 +20,13 @@
 // SOFTWARE.
 import lib { BidiClass, BidiPairedBracketType, bidiClass, bidiPairedBracketType, bidiPairedBracket }
 import utf8
-import silk.list { List }
-import silk.ownership { Copy }
+import silk.collections.list { List }
+import silk.core.ownership { Copy }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.usize
-import silk.u8
-import silk.u32
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.usize
+import silk.num.u8
+import silk.num.u32
 
 pub enum ParagraphDirection {
   Auto,

@@ -4,9 +4,9 @@ import font_data { FontData }
 import read { ReadError }
 import font_types.lib { Scalar, rawByteLen }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.slice { Slice }
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.collections.slice { Slice }
 
 pub struct ScalarArray<'a, T: Scalar> {
   data: FontData<'a>,
@@ -85,7 +85,7 @@ import read {
   VarSize,
   readLenAt
 }
-import silk.usize
+import silk.num.usize
 
 pub fn representableLen(start: usize, itemLen: usize, count: usize) -> usize {
   if itemLen == 0 {
@@ -303,7 +303,7 @@ impl<'a, T> VarLenIter<'a, T> {
   }
 }
 
-import silk.u16
+import silk.num.u16
 
 impl<'a, T: Scalar> FontRead<'a, u16> for ScalarArray<'a, T> {
   fn readWithArgs(data: FontData<'a>, args: u16) -> Result<Self, ReadError> {

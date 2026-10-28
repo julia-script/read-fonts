@@ -4,16 +4,16 @@ import render { render }
 import io
 import harfrust.lib { ShaperData }
 import read_fonts.lib { FontRef, FontData, ReadError }
-import silk.bytes { Bytes }
-import silk.string { String, InvalidUtf8 }
-import silk.result { Result }
+import silk.collections.bytes { Bytes }
+import silk.text.string { String, InvalidUtf8 }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.writer { Writer, WriterError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.io.writer { Writer, WriterError }
 import silk.format { Format }
-import silk.u32
-import silk.usize
+import silk.num.u32
+import silk.num.usize
 
 struct Reader<'a> {
   data: FontData<'a>,

@@ -25,15 +25,15 @@ import tables.bitmap {
 }
 import font_types.lib { GlyphId, Offset32, Tag, F48Dot16 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.i8
-import silk.i16
-import silk.i32
-import silk.f32
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.i8
+import silk.num.i16
+import silk.num.i32
+import silk.num.f32
 
 pub struct BitmapSources<'a> {
   sbix: Maybe<Sbix<'a>>,

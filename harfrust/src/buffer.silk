@@ -3,19 +3,19 @@ import language { LanguageTags, Language }
 import direction { Direction }
 import script { Script }
 import flags { BufferFlags, GlyphFlags }
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 import font_types.lib { GlyphId }
 import unicode
-import silk.list { List }
-import silk.ownership { Copy }
-import silk.string { String, ScalarStep }
+import silk.collections.list { List }
+import silk.core.ownership { Copy }
+import silk.text.string { String, ScalarStep }
 import set_digest { SetDigest }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.char
-import silk.usize
-import silk.u32
-import silk.u8
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.text.char
+import silk.num.usize
+import silk.num.u32
+import silk.num.u8
 
 pub enum ContentType {
   None,

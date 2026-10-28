@@ -3,17 +3,17 @@
 import scalar { Scalar, readScalar, writeScalar }
 import cast
 import silk.option { Option }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
 import silk.order { Order, Ordering }
 import silk.ops { Add, Subtract, Multiply, Divide, Negate }
-import silk.i16
-import silk.i32
-import silk.i64
-import silk.u32
-import silk.u64
-import silk.f32
-import silk.f64
+import silk.num.i16
+import silk.num.i32
+import silk.num.i64
+import silk.num.u32
+import silk.num.u64
+import silk.num.f32
+import silk.num.f64
 
 pub struct F2Dot14 {
   bits: i16,
@@ -1212,7 +1212,7 @@ impl FixedSize for F6Dot10 {
 
 import fixed_format { displayShortest }
 import silk.format { Display, Debug, Formatter, Format }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 impl Display for F2Dot14 {
   effect fn display(self: &Self, formatter: &mut Formatter) -> ()

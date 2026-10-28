@@ -2,11 +2,11 @@
 import read_fonts.model.metrics { Scale as MetricScale }
 import read_fonts.model.metrics.extents { GlyphExtents }
 import font_types.lib { F48Dot16, BoundingBox }
-import silk.f64
-import silk.ownership { Copy }
-import silk.i32
-import silk.i64
-import silk.f32
+import silk.num.f64
+import silk.core.ownership { Copy }
+import silk.num.i32
+import silk.num.i64
+import silk.num.f32
 
 pub struct Scale {
   xMult: i64,

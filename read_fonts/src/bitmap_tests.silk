@@ -22,12 +22,12 @@ import generated_misc_table_fixtures as Fixtures
 import test_font_builder as Builder
 import font_types.lib { GlyphId, GlyphId16, Tag, Offset32 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.testing { Testing, AssertionError }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

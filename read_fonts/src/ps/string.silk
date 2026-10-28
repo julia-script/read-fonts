@@ -1,12 +1,12 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import generated_ps_data { standardString }
-import silk.i32
-import silk.ownership { Copy }
+import silk.num.i32
+import silk.core.ownership { Copy }
 import silk.option { Option }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.equal { Equal }
-import silk.u16
-import silk.u32
+import silk.num.u16
+import silk.num.u32
 
 pub struct Sid {
   raw: u16,

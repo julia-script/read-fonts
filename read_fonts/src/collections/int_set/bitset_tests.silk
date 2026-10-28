@@ -3,14 +3,14 @@
 import collections.int_set.bitset { U32Set, U32SetIter, U32SetRangeIter, U32SetBuilder }
 import collections.int_set.bitpage { U32Range }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 import silk.order { Ordering }
-import silk.hash { Hash }
-import silk.hash_set { HashSet }
-import silk.u32
-import silk.u64
+import silk.collections.hash { Hash }
+import silk.collections.hash_set { HashSet }
+import silk.num.u32
+import silk.num.u64
 
 fn optional(input: Option<u32>, expected: i64) -> bool {
   return match move input {

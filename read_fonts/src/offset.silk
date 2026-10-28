@@ -3,10 +3,10 @@ import font_data { FontData }
 import read { ReadError, FontRead, readWithArgs }
 import font_types.lib { Scalar, OffsetValue, Nullable, offsetValue }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.num.u32
+import silk.num.usize
 
 pub fn nonNull<O: OffsetValue>(offset: O) -> Option<usize> {
   let raw = offsetValue<O>(move offset)

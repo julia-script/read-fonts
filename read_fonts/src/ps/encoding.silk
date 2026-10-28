@@ -2,9 +2,9 @@
 import ps.string { Sid }
 import generated_ps_data { predefinedCode, standardString }
 import silk.option { Option }
-import silk.result { Result }
-import silk.string { String, InvalidUtf8 }
-import silk.u16
+import silk.core.result { Result }
+import silk.text.string { String, InvalidUtf8 }
+import silk.num.u16
 
 pub enum PredefinedEncoding {
   Standard,

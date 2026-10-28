@@ -7,10 +7,10 @@ import font_data { FontData }
 import array { VarLenArray, ComputedArray, ScalarArray }
 import read { ReadError }
 import font_types.lib { GlyphId16 }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.usize
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.usize
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

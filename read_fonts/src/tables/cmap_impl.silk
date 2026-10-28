@@ -2,7 +2,7 @@
 // Handwritten algorithms; concatenated into the generated type module.
 import font { FontRef }
 import tables.maxp { SelectedMaxp }
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 
 pub union MapVariant {
   UseDefault,

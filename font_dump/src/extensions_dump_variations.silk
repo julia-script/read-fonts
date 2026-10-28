@@ -1,8 +1,8 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import read_fonts.tables.variations { DeltaSetIndex }
 import font_types.lib { F48Dot16 }
-import silk.slice { Slice }
-import silk.usize
+import silk.collections.slice { Slice }
+import silk.num.usize
 
 pub effect fn dumpStoreEvaluation<'a>(path: &mut DumpPath, table: ItemVariationStore<'a>) -> ()
   ! WriterError

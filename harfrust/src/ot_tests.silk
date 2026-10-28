@@ -7,12 +7,12 @@ import font { ShaperData, Shaper }
 import plan { OtPlan }
 import view { View }
 import read_fonts.lib { FontRef, ReadError }
-import silk.list { List }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.usize
+import silk.collections.list { List }
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.usize
 
 effect fn execute(table: &[u8], glyphs: &[u32], positioning: bool, markClasses: bool) -> Buffer
   ! AssertionError<'static> | OutOfMemoryError

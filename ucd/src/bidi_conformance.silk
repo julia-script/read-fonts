@@ -11,18 +11,18 @@ import bidi {
 }
 import lib { BidiClass, bidiClass }
 import test_support as Scan
-import silk.testing { Testing, AssertionError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.list { List }
+import silk.testing.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.bytes { Bytes }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.os_filesystem { OsFileSystem }
-import silk.native_host_input { NativeHostInput }
-import silk.host_input { HostInputError }
-import silk.effect { Effect }
-import silk.u8
-import silk.u32
+import silk.collections.bytes { Bytes }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.system.filesystem_native { OsFileSystem }
+import silk.platform.native.host_input { NativeHostInput }
+import silk.system.host_input { HostInputError }
+import silk.core.effect { Effect }
+import silk.num.u8
+import silk.num.u32
 
 // Parse failures are failures of the runner, never a reason to skip a case.
 effect fn integer(bytes: &[u8], radix: u32) -> u32

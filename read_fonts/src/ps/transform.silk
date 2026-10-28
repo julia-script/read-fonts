@@ -3,12 +3,12 @@ import ps.num { parseFixedDynamic, DynamicFixed, BCD_POWER_TENS }
 import model.error { Error }
 import font_data { Cursor }
 import font_types.lib { Matrix, Fixed }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.option { Option }
-import silk.result { Result }
-import silk.i32
-import silk.i64
-import silk.f32
+import silk.core.result { Result }
+import silk.num.i32
+import silk.num.i64
+import silk.num.f32
 
 pub type FontMatrix = Matrix<Fixed>
 

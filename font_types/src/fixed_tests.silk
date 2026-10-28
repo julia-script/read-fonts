@@ -1,12 +1,12 @@
 // Tests ported from upstream/font-types/src/fixed.rs.
 import fixed { Fixed, F2Dot14, F4Dot12, F6Dot10, F26Dot6, F48Dot16 }
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 import silk.equal { Equal }
-import silk.i16
-import silk.i32
-import silk.i64
-import silk.f32
-import silk.f64
+import silk.num.i16
+import silk.num.i32
+import silk.num.i64
+import silk.num.f32
+import silk.num.f64
 
 fn equal<T: Equal>(left: T, right: T) -> bool {
   return &left == &right

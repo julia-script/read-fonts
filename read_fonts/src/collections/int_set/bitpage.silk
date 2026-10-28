@@ -1,12 +1,12 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 // Fixed 512-bit pages backing the ordered sparse integer set.
 import silk.option { Option }
-import silk.ownership { Copy }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
-import silk.hash { Hash, HashKey, HashSeed }
-import silk.u32
-import silk.u64
-import silk.usize
+import silk.collections.hash { Hash, HashKey, HashSeed }
+import silk.num.u32
+import silk.num.u64
+import silk.num.usize
 
 pub const PAGE_BITS: u32 = 512
 

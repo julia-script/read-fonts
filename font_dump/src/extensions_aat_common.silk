@@ -20,13 +20,13 @@ import read_fonts.tables.mort {
 import font_types.lib { BigEndian, Scalar, FixedSize, GlyphId, GlyphId16 }
 import dump_support { DumpPath, DumpValue, scalar, readError }
 import generated_dump_aat
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.ownership { Copy }
-import silk.writer { Writer, WriterError }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.ownership { Copy }
+import silk.io.writer { Writer, WriterError }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 pub interface StatePayload {
   effect fn dump(self: &Self, path: &mut DumpPath) -> () ! WriterError ? &mut Writer

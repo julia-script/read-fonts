@@ -15,7 +15,7 @@ pub import ucd.lib {
   decompose,
 }
 import generated_unicode as Data
-import silk.u8
+import silk.num.u8
 
 // HarfBuzz's category encoding is a shaping ABI, not a public Unicode property.
 pub fn generalCategory(cp: u32) -> u8 with Intrinsic.inlineAlways() {

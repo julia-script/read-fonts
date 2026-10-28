@@ -24,12 +24,12 @@ import generated_dump_glyf
 import generated_dump_gvar
 import generated_dump_variations
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
-import silk.slice { Slice }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
+import silk.collections.slice { Slice }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 pub effect fn dump<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> ()
   ! WriterError

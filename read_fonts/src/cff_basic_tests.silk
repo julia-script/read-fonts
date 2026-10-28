@@ -21,14 +21,14 @@ import read { ReadError }
 import model.error { Error }
 import font_types.lib { GlyphId }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
-import silk.string { String }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.text.string { String }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn must<T, E>(result: Result<T, E>) -> T
   ! AssertionError<'static> {

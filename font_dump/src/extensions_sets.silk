@@ -4,10 +4,10 @@ import read_fonts.tables.layout { CoverageTable, ClassDef }
 import font_types.lib { GlyphId }
 import dump_support { DumpPath, scalar }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u32
+import silk.io.writer { Writer, WriterError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u32
 
 // Generated field traversal does not allocate. These evaluated observations own
 // a short-lived allocator; failure aborts the dump through its existing error.

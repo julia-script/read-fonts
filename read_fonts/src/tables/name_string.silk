@@ -3,15 +3,15 @@ import font_data { FontData }
 import read { ReadError }
 import generated_data { macRomanCode }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.char
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.text.char
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 import silk.format { Display, Debug, Formatter, Format }
-import silk.writer { Writer, WriterError }
+import silk.io.writer { Writer, WriterError }
 
 pub enum Encoding {
   Utf16Be,

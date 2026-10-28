@@ -8,14 +8,14 @@ import tables.loca { Loca }
 import generated_variation_fixtures as Fixtures
 import font_types.lib { Point, Fixed, F2Dot14, GlyphId }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
-import silk.ownership { Copy }
-import silk.i16
-import silk.i32
-import silk.usize
-import silk.f64
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.core.ownership { Copy }
+import silk.num.i16
+import silk.num.i32
+import silk.num.usize
+import silk.num.f64
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -450,9 +450,9 @@ test effect fn aGlyphWithoutDataStillZeroes() -> ()
   run Testing.expect(isZero(&simpleDeltas), "missing glyph clears simple output")
 }
 
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
 
 effect fn filled<T: Copy>(value: T, count: usize) -> List<T>
   ! OutOfMemoryError

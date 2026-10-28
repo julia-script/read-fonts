@@ -9,11 +9,11 @@ import bidi {
   reorder
 }
 import lib { BidiClass }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.testing { Testing, AssertionError }
-import silk.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.testing.testing { Testing, AssertionError }
+import silk.core.effect { Effect }
 
 fn runAt(analysis: &BidiAnalysis, offset: usize) -> BidiRun {
   return analysis.runAt(offset)

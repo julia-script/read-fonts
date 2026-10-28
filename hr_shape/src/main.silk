@@ -7,18 +7,18 @@ import regressions
 import io
 import harfrust.lib { ShaperData }
 import read_fonts.lib { FontRef, ReadError }
-import silk.list { List }
-import silk.bytes { Bytes }
-import silk.string { String, InvalidUtf8 }
+import silk.collections.list { List }
+import silk.collections.bytes { Bytes }
+import silk.text.string { String, InvalidUtf8 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.effect { Effect }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.host_input { HostInput, HostInputError }
-import silk.filesystem { Path, FileSystem, FileError }
-import silk.os_filesystem { OsFileSystem }
-import silk.writer { Writer, WriterError }
-import silk.os_writer { StdoutWriter, StderrWriter }
+import silk.core.result { Result }
+import silk.core.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.system.host_input { HostInput, HostInputError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.system.filesystem_native { OsFileSystem }
+import silk.io.writer { Writer, WriterError }
+import silk.io.writer_native { StdoutWriter, StderrWriter }
 
 effect fn process() -> i32
   ! OutOfMemoryError | HostInputError | FileError | WriterError

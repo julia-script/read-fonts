@@ -23,11 +23,11 @@ import tables.variations {
 import generated_variation_fixtures as Fixtures
 import font_types.lib { F2Dot14, Fixed, GlyphId, Offset16 }
 import silk.option { Option }
-import silk.result { Result }
-import silk.testing { Testing, AssertionError }
-import silk.usize
-import silk.u16
-import silk.u32
+import silk.core.result { Result }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.usize
+import silk.num.u16
+import silk.num.u32
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -333,9 +333,9 @@ import tables.loca { Loca }
 import tables.gvar { findGlyphAndPointCount }
 import tables.post { Post }
 import font_types.lib { Point, GlyphId16 }
-import silk.slice { Slice }
-import silk.i32
-import silk.string { String }
+import silk.collections.slice { Slice }
+import silk.num.i32
+import silk.text.string { String }
 
 test effect fn accumulateDense() -> ()
   ! AssertionError<'static> {

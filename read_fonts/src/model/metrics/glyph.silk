@@ -33,18 +33,18 @@ import font_data { FontData }
 import font_types.lib { F48Dot16, F2Dot14, Fixed, GlyphId, Point, BoundingBox }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.list { List }
-import silk.i16
-import silk.i64
-import silk.u16
-import silk.u32
-import silk.u8
-import silk.f32
-import silk.f64
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.collections.list { List }
+import silk.num.i16
+import silk.num.i64
+import silk.num.u16
+import silk.num.u32
+import silk.num.u8
+import silk.num.f32
+import silk.num.f64
 
 pub struct GlyphMetrics<'a, 'c> {
   colors: Maybe<ColorSources<'a>>,
@@ -864,7 +864,7 @@ impl<'a, 'c> GlyphMetrics<'a, 'c> {
   }
 }
 
-import silk.slice { Slice }
+import silk.collections.slice { Slice }
 
 // A public model instance at an all-zero location is the default instance.
 fn nonDefaultCoords<'c>(coords: &'c [F2Dot14]) -> &'c [F2Dot14] {

@@ -4,17 +4,17 @@ import model.metrics.global { unitsPerEm }
 import generated_model_fixtures { tinos, vorgFont, namesOnly, amstelvar }
 import lib { FontRef, FontData, TableProvider, ReadError }
 import font_types.lib { F48Dot16, F2Dot14, Tag, GlyphId }
-import silk.testing { Testing, AssertionError }
+import silk.testing.testing { Testing, AssertionError }
 import silk.option { Option }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.equal { Equal }
-import silk.ownership { Copy }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.u16
-import silk.u32
-import silk.usize
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.num.u16
+import silk.num.u32
+import silk.num.usize
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
@@ -285,7 +285,7 @@ test effect fn aStaticFontReadsTheSameAtEveryLocation() -> ()
   )
 }
 
-import silk.u8
+import silk.num.u8
 
 fn be32(data: &[u8], at: usize) -> u32 {
   return u8.toU32(data[at]) * 16777216 + u8.toU32(data[at + 1]) * 65536

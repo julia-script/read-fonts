@@ -5,19 +5,19 @@ import collections.int_set { IntSet, IntSetIter, U32Set }
 import collections.int_set.input_bit_stream { InputBitStream, StreamHeader }
 import collections.int_set.output_bit_stream { OutputBitStream }
 import collections.int_set.bitpage { trailingZeros }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.ownership { Copy }
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.core.ownership { Copy }
 import silk.equal { Equal }
 import silk.format { Display, Formatter }
-import silk.writer { Writer, WriterError }
-import silk.u8
-import silk.u32
-import silk.u64
-import silk.usize
+import silk.io.writer { Writer, WriterError }
+import silk.num.u8
+import silk.num.u32
+import silk.num.u64
+import silk.num.usize
 
 pub struct DecodingError {}
 

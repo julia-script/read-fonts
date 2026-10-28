@@ -4,10 +4,10 @@ import tables.colr { Colr, Paint, PaintGlyph2, PaintSolid, PaintWithId, ColorLay
 import font_types.lib { GlyphId, GlyphId16, GlyphId24, Offset24, F2Dot14 }
 import test_font_builder as Builder
 import silk.option { Option }
-import silk.result { Result }
-import silk.slice { Slice }
-import silk.testing { Testing, AssertionError }
-import silk.u32
+import silk.core.result { Result }
+import silk.collections.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.num.u32
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

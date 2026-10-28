@@ -14,12 +14,12 @@ import ps.cff.font { CffFontRef, Subfont }
 import font_data { FontData }
 import font_types.lib { F2Dot14, GlyphId, Point, Matrix, BoundingBox }
 import silk.option { Option }
-import silk.result { Result }
-import silk.ownership { Copy }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.u16
-import silk.f32
+import silk.core.result { Result }
+import silk.core.ownership { Copy }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.u16
+import silk.num.f32
 
 pub struct BaseOutlines<'a> {
   pub glyf: Maybe<GlyfLoca<'a>>,

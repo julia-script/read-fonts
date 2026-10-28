@@ -3,7 +3,7 @@
 import model.error { Error }
 import read { ReadError }
 import silk.option { Option }
-import silk.result { Result }
+import silk.core.result { Result }
 
 pub effect fn take<T>(result: Result<T, Error>) -> T
   ! Error with Intrinsic.inlineAlways() {

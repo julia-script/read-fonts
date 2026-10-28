@@ -6,15 +6,15 @@ import read_fonts.model.name.glyph { GlyphNameMap, GlyphName }
 import read_fonts.model.metrics.glyph { GlyphMetrics }
 import read_fonts.model.metrics.extents { GlyphExtents }
 import font_types.lib { GlyphId, F2Dot14 }
-import silk.string { String, InvalidUtf8 }
-import silk.list { List }
-import silk.slice { Slice }
+import silk.text.string { String, InvalidUtf8 }
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
 import silk.option { Option }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.i64
-import silk.i32
-import silk.u32
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.i64
+import silk.num.i32
+import silk.num.u32
 
 interface SerializationFont {
   fn glyphName(self: &Self, glyph: GlyphId) -> GlyphName

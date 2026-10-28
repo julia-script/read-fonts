@@ -2,8 +2,8 @@
 import table_data { TableDataRef, HeaderRead }
 import scalar { FixedSize, readScalar }
 import silk.option { Option }
-import silk.slice { Slice }
-import silk.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
 
 struct Header<'a> {
   bytes: &'a [u8],

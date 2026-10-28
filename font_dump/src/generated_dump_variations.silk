@@ -49,12 +49,12 @@ import font_types.lib {
 }
 import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
 import silk.option { Option }
-import silk.result { Result }
-import silk.writer { Writer, WriterError }
-import silk.u8
-import silk.u16
-import silk.u32
-import silk.u64
+import silk.core.result { Result }
+import silk.io.writer { Writer, WriterError }
+import silk.num.u8
+import silk.num.u16
+import silk.num.u32
+import silk.num.u64
 
 pub effect fn dumpTupleVariationHeader<'a>(
   path: &mut DumpPath,
@@ -625,8 +625,8 @@ pub effect fn dumpTables<'a>(path: &mut DumpPath, font: &FontRef<'a>) -> ()
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import read_fonts.tables.variations { DeltaSetIndex }
 import font_types.lib { F48Dot16 }
-import silk.slice { Slice }
-import silk.usize
+import silk.collections.slice { Slice }
+import silk.num.usize
 
 pub effect fn dumpStoreEvaluation<'a>(path: &mut DumpPath, table: ItemVariationStore<'a>) -> ()
   ! WriterError

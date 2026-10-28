@@ -11,13 +11,13 @@ import generated_layout {
 }
 import model.error { Error }
 import font_types.lib { F2Dot14 }
-import silk.list { List }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.result { Result }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.testing { Testing, AssertionError }
-import silk.slice { Slice }
+import silk.testing.testing { Testing, AssertionError }
+import silk.collections.slice { Slice }
 
 effect fn must<T>(result: Result<T, ReadError>) -> T
   ! AssertionError<'static> {

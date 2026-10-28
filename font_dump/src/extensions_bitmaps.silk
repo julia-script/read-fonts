@@ -17,10 +17,10 @@ import read_fonts.tables.ebdt { Ebdt }
 import generated_dump_bitmap { dumpSmallGlyphMetrics, dumpBigGlyphMetrics, dumpBdtComponent }
 import font_types.lib { GlyphId, GlyphId16 }
 import dump_support { DumpPath, scalar, bytes, readError, absent }
-import silk.result { Result }
+import silk.core.result { Result }
 import silk.option { Option }
-import silk.writer { Writer, WriterError }
-import silk.u32
+import silk.io.writer { Writer, WriterError }
+import silk.num.u32
 
 effect fn dumpLocation<'a>(
   path: &mut DumpPath,

@@ -1,11 +1,11 @@
 import itemization { ScriptRun }
 import itemization
 import lib { Script }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.effect { Effect }
-import silk.list { List }
-import silk.string { String }
-import silk.testing { Testing, AssertionError }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.effect { Effect }
+import silk.collections.list { List }
+import silk.text.string { String }
+import silk.testing.testing { Testing, AssertionError }
 
 // ICU reference algorithm:
 // https://github.com/unicode-org/icu/blob/release-78.1/icu4c/source/extra/scrptrun/scrptrun.cpp

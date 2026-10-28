@@ -1,11 +1,11 @@
 import direction { ParseError }
 import font_types.lib { Tag, InvalidTag }
-import silk.ownership { Copy }
-import silk.result { Result }
-import silk.string { String }
-import silk.u8
-import silk.u32
-import silk.i64
+import silk.core.ownership { Copy }
+import silk.core.result { Result }
+import silk.text.string { String }
+import silk.num.u8
+import silk.num.u32
+import silk.num.i64
 
 pub struct Feature {
   pub tag: Tag,

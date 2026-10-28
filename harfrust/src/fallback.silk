@@ -7,13 +7,13 @@ import scale { Scale, add, sub, clamp }
 import unicode
 import read_fonts.model.metrics.extents { GlyphExtents }
 import font_types.lib { GlyphId }
-import silk.list { List }
+import silk.collections.list { List }
 import silk.option { Option }
-import silk.allocator { Allocator, OutOfMemoryError }
-import silk.i32
-import silk.u16
-import silk.u32
-import silk.u8
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.i32
+import silk.num.u16
+import silk.num.u32
+import silk.num.u8
 
 fn category(cp: u32, input: u8) -> u8 {
   let mut c = input

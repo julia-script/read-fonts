@@ -19,11 +19,11 @@ import complex
 import view { View }
 import read_fonts.model.metrics.glyph { GlyphMetrics }
 import font_types.lib { GlyphId, F2Dot14 }
-import silk.u8
-import silk.u16
-import silk.list { List }
-import silk.result { Result }
-import silk.allocator { Allocator, OutOfMemoryError }
+import silk.num.u8
+import silk.num.u16
+import silk.collections.list { List }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub union ShapeError {
   AlreadyShaped,

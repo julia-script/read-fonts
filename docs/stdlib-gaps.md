@@ -13,7 +13,7 @@ bounded arithmetic and masks, including signed minimum values. It is covered by
 
 ## 002 — reusable buffered stdout writer
 
-`silk.os_writer.StdoutWriter` is deliberately unbuffered and the pinned standard
+`silk.io.writer_native.StdoutWriter` is deliberately unbuffered and the pinned standard
 library has no generic buffered writer. Field-by-field differential output can
 make millions of small writes. The CLI's `buffered_stdout.silk` implements Writer
 with a fixed 64 KiB buffer and explicit fallible flush. The standard library is
@@ -21,7 +21,7 @@ unchanged; output bytes and parse behavior are unchanged.
 
 ## 003 — mutable slice subviews
 
-The pinned `silk.slice.Slice` exposes only `view(&[T], offset, length) -> &[T]`.
+The pinned `silk.collections.slice.Slice` exposes only `view(&[T], offset, length) -> &[T]`.
 It cannot supply a mutable subrange of an existing `&mut [T]` (and has no
 `viewMut` operation). Axis normalization passes checked lengths alongside whole
 scratch slices to private helpers, avoiding pointer conversions or an allocation
@@ -29,7 +29,7 @@ for each subview. Shared snapshots still use `Slice.view`. The stdlib is unchang
 
 ## 004 — integer population and leading/trailing bit counts
 
-The pinned `silk.u64` module has bitwise operations and shifts but no equivalent
+The pinned `silk.num.u64` module has bitwise operations and shifts but no equivalent
 of Rust's `count_ones`, `leading_zeros` or `trailing_zeros`. Sparse integer-set
 pages need all three. `collections/int_set/bitpage.silk` supplies bounded SWAR
 population counting and binary-search bit scans, including the zero-input result
