@@ -154,10 +154,10 @@ builds. Lower is better.
 | --- | ---: | ---: | ---: |
 | Roboto / English Little Prince | 5.82153e+07 | 6.53272e+07 | 0.89× |
 | Roboto / English words | 7.50386e+07 | 8.7936e+07 | 0.85× |
-| Noto Nastaliq Urdu / Persian Little Prince | 7.42392e+08 | 7.89359e+08 | 0.94× |
-| Noto Nastaliq Urdu / Persian words | 7.10913e+08 | 8.46944e+08 | 0.84× |
+| Noto Nastaliq Urdu / Persian Little Prince | 7.35067e+08 | 7.89359e+08 | 0.93× |
+| Noto Nastaliq Urdu / Persian words | 7.10112e+08 | 8.46944e+08 | 0.84× |
 | Noto Sans Devanagari / Hindi words | 2.04169e+08 | 2.25202e+08 | 0.91× |
-| Amiri / Persian Little Prince | 3.22033e+08 | 3.73885e+08 | 0.86× |
+| Amiri / Persian Little Prince | 3.22027e+08 | 3.73885e+08 | 0.86× |
 | Source Serif Variable / react-dom | 7.6049e+08 | 1.00439e+09 | 0.76× |
 
 The geometric mean is **0.86×**, down from 11.25× for the initial port. Plans
@@ -284,6 +284,7 @@ The per-glyph feature check, the second-input search and the nested lookup heade
 Moving to Silk dev.24, whose slice and list accesses no longer reload the list's base pointer and whose
 large struct literals are stored field by field, took the geometric mean from 0.93× to 0.86× with no source
 changes; every workload is now below Rust.
+Inserting copies of a glyph uses the list's own `insertRepeated`, which opens the gap with one block move.
 The remaining cost is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
