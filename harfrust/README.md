@@ -143,15 +143,15 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 80.4M | 65.3M | 1.23× |
-| Roboto / English words | 113M | 87.9M | 1.29× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1.12G | 789M | 1.42× |
-| Noto Nastaliq Urdu / Persian words | 957M | 847M | 1.13× |
-| Noto Sans Devanagari / Hindi words | 281M | 225M | 1.25× |
-| Amiri / Persian Little Prince | 508M | 374M | 1.36× |
-| Source Serif Variable / react-dom | 1.07G | 1,004M | 1.06× |
+| Roboto / English Little Prince | 79.1M | 65.3M | 1.21× |
+| Roboto / English words | 112M | 87.9M | 1.27× |
+| Noto Nastaliq Urdu / Persian Little Prince | 1.13G | 789M | 1.43× |
+| Noto Nastaliq Urdu / Persian words | 958M | 847M | 1.13× |
+| Noto Sans Devanagari / Hindi words | 283M | 225M | 1.26× |
+| Amiri / Persian Little Prince | 489M | 374M | 1.31× |
+| Source Serif Variable / react-dom | 1.05G | 1,004M | 1.04× |
 
-The geometric mean is **1.24×**, down from 11.25× for the initial port. Plans
+The geometric mean is **1.23×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
 definitions into per-glyph tables; ligature sets reject candidates by their
 second component; shapers reuse default-instance metrics across calls; 16-bit
@@ -217,12 +217,14 @@ only reorder glyphs.
 Format 3 rules keep digests of their second input, first backtrack and first lookahead
 coverages, so most failing rules are ruled out from the glyphs on either side of the first
 one before the rest of the rule is read or any coverage is searched. A covered format 3 rule that fails
-this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. Plans find the GDEF class definitions once,
+this way is rejected inside the lookup's subtable loop, without the contextual call and its setup. That check borrows the lookup and finds the rule's
+digests by index, so its call copies little. Plans find the GDEF class definitions once,
 so a shaping call does not look them up again, and keep the digests Indic consonant position
 probes check. Shaper pauses run only at the stages where the shaper has
 work to do. Multiple and ligature substitutions move the buffer's tail through a slice
 starting at the edit, so the moves need no index checks. Lookups whose subtables all kern
-pairs take a dedicated path without the branches for other subtable kinds, and lookups are
+pairs take a dedicated path without the branches for other subtable kinds and check an expanded coverage without
+the subtable's digest, and lookups are
 passed by reference instead of copied for every glyph. Kerning reads expanded pair
 classes straight from the plan, and plans fill expanded coverages and class ranges in bulk. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
