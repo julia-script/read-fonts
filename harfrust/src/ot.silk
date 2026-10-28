@@ -47,6 +47,8 @@ struct Context<'a, 's> {
   ligatureId: u32,
   shaper: u32,
   restrictSyllable: bool,
+  /// Whether multiple and ligature substitutions may start an output pass at their first edit.
+  outputPass: bool,
   // Ligature component positions, reused so each candidate ligature skips a 512-byte memset.
   positions: [usize; 64],
   classTables: &'s [ClassTable],
@@ -231,6 +233,7 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     ligatureId: 0,
     shaper: buffer.shaper,
     restrictSyllable: false,
+    outputPass: false,
     positions: [0; 64],
     positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
@@ -357,6 +360,65 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
             )
           }
         }
+      } else if !context.positioning && !tracing && Buffer.len(&buffer.*) > 48
+        && multipliesOrLigates(subtables) {
+        // Multiple and ligature substitutions start an output pass at their first edit, instead
+        // of moving the rest of the buffer at every edit. The pass reads from `buffer.idx`. Short
+        // buffers, such as single words, move less in place than a pass costs to set up.
+        context.outputPass = true
+        buffer.idx = 0
+        while buffer.idx < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
+          let from = buffer.idx
+          let i = nextCandidate(List<Glyph>.asSlice(&buffer.glyphs), from, &steps[step].digest)
+          if !buffer.haveOutput {
+            buffer.idx = i
+          } else if buffer.outLen == from && !buffer.separateOutput {
+            // Until the output outgrows the input, it is the input read so far.
+            buffer.outLen = i
+            buffer.idx = i
+          } else {
+            run Buffer.nextGlyphs(&mut buffer, i - from)
+          }
+          if i >= Buffer.len(&buffer.*) {
+            break
+          }
+          let mut result = no()
+          let glyph = &List<Glyph>.asSlice(&buffer.glyphs)[i]
+          if everywhere || enabled(&context, glyph, step, end) > 0 {
+            result = run applyLookup(
+              font,
+              &mut context,
+              &mut buffer,
+              &lookup,
+              subtables,
+              i,
+              step,
+              end,
+              0,
+            )
+          }
+          if result.yes {
+            digestStale = true
+            if !buffer.haveOutput {
+              buffer.idx = result.next
+            }
+          } else if !buffer.haveOutput {
+            buffer.idx = i + 1
+          } else if buffer.successful {
+            run Buffer.nextGlyph(&mut buffer)
+          }
+        }
+        context.outputPass = false
+        if buffer.haveOutput {
+          // A failed pass still leaves the buffer as matching saw it, as edits in place do.
+          let successful = buffer.successful
+          let hadPositions = buffer.havePositions
+          buffer.successful = true
+          drop run Buffer.syncOutput(&mut buffer)
+          buffer.successful = successful
+          buffer.havePositions = hadPositions
+        }
+        buffer.idx = 0
       } else {
         let mut i: usize = 0
         while i < Buffer.len(&buffer.*) && context.budget != 0 && buffer.successful {
@@ -415,6 +477,22 @@ pub effect fn apply<'a, 's, F: FontFuncs>(
     buffer.successful = false
   }
   drop run trace.table(font, &buffer.*, tableEnd, plan.chosenScript)
+}
+
+/// Whether a lookup's subtables are all multiple or ligature substitutions, which an output
+/// pass applies.
+fn multipliesOrLigates(subtables: &[LookupSubtable]) -> bool {
+  if subtables.length == 0 {
+    return false
+  }
+  let mut i: usize = 0
+  while i < subtables.length {
+    if subtables[i].kind != 2 && subtables[i].kind != 4 {
+      return false
+    }
+    i = i + 1
+  }
+  return true
 }
 
 /// Whether a step's lookup may apply to the glyphs of `digest`: one of them must start a match,
@@ -516,6 +594,7 @@ pub effect fn wouldSubstitute<F: FontFuncs>(
     ligatureId: 0,
     shaper: 0,
     restrictSyllable: false,
+    outputPass: false,
     positions: [0; 64],
     positionStack: List<usize>.make(),
     classTables: List<ClassTable>.asSlice(&plan.classTables),
@@ -1038,6 +1117,17 @@ fn setGlyph(
   multiplied: bool,
 ) -> () {
   let mut item = List<Glyph>.get(&buffer.glyphs, at)
+  substituteGlyph(context, &mut item, glyphId, ligature, multiplied)
+  List<Glyph>.set(&mut buffer.glyphs, at, item)
+}
+
+fn substituteGlyph(
+  context: &Context,
+  item: &mut Glyph,
+  glyphId: u32,
+  ligature: bool,
+  multiplied: bool,
+) -> () {
   item.info.glyphId = glyphId
   item.substituted = true
   if ligature {
@@ -1050,8 +1140,27 @@ fn setGlyph(
   if View.len(&context.glyphClasses.view) > 0 {
     item.glyphClass = classOf(&context.glyphClasses, glyphId)
   }
+}
 
-  List<Glyph>.set(&mut buffer.glyphs, at, item)
+/// Starts the output pass of `ot.apply` at glyph `at`, the first edit: the glyphs before it are
+/// the output so far, in place.
+fn beginOutput(buffer: &mut Buffer, at: usize) -> () {
+  if !buffer.haveOutput {
+    buffer.haveOutput = true
+    buffer.separateOutput = false
+    List<Glyph>.truncate(&mut buffer.out, 0)
+    buffer.idx = at
+    buffer.outLen = at
+  }
+}
+
+/// The buffer's length as matching sees it: during an output pass, the output so far and the
+/// unread input.
+fn glyphCount(buffer: &Buffer) -> usize {
+  if buffer.haveOutput {
+    return buffer.outLen + (Buffer.len(buffer) - buffer.idx)
+  }
+  return Buffer.len(buffer)
 }
 
 effect fn substitute<F: FontFuncs>(
@@ -1127,9 +1236,42 @@ effect fn substitute<F: FontFuncs>(
       if count > (usize.saturatingSubtract(View.len(&set), 2) / width) {
         return no()
       }
-      if Buffer.len(&buffer.*) + count - 1 > context.maxLength {
+      if glyphCount(&buffer.*) + count - 1 > context.maxLength {
         buffer.successful = false
         return no()
+      }
+      if context.outputPass && count != 1 {
+        beginOutput(&mut buffer, at)
+      }
+      if buffer.haveOutput {
+        // An output pass writes the glyph's replacements to the output instead of moving the
+        // rest of the buffer.
+        if count == 0 {
+          Buffer.deleteCurrent(&mut buffer)
+          return yes(at)
+        }
+        if count == 1 {
+          setGlyph(&context.*, &mut buffer, at, View.uint(&set, 2, width), false, false)
+          run Buffer.nextGlyph(&mut buffer)
+          return yes(at + 1)
+        }
+        run saveInput(&mut context, &buffer.*)
+        let mut i: usize = 0
+        while i < count {
+          let mut item = glyph
+          if item.ligatureId == 0 {
+            item.component = usize.toU32(i) & 15
+            item.numComponents = 1
+          }
+          if View.len(&context.glyphClasses.view) == 0 && glyph.glyphClass == 2 {
+            item.glyphClass = 1
+          }
+          substituteGlyph(&context.*, &mut item, View.uint(&set, 2 + i * width, width), false, true)
+          run Buffer.outputItem(&mut buffer, item)
+          i = i + 1
+        }
+        Buffer.skipGlyph(&mut buffer)
+        return yes(at + count)
       }
       if count == 0 {
         drop run trace.indexed(
@@ -1341,7 +1483,7 @@ effect fn substitute<F: FontFuncs>(
           Slice.view(&context.positions, 0, components),
           0,
         )
-        Buffer.mergeClusters(&mut buffer, at, cursor + 1)
+        Buffer.mergeInputClusters(&mut buffer, at, cursor + 1)
         Buffer.unsafeToBreak(&mut buffer, at, cursor + 1)
         let original = List<Glyph>.get(&buffer.glyphs, at)
         let mut baseLigature = original.glyphClass == 1
@@ -1412,6 +1554,29 @@ effect fn substitute<F: FontFuncs>(
             List<Glyph>.set(&mut buffer.glyphs, p, part)
             p = p + 1
           }
+        }
+        if context.outputPass {
+          beginOutput(&mut buffer, at)
+        }
+        if buffer.haveOutput {
+          // The ligature goes to the output; the glyphs between its components move up to
+          // the components' end and stay unread, as they follow the ligature.
+          run Buffer.nextGlyph(&mut buffer)
+          let glyphs = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+          let mut write = cursor + 1
+          let mut read = cursor
+          let mut m = components - 1
+          while read > at {
+            if m != 0 && read == context.positions[m] {
+              m = m - 1
+            } else {
+              write = write - 1
+              glyphs[write] = glyphs[read]
+            }
+            read = read - 1
+          }
+          buffer.idx = write
+          return yes(at + 1)
         }
         Buffer.removeSorted(&mut buffer, Slice.view(&context.positions, 1, components - 1))
         drop run trace.indexed(font, &buffer.*, "ligated glyph at ", at, "")
@@ -1499,15 +1664,34 @@ fn compatibleComponents(
     if first.ligatureId == item.ligatureId && first.component == item.component {
       return true
     }
+
+    // During an output pass the glyphs before the current one are the output.
+    let mut floor: usize = 0
+    if buffer.haveOutput && at >= buffer.idx {
+      floor = buffer.idx
+    }
     let mut p = at
-    while p > 0 {
+    while p > floor {
       p = p - 1
       let base = List<Glyph>.get(&buffer.glyphs, p)
       if base.ligatureId != first.ligatureId {
-        break
+        return false
       }
       if base.component == 0 {
         return ignored(context, lookup, &base)
+      }
+    }
+    if buffer.haveOutput && at >= buffer.idx {
+      let out = Buffer.outGlyphs(buffer)
+      let mut k = out.length
+      while k != 0 {
+        k = k - 1
+        if out[k].ligatureId != first.ligatureId {
+          break
+        }
+        if out[k].component == 0 {
+          return ignored(context, lookup, &out[k])
+        }
       }
     }
     return false
@@ -3501,10 +3685,28 @@ effect fn saveInput(context: &mut Context, buffer: &Buffer) -> ()
     return
   }
   context.haveSavedInput = true
-  run List<Glyph>.reserve(&mut context.savedInput, Buffer.len(buffer))
-  let mut i: usize = 0
-  while i < Buffer.len(buffer) {
-    run List<Glyph>.append(&mut context.savedInput, List<Glyph>.get(&buffer.glyphs, i))
-    i = i + 1
+  run List<Glyph>.reserve(&mut context.savedInput, glyphCount(buffer))
+  let mut from: usize = 0
+  if buffer.haveOutput {
+    // The buffer as matching sees it: the output so far, then the unread input.
+    run appendGlyphs(&mut context.savedInput, Buffer.outGlyphs(buffer))
+    from = buffer.idx
+  }
+  let input = List<Glyph>.asSlice(&buffer.glyphs)
+  run appendGlyphs(&mut context.savedInput, Slice.view(input, from, input.length - from))
+}
+
+/// Appends `glyphs` in runs short enough that each copy stays a vector loop.
+effect fn appendGlyphs(list: &mut List<Glyph>, glyphs: &[Glyph]) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut at: usize = 0
+  while at < glyphs.length {
+    let mut chunk = glyphs.length - at
+    if chunk > 24 {
+      chunk = 24
+    }
+    run List<Glyph>.appendSlice(&mut list, Slice.view(glyphs, at, chunk))
+    at = at + chunk
   }
 }
