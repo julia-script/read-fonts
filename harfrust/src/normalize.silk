@@ -466,8 +466,7 @@ pub fn formClusters(buffer: &mut Buffer) -> () {
     if cp >= 0x300 && !continuation {
       continuation = isMark(cp)
         || (cp >= 0x200d
-          && (cp == 0x200d || (cp >= 0x1f3fb && cp <= 0x1f3ff)
-            || (cp >= 0xe0020 && cp <= 0xe007f)
+          && (cp == 0x200d || (cp >= 0x1f3fb && cp <= 0x1f3ff) || (cp >= 0xe0020 && cp <= 0xe007f)
             || (cp >= 0xff9e && cp <= 0xff9f)
             || (cp >= 0x1f1e6 && cp <= 0x1f1ff && prev >= 0x1f1e6 && prev <= 0x1f1ff
               && !previousContinuation)))
