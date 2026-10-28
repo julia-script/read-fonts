@@ -208,7 +208,7 @@ pub struct OtPlan<'a> {
   /// lookups use these.
   pub lookupSubtables: List<u64>,
   /// Each cached lookup's `LookupStep.lookupOffset`.
-  lookupOffsets: List<usize>,
+  pub lookupOffsets: List<usize>,
   /// Each cached lookup's `LookupStep.second`.
   lookupSeconds: List<SetDigest>,
   /// For each pair set of a 16-bit format 1 pair adjustment subtable, the digest of its second
@@ -469,13 +469,22 @@ impl<'a> OtPlan<'a> {
   effect fn cacheNestedLookups(self: &mut Self) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
+    // Each lookup index is listed once, however many rules apply it.
+    let lookups = List<u64>.length(&self.lookupSubtables)
+    let mut seen = List<u64>.make()
+    run List<u64>.appendRepeated(&mut seen, 0, lookups / 64 + 1)
     let mut nested = List<u16>.make()
     let mut s: usize = 0
     while s < List<LookupSubtable>.length(&self.subtables) {
       let sub = List<LookupSubtable>.get(&self.subtables, s)
       if contextualKind(sub.kind, self.positioning) {
         List<u16>.clear(&mut nested)
-        run nestedLookups(View.tail(&self.table, sub.offset), sub.kind, &mut nested)
+        run nestedLookups(
+          View.tail(&self.table, sub.offset),
+          sub.kind,
+          List<u64>.asMutSlice(&mut seen),
+          &mut nested,
+        )
         let mut n: usize = 0
         while n < List<u16>.length(&nested) {
           let index = List<u16>.get(&nested, n)
@@ -1546,8 +1555,9 @@ fn offset16At(table: View, kind: u16, positioning: bool) -> usize {
   return 2
 }
 
-/// Appends the lookup indices of the actions of a 16-bit contextual subtable's rules.
-effect fn nestedLookups(table: View, kind: u16, out: &mut List<u16>) -> ()
+/// Appends the lookup indices of the actions of a 16-bit contextual subtable's rules that
+/// `seen`, a bit per lookup index, does not have yet, and adds them to it.
+effect fn nestedLookups(table: View, kind: u16, seen: &mut [u64], out: &mut List<u16>) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
   let chained = kind == 6 || kind == 8
@@ -1566,7 +1576,7 @@ effect fn nestedLookups(table: View, kind: u16, out: &mut List<u16>) -> ()
       actionCount = u16.toUsize(View.u16(&table, 4))
       pos = 6 + inputCount * 2
     }
-    run appendActions(table, pos, actionCount, &mut out)
+    run appendActions(table, pos, actionCount, &mut seen, &mut out)
     return ()
   }
   let mut countPos: usize = 4
@@ -1600,19 +1610,33 @@ effect fn nestedLookups(table: View, kind: u16, out: &mut List<u16>) -> ()
         actionCount = u16.toUsize(View.u16(&rule, 2))
         pos = 4 + usize.saturatingSubtract(inputCount, 1) * 2
       }
-      run appendActions(rule, pos, actionCount, &mut out)
+      run appendActions(rule, pos, actionCount, &mut seen, &mut out)
       r = r + 1
     }
     index = index + 1
   }
 }
 
-effect fn appendActions(table: View, pos: usize, count: usize, out: &mut List<u16>) -> ()
+effect fn appendActions(
+  table: View,
+  pos: usize,
+  count: usize,
+  seen: &mut [u64],
+  out: &mut List<u16>,
+) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut n: usize = 0
   while n < count && pos + n * 4 + 4 <= View.len(&table) {
-    run List<u16>.append(&mut out, View.u16(&table, pos + n * 4 + 2))
+    let index = View.u16(&table, pos + n * 4 + 2)
+    let word = u16.toUsize(index) / 64
+    let bit = u64.shiftLeft(1, u16.toU64(index) & 63)
+    if word >= seen.length {
+      // Out of the lookup list: the caller ignores it, as it would every repeat.
+    } else if (seen[word] & bit) == 0 {
+      seen[word] = seen[word] | bit
+      run List<u16>.append(&mut out, index)
+    }
     n = n + 1
   }
 }

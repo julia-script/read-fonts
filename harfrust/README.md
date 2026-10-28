@@ -143,13 +143,13 @@ builds. Lower is better.
 
 | Font / text | Silk Ir | Rust Ir | Silk / Rust |
 | --- | ---: | ---: | ---: |
-| Roboto / English Little Prince | 75.6M | 65.3M | 1.16× |
-| Roboto / English words | 106M | 87.9M | 1.20× |
-| Noto Nastaliq Urdu / Persian Little Prince | 1.00G | 789M | 1.27× |
-| Noto Nastaliq Urdu / Persian words | 911M | 847M | 1.08× |
+| Roboto / English Little Prince | 75.7M | 65.3M | 1.16× |
+| Roboto / English words | 106M | 87.9M | 1.21× |
+| Noto Nastaliq Urdu / Persian Little Prince | 997M | 789M | 1.26× |
+| Noto Nastaliq Urdu / Persian words | 905M | 847M | 1.07× |
 | Noto Sans Devanagari / Hindi words | 263M | 225M | 1.17× |
-| Amiri / Persian Little Prince | 444M | 374M | 1.19× |
-| Source Serif Variable / react-dom | 1.01G | 1,004M | 1.01× |
+| Amiri / Persian Little Prince | 443M | 374M | 1.18× |
+| Source Serif Variable / react-dom | 1.02G | 1,004M | 1.01× |
 
 The geometric mean is **1.15×**, down from 11.25× for the initial port. Plans
 cache each lookup's subtables with per-subtable digests and expand class
@@ -234,7 +234,9 @@ read so far. The scratch lists a lookup application needs, its saved input and
 contextual input and ligature component positions, live in the buffer, so each table's application
 neither creates nor frees them. A lookup's format 3 subtables check their rule
 digests in the lookup's subtable loop, against the glyphs before and after the
-first one, which are found once for all the subtables. The remaining gap is mostly per-glyph table walking that harfrust
+first one, which are found once for all the subtables. Contextual rules find
+the lookups they apply through the plan's lookup offsets, and the plan lists
+each nested lookup once however many rules apply it. The remaining gap is mostly per-glyph table walking that harfrust
 precomputes and per-call setup.
 
 ## Known differences
