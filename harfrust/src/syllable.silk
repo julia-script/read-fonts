@@ -73,64 +73,71 @@ pub fn next(buffer: &Buffer, start: usize) -> usize {
   return end
 }
 
+// A big-endian u16 from the machine tables, which are generated with in-range offsets.
+fn be16(bytes: &[u8], at: usize) -> usize with Intrinsic.inlineAlways() {
+  return u8.toUsize(bytes[at]) * 256 + u8.toUsize(bytes[at + 1])
+}
+
 pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
   ! OutOfMemoryError
   ? &mut Allocator {
-  let mut states = View.bytes(data.indicStates())
-  let mut transitions = View.bytes(data.indicTransitions())
-  let mut actions = View.bytes(data.indicActions())
+  let mut states = data.indicStates()
+  let mut transitions = data.indicTransitions()
+  let mut actions = data.indicActions()
   if machine == 2 {
-    states = View.bytes(data.khmerStates())
-    transitions = View.bytes(data.khmerTransitions())
-    actions = View.bytes(data.khmerActions())
+    states = data.khmerStates()
+    transitions = data.khmerTransitions()
+    actions = data.khmerActions()
   }
   if machine == 3 {
-    states = View.bytes(data.myanmarStates())
-    transitions = View.bytes(data.myanmarTransitions())
-    actions = View.bytes(data.myanmarActions())
+    states = data.myanmarStates()
+    transitions = data.myanmarTransitions()
+    actions = data.myanmarActions()
   }
   if machine == 4 {
-    states = View.bytes(data.useStates())
-    transitions = View.bytes(data.useTransitions())
-    actions = View.bytes(data.useActions())
+    states = data.useStates()
+    transitions = data.useTransitions()
+    actions = data.useActions()
   }
-  let stateCount = (View.len(&states) - 4) / 2
-  let mut indices = List<usize>.make()
+  let stateCount = (states.length - 4) / 2
   let length = Buffer.len(&buffer.*)
   if length > 1048576 {
     return
   }
-  run List<usize>.reserve(&mut indices, length + 1)
-  let mut i: usize = 0
-  while i < length {
-    let item = List<Glyph>.get(&buffer.glyphs, i)
-    let mut include = true
-    if machine == 4 {
-      include = item.category != 6
-      if item.category == 14 {
+
+  // Only the universal machine skips glyphs, so it alone keeps the included glyphs'
+  // indices; for the others position p is glyph p.
+  let mut indices = List<usize>.make()
+  let mut len = usize.toI32(length)
+  if machine == 4 {
+    run List<usize>.reserve(&mut indices, length + 1)
+    let glyphs = List<Glyph>.asSlice(&buffer.glyphs)
+    let mut i: usize = 0
+    while i < length {
+      let mut include = glyphs[i].category != 6
+      if glyphs[i].category == 14 {
         let mut j = i + 1
         while j < length {
-          let other = List<Glyph>.get(&buffer.glyphs, j)
-          if other.category != 6 {
-            include = !unicode.isMark(other.codepoint)
+          if glyphs[j].category != 6 {
+            include = !unicode.isMark(glyphs[j].codepoint)
             break
           }
           j = j + 1
         }
       }
+      if include {
+        run List<usize>.append(&mut indices, i)
+      }
+      i = i + 1
     }
-    if include {
-      run List<usize>.append(&mut indices, i)
-    }
-    i = i + 1
+    len = usize.toI32(List<usize>.length(&indices))
+    run List<usize>.append(&mut indices, length)
   }
-  let len = usize.toI32(List<usize>.length(&indices))
-  run List<usize>.append(&mut indices, length)
   let mut p: i32 = 0
   let mut ts: i32 = 0
   let mut te: i32 = 0
   let mut act: u8 = 0
-  let mut state = u16.toUsize(View.u16(&states, 0))
+  let mut state = be16(states, 0)
   let mut serial: u32 = 1
   let mut budget = length * 8 + 16
   while p <= len && budget != 0 {
@@ -138,27 +145,29 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if state >= stateCount || p < 0 {
       break
     }
-    if View.u8(&states, 4 + state) != 0 {
+    if states[4 + state] != 0 {
       ts = p
     }
     let mut category: usize = 59
     if p < len {
-      category = u8.toUsize(
-        List<Glyph>.get(&buffer.glyphs, List<usize>.get(&indices, i32.toUsize(p))).category,
-      )
+      let mut at = i32.toUsize(p)
+      if machine == 4 {
+        at = List<usize>.asSlice(&indices)[at]
+      }
+      category = u8.toUsize(List<Glyph>.asSlice(&buffer.glyphs)[at].category)
       if category >= 59 {
         category = 0
       }
     }
     let pos = (state * 60 + category) * 4
-    state = u16.toUsize(View.u16(&transitions, pos))
-    let mut pc = u16.toUsize(View.u16(&transitions, pos + 2))
-    while pc < View.len(&actions) {
-      let op = View.u8(&actions, pc)
+    state = be16(transitions, pos)
+    let mut pc = be16(transitions, pos + 2)
+    while pc + 1 < actions.length {
+      let op = actions[pc]
       if op == 0 {
         break
       }
-      let arg = View.u8(&actions, pc + 1)
+      let arg = actions[pc + 1]
       pc = pc + 2
       if op == 1 {
         te = p + 1
@@ -176,12 +185,16 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
         act = arg
       }
       if op == 6 && ts >= 0 && ts < te && te <= len {
-        let start = List<usize>.get(&indices, i32.toUsize(ts))
-        let end = List<usize>.get(&indices, i32.toUsize(te))
-        i = start
+        let mut start = i32.toUsize(ts)
+        let mut end = i32.toUsize(te)
+        if machine == 4 {
+          start = List<usize>.asSlice(&indices)[start]
+          end = List<usize>.asSlice(&indices)[end]
+        }
+        let updated = serial * 16 + u8.toU32(arg)
+        let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
+        let mut i = start
         while i < end {
-          let updated = serial * 16 + u8.toU32(arg)
-          let slots = List<Glyph>.asMutSlice(&mut buffer.glyphs)
           slots[i].syllable = updated
           i = i + 1
         }
@@ -192,7 +205,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
         Buffer.unsafeToBreak(&mut buffer, start, end)
       }
       if op == 7 {
-        let skip = u8.toUsize(View.u8(&actions, pc))
+        let skip = u8.toUsize(actions[pc])
         pc = pc + 1
         if act != arg {
           pc = pc + skip
@@ -202,7 +215,7 @@ pub effect fn find(buffer: &mut Buffer, machine: u32) -> ()
     if p == len {
       break
     }
-    if View.u8(&states, 4 + stateCount + state) != 0 {
+    if states[4 + stateCount + state] != 0 {
       ts = 0
     }
     p = p + 1
