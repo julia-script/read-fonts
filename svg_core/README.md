@@ -116,14 +116,14 @@ skips pinned-reference checks and the external corpus, not native/tooling tests
 or the actual own/malformed rendering runs. Formatting uses one manifest per
 package; a directory argument is outside its own `src/` selection in dev.27.
 
-The phase-3 macOS arm64 offline SVG gate completed in 128.16 seconds. The Linux
-arm64 offline SVG gate plus `scripts/generate --check` completed in 176.05 seconds
-in an isolated Ubuntu workspace. Both used populated toolchain/reference caches
-and ran concurrently on the same host; these are not cold CI measurements.
-The merged-main [GitHub Actions run](https://github.com/julia-script/read-fonts/actions/runs/40931083367)
-passed all 11 jobs; its SVG job took 4m53s on a fresh hosted Ubuntu runner. Silk
-was a cache miss, but LLVM and pip were hits. This is not a fully cold-cache budget
-measurement.
+The phase-5 [GitHub Actions run](https://github.com/julia-script/read-fonts/actions/runs/40954264824)
+passed all 11 jobs, including the workspace `scripts/generate --check` gate.
+A separate [cold-cache run](https://github.com/julia-script/read-fonts/actions/runs/40954271867/job/123730154546)
+passed the complete SVG job in **7m36s** on a fresh hosted Ubuntu 24.04 runner.
+That verification branch disabled Silk, LLVM, pip, specification/suite and
+encoding/IDNA cache restoration; pip also used `--no-cache-dir`. It was closed
+without merging its workflow changes. Production CI retains its caches and
+15-minute timeout.
 
 ## Specifications and suites
 
@@ -287,40 +287,50 @@ subdivision limits fail explicitly rather than returning under-resolved geometry
 ## Limitations and performance
 
 [Limitations](LIMITATIONS.md) records dependency/toolchain and backend constraints.
-No compiler or stdlib is patched. The phase-4 Ubuntu 24.04 arm64 baseline in
+No compiler or stdlib is patched. The phase-5 Ubuntu 24.04 arm64 baseline in
 [`svg_bench/baseline.json`](../svg_bench/baseline.json) uses three native samples,
 one iteration and no warmup, plus a separate Valgrind 3.22.0 Callgrind pass.
-The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
-22.1.8 and Rust 1.96.0. Ratios are Silk/resvg; greater than 1 is slower.
+The VM has four CPUs and 8 GiB RAM; binaries use Silk dev.29, LLVM 22.1.8 and
+Rust 1.96.0. The measured phase-5 snapshot is `76308c0`, before the subsequent
+main-branch XML follow-up merge; the merged tree's CI evidence is above.
+Ratios are Silk/resvg; greater than 1 is slower.
 
 | Workload | Parse + record time | Render time | End-to-end time | Render-process Ir |
 |---|---:|---:|---:|---:|
-| 128 original icons | 11.241× | 1.977× | 5.050× | 4.280× |
-| Tiger | 6.474× | 1.952× | 2.401× | 2.839× |
-| Large map/CAD | 13.513× | 1.228× | 2.762× | 2.408× |
-| Mixed curves | 9.977× | 3.598× | 4.869× | 4.177× |
-| 2,048 stylesheet rules/rectangles | 0.706× | 0.664× | 0.695× | 0.444× |
-| 1,024 nested symbol instances | 13.400× | 0.331× | 4.017× | 2.774× |
+| 128 original icons | 10.865× | 2.058× | 5.029× | 4.121× |
+| Tiger | 7.801× | 1.895× | 2.428× | 2.769× |
+| Large map/CAD | 13.039× | 1.372× | 2.876× | 2.399× |
+| Mixed curves | 8.649× | 3.867× | 5.142× | 4.149× |
+| 2,048 stylesheet rules/rectangles | 0.653× | 0.538× | 0.659× | 0.436× |
+| 1,024 nested symbol instances | 13.836× | 0.338× | 4.752× | 2.757× |
+| Gradient/pattern mosaic | 7.379× | 2.706× | 3.208× | 2.663× |
 
 This is **not performance parity**. Only the stylesheet and repeated-instance
 workloads' pixel checksums agree with resvg; timing does not certify rendering
-correctness. Both also passed independent exact pixel controls.
+correctness. Both also passed independent exact pixel controls. The new 512×512
+mosaic exercises four gradients, two reusable pattern pictures and 256 painted
+geometries. An independent CLI/reference pixel probe reproduces both recorded
+checksums: 46,490 of 262,144 pixels differ, with maximum channel delta 55.
+No tolerance promotes that comparison to a passing conformance test.
 
-A separate `scripts/svg/ab` run used the preserved phase-3 binary and the
-phase-4 binary on identical inputs, with the same sampling configuration.
-These are full render-process instruction counts, including untimed parsing:
+A separate `scripts/svg/ab` run rebuilt phase-4 main `99bab0a` and phase 5 with
+the same dev.29 toolchain and sampling configuration. The native vector pins are
+`7cd08d5` and `9dba9b9`, respectively. These are full render-process instruction
+counts, including untimed parsing:
 
-| Workload | Phase 3 Ir | Phase 4 Ir |
+| Workload | Phase 4 Ir | Phase 5 Ir |
 |---|---:|---:|
-| 128 original icons | 399,583,294 | 403,092,446 |
-| Tiger | 370,790,579 | 371,385,399 |
-| Large map/CAD | 684,211,626 | 685,797,643 |
-| Mixed curves | 360,197,259 | 360,945,157 |
-| 2,048 stylesheet rules/rectangles | 519,760,120 | 541,279,216 |
+| 128 original icons | 385,618,188 | 388,381,027 |
+| Tiger | 361,408,642 | 362,210,240 |
+| Large map/CAD | 678,334,381 | 683,235,524 |
+| Mixed curves | 356,926,829 | 358,593,551 |
+| 2,048 stylesheet rules/rectangles | 526,343,101 | 531,157,398 |
+| 1,024 nested symbol instances | 579,997,547 | 591,311,867 |
 
-Old/new pixel checksums agree for all five workloads. Structural processing adds
-0.16–4.14% to full render-process instruction counts. The new repeated-instance
-workload is excluded from A/B because phase 3 could not render it. Closing every
+Old/new pixel checksums agree for all six workloads and all three stages.
+Phase 5 adds 0.22–1.95% to these full render-process instruction counts. The new
+paint-server workload is excluded from A/B because phase 4 could not render it.
+The three wall samples are noisy, not evidence of small speedups. Closing every
 remaining performance gap is still required.
 
 ```sh
