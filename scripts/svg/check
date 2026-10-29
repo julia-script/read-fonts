@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Run the SVG phase-one gate; never builds a GPU package or a reference renderer."""
+"""Run the SVG rendering gate; never builds GPU packages or reference renderers."""
 import argparse
+import json
 import os
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import tomllib
@@ -13,6 +15,14 @@ ROOT = Path(__file__).resolve().parents[2]
 def run(*command):
     print("+ " + " ".join(map(str, command)), flush=True)
     subprocess.run(list(map(str, command)), cwd=ROOT, check=True)
+
+
+def native_target():
+    machine = {"arm64": "aarch64", "AMD64": "x86_64"}.get(platform.machine(), platform.machine())
+    suffix = {"Darwin": "apple-darwin", "Linux": "unknown-linux-gnu"}.get(platform.system())
+    if suffix is None or machine not in ("aarch64", "x86_64"):
+        raise ValueError(f"unsupported native gate host: {platform.system()} {machine}")
+    return f"{machine}-{suffix}"
 
 
 def main():
@@ -41,13 +51,27 @@ def main():
         if (ROOT / package / "src/tests.silk").is_file():
             run(silk, "test", "--manifest-path", f"{package}/silk.toml", "--root", "src/tests.silk")
     run(silk, "test", "--manifest-path", vector, "--root", "src/tests.silk")
+    run(python, "-m", "unittest", "discover", "-s", "svg_bench", "-p", "test_*.py")
     run(python, "-m", "unittest", "discover", "-s", "scripts/svg/tests", "-p", "test_*.py")
+    target = native_target()
+    run(silk, "build", "--release", "--manifest-path", "svg_cli/silk.toml", "--target", target)
+    binary = ROOT / "build/llvm" / target / "release/svg_cli"
+    renderer = [str(binary), "{input}", "-o", "{output}"]
+    reports = ROOT / "build/svg"
+    reports.mkdir(parents=True, exist_ok=True)
+    run(binary, "--help")
+    run(binary, "--version")
+    run(python, "scripts/svg/reftests", "--suite", "own", "--renderer", json.dumps(renderer),
+        "--report", reports / "own.json", "--diff-dir", reports / "own-diffs")
+    run(python, "scripts/svg/reftests", "--suite", "own", "--malformed", "--renderer", json.dumps(renderer),
+        "--report", reports / "malformed.json", "--diff-dir", reports / "malformed-diffs")
     if not args.skip_fetch:
         offline = ["--offline"] if args.offline else []
         run(python, "scripts/svg/fetch-specs.py", "--only", "svg2-coords", "svg2-paths", "svg2-conform", *offline)
         run(python, "scripts/svg/fetch-suites", *offline)
-        run(python, "scripts/svg/reftests", "--validate")
-    print("SVG phase-one gate passed. No SVG documents rendered; renderer phases are not implemented.")
+        run(python, "scripts/svg/reftests", "--renderer", json.dumps(renderer + ["--width", "300"]),
+            "--report", reports / "resvg-curated.json", "--diff-dir", reports / "resvg-curated-diffs")
+    print("SVG rendering gate passed." + (" External references skipped by request." if args.skip_fetch else ""))
 
 
 if __name__ == "__main__":

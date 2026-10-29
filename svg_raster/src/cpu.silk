@@ -1,0 +1,361 @@
+//! CPU execution of retained SVG commands through the pinned vector backend.
+//! Colors are straight-alpha; the recorder has already folded element/paint opacity.
+//! Group opacity is applied exactly once to an isolated premultiplied surface.
+import svg_core.scene { DisplayList, Command, RenderError, Color, FillRule, LineCap, LineJoin }
+import svg_geometry.geometry { Path, Point, Segment, Transform }
+import svg_geometry.arcs { ArcIter }
+import vector.path { Path as VectorPath }
+import vector.geometry { Affine }
+import vector.pixmap { Pixmap, Rgba8 }
+import vector.strips { Rasterizer, Coverage, NONZERO, EVENODD }
+import vector.stroke as strokes
+import vector.stroke { Stroker, Stroke as VectorStroke }
+import vector.flatten { Line, TOLERANCE }
+import vector.flatten as flattening
+import vector.layer as layers
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.option { Option }
+import silk.num.f64
+import silk.num.u32
+import checked
+
+struct Variant {
+  scale: f64,
+  path: VectorPath
+}
+
+struct Prepared {
+  arcs: bool,
+  variants: List<Variant>
+}
+
+struct Layer {
+  pixels: Pixmap,
+  opacity: u8
+}
+
+/// Executes a display list without copying the returned vector-owned pixel buffer.
+/// Invalid dimensions, command stacks, path/dash indices and unrepresentable vector
+/// arithmetic fail before the relevant backend operation. Scratch and isolated
+/// surfaces are reused across commands; no recursive executor calls are made.
+///
+/// `crispEdges` remains a hint: pinned vector.strips.Rasterizer exposes no AA toggle.
+/// `LineJoin.Arcs` uses vector's documented flattened miter-clip approximation, not
+/// a curvature-correct SVG arcs join (an upstream prerequisite for conformance).
+pub effect fn execute(list: &DisplayList) -> Pixmap
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  run checked.dimensions(list.width, list.height)
+  run validateCommands(list)
+  let mut cache = List<Prepared>.make()
+  let sourcePaths = list.paths.asSlice()
+  let mut p: usize = 0
+  while p < sourcePaths.length {
+    let segments = sourcePaths[p].segments()
+    let mut hasArcs = false
+    let mut s: usize = 0
+    while s < segments.length {
+      match &segments[s] {
+        Segment.ArcTo { arc } => {
+          hasArcs = true
+        }
+        _ => {}
+      }
+      s = s + 1
+    }
+    run cache.append(Prepared { arcs: hasArcs, variants: List<Variant>.make() })
+    p = p + 1
+  }
+  let mut stack = List<Layer>.make()
+  let mut spare = List<Pixmap>.make()
+  let root = run Pixmap.make(list.width, list.height)
+  run stack.append(Layer { pixels: move root, opacity: 255 })
+  let mut rasterizer = Rasterizer.make()
+  let mut coverage = Coverage.make(list.width, list.height)
+  let mut stroker = Stroker.make()
+  let mut strokeStyle = VectorStroke.make(1.0)
+  let mut dashIndex = list.dashes.length()
+  let mut outline = VectorPath.make()
+  let mut lines = List<Line>.make()
+  let commands = list.commands.asSlice()
+  let mut i: usize = 0
+  while i < commands.length {
+    match &commands[i] {
+      Command.FillPath { path, transform, bounds, color, rule, crispEdges } => {
+        let matrix = affine(transform)
+        let variant = run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path], transform)
+        let prepared = &cache.asSlice()[path].variants.asSlice()[variant].path
+        let fillRule = if rule == FillRule.EvenOdd {
+          EVENODD
+        } else {
+          NONZERO
+        }
+        run fill(prepared, &matrix, fillRule, &mut rasterizer, &mut coverage, &mut lines)
+        let rgba = run rgba(color)
+        let target = stack.length() - 1
+        stack.asMutSlice()[target].pixels.fillCoverage(&coverage, rgba)
+      }
+      Command.StrokePath { path, transform, bounds, color, stroke, crispEdges } => {
+        let matrix = affine(transform)
+        let variant = run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path], transform)
+        let prepared = &cache.asSlice()[path].variants.asSlice()[variant].path
+        let dashes = list.dashes.asSlice()[stroke.dashIndex].asSlice()
+        run checked.path(prepared, &matrix)
+        run checked.stroke(prepared, &matrix, stroke, dashes)
+        strokeStyle.width = stroke.width
+        strokeStyle.miterLimit = stroke.miterLimit
+        strokeStyle.dashOffset = stroke.dashOffset
+        strokeStyle.cap = match stroke.cap {
+          LineCap.Butt => strokes.CAP_BUTT
+          LineCap.Round => strokes.CAP_ROUND
+          LineCap.Square => strokes.CAP_SQUARE
+        }
+        strokeStyle.join = match stroke.join {
+          LineJoin.Miter => strokes.JOIN_MITER
+          LineJoin.Round => strokes.JOIN_ROUND
+          LineJoin.Bevel => strokes.JOIN_BEVEL
+          LineJoin.MiterClip => strokes.JOIN_MITER_CLIP
+          LineJoin.Arcs => strokes.JOIN_ARCS
+        }
+        if dashIndex != stroke.dashIndex {
+          run strokeStyle.setDashes(dashes)
+          dashIndex = stroke.dashIndex
+        }
+        outline.clear()
+        run stroker.stroke(prepared, &strokeStyle, &matrix, &mut outline)
+        run fill(&outline, &matrix, NONZERO, &mut rasterizer, &mut coverage, &mut lines)
+        let rgba = run rgba(color)
+        let target = stack.length() - 1
+        stack.asMutSlice()[target].pixels.fillCoverage(&coverage, rgba)
+      }
+      Command.PushLayer { opacity, bounds } => {
+        let available = spare.length()
+        let pixels = if available > 0 {
+          let mut reused = spare.remove(available - 1)
+          reused.clear(Rgba8.make(0, 0, 0, 0))
+          move reused
+        } else {
+          run Pixmap.make(list.width, list.height)
+        }
+        run stack.append(Layer { pixels: move pixels, opacity: run checked.unit(opacity) })
+      }
+      Command.PopLayer => {
+        let top = stack.length() - 1
+        let layer = stack.remove(top)
+        let target = stack.length() - 1
+        layers.composite(
+          &mut stack.asMutSlice()[target].pixels,
+          &layer.pixels,
+          layers.BLEND_NORMAL,
+          layer.opacity,
+        )
+        run spare.append(move layer.pixels)
+      }
+    }
+    i = i + 1
+  }
+  let output = stack.remove(0)
+  return move output.pixels
+}
+
+effect fn validateCommands(list: &DisplayList) -> ()
+  ! RenderError {
+  let commands = list.commands.asSlice()
+
+  // dimensions() established a positive, checked pixel count before this call.
+  let surfaceLimit = checked.MAX_SURFACE_PIXELS
+    / (u32.toUsize(list.width) * u32.toUsize(list.height))
+  let mut depth: usize = 0
+  let mut i: usize = 0
+  while i < commands.length {
+    match &commands[i] {
+      Command.FillPath { path, transform, bounds, color, rule, crispEdges } => {
+        if path >= list.paths.length() {
+          fail RenderError.InvalidGeometry
+        }
+        if !Transform.isFinite(transform) || !bounds.isValid() {
+          fail RenderError.InvalidGeometry
+        }
+        run checked.color(color)
+      }
+      Command.StrokePath { path, transform, bounds, color, stroke, crispEdges } => {
+        if path >= list.paths.length() || stroke.dashIndex >= list.dashes.length() {
+          fail RenderError.InvalidGeometry
+        }
+        if !Transform.isFinite(transform) || !bounds.isValid() {
+          fail RenderError.InvalidGeometry
+        }
+        run checked.color(color)
+      }
+      Command.PushLayer { opacity, bounds } => {
+        drop run checked.unit(opacity)
+        if !bounds.isValid() {
+          fail RenderError.InvalidGeometry
+        }
+        depth = depth + 1
+        if depth >= surfaceLimit {
+          fail RenderError.TooLarge
+        }
+      }
+      Command.PopLayer => {
+        if depth == 0 {
+          fail RenderError.InvalidGeometry
+        }
+        depth = depth - 1
+      }
+    }
+    i = i + 1
+  }
+  if depth != 0 {
+    fail RenderError.InvalidGeometry
+  }
+}
+
+fn affine(transform: Transform) -> Affine {
+  let c = transform.coefficients()
+  return Affine { a: c[0], b: c[1], c: c[2], d: c[3], e: c[4], f: c[5] }
+}
+
+effect fn rgba(color: Color) -> Rgba8
+  ! RenderError {
+  return Rgba8.make(
+    run checked.unit(color.r),
+    run checked.unit(color.g),
+    run checked.unit(color.b),
+    run checked.unit(color.a),
+  )
+}
+
+effect fn prepare(source: &Path, prepared: &mut Prepared, transform: Transform) -> usize
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let scale = if prepared.arcs {
+    transform.maxScale()
+  } else {
+    0.0
+  }
+  if !f64.isFinite(scale) {
+    fail RenderError.InvalidGeometry
+  }
+  let mut i: usize = 0
+  while i < prepared.variants.length() {
+    if prepared.variants.asSlice()[i].scale == scale {
+      return i
+    }
+    i = i + 1
+  }
+
+  // A zero transform collapses every arc, so any finite user-space tolerance suffices.
+  let tolerance = if scale > 0.0 {
+    TOLERANCE / scale
+  } else {
+    TOLERANCE
+  }
+  if !(tolerance > 0.0) || !f64.isFinite(tolerance) {
+    fail RenderError.InvalidGeometry
+  }
+  let path = run convert(source, tolerance)
+  run prepared.variants.append(Variant { scale: scale, path: move path })
+  return i
+}
+
+effect fn convert(source: &Path, tolerance: f64) -> VectorPath
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let mut result = VectorPath.make()
+  let segments = source.segments()
+  let mut current = Point.new(0.0, 0.0)
+  let mut start = current
+  let mut i: usize = 0
+  while i < segments.length {
+    match &segments[i] {
+      Segment.MoveTo { to } => {
+        let xy = to.coordinates()
+        run result.moveTo(xy[0], xy[1])
+        current = to
+        start = to
+      }
+      Segment.LineTo { to } => {
+        let xy = to.coordinates()
+        run result.lineTo(xy[0], xy[1])
+        current = to
+      }
+      Segment.QuadraticTo { control, to } => {
+        let c = control.coordinates()
+        let xy = to.coordinates()
+        run result.quadTo(c[0], c[1], xy[0], xy[1])
+        current = to
+      }
+      Segment.CubicTo { control1, control2, to } => {
+        let a = control1.coordinates()
+        let b = control2.coordinates()
+        let xy = to.coordinates()
+        run result.cubicTo(a[0], a[1], b[0], b[1], xy[0], xy[1])
+        current = to
+      }
+      Segment.ArcTo { arc } => {
+        let mut iterator = ArcIter.make(current, arc, tolerance)
+        if iterator.isLimited() {
+          fail RenderError.InvalidGeometry
+        }
+        while true {
+          let next = iterator.next()
+          match &next {
+            Option<Segment>.None => {
+              break
+            }
+            Option<Segment>.Some { value } => {
+              match &value {
+                Segment.LineTo { to } => {
+                  let xy = to.coordinates()
+                  run result.lineTo(xy[0], xy[1])
+                }
+                Segment.CubicTo { control1, control2, to } => {
+                  let a = control1.coordinates()
+                  let b = control2.coordinates()
+                  let xy = to.coordinates()
+                  run result.cubicTo(a[0], a[1], b[0], b[1], xy[0], xy[1])
+                }
+                _ => {
+                  fail RenderError.InvalidGeometry
+                }
+              }
+            }
+          }
+        }
+        if iterator.isLimited() {
+          fail RenderError.InvalidGeometry
+        }
+        current = arc.to
+      }
+      Segment.Close => {
+        run result.close()
+        current = start
+      }
+    }
+    i = i + 1
+  }
+  return move result
+}
+
+effect fn fill(
+  path: &VectorPath,
+  matrix: &Affine,
+  rule: u8,
+  rasterizer: &mut Rasterizer,
+  coverage: &mut Coverage,
+  lines: &mut List<Line>,
+) -> ()
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  run checked.path(path, matrix)
+  lines.clear()
+  run flattening.fill(path, matrix, TOLERANCE, &mut lines)
+  run checked.lines(lines.asSlice(), coverage.width(), coverage.height())
+
+  // Current vector has no checked fill/borrowed-line entry point: fillPolylines
+  // copies these validated lines into its reusable internal scratch. This extra
+  // List<Line> is necessary until upstream exposes checked fill without the copy.
+  run rasterizer.fillPolylines(lines.asSlice(), rule, &mut coverage)
+}

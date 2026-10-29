@@ -27,6 +27,17 @@ class ReftestTests(unittest.TestCase):
         self.assertFalse(reftests.compare_rgba((1, 1, bytes(4)), (2, 1, bytes(8)), 0, 0)["match"])
         self.assertFalse(reftests.compare_rgba((1, 1, bytes(4)), (1, 1, bytes([0, 0, 0, 1])), 0, 0)["match"])
 
+    def test_antialias_tolerance_preserves_opaque_and_transparent_samples(self):
+        """https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ConformingSVGViewers"""
+        def compared(a, b):
+            return reftests.compare_rgba((1, 1, bytes(a)), (1, 1, bytes(b)),
+                                        antialias_channel=80)["match"]
+        self.assertTrue(compared([32, 64, 128, 100], [32, 64, 128, 180]))
+        self.assertFalse(compared([32, 64, 128, 100], [32, 64, 128, 181]))
+        self.assertFalse(compared([32, 64, 128, 255], [33, 64, 128, 255]))
+        self.assertFalse(compared([32, 64, 128, 0], [32, 64, 128, 1]))
+        self.assertFalse(compared([32, 64, 128, 254], [32, 64, 128, 255]))
+
     def test_unexpected_pass_and_failure_are_gate_failures(self):
         """https://www.w3.org/TR/2018/CR-SVG2-20181004/render.html#RenderingOrder"""
         self.assertEqual(reftests.outcome("fail", True), "unexpected-pass")

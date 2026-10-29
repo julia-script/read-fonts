@@ -1,1 +1,38 @@
-//! Package boundary registered for the SVG implementation; no public API yet.
+//! Parse, resolve and render SVG with the vector CPU backend.
+pub import svg_core.scene { RenderOptions, RenderError, RenderTree, DisplayList }
+pub import vector.pixmap { Pixmap }
+pub import record { record }
+import svg_xml.xml { Document, XmlError }
+import svg_xml.xml
+import svg_core.resolve
+import svg_raster.cpu
+import silk.core.effect { Effect }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+
+effect fn invalidXml(error: XmlError) -> Document
+  ! RenderError {
+  fail RenderError.InvalidXml
+}
+
+/// Parse XML, compute presentation values and resolve geometry, without rasterizing.
+pub effect fn parse(data: &[u8], options: &RenderOptions) -> RenderTree
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let document = run Effect.catch<XmlError>(xml.parse(data), invalidXml)
+  return run resolve.resolve(&document, options)
+}
+
+/// Render a retained display list; callers can reuse it without reparsing XML.
+pub effect fn renderDisplayList(list: &DisplayList) -> Pixmap
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  return run cpu.execute(list)
+}
+
+pub effect fn render(data: &[u8], options: &RenderOptions) -> Pixmap
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let tree = run parse(data, options)
+  let list = run record(move tree)
+  return run renderDisplayList(&list)
+}

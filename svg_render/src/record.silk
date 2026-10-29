@@ -1,0 +1,96 @@
+//! Turn resolved SVG painting order into retained backend-neutral commands.
+import svg_core.scene { RenderTree, ResolvedNode, DisplayList, Command, Color, Paint, Stroke }
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.option { Option }
+
+fn paintColor(paint: &Paint, currentColor: Color, opacity: f64) -> Option<Color> {
+  let mut color = match &paint.* {
+    Paint.None => {
+      return Option<Color>.None
+    }
+    Paint.CurrentColor => currentColor
+    Paint.Solid { color } => color
+  }
+  color.a = color.a * opacity
+  return if color.a == 0.0 {
+    Option<Color>.None
+  } else {
+    Option<Color>.some(color)
+  }
+}
+
+effect fn recordCommands(nodes: &[ResolvedNode]) -> List<Command>
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut commands = List<Command>.make()
+  let mut i: usize = 0
+  while i < nodes.length {
+    match &nodes[i] {
+      ResolvedNode.BeginGroup { opacity, bounds } => {
+        run commands.append(Command.PushLayer { opacity: opacity, bounds: bounds })
+      }
+      ResolvedNode.EndGroup => {
+        run commands.append(Command.PopLayer)
+      }
+      ResolvedNode.Shape { path, transform, bounds, style } => {
+        let fill = paintColor(&style.fill, style.color, style.fillOpacity)
+        match &fill {
+          Option<Color>.Some { value } => {
+            run commands.append(
+              Command.FillPath {
+                path: path,
+                transform: transform,
+                bounds: bounds,
+                color: value,
+                rule: style.fillRule,
+                crispEdges: style.crispEdges,
+              },
+            )
+          }
+          _ => {}
+        }
+        if style.strokeWidth > 0.0 {
+          let stroke = paintColor(&style.stroke, style.color, style.strokeOpacity)
+          match &stroke {
+            Option<Color>.Some { value } => {
+              run commands.append(
+                Command.StrokePath {
+                  path: path,
+                  transform: transform,
+                  bounds: bounds,
+                  color: value,
+                  crispEdges: style.crispEdges,
+                  stroke: Stroke {
+                    width: style.strokeWidth,
+                    cap: style.lineCap,
+                    join: style.lineJoin,
+                    miterLimit: style.miterLimit,
+                    dashIndex: style.dashIndex,
+                    dashOffset: style.dashOffset,
+                  },
+                },
+              )
+            }
+            _ => {}
+          }
+        }
+      }
+    }
+    i = i + 1
+  }
+  return move commands
+}
+
+pub effect fn record(tree: RenderTree) -> DisplayList
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let commands = run recordCommands(tree.nodes.asSlice())
+  return DisplayList {
+    width: tree.width,
+    height: tree.height,
+    paths: move tree.paths,
+    dashes: move tree.dashes,
+    commands: move commands,
+  }
+}

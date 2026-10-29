@@ -1,0 +1,151 @@
+//! Executor safety contracts; rasterization/presentation integration is tested by svg_render.
+import cpu
+import svg_core.scene { DisplayList, Command, Color, FillRule, RenderError }
+import svg_geometry.geometry { Path, Segment, Point, Rect, Transform }
+import vector.pixmap { Pixmap }
+import silk.collections.list { List }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.testing.testing { Testing, AssertionError }
+
+fn empty(width: u32, height: u32) -> DisplayList {
+  return DisplayList {
+    width: width,
+    height: height,
+    paths: List<Path>.make(),
+    dashes: List<List<f64>>.make(),
+    commands: List<Command>.make(),
+  }
+}
+
+fn bounds() -> Rect {
+  return Rect { xMin: 0.0, yMin: 0.0, xMax: 2.0, yMax: 2.0 }
+}
+
+effect fn rejected(list: &DisplayList, expected: RenderError) -> bool
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let result = run Effect.result(cpu.execute(list))
+  return match &result {
+    Result<Pixmap, RenderError | OutOfMemoryError>.Success { value: _ } => false
+    Result<Pixmap, RenderError | OutOfMemoryError>.Failure { error } => match &error {
+      RenderError problem => problem == expected
+      OutOfMemoryError problem => {
+        fail OutOfMemoryError {}
+      }
+    }
+  }
+}
+
+effect fn invalidLists() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let zero = empty(0, 2)
+  run Testing.expect(run rejected(&zero, RenderError.InvalidSize), "zero viewport rejected")
+  let huge = empty(4294967295, 4294967295)
+  run Testing.expect(
+    run rejected(&huge, RenderError.TooLarge),
+    "size arithmetic checked before allocation",
+  )
+  let mut badPath = empty(2, 2)
+  run badPath.commands.append(
+    Command.FillPath {
+      path: 0,
+      transform: Transform.identity(),
+      bounds: bounds(),
+      color: Color.black(),
+      rule: FillRule.Nonzero,
+      crispEdges: false,
+    },
+  )
+  run Testing.expect(
+    run rejected(&badPath, RenderError.InvalidGeometry),
+    "missing path rejected before indexing",
+  )
+  let mut underflow = empty(2, 2)
+  run underflow.commands.append(Command.PopLayer)
+  run Testing.expect(
+    run rejected(&underflow, RenderError.InvalidGeometry),
+    "layer stack underflow rejected",
+  )
+  let mut unclosed = empty(2, 2)
+  run unclosed.commands.append(Command.PushLayer { opacity: 0.5, bounds: bounds() })
+  run Testing.expect(
+    run rejected(&unclosed, RenderError.InvalidGeometry),
+    "unclosed isolated layer rejected",
+  )
+  let mut layered = empty(4096, 4096)
+  let mut i: usize = 0
+  while i < 4 {
+    run layered.commands.append(Command.PushLayer { opacity: 0.5, bounds: bounds() })
+    i = i + 1
+  }
+  i = 0
+  while i < 4 {
+    run layered.commands.append(Command.PopLayer)
+    i = i + 1
+  }
+  run Testing.expect(
+    run rejected(&layered, RenderError.TooLarge),
+    "nested isolated surfaces obey the aggregate 64M-pixel allocation ceiling",
+  )
+}
+
+test effect fn validatesExportedExecutorInputs() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  run invalidLists() |> Effect.provideMut<Allocator>(&mut allocator)
+}
+
+effect fn geometryList(diagonal: bool) -> DisplayList
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut list = empty(2, 2)
+  let mut path = Path.make()
+  drop run path.append(Segment.MoveTo { to: Point.new(-1.0e20, -1.0e20) })
+  if diagonal {
+    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, 1.0e20) })
+    drop run path.append(Segment.LineTo { to: Point.new(-1.0e20, 1.0e20) })
+  } else {
+    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, -1.0e20) })
+    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, 1.0e20) })
+    drop run path.append(Segment.LineTo { to: Point.new(-1.0e20, 1.0e20) })
+  }
+  drop run path.append(Segment.Close)
+  run list.paths.append(move path)
+  run list.commands.append(
+    Command.FillPath {
+      path: 0,
+      transform: Transform.identity(),
+      bounds: bounds(),
+      color: Color.black(),
+      rule: FillRule.Nonzero,
+      crispEdges: false,
+    },
+  )
+  return move list
+}
+
+test effect fn rejectsUnrepresentableVectorIntermediates() -> ()
+  ! AssertionError<'static> | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let list = run geometryList(true) |> Effect.provideMut<Allocator>(&mut allocator)
+  let invalid = run rejected(&list, RenderError.InvalidGeometry)
+    |> Effect.provideMut<Allocator>(&mut allocator)
+  run Testing.expect(
+    invalid,
+    "finite endpoints whose vector clipping product overflows fail controllably",
+  )
+}
+
+test effect fn preservesRepresentableLargeFiniteCoordinates() -> ()
+  ! AssertionError<'static> | RenderError | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let list = run geometryList(false) |> Effect.provideMut<Allocator>(&mut allocator)
+  let pixels = run cpu.execute(&list) |> Effect.provideMut<Allocator>(&mut allocator)
+  run Testing.expect(
+    pixels.pixel(0, 0).a == 255 && pixels.pixel(1, 1).a == 255,
+    "large representable rectangle covers the viewport without coordinate saturation",
+  )
+}

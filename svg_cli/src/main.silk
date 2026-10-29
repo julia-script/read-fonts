@@ -1,0 +1,176 @@
+//! Native filesystem driver; rendering and PNG serialization stay in their library packages.
+import options { Parsed, Action, ArgumentError }
+import options
+import svg_render.lib { RenderOptions }
+import svg_render.lib as renderer
+import svg_image.png
+import silk.collections.bytes { Bytes }
+import silk.collections.list { List }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.system.host_input { HostInput, HostInputError }
+import silk.system.filesystem { Path, FileSystem, FileError }
+import silk.system.filesystem_native { OsFileSystem }
+import silk.io.writer { Writer, WriterError }
+import silk.io.writer_native { StdoutWriter, StderrWriter }
+import silk.text.string { InvalidUtf8 }
+import silk.option { Option }
+
+enum Failure {
+  Input,
+  Output,
+  Render,
+  Encode
+}
+
+const HELP: string<
+  'static
+> = "usage: svg_cli input.svg -o output.png [--width N] [--height N] [--zoom Z]\n       svg_cli --help | --version\n\nRender an SVG to a PNG file. Width and height are positive decimal integers;\nzoom is a positive finite decimal number. Omitted dimensions use SVG sizing.\nThe renderer applies its pixel limit after sizing and zoom.\nOptions take separate values and cannot repeat. Use -- before a dash-prefixed\ninput path, or prefix such file paths with ./ (including output paths).\nNo stdin or stdout PNG, external resources, animation or CSS options.\n"
+
+effect fn stderr(text: string) -> ()
+  ! WriterError {
+  let mut writer = StderrWriter.make()
+  run Writer.writeString(text) |> Effect.provideMut<Writer>(&mut writer)
+  run Writer.flush() |> Effect.provideMut<Writer>(&mut writer)
+}
+
+fn inputFailure<E>(error: E) -> Failure {
+  drop error
+  return Failure.Input
+}
+
+fn outputFailure<E>(error: E) -> Failure {
+  drop error
+  return Failure.Output
+}
+
+fn renderFailure<E>(error: E) -> Failure {
+  drop error
+  return Failure.Render
+}
+
+fn encodeFailure<E>(error: E) -> Failure {
+  drop error
+  return Failure.Encode
+}
+
+effect fn pathFromArgument(base: &Path, raw: &[u8]) -> Path
+  ! FileError | OutOfMemoryError
+  ? &mut Allocator {
+  if raw.length > 0 && raw[0] == 47 {
+    return run Path.fromBytes(raw)
+  }
+  if let Result<string, InvalidUtf8>.Success { value } = move HostInput.text(raw) {
+    return run Path.resolve(base, value)
+  }
+  return run Path.joinBytes(base, raw)
+}
+
+effect fn renderFile(args: &[Bytes], parsed: &Parsed) -> i32
+  ! Failure | HostInputError | FileError | OutOfMemoryError
+  ? &mut HostInput | &mut Allocator {
+  let cwd = run HostInput.workingDirectory()
+  let base = run Path.fromBytes(Bytes.asSlice(&cwd))
+  let input = run Effect.mapError(
+    pathFromArgument(&base, Bytes.asSlice(&args[parsed.input])),
+    inputFailure,
+  )
+  let output = run Effect.mapError(
+    pathFromArgument(&base, Bytes.asSlice(&args[parsed.output])),
+    outputFailure,
+  )
+  let mut files = run OsFileSystem.make("/")
+  let data = run Effect.mapError(FileSystem.readFile(&input), inputFailure)
+    |> Effect.provideMut<FileSystem>(&mut files)
+  let mut settings = RenderOptions.make()
+  settings.width = parsed.width
+  settings.height = parsed.height
+  settings.zoom = parsed.zoom
+  let image = run Effect.mapError(renderer.render(Bytes.asSlice(&data), &settings), renderFailure)
+  let encoded = run Effect.mapError(
+    png.encodePixels(image.width(), image.height(), image.data()),
+    encodeFailure,
+  )
+
+  // Only open/truncate the destination once the entire PNG has been produced successfully.
+  run Effect.mapError(FileSystem.writeFile(&output, Bytes.asSlice(&encoded)), outputFailure)
+    |> Effect.provideMut<FileSystem>(&mut files)
+  return 0
+}
+
+effect fn process() -> i32
+  ! Failure | HostInputError | FileError | OutOfMemoryError | WriterError
+  ? &mut HostInput | &mut Allocator {
+  let count = run HostInput.argumentCount()
+  let mut args = List<Bytes>.make()
+  let mut index: usize = 1
+  while index < count {
+    let argument = run HostInput.argument(index)
+    if let Option<Bytes>.Some { value } = move argument {
+      run List<Bytes>.append(&mut args, move value)
+    } else {
+      run stderr("svg_cli: unable to obtain command-line argument\n")
+      return 1
+    }
+    index = index + 1
+  }
+  let values = List<Bytes>.asSlice(&args)
+  let result = options.parse(values)
+  if let Result<Parsed, ArgumentError>.Failure { error } = &result {
+    run stderr(options.message(error))
+    return 2
+  }
+  if let Result<Parsed, ArgumentError>.Success { value } = &result {
+    if value.action == Action.Render {
+      return run renderFile(values, &value)
+    }
+    let mut writer = StdoutWriter.make()
+    let text = if value.action == Action.Help {
+      HELP
+    } else {
+      "svg_cli 0.1.0\n"
+    }
+    run Writer.writeString(text) |> Effect.provideMut<Writer>(&mut writer)
+    run Writer.flush() |> Effect.provideMut<Writer>(&mut writer)
+    return 0
+  }
+  return 2
+}
+
+effect fn failedStage(error: Failure) -> i32
+  ! WriterError {
+  let text = match error {
+    Failure.Input => "svg_cli: unable to read input SVG file\n"
+    Failure.Output => "svg_cli: unable to write output PNG file\n"
+    Failure.Render => "svg_cli: render failed (invalid SVG, invalid or excessive image size, unsupported perspective, or allocation failure)\n"
+    Failure.Encode => "svg_cli: PNG encoding failed (invalid image size or allocation failure)\n"
+  }
+  run stderr(text)
+  return 1
+}
+
+effect fn failed<E>(error: E) -> i32
+  ! WriterError {
+  drop error
+  run stderr(
+    "svg_cli: host input, filesystem initialization, allocation, or console output failed\n",
+  )
+  return 1
+}
+
+// Even a broken stderr must produce a failure status, not an unhandled effect.
+effect fn failedDiagnostic<E>(error: E) -> i32 {
+  drop error
+  return 1
+}
+
+pub effect fn main() -> i32
+  ? &mut HostInput {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  return run Effect.catchAll(
+    Effect.catchAll(Effect.catch<Failure>(process(), failedStage), failed),
+    failedDiagnostic,
+  )
+    |> Effect.provideMut<Allocator>(&mut allocator)
+}

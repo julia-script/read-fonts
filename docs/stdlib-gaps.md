@@ -67,3 +67,28 @@ The minimal CCC/NFC/NFD reproducer is
 reported as [silk-lang/silk#2487](https://github.com/silk-lang/silk/issues/2487).
 Harfrust uses `ucd`'s Unicode 18 classes and raw pairs, not stdlib string
 normalization. No compiler or stdlib data is patched or vendored.
+
+## 008 — SVG floating-point math
+
+The dev.27 numeric modules lack `atan2`, `hypot` and the wider transcendental
+surface required by SVG arcs, CSS colors and filters. Existing request
+[silk-lang/silk#2539](https://github.com/silk-lang/silk/issues/2539) now includes
+a minimal SVG reproduction. `svg_geometry/src/math.silk` supplies pure-Silk
+finite-input geometry helpers; no libc shim, compiler or stdlib patch is used.
+
+## 009 — checked DEFLATE output bound
+
+`Deflate.encode` takes caller-owned storage without exposing a capacity bound.
+`svg_image/src/png.silk` derives the zlib bound from the pinned fixed-Huffman
+algorithm and validates dimensions before allocation. Filed with a self-contained
+reproducer as [silk-lang/silk#2565](https://github.com/silk-lang/silk/issues/2565).
+
+## 010 — XML and PNG APIs
+
+The pinned stdlib has no XML parser or PNG codec. The original `svg_xml` and
+`svg_image` implementations isolate those responsibilities, reusing stdlib
+collections, Unicode, compression and checksums. Requests with minimal manifests
+and observed missing-module diagnostics:
+[XML #2563](https://github.com/silk-lang/silk/issues/2563) and
+[PNG #2564](https://github.com/silk-lang/silk/issues/2564).
+There is no working stdlib alternative for a before/after Ir comparison.

@@ -8,9 +8,39 @@ The target is SVG 1.1 Second Edition's **Conforming Static SVG Viewer** (`SVG-st
 
 SVG 2 CR 2018-10-04 and its separately pinned Editor's Draft are both references. Follow an ED correction to a CR defect only with the exact ED anchor and an explanation in the regression test and this document. Draft status is not blanket permission to change behavior. Record ambiguities with the relevant SVGWG/CSSWG issue, the chosen interpretation, and a regression test. Later CSS modules override only the provisions they replace. SVG 2 painting is normative; CSS Fill and Stroke 3 is informative and is not a substitute.
 
-## Phase 1 status
+## Implementation status
 
-This change establishes package/dependency wiring, local geometry types, specification and suite pinning, expectation validation, and the phase-1 check gate. It does **not** parse or render SVG, execute reftests, implement resource loading, or establish viewer conformance. A pinned specification or fetched corpus is not implemented coverage. There are no measured renderer differences or performance baselines yet. Every section-level item below remains unchecked; a check mark requires implementation, tests, and a merged PR. Later renderer phases require Julia's merge approval and are not represented by fake APIs or passing placeholder rendering tests.
+Phase 1 established the package boundaries, pinned inputs and check tooling.
+Phase 2 implements namespace-aware nonvalidating XML, presentation values,
+outermost viewport sizing, paths/basic shapes, affine resolution, retained
+fill/stroke/layer commands, the vector CPU executor, PNG encoding and the CLI.
+Local tests and actual rendering results are summarized in [README.md](README.md).
+The first shape-heavy resvg timing baseline is measured, not a parity claim.
+
+Julia authorized local continuation without merging phase 1. The section-level
+checklist still reserves check marks for merged, fully covered requirements:
+partial implementation of a broad item does not complete it. CSS, references,
+paint servers, images, filters, text, animation, ICC and the full conformance
+sweep remain in scope. Pinned documents and fetched corpora are not coverage.
+
+### XML error and resource policy
+
+Malformed XML rejects the complete document; no partial render tree is returned.
+This follows [SVG 2 error processing](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ErrorProcessing),
+rather than SVG 1.1's optional render-up-to-error behavior. SVG path-data errors
+remain distinct: valid segments before the first invalid tuple are retained.
+External DTDs/entities are never fetched. Nonvalidating skipped external content
+is exposed by the XML document API; external entity references in attributes
+are rejected. Metadata, comments, processing instructions and foreign-namespace
+data are retained, not treated as rendering elements.
+
+Default XML ceilings are 16 MiB input, 64 MiB retained storage, 8 MiB charged
+entity expansion, one million nodes/attributes/declarations, element depth 256
+and entity depth 32. `parseWithLimits` can lower them; hard recursion ceilings
+remain. Error offsets address normalized decoded UTF-8, except decoding errors,
+which address original input bytes. The renderer defaults to 16,777,216 output
+pixels and caps aggregate output/isolated surfaces at 67,108,864 pixels.
+These are implementation resource limits, not claims that larger SVGs are invalid.
 
 ## Baseline integrity
 
@@ -72,11 +102,11 @@ Not on the skip list, though it's tempting: SVG fonts (1.1 ch. 20), `color-profi
 
 ## SVG 1.1 versus SVG 2
 
-Implement removed SVG 1.1 requirements additively where they do not conflict: SVG fonts and their child elements, `altGlyph` family, `tref`, `color-profile` and `icc-color()`, `enable-background`, `clip`, `kerning`, `glyph-orientation-*`, `filterRes`, `requiredFeatures`, `xml:base`, and `xlink:*`. Check the [SVG 2 changes appendix](https://www.w3.org/TR/2018/CR-SVG2-20181004/changes.html#chapter) against the older normative section when each feature is implemented.
+Implement removed SVG 1.1 requirements additively where they do not conflict: SVG fonts and their child elements, `altGlyph` family, `tref`, `color-profile` and `icc-color()`, `enable-background`, `clip`, `kerning`, `glyph-orientation-*`, `filterRes`, `requiredFeatures`, `xml:base`, and `xlink:*`. Check the [SVG 2 changes appendix](https://www.w3.org/TR/2018/CR-SVG2-20181004/changes.html) against the older normative section when each feature is implemented.
 
 For genuine behavior conflicts, default to SVG 2. Do not introduce a speculative profile switch. If that rule cannot resolve a real case, ask Julia before adding a document-level `Profile { svg11, svg2 }`, defaulting to `svg2`. Mesh gradients, hatches, `solidcolor`, and `z-index` are outside the pinned CR scope unless Julia requests them.
 
-The table is a register of cases to test, not a claim of resolved rendering support. No phase-1 geometry behavior needs a profile switch.
+The table is a register of cases to test, not a claim of complete rendering support. No implemented behavior currently needs a profile switch.
 
 | Feature | SVG 1.1 rule | SVG 2 rule / conflict to verify | Applies |
 |---|---|---|---|
@@ -85,15 +115,46 @@ The table is a register of cases to test, not a claim of resolved rendering supp
 | Markers on shapes | Paths, lines, polylines, polygons | Markers extended to shapes | SVG 2; phase 5 tests pending |
 | `overflow` on `symbol`, `marker`, `pattern` | Check element and clipping rules | Check element rules and UA stylesheet differences | SVG 2 if different; phase 4/5 tests pending |
 | `symbol` geometry | No SVG 2 geometry properties | `x`, `y`, `width`, `height` supported | SVG 2; phase 4 tests pending |
-| `version` | SVG 1.1 version metadata | Ignored in SVG 2 | SVG 2; parser tests pending |
+| `version` | SVG 1.1 version metadata | Ignored in SVG 2 | Retained by XML; ignored by the phase-2 resolver |
 
 ### Browser and resvg differences
 
-None measured in phase 1. Future entries must include the case/test, pinned normative anchor, expected specification result, observed renderer result and renderer version. Classify each as an implementation bug, reference-renderer bug, or recorded specification ambiguity. Do not turn a mismatch into an unexplained skip or relax an assertion toward a browser.
+The pinned resvg revision is `91455ee06d08ac2bfeab2b035ed2cfbfd0a68614`.
+At the suite's 300-pixel reference width, all six curated rectangle cases match
+RGBA exactly. Six circle cases remain strict pixel-reference non-passes:
+700–1,542 pixels differ per case. All observed differences lie in the shared
+one-pixel alpha-edge neighborhood; opaque interiors agree. Missing/negative
+radii correctly suppress the circle. Per-case counts and reasons are retained
+in `svg_tests/expectations/resvg.txt`; none is silently skipped.
+
+[SVG 2 rendering accuracy](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ConformingSVGViewers)
+permits antialiasing and requires one-device-pixel spatial accuracy. Therefore
+exact PNG disagreement alone does not establish a normative geometry defect.
+The circle results remain recorded pixel non-passes pending the full conformance
+sweep's reviewed comparison/precision decisions, not assertions of a resvg bug.
+
+Own round-cap and round-join equivalent-outline cases use a per-case
+`antialias_channel` allowance of 80 only where both samples have partial alpha.
+The budget derives from the pinned vector stroker's 0.0625-pixel chord tolerance
+plus the 0.25-pixel filled-path tolerance, rounded upward to 8-bit coverage.
+Opaque/transparent transitions and ordinary channel tolerance remain exact.
+This is a comparison policy for these opaque edge fixtures, not a license to
+ignore errors in translucent fills or to apply a global 80/255 tolerance.
 
 ### Decisions deferred to their implementation phases
 
-The checklist's “question 4” means whether CSS Animations join SMIL (default expectation yes, ask in phase 11). Profile-switch necessity waits for phase 4, deferred SVG 2 features for phase 5, and 3D-transform flattening versus rejection for phase 2. Additional GIF/WebP support waits for phase 7; full ICC depth is revisited in phase 12. These are not reasons to omit mandatory phase-1 reference pins. HTML/media engines, GPU backends, demos, and optional hit testing are not silently added.
+Julia chose full 4×4 composition followed by flattening to the SVG plane for
+non-perspective 3D transforms. `preserve-3d` does not apply inside SVG. The
+geometry CSS parser implements that composition; applying CSS properties to
+documents belongs to phase 3. Perspective must use an upstream projective
+backend with homogeneous-w clipping and inverse paint mapping; it must not be
+silently approximated by an affine matrix.
+
+The checklist's “question 4” means whether CSS Animations join SMIL (ask in
+phase 11). Profile-switch necessity waits for phase 4, deferred SVG 2 features
+for phase 5, GIF/WebP for phase 7, and ICC depth for phase 12. These decisions
+are not reasons to omit mandatory reference pins. HTML/media engines, GPU
+backends, demos and optional hit testing are not silently added.
 
 ## Section-level coverage checklist
 

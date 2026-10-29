@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Deterministic original workloads plus a separately cached, licensed Tiger.
+
+No generated or third-party SVG is added to production dependencies. The Tiger
+source is downloaded verbatim only on explicit request. A separately named,
+hash-pinned derivative adds an explicit common host viewport for both engines;
+all viewBox, geometry and paint attributes are preserved.
+"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import urllib.request
+import xml.etree.ElementTree as ET
+
+HERE = Path(__file__).resolve().parent
+
+
+def svg(size, shapes):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">\n'
+            + "\n".join(shapes) + "\n</svg>\n").encode()
+
+
+def generate_icons(config):
+    size, state = config["size"], config["seed"]
+    files = {}
+    for index in range(config["count"]):
+        state = (1664525 * state + 1013904223) & 0xffffffff
+        color = f"#{state & 0xffffff:06x}"
+        inset = 2 + index % 5
+        shapes = [
+            f'<rect x="1" y="1" width="{size - 2}" height="{size - 2}" rx="4" fill="{color}"/>',
+            f'<circle cx="{size // 2}" cy="{size // 2}" r="{5 + index % 6}" fill="#ffffff"/>',
+            f'<path d="M {inset} {size - inset} L {size // 2} {inset} L {size - inset} {size - inset} Z" fill="none" stroke="#183048" stroke-width="1" stroke-linejoin="round"/>',
+            f'<path d="M 4 {8 + index % 8} Q 16 2 28 24" fill="none" stroke="#905020" stroke-width="2"/>',
+            '<circle cx="10" cy="12" r="2" fill="#204060"/>',
+            '<circle cx="22" cy="12" r="2" fill="#204060"/>',
+        ]
+        files[f"icon-{index:03d}.svg"] = svg(size, shapes)
+    return files
+
+
+def generate_map(config):
+    size, grid = config["size"], config["grid"]
+    step = size // grid
+    shapes = []
+    for y in range(grid):
+        for x in range(grid):
+            left, top = x * step + 2, y * step + 2
+            right, bottom = (x + 1) * step - 2, (y + 1) * step - 2
+            color = ("#ccd9b5", "#d9d0ba", "#b9d3cc")[(x * 7 + y * 11) % 3]
+            shapes.append(f'<path d="M {left} {top} L {right} {top + (x + y) % 4} L {right - x % 3} {bottom} L {left} {bottom} Z" fill="{color}" stroke="#596559" stroke-width="1"/>')
+            shapes.append(f'<path d="M {left + 3} {top + 4} h {step // 3} v {step // 3} h {-step // 3} Z" fill="#a39186"/>')
+    for i in range(1, grid):
+        at = i * step
+        shapes.append(f'<path d="M 0 {at} H {size} M {at} 0 V {size}" fill="none" stroke="#f5f1df" stroke-width="3"/>')
+    shapes.append(f'<path d="M 0 {size // 3} C {size // 3} 0 {size // 2} {size} {size} {size // 2}" fill="none" stroke="#5096bb" stroke-width="9"/>')
+    return {"largemap.svg": svg(size, shapes)}
+
+
+def generate_curves(config):
+    size, grid = config["size"], config["grid"]
+    step = size // grid
+    shapes = []
+    for y in range(grid):
+        for x in range(grid):
+            left, top = x * step, y * step
+            color = ("#356a97", "#b65939", "#6b8350")[(x + y) % 3]
+            shapes.append(f'<g transform="translate({left} {top})"><path d="M 2 24 C 3 0 24 0 28 18 Q 18 30 2 24 Z" fill="{color}" stroke="#27313b" stroke-width="1"/><path d="M 3 10 Q 14 30 28 5" fill="none" stroke="#efe6bc" stroke-width="2" stroke-linecap="round"/></g>')
+    return {"mixedcurves.svg": svg(size, shapes)}
+
+
+def verify_asset(data, spec):
+    if hashlib.sha256(data).hexdigest() != spec["sha256"]:
+        raise ValueError("Tiger SHA-256 mismatch; refusing unpinned content")
+    if len(data) != spec["bytes"]:
+        raise ValueError("Tiger byte count mismatch")
+
+
+def normalize_tiger(data, config):
+    """Add only root output dimensions; XML serialization may change namespace prefixes."""
+    root = ET.fromstring(data)
+    if root.tag != "{http://www.w3.org/2000/svg}svg" or root.get("viewBox") != config["viewBox"]:
+        raise ValueError("Tiger viewport normalization requires the pinned SVG viewBox")
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+    root.set("width", str(config["width"]))
+    root.set("height", str(config["height"]))
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def prepare(manifest, cache, fetch_tiger=False, selected=None):
+    cache = Path(cache)
+    result = {}
+    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves}
+    for name, spec in manifest["workloads"].items():
+        if selected is not None and name not in selected:
+            continue
+        directory = cache / name
+        directory.mkdir(parents=True, exist_ok=True)
+        if name == "tiger":
+            path = directory / "tiger.svg"
+            if not path.exists():
+                if not fetch_tiger:
+                    raise FileNotFoundError("pinned Tiger is missing; run python3 svg_bench/workloads.py --fetch-tiger (AGPL-3.0-or-later benchmark-only asset)")
+                request = urllib.request.Request(spec["url"], headers={"User-Agent": "silk-svg-bench/0.1"})
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    data = response.read(spec["bytes"] + 1)
+                verify_asset(data, spec)
+                path.write_bytes(data)
+            source = path.read_bytes()
+            verify_asset(source, spec)
+            normalized = normalize_tiger(source, spec["viewport_normalization"])
+            derived_hash = hashlib.sha256(normalized).hexdigest()
+            if derived_hash != spec["viewport_normalization"]["sha256"]:
+                raise ValueError("normalized Tiger SHA-256 mismatch")
+            derived = directory / "tiger-sized.svg"
+            if not derived.exists() or derived.read_bytes() != normalized:
+                derived.write_bytes(normalized)
+            provenance = {**spec, "source_file": path.name, "benchmark_file": derived.name,
+                          "derived_sha256": derived_hash, "derived_bytes": len(normalized)}
+            (directory / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
+            result[name] = [derived]
+        else:
+            files = generators[name](spec["config"])
+            paths = []
+            for filename, data in sorted(files.items()):
+                path = directory / filename
+                # Always replace mutated cache content with the deterministic original.
+                if not path.exists() or path.read_bytes() != data:
+                    path.write_bytes(data)
+                paths.append(path)
+            result[name] = paths
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fetch-tiger", action="store_true", help="fetch the content-pinned, separately licensed Tiger")
+    args = parser.parse_args()
+    manifest = json.loads((HERE / "workloads.json").read_text())
+    prepared = prepare(manifest, HERE / ".cache/workloads", args.fetch_tiger)
+    for name, files in prepared.items():
+        print(f"{name}: {len(files)} SVG files, {sum(path.stat().st_size for path in files)} bytes")
+
+
+if __name__ == "__main__":
+    main()

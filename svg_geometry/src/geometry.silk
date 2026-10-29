@@ -28,6 +28,10 @@ impl Point {
     return f64.isFinite(self.x) && f64.isFinite(self.y)
   }
 
+  pub fn coordinates(self: Point) -> [f64; 2] {
+    return [self.x, self.y]
+  }
+
   pub fn translate(self: Point, offset: Vector) -> Point {
     return Point.new(self.x + offset.x, self.y + offset.y)
   }
@@ -137,6 +141,18 @@ impl Rect {
     return Size.new(self.xMax - self.xMin, self.yMax - self.yMin)
   }
 
+  pub fn origin(self: Rect) -> Point {
+    return Point.new(self.xMin, self.yMin)
+  }
+
+  pub fn width(self: Rect) -> f64 {
+    return self.xMax - self.xMin
+  }
+
+  pub fn height(self: Rect) -> f64 {
+    return self.yMax - self.yMin
+  }
+
   /// True for invalid or zero-area bounds; a valid point/line box still has a location.
   pub fn isEmpty(self: Rect) -> bool {
     return !Rect.isValid(self) || self.xMin == self.xMax || self.yMin == self.yMax
@@ -227,6 +243,33 @@ impl Transform {
       && f64.isFinite(self.d)
       && f64.isFinite(self.e)
       && f64.isFinite(self.f)
+  }
+
+  pub fn coefficients(self: Transform) -> [f64; 6] {
+    return [self.a, self.b, self.c, self.d, self.e, self.f]
+  }
+
+  /// Largest singular value of the linear part; infinity signals an unrepresentable scale.
+  pub fn maxScale(self: Transform) -> f64 {
+    if !Transform.isFinite(self) {
+      return f64.INFINITY
+    }
+    let scale = f64.max(
+      f64.max(f64.abs(self.a), f64.abs(self.b)),
+      f64.max(f64.abs(self.c), f64.abs(self.d)),
+    )
+    if scale == 0.0 {
+      return 0.0
+    }
+    let a = self.a / scale
+    let b = self.b / scale
+    let c = self.c / scale
+    let d = self.d / scale
+    let q = a * a + b * b
+    let r = c * c + d * d
+    let s = a * c + b * d
+    let delta = q - r
+    return scale * f64.sqrt((q + r + f64.sqrt(delta * delta + 4.0 * s * s)) / 2.0)
   }
 
   pub fn multiply(left: Transform, right: Transform) -> Transform {

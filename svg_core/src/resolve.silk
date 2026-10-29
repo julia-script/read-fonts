@@ -1,0 +1,433 @@
+//! Resolve document geometry and presentation values into an owned, backend-neutral tree.
+import scene { RenderOptions, RenderError, RenderTree, ResolvedNode, Style }
+import presentation { attr, equal, trim, length, compute }
+import svg_xml.xml { Document, NodeId, NodeKind }
+import svg_geometry.geometry { Point, Rect, Path, Segment, Transform }
+import svg_geometry.svg
+import silk.collections.list { List }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.option { Option }
+import silk.num.f64
+import silk.num.u32
+import silk.num.usize
+
+struct Viewport {
+  width: f64,
+  height: f64,
+  pixelsWidth: u32,
+  pixelsHeight: u32,
+  scale: Transform
+}
+
+fn intrinsic(data: &[u8]) -> Option<f64> {
+  let value = trim(data)
+  if value.length == 0 || value[value.length - 1] == 37 {
+    return Option<f64>.None
+  }
+  return length(value, 0.0, 16.0)
+}
+
+fn positive(value: Option<f64>) -> Option<f64> {
+  return match &value {
+    Option<f64>.Some { value: found } => if found >= 0.0 {
+      Option<f64>.some(found)
+    } else {
+      Option<f64>.None
+    }
+    _ => Option<f64>.None
+  }
+}
+
+fn fallback(value: Option<f64>, otherwise: f64) -> f64 {
+  return match &value {
+    Option<f64>.Some { value: found } => found
+    _ => otherwise
+  }
+}
+
+fn rootRatio(width: Option<f64>, height: Option<f64>, box: Option<Rect>) -> Option<f64> {
+  match &width {
+    Option<f64>.Some { value: w } => {
+      match &height {
+        Option<f64>.Some { value: h } => {
+          if w > 0.0 && h > 0.0 {
+            return Option<f64>.some(w / h)
+          }
+        }
+        _ => {}
+      }
+    }
+    _ => {}
+  }
+  match &box {
+    Option<Rect>.Some { value } => {
+      if value.width() > 0.0 && value.height() > 0.0 {
+        return Option<f64>.some(value.width() / value.height())
+      }
+    }
+    _ => {}
+  }
+  return Option<f64>.None
+}
+
+// CSS Images default object sizing, with a 300x150 host default object size.
+// CLI width/height select output pixels; they do not rewrite the document's viewport.
+effect fn sizing(
+  document: &Document,
+  root: NodeId,
+  box: Option<Rect>,
+  options: &RenderOptions,
+) -> Viewport
+  ! RenderError {
+  if !f64.isFinite(options.zoom) || options.zoom <= 0.0 {
+    fail RenderError.InvalidSize
+  }
+  let width = positive(intrinsic(attr(document, root, b"width")))
+  let height = positive(intrinsic(attr(document, root, b"height")))
+  let ratio = rootRatio(width, height, box)
+  let mut w: f64 = 300.0
+  let mut h: f64 = 150.0
+  match &width {
+    Option<f64>.Some { value } => {
+      w = value
+      match &height {
+        Option<f64>.Some { value: foundHeight } => {
+          h = foundHeight
+        }
+        _ => {
+          match &ratio {
+            Option<f64>.Some { value: foundRatio } => {
+              h = w / foundRatio
+            }
+            _ => {}
+          }
+        }
+      }
+    }
+    _ => {
+      match &height {
+        Option<f64>.Some { value } => {
+          h = value
+          match &ratio {
+            Option<f64>.Some { value: foundRatio } => {
+              w = h * foundRatio
+            }
+            _ => {}
+          }
+        }
+        _ => {
+          match &ratio {
+            Option<f64>.Some { value } => {
+              if value >= 2.0 {
+                h = w / value
+              } else {
+                w = h * value
+              }
+            }
+            _ => {}
+          }
+        }
+      }
+    }
+  }
+  if !f64.isFinite(w) || !f64.isFinite(h) || w <= 0.0 || h <= 0.0 {
+    fail RenderError.InvalidSize
+  }
+  let mut outputWidth = w
+  let mut outputHeight = h
+  if options.width != 0 {
+    outputWidth = u32.toF64(options.width)
+    outputHeight = if options.height != 0 {
+      u32.toF64(options.height)
+    } else {
+      outputWidth * (h / w)
+    }
+  } else if options.height != 0 {
+    outputHeight = u32.toF64(options.height)
+    outputWidth = outputHeight * (w / h)
+  }
+  let scaledWidth = f64.ceil(outputWidth * options.zoom)
+  let scaledHeight = f64.ceil(outputHeight * options.zoom)
+  let pw = match &f64.checkedToU32(scaledWidth) {
+    Option<u32>.Some { value } => value
+    _ => {
+      fail RenderError.TooLarge
+    }
+  }
+  let ph = match &f64.checkedToU32(scaledHeight) {
+    Option<u32>.Some { value } => value
+    _ => {
+      fail RenderError.TooLarge
+    }
+  }
+  if pw == 0 || ph == 0 {
+    fail RenderError.InvalidSize
+  }
+  let widthPixels = u32.toUsize(pw)
+  let heightPixels = u32.toUsize(ph)
+
+  // The RGBA size must also fit vector's usize multiplication on wasm32.
+  if widthPixels > usize.MAX / 4 / heightPixels || widthPixels > options.maxPixels / heightPixels {
+    fail RenderError.TooLarge
+  }
+  let scale = Transform.scale(u32.toF64(pw) / w, u32.toF64(ph) / h)
+  if !Transform.isFinite(scale) {
+    fail RenderError.InvalidSize
+  }
+  return Viewport { width: w, height: h, pixelsWidth: pw, pixelsHeight: ph, scale: scale }
+}
+
+fn coordinate(
+  document: &Document,
+  id: NodeId,
+  name: &[u8],
+  base: f64,
+  fontSize: f64,
+  otherwise: f64,
+) -> f64 {
+  return fallback(length(attr(document, id, name), base, fontSize), otherwise)
+}
+
+fn diagonal(width: f64, height: f64) -> f64 {
+  let largest = if width > height {
+    width
+  } else {
+    height
+  }
+  if largest == 0.0 {
+    return 0.0
+  }
+  let x = width / largest
+  let y = height / largest
+  return largest * f64.sqrt((x * x + y * y) / 2.0)
+}
+
+effect fn shape(
+  document: &Document,
+  id: NodeId,
+  name: &[u8],
+  width: f64,
+  height: f64,
+  style: &Style,
+) -> Path
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  if equal(name, b"path") {
+    return run svg.parsePath(attr(document, id, b"d"))
+  }
+  if equal(name, b"polyline") || equal(name, b"polygon") {
+    return run svg.points(attr(document, id, b"points"), equal(name, b"polygon"))
+  }
+  let fontSize = style.fontSize
+  if equal(name, b"rect") {
+    let x = coordinate(document, id, b"x", width, fontSize, 0.0)
+    let y = coordinate(document, id, b"y", height, fontSize, 0.0)
+    let w = coordinate(document, id, b"width", width, fontSize, 0.0)
+    let h = coordinate(document, id, b"height", height, fontSize, 0.0)
+    let rx = positive(length(attr(document, id, b"rx"), width, fontSize))
+    let ry = positive(length(attr(document, id, b"ry"), height, fontSize))
+    return run svg.rectangle(
+      x,
+      y,
+      w,
+      h,
+      fallback(rx, fallback(ry, 0.0)),
+      fallback(ry, fallback(rx, 0.0)),
+    )
+  }
+  if equal(name, b"circle") || equal(name, b"ellipse") {
+    let cx = coordinate(document, id, b"cx", width, fontSize, 0.0)
+    let cy = coordinate(document, id, b"cy", height, fontSize, 0.0)
+    let circle = equal(name, b"circle")
+    let rx = if circle {
+      coordinate(document, id, b"r", diagonal(width, height), fontSize, 0.0)
+    } else {
+      coordinate(document, id, b"rx", width, fontSize, 0.0)
+    }
+    let ry = if circle {
+      rx
+    } else {
+      coordinate(document, id, b"ry", height, fontSize, 0.0)
+    }
+    return run svg.ellipse(cx, cy, rx, ry)
+  }
+  let mut path = Path.make()
+  if equal(name, b"line") {
+    let x1 = coordinate(document, id, b"x1", width, fontSize, 0.0)
+    let y1 = coordinate(document, id, b"y1", height, fontSize, 0.0)
+    let x2 = coordinate(document, id, b"x2", width, fontSize, 0.0)
+    let y2 = coordinate(document, id, b"y2", height, fontSize, 0.0)
+    let moved = run path.append(Segment.MoveTo { to: Point.new(x1, y1) })
+    let lined = run path.append(Segment.LineTo { to: Point.new(x2, y2) })
+  }
+  return move path
+}
+
+// XML enforces a depth ceiling of 256, bounding this traversal's call stack.
+effect fn element(
+  document: &Document,
+  id: NodeId,
+  parentStyle: Style,
+  parentTransform: Transform,
+  width: f64,
+  height: f64,
+  root: bool,
+  box: Option<Rect>,
+  bounds: Rect,
+  tree: &mut RenderTree,
+) -> ()
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let node = Document.nodes(document)[id.index]
+  if node.kind != NodeKind.Element
+    || !equal(Document.namespaceUri(document, id), b"http://www.w3.org/2000/svg") {
+    return
+  }
+  let name = Document.localName(document, id)
+  let container = root || equal(name, b"g") || equal(name, b"a")
+  let drawable = equal(name, b"path") || equal(name, b"rect") || equal(name, b"circle")
+    || equal(name, b"ellipse")
+    || equal(name, b"line")
+    || equal(name, b"polyline")
+    || equal(name, b"polygon")
+  if !container && !drawable {
+    return
+  }
+  let userWidth = if root {
+    match &box {
+      Option<Rect>.Some { value } => value.width()
+      _ => width
+    }
+  } else {
+    width
+  }
+  let userHeight = if root {
+    match &box {
+      Option<Rect>.Some { value } => value.height()
+      _ => height
+    }
+  } else {
+    height
+  }
+  let style = run compute(document, id, parentStyle, userWidth, userHeight, &mut tree.dashes)
+  if !style.displayed || style.opacity == 0.0 {
+    return
+  }
+  let local = match &svg.transform(attr(document, id, b"transform")) {
+    Option<Transform>.Some { value } => value
+    _ => Transform.identity()
+  }
+  let mut transform = Transform.multiply(parentTransform, local)
+  if root {
+    match &box {
+      Option<Rect>.Some { value } => {
+        let mapped = svg.viewport(value, width, height, attr(document, id, b"preserveAspectRatio"))
+        match &mapped {
+          Option<Transform>.Some { value: mappedTransform } => {
+            transform = Transform.multiply(transform, mappedTransform)
+          }
+          _ => {
+            return
+          }
+        }
+      }
+      _ => {}
+    }
+  }
+  if !Transform.isFinite(transform) {
+    fail RenderError.InvalidGeometry
+  }
+
+  // A singular CTM has no painted area. Skip it before arc tolerance inversion.
+  match &Transform.inverse(transform) {
+    Option<Transform>.None => {
+      return
+    }
+    _ => {}
+  }
+  let layer = style.opacity != 1.0
+  if layer {
+    run tree.nodes.append(ResolvedNode.BeginGroup { opacity: style.opacity, bounds: bounds })
+  }
+  if drawable && style.visible {
+    let path = run shape(document, id, name, userWidth, userHeight, &style)
+    if !path.isEmpty() {
+      let index = tree.paths.length()
+      run tree.paths.append(move path)
+      run tree.nodes.append(
+        ResolvedNode.Shape { path: index, transform: transform, bounds: bounds, style: style },
+      )
+    }
+  }
+  if container {
+    let mut child = Document.firstChild(document, id)
+    while true {
+      let next = match &child {
+        Option<NodeId>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      run element(
+        document,
+        next,
+        style,
+        transform,
+        userWidth,
+        userHeight,
+        false,
+        Option<Rect>.None,
+        bounds,
+        &mut tree.*,
+      )
+      child = Document.nextSibling(document, next)
+    }
+  }
+  if layer {
+    run tree.nodes.append(ResolvedNode.EndGroup)
+  }
+}
+
+pub effect fn resolve(document: &Document, options: &RenderOptions) -> RenderTree
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  let root = Document.root(document)
+  if !equal(Document.localName(document, root), b"svg")
+    || !equal(Document.namespaceUri(document, root), b"http://www.w3.org/2000/svg") {
+    fail RenderError.InvalidRoot
+  }
+  let box = svg.viewBox(attr(document, root, b"viewBox"))
+  let viewport = run sizing(document, root, box, options)
+  let bounds = match &Rect.new(
+    0.0,
+    0.0,
+    u32.toF64(viewport.pixelsWidth),
+    u32.toF64(viewport.pixelsHeight),
+  ) {
+    Option<Rect>.Some { value } => value
+    _ => {
+      fail RenderError.InvalidSize
+    }
+  }
+  let mut tree = RenderTree {
+    width: viewport.pixelsWidth,
+    height: viewport.pixelsHeight,
+    paths: List<Path>.make(),
+    dashes: List<List<f64>>.make(),
+    nodes: List<ResolvedNode>.make(),
+  }
+  run tree.dashes.append(List<f64>.make())
+  run element(
+    document,
+    root,
+    Style.initial(),
+    viewport.scale,
+    viewport.width,
+    viewport.height,
+    true,
+    box,
+    bounds,
+    &mut tree,
+  )
+  return move tree
+}

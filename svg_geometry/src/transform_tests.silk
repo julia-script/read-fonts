@@ -1,0 +1,267 @@
+//! Numeric transform contracts; citations refer to specs.lock.json snapshots.
+import geometry { Transform }
+import transforms { transform, cssTransform, CssTransformResult }
+import silk.option { Option }
+import silk.num.f64
+import silk.testing.testing { Testing, AssertionError }
+
+fn near(a: f64, b: f64) -> bool {
+  return f64.abs(a - b) < 0.00000000001
+}
+
+fn same(a: Transform, b: Transform) -> bool {
+  return near(a.a, b.a) && near(a.b, b.b) && near(a.c, b.c) && near(a.d, b.d) && near(a.e, b.e)
+    && near(a.f, b.f)
+}
+
+fn svgIs(data: &[u8], expected: Transform) -> bool {
+  let result = transform(data)
+  return match &result {
+    Option<Transform>.Some { value } => same(value, expected)
+    Option<Transform>.None => false
+  }
+}
+
+fn svgInvalid(data: &[u8]) -> bool {
+  let result = transform(data)
+  return match &result {
+    Option<Transform>.None => true
+    _ => false
+  }
+}
+
+fn cssIs(data: &[u8], expected: Transform) -> bool {
+  let result = cssTransform(data)
+  return match &result {
+    CssTransformResult.Affine { value } => same(value, expected)
+    _ => false
+  }
+}
+
+fn cssInvalid(data: &[u8]) -> bool {
+  let result = cssTransform(data)
+  return match &result {
+    CssTransformResult.Invalid => true
+    _ => false
+  }
+}
+
+fn perspective(data: &[u8]) -> bool {
+  let result = cssTransform(data)
+  return match &result {
+    CssTransformResult.PerspectiveNeeded => true
+    _ => false
+  }
+}
+
+// https://www.w3.org/TR/css-transforms-1/#svg-syntax
+test effect fn svgTransformGrammar() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(svgIs(b" \t\r\n", Transform.identity()), "empty attribute is identity")
+  run Testing.expect(
+    svgIs(b"translate (10-20), scale(2 .5)", Transform.new(2.0, 0.0, 0.0, 0.5, 10.0, -20.0)),
+    "SVG optional numeric separators and function comma",
+  )
+  run Testing.expect(
+    svgIs(b"matrix(1 2 3 4 5 6)", Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)),
+    "matrix ordering",
+  )
+  run Testing.expect(
+    svgIs(b"translate(.5.25)", Transform.translation(0.5, 0.25)),
+    "adjacent decimal tokens",
+  )
+  run Testing.expect(svgIs(b"scale(2.)", Transform.scale(2.0, 2.0)), "SVG trailing decimal point")
+  run Testing.expect(
+    svgInvalid(b"translate(1),") && svgInvalid(b"scale(1,,2)"),
+    "reject dangling and repeated comma",
+  )
+  run Testing.expect(svgInvalid(b"scale(1)translate(2)"), "SVG functions require comma-wsp")
+  run Testing.expect(
+    svgInvalid(b"translate(1px)") && svgInvalid(b"rotate(1deg)"),
+    "SVG attribute uses numbers only",
+  )
+  run Testing.expect(svgInvalid(b"rotate(1 2)") && svgInvalid(b"Translate(1)"), "arity and case")
+  run Testing.expect(
+    svgInvalid(b"none") && svgInvalid(b"rotateX(20)"),
+    "CSS-only forms are not SVG grammar",
+  )
+}
+
+// https://www.w3.org/TR/css-transforms-1/#svg-transform-functions
+test effect fn svgRotationSkewAndOrder() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(
+    svgIs(b"rotate(90,10,20)", Transform.new(0.0, 1.0, -1.0, 0.0, 30.0, 10.0)),
+    "rotation around center",
+  )
+  run Testing.expect(
+    svgIs(b"skewX(45) skewY(45)", Transform.new(2.0, 1.0, 1.0, 1.0, 0.0, 0.0)),
+    "skews postmultiply",
+  )
+  run Testing.expect(
+    svgIs(b"scale(2) translate(3,4)", Transform.new(2.0, 0.0, 0.0, 2.0, 6.0, 8.0)),
+    "transform list composition order",
+  )
+}
+
+// https://www.w3.org/TR/css-transforms-1/#two-d-transform-functions
+test effect fn cssTwoDimensionalForms() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(cssIs(b" NONE ", Transform.identity()), "CSS none is case insensitive")
+  run Testing.expect(
+    cssIs(b"translate(2px, 3px) scale(2,3)", Transform.new(2.0, 0.0, 0.0, 3.0, 2.0, 3.0)),
+    "CSS lengths and composition",
+  )
+  run Testing.expect(
+    cssIs(
+      b"translateX(4px) translateY(5px) scaleX(2) scaleY(3)",
+      Transform.new(2.0, 0.0, 0.0, 3.0, 4.0, 5.0),
+    ),
+    "axis functions",
+  )
+  run Testing.expect(
+    cssIs(b"matrix(1,2,3,4,5,6)", Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)),
+    "CSS matrix",
+  )
+  run Testing.expect(
+    cssIs(b"skew(45deg,45deg)", Transform.new(1.0, 1.0, 1.0, 1.0, 0.0, 0.0)),
+    "skew is not skewX times skewY",
+  )
+  run Testing.expect(cssIs(b"translate(0) rotate(0)", Transform.identity()), "unitless zero")
+  run Testing.expect(
+    cssInvalid(b"") && cssInvalid(b"translate(2)"),
+    "CSS empty and unitless nonzero length invalid",
+  )
+  run Testing.expect(
+    cssInvalid(b"scale(2 3)") && cssInvalid(b"rotate (20deg)"),
+    "CSS commas and function token",
+  )
+  run Testing.expect(cssInvalid(b"rotate(20)") && cssInvalid(b"scale(2px)"), "dimension checking")
+  run Testing.expect(
+    cssInvalid(b"scale(2.)") && cssInvalid(b"translate(2%)"),
+    "numeric mode does not resolve percentages",
+  )
+}
+
+// https://www.w3.org/TR/css-values-3/#angles
+test effect fn cssAngleUnits() -> ()
+  ! AssertionError<'static> {
+  let quarter = Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)
+  run Testing.expect(cssIs(b"rotate(90deg)", quarter), "degrees")
+  run Testing.expect(cssIs(b"rotate(1.5707963267948966rad)", quarter), "radians")
+  run Testing.expect(cssIs(b"rotate(100grad)", quarter), "gradians")
+  run Testing.expect(cssIs(b"ROTATE(.25TURN)", quarter), "turns and case-insensitive units")
+}
+
+// https://drafts.csswg.org/css-transforms-2/#three-d-transform-functions
+test effect fn cssThreeDimensionalFunctions() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(cssIs(b"rotateX(60deg)", Transform.scale(1.0, 0.5)), "rotateX drops output z")
+  run Testing.expect(cssIs(b"rotateY(60deg)", Transform.scale(0.5, 1.0)), "rotateY drops output z")
+  run Testing.expect(
+    cssIs(b"rotateZ(90deg)", Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)),
+    "rotateZ",
+  )
+  run Testing.expect(
+    cssIs(
+      b"translate3d(2px,3px,4px) translateZ(9px) scale3d(2,3,4) scaleZ(2)",
+      Transform.new(2.0, 0.0, 0.0, 3.0, 2.0, 3.0),
+    ),
+    "3D translations and scales",
+  )
+  run Testing.expect(
+    cssIs(
+      b"matrix3d(1,2,0,0,3,4,0,0,0,0,1,0,5,6,7,1)",
+      Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+    ),
+    "column-major CSS matrix3d",
+  )
+  run Testing.expect(
+    cssInvalid(b"translate3d(1px,2px)") && cssInvalid(b"rotate3d(1,0,0,1px)"),
+    "3D grammar rejects wrong arity and units",
+  )
+}
+
+// https://drafts.csswg.org/css-transforms-2/#mathematical-description
+test effect fn cssComposesBeforeFlattening() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(
+    cssIs(b"rotateY(60deg) rotateY(-60deg)", Transform.identity()),
+    "rotation roundtrip must not flatten components",
+  )
+  run Testing.expect(
+    cssIs(b"rotateY(90deg) translateZ(10px)", Transform.new(0.0, 0.0, 0.0, 1.0, 10.0, 0.0)),
+    "z translation becomes x translation while the x axis projects to zero",
+  )
+  run Testing.expect(
+    cssIs(b"translateZ(10px) rotateY(90deg)", Transform.scale(0.0, 1.0)),
+    "order remains observable in 3D",
+  )
+}
+
+// https://drafts.csswg.org/css-transforms-2/#funcdef-rotate3d
+test effect fn cssRotationAxisNormalization() -> ()
+  ! AssertionError<'static> {
+  let quarter = Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)
+  run Testing.expect(cssIs(b"rotate3d(0,0,2,90deg)", quarter), "axis is normalized")
+  run Testing.expect(
+    cssIs(b"rotate3d(0,0,1e308,90deg)", quarter),
+    "axis normalization avoids overflow",
+  )
+  run Testing.expect(
+    cssIs(b"rotate3d(0,0,1e-300,90deg)", quarter),
+    "axis normalization avoids underflow",
+  )
+  run Testing.expect(
+    cssIs(b"rotate3d(0,0,0,90deg)", Transform.identity()),
+    "zero axis does not rotate",
+  )
+  run Testing.expect(
+    cssIs(b"rotate3d(1,1,1,120deg)", Transform.new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0)),
+    "arbitrary axis rotation",
+  )
+}
+
+// https://drafts.csswg.org/css-transforms-2/#funcdef-perspective
+test effect fn cssPerspectiveIsDistinctFromInvalid() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(
+    perspective(b"perspective(100px) rotateY(20deg)"),
+    "true perspective needs projective renderer",
+  )
+  run Testing.expect(perspective(b"perspective(0)"), "subpixel perspective clamps to one pixel")
+  run Testing.expect(
+    cssIs(b"perspective(none)", Transform.identity()),
+    "none perspective is identity",
+  )
+  run Testing.expect(
+    cssInvalid(b"perspective(-1px)") && cssInvalid(b"perspective(1deg)"),
+    "invalid perspective arguments",
+  )
+  run Testing.expect(
+    cssInvalid(b"perspective(100px) garbage"),
+    "invalid tail takes precedence over perspective",
+  )
+  run Testing.expect(
+    perspective(b"matrix3d(1,0,0,0,0,1,0,0,0,0,1,-.01,0,0,0,1)"),
+    "matrix perspective explicitly reported",
+  )
+}
+
+// https://drafts.csswg.org/css-transforms-2/#mathematical-description
+test effect fn transformFinitePolicy() -> ()
+  ! AssertionError<'static> {
+  run Testing.expect(
+    svgInvalid(b"scale(1e309)") && cssInvalid(b"scale(NaN)"),
+    "nonfinite tokens rejected",
+  )
+  run Testing.expect(svgInvalid(b"scale(1e308) scale(1e308)"), "composition overflow rejected")
+  run Testing.expect(
+    cssInvalid(b"translateZ(1e308px) translateZ(1e308px)"),
+    "even discarded z must stay finite",
+  )
+  run Testing.expect(
+    cssIs(b"rotate(1e308turn)", Transform.identity()),
+    "reduce finite angles before radians conversion",
+  )
+}
