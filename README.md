@@ -1,5 +1,10 @@
 # read-fonts for Silk
 
+> **Moved.** This repository is archived. Its packages now live in
+> [silk-lang/nonstd](https://github.com/silk-lang/nonstd): `font/types`, `font/parse`
+> (read_fonts), `font/shape` (harfrust port), `text/ucd`, `text/xml`, `css/style` and
+> `images/svg`. Open issues and pull requests there.
+
 Font parsing for [Silk](https://github.com/silk-lang/silk), ported from Google's
 [read-fonts and font-types](https://github.com/googlefonts/fontations). It parses
 sfnt and TTC files, core, layout, variation, AAT, bitmap, COLR and CFF/CFF2
