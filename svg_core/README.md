@@ -6,18 +6,21 @@ references. See [authority, scope and coverage](SPECIFICATIONS.md).
 
 ## Current status
 
-Phase 1 provides f64 geometry, registered package boundaries, pinned specifications
-and test suites, an executable reftest adapter, and a CPU-only dependency/check gate.
-**There is no SVG parser, renderer or `svg_cli` executable yet.** The other package
-compilation roots deliberately export no API. Fetching a corpus or validating its
-expectations does not mean its SVGs passed. All 12 curated cases remain explicitly
-unevaluated; no viewer-conformance or renderer-performance claim is made.
+The phase-2 implementation parses XML and renders presentation-attribute SVG:
+outermost `svg`, `g`, paths and basic shapes, solid fills/strokes, transforms,
+`viewBox`/`preserveAspectRatio`, inherited paint, visibility and isolated opacity.
+It produces premultiplied RGBA8 through the pinned CPU `vector` backend and writes
+PNG through `svg_cli`. The retained render tree and display list are public.
 
-The handoff requires Julia's merge decision before the next phase changes the same
-area. Phase 2 adds XML, presentation attributes, paths/shapes, fills/strokes, PNG
-output, the rendering CLI and the first measured resvg baseline. CSS, references,
-paint servers, clipping/masking, images, filters, text, animation and ICC remain
-required subsequent phases, not exclusions from the scope.
+Local verification: 69 SVG native tests, 33 upstream vector tests, 47 Python
+tooling tests, 15 own rendering cases and six malformed-input cases pass.
+The curated resvg set has six exact RGBA passes and six explicitly recorded
+circle-edge pixel non-passes. Two own round-stroke comparisons have narrowly
+documented antialias allowances. These results do **not** establish full viewer
+conformance. The full W3C/resvg/WPT sweep and performance parity remain open.
+
+CSS, references, paint servers, clipping/masking, image decoding, filters, text,
+animation and ICC remain required subsequent phases, not exclusions from scope.
 
 ## Packages
 
@@ -25,20 +28,21 @@ All are root workspace packages with the `svg_` prefix:
 
 | Package | Responsibility |
 | --- | --- |
-| `svg_geometry` | Implemented: points, vectors, sizes, bounds, affine transforms and owned path segments |
-| `svg_xml`, `svg_css`, `svg_image` | Independent syntax and image layers; no SVG-specific public types |
-| `svg_core` | Document/style/resolve/text/animation layer; owns project specification and limitation records |
+| `svg_geometry` | f64 geometry, SVG path/points parsing, arcs, shape construction and transforms |
+| `svg_xml` | Namespace-aware nonvalidating XML, UTF-8/UTF-16, bounded DTD/entity processing |
+| `svg_css` | CSS syntax/cascade boundary; implementation pending |
+| `svg_image` | Checked premultiplied RGBA storage and PNG encoding; decoding pending |
+| `svg_core` | Presentation values and geometry resolution; specification and limitation records |
 | `svg_render` | Render tree to backend-neutral retained display list and public rendering entry point |
 | `svg_raster` | Thin CPU executor over `vector`, not a second rasterizer |
-| `svg_filters` | SVG filter evaluation |
+| `svg_filters` | Filter evaluation boundary; implementation pending |
 | `svg_cli` | Rendering command-line package |
 | `svg_tests` | Conformance inputs, suite pins and reviewed expectations |
 | `svg_bench` | Renderer workloads and measured baselines |
 
-Except geometry, these are package/dependency boundaries for the following phases,
-not implemented services. Nothing in the existing font/shaping/Unicode stack depends
-on an SVG package. Font dependencies remain `font_types`, `read_fonts`, `harfrust`
-and `ucd`. There is no silk-layout dependency.
+Nothing in the existing font/shaping/Unicode stack depends on an SVG package.
+Font dependencies remain `font_types`, `read_fonts`, `harfrust` and `ucd`.
+There is no silk-layout dependency.
 
 `vendor/silk-gpu` is a pinned submodule. Only its pure-Silk `vector` package is built:
 no WebGPU, Dawn, GPU driver or GPU backend is required. Its upstream geometry,
@@ -65,17 +69,26 @@ scripts/generate --check
 ```
 
 The SVG gate runs workspace type checking, the vector library build, package
-format checks, geometry and vector native tests, Python tooling tests, three
-geometry/conformance specification-cache checks, the curated resvg download and
-expectation validation. Compiles are sequential. Its CI job runs alongside the
-existing jobs with a 15-minute timeout, version-keyed toolchain caching and
-hash-keyed reference caching. `scripts/generate --check` remains the separate
-workspace freshness gate and requires the source changes to have been committed.
+format checks, SVG/vector native tests, tooling tests and a release CLI build.
+It executes the CLI on own fixtures, malformed inputs and the curated resvg
+subset, checking reviewed expectations rather than treating known pixel
+non-passes as successes. Reports go under ignored `build/svg/`. Compiles are
+sequential. Its CI job runs alongside the existing jobs with a 15-minute timeout,
+version-keyed toolchain caching and hash-keyed reference caching.
+`scripts/generate --check` remains the separate workspace freshness gate and
+requires source changes to have been committed.
 
-Use `scripts/svg/check --offline` after populating the caches. `--skip-fetch` is a
-local source-only shortcut, not the complete CI gate. It skips cache/expectation
-validation, not native or tooling tests. Formatting uses a manifest per package;
-a package directory is outside its own `src/` selection in the pinned compiler.
+Use `scripts/svg/check --offline` after populating the caches. `--skip-fetch`
+skips pinned-reference checks and the external corpus, not native/tooling tests
+or the actual own/malformed rendering runs. Formatting uses one manifest per
+package; a directory argument is outside its own `src/` selection in dev.27.
+
+The macOS arm64 offline gate completed in 28.03 seconds with warm caches.
+The Linux arm64 offline SVG gate and `scripts/generate --check` also pass in an
+isolated Ubuntu workspace, with the same own/curated rendering outcomes.
+GitHub Actions has not supplied a cold-run result: the phase-1 jobs were refused
+before execution because of account billing/spending limits. Local timings are
+not a substitute for that CI budget verification.
 
 ## Specifications and suites
 
@@ -100,11 +113,13 @@ belong in PR CI; their scheduled rendering jobs arrive with the renderer.
 array. Every case names `id`, `status`, `reason`, and an HTTPS normative `spec`
 anchor. Status is `pass`, `fail`, `spec-difference` or `skip`; differences also
 record `spec_result` and `reference_result`. Optional `tolerance` records channel
-and differing-pixel limits plus a reason. Missing/stale expectations, unexpected
-passes/failures, renderer crashes and missing output fail the runner. W3C browser
-exclusions are named individually. Remaining full-suite cases are untriaged, not
-implicitly passing. Phase-1 resvg skips are temporary unevaluated cases, not
-additions to the conformance skip list.
+and differing-pixel limits plus a reason. `antialias_channel` applies only when
+both samples have partial alpha; it does not forgive opaque/transparent changes.
+It is opt-in per case, not a global tolerance for translucent artwork.
+Missing/stale expectations, unexpected passes/failures, renderer crashes and
+missing output fail the runner. `failed_cases` includes known pixel non-passes;
+`gate_failures` counts unexpected results and untriaged cases. Remaining full-suite
+cases are untriaged, not implicitly passing or added to the conformance skip list.
 
 The adapter executes an explicitly supplied renderer without a shell:
 
@@ -127,6 +142,40 @@ matching references are alternatives; every mismatch reference must differ.
 WPT cases needing HTML/script or manual extraction are reported explicitly.
 The Python Pillow dependency belongs only to this tooling, not the Silk runtime.
 
+## Rendering API and CLI
+
+```sh
+silk build --release --manifest-path svg_cli/silk.toml
+build/llvm/aarch64-apple-darwin/release/svg_cli input.svg -o output.png
+build/llvm/aarch64-apple-darwin/release/svg_cli input.svg -o output.png --width 300 --zoom 2
+```
+
+Use `aarch64-unknown-linux-gnu` or `x86_64-unknown-linux-gnu` for the corresponding
+Linux build directory. The CLI requires an input path and `-o`; it creates no
+output before parsing, rendering and encoding succeed. Invalid invocation exits
+2; I/O/rendering/encoding failures exit 1.
+
+Import `svg_render.lib`:
+
+| Entry point | Ownership and result |
+|---|---|
+| `parse(data, &options)` | XML bytes → owned `RenderTree`, without rasterizing |
+| `record(move tree)` | Moves geometry into a backend-neutral `DisplayList` |
+| `renderDisplayList(&list)` | Reusable retained input → owned `vector.pixmap.Pixmap` |
+| `render(data, &options)` | Combined path → premultiplied sRGB RGBA8 pixmap |
+
+These are allocator effects with typed `RenderError`/`OutOfMemoryError`.
+`svg_image.png.encodePixels(width, height, pixels)` borrows premultiplied pixels;
+no intermediate owned image copy is required. Use `svg_xml.xml` directly for
+the retained XML arena, metadata and detailed XML error offsets.
+
+`RenderOptions.make()` uses intrinsic/default object sizing, zoom 1 and a
+16M-pixel output budget. A viewBox supplies an aspect ratio, not intrinsic pixel
+dimensions: a viewBox-only square occupies 150×150 in the 300×150 default object
+size. CLI width/height select output resolution without rewriting the logical
+viewport. The executor also caps aggregate output/isolated surfaces at 64M
+pixels; excessively nested opacity groups fail before allocating their surfaces.
+
 ## Geometry API
 
 Import `svg_geometry.geometry`. `Transform.multiply(left, right)` applies right
@@ -137,13 +186,49 @@ are `None`. A transformed rectangle bounds all four corners, not the exact curve
 
 `Path` owns stdlib `List` storage. Borrow its segments; append rejects nonfinite
 segments or a missing initial move without changing the path. Close restores the
-subpath start. Arc conversion, path-string parsing and curve bounds are not part
-of this storage API. These operations will use the pinned SVG algorithms in the
-rendering phases.
+subpath start. Import `svg_geometry.svg` for SVG path/points parsing and shape/
+viewBox construction, `svg_geometry.arcs` for allocation-free adaptive arc
+iteration, and `svg_geometry.transforms` for the distinct SVG/CSS grammars.
+Arc conversion uses a 0.25-device-pixel tolerance; exceeding its subdivision
+limit is an error, not a silently truncated path.
 
 ## Limitations and performance
 
-[Limitations](LIMITATIONS.md) records dependency/toolchain constraints. No compiler
-or stdlib is patched. There is no renderer benchmark yet, so no resvg ratio is
-reported. Geometry/native coverage and a geometry-to-vector pixel smoke check do
-not establish SVG document conformance or performance parity.
+[Limitations](LIMITATIONS.md) records dependency/toolchain and backend constraints.
+No compiler or stdlib is patched. The measured Ubuntu 24.04 arm64 baseline in
+[`svg_bench/baseline.json`](../svg_bench/baseline.json) uses three native samples,
+one iteration and no warmup, plus a separate Valgrind 3.22.0 Callgrind pass.
+The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
+22.1.8 and Rust 1.96.0. Ratios are Silk/resvg; greater than 1 is slower.
+
+| Workload | Parse + record time | Render time | End-to-end time | Render-process Ir |
+|---|---:|---:|---:|---:|
+| 128 original icons | 1.008× | 1.540× | 1.364× | 1.320× |
+| Tiger | 1.094× | 3.617× | 3.352× | 4.605× |
+| Large map/CAD | 1.437× | 9.147× | 7.963× | 8.900× |
+| Mixed curves | 1.112× | 1.481× | 1.351× | 1.533× |
+
+This is a baseline, **not performance parity**. Pixel checksums differ; timing
+does not certify rendering correctness. Native Tiger and large-map PNGs were
+visually inspected; librsvg supplied an independent Tiger diagnostic, not the
+definition of correct SVG.
+
+```sh
+silk build --release --manifest-path svg_bench/silk.toml
+scripts/svg/rust-bench/build
+scripts/svg/bench --silk /path/to/release/svg_bench --fetch-workloads --output build/svg/bench.json
+scripts/svg/ab /path/to/old/svg_bench /path/to/new/svg_bench --output build/svg/ab.json
+```
+
+The explicit Rust build pins resvg/usvg/tiny-skia to the corpus revision and
+verifies registry packages against its upstream lock. It is not a production
+dependency or a PR-CI step. `--record-baseline` is the only intentional baseline
+replacement path. Tiger is an explicitly downloaded AGPL-3.0-or-later benchmark
+input, never a runtime dependency; the original is preserved and both engines
+receive the same hash-recorded 900×900 sizing adaptation.
+
+Stage timers exclude file I/O, PNG encoding, checksums and destination
+destruction; end-to-end includes intermediate-tree destruction. Render includes
+a fresh zeroed pixmap in both engines. `--callgrind` on Linux separately records
+**full-process Ir**, including startup, setup, warmups, checksums and the untimed
+parse-result rasterization; it is not stage-only instruction accounting.

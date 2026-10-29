@@ -1,0 +1,1061 @@
+//! Presentation attributes only: no stylesheet cascade or inline style parsing.
+//! Colors are straight sRGB. currentColor is retained until paint recording.
+//! Physical units use 96dpi; font-dependent ex/ch and viewport units are unsupported.
+import scene { Style, Color, Paint, FillRule, LineCap, LineJoin }
+import svg_xml.xml { Document, NodeId }
+import svg_geometry.svg
+import svg_geometry.math
+import silk.collections.list { List }
+import silk.collections.slice { Slice }
+import silk.text.string { String }
+import silk.core.option { Option }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.num.f64
+import silk.num.u8
+import silk.num.u32
+
+pub fn equal(a: &[u8], b: &[u8]) -> bool {
+  if a.length != b.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < a.length {
+    if a[i] != b[i] {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn lower(c: u8) -> u8 {
+  return if c >= 65 && c <= 90 {
+    c + 32
+  } else {
+    c
+  }
+}
+
+fn insensitive(a: &[u8], b: &[u8]) -> bool {
+  if a.length != b.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < a.length {
+    if lower(a[i]) != lower(b[i]) {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn space(c: u8) -> bool {
+  return c == 32 || c == 9 || c == 10 || c == 13 || c == 12
+}
+
+pub fn trim(data: &[u8]) -> &[u8] {
+  let mut start: usize = 0
+  let mut end = data.length
+  while start < end && space(data[start]) {
+    start = start + 1
+  }
+  while end > start && space(data[end - 1]) {
+    end = end - 1
+  }
+  return Slice.view<u8>(data, start, end - start)
+}
+
+pub fn attr<'a>(document: &'a Document, id: NodeId, name: &[u8]) -> &'a [u8] {
+  let found = Document.attribute(document, id, b"", name)
+  return match &found {
+    Option<&[u8]>.Some { value } => value
+    _ => b""
+  }
+}
+
+fn ends(data: &[u8], suffix: &[u8]) -> bool {
+  return data.length >= suffix.length
+    && insensitive(Slice.view<u8>(data, data.length - suffix.length, suffix.length), suffix)
+}
+
+fn finite(value: f64) -> Option<f64> {
+  return if f64.isFinite(value) {
+    Option<f64>.some(value)
+  } else {
+    Option<f64>.None
+  }
+}
+
+fn clamp(value: f64) -> f64 {
+  return f64.max(0.0, f64.min(1.0, value))
+}
+
+pub fn length(data: &[u8], percentBase: f64, fontSize: f64) -> Option<f64> {
+  let text = trim(data)
+  let mut end = text.length
+  let mut factor = 1.0
+  if ends(text, b"%") {
+    end = end - 1
+    factor = percentBase / 100.0
+  } else if ends(text, b"px") {
+    end = end - 2
+  } else if ends(text, b"em") {
+    end = end - 2
+    factor = fontSize
+  } else if ends(text, b"in") {
+    end = end - 2
+    factor = 96.0
+  } else if ends(text, b"cm") {
+    end = end - 2
+    factor = 96.0 / 2.54
+  } else if ends(text, b"mm") {
+    end = end - 2
+    factor = 96.0 / 25.4
+  } else if ends(text, b"pt") {
+    end = end - 2
+    factor = 96.0 / 72.0
+  } else if ends(text, b"pc") {
+    end = end - 2
+    factor = 16.0
+  } else if ends(text, b"q") {
+    end = end - 1
+    factor = 96.0 / 101.6
+  }
+  let parsed = svg.number(Slice.view<u8>(text, 0, end))
+  return match &parsed {
+    Option<f64>.Some { value } => finite(value * factor)
+    _ => Option<f64>.None
+  }
+}
+
+fn alpha(data: &[u8]) -> Option<f64> {
+  let text = trim(data)
+  let percent = ends(text, b"%")
+  let end = if percent {
+    text.length - 1
+  } else {
+    text.length
+  }
+  let parsed = svg.number(Slice.view<u8>(text, 0, end))
+  return match &parsed {
+    Option<f64>.Some { value } => Option<f64>.some(
+      clamp(
+        if percent {
+          value / 100.0
+        } else {
+          value
+        },
+      ),
+    )
+    _ => Option<f64>.None
+  }
+}
+
+fn hex(c: u8) -> Option<u8> {
+  let byte = lower(c)
+  if byte >= 48 && byte <= 57 {
+    return Option<u8>.some(byte - 48)
+  }
+  if byte >= 97 && byte <= 102 {
+    return Option<u8>.some(byte - 97 + 10)
+  }
+  return Option<u8>.None
+}
+
+fn hexColor(data: &[u8]) -> Option<Color> {
+  let count = data.length - 1
+  if count != 3 && count != 4 && count != 6 && count != 8 {
+    return Option<Color>.None
+  }
+  let short = count < 5
+  let components: usize = if count == 4 || count == 8 {
+    4
+  } else {
+    3
+  }
+  let mut channels: [f64; 4] = [0.0, 0.0, 0.0, 1.0]
+  let mut i: usize = 0
+  while i < components {
+    let stride: usize = if short {
+      1
+    } else {
+      2
+    }
+    let at = 1 + i * stride
+    let first = hex(data[at])
+    let high = match &first {
+      Option<u8>.Some { value } => value
+      _ => {
+        return Option<Color>.None
+      }
+    }
+    let mut low = high
+    if !short {
+      let second = hex(data[at + 1])
+      low = match &second {
+        Option<u8>.Some { value } => value
+        _ => {
+          return Option<Color>.None
+        }
+      }
+    }
+    channels[i] = (u8.toF64(high) * 16.0 + u8.toF64(low)) / 255.0
+    i = i + 1
+  }
+  return Option<Color>.some(
+    Color { r: channels[0], g: channels[1], b: channels[2], a: channels[3] },
+  )
+}
+
+fn hue(data: &[u8]) -> Option<f64> {
+  let text = trim(data)
+  let mut end = text.length
+  let mut period = 360.0
+  if ends(text, b"grad") {
+    end = end - 4
+    period = 400.0
+  } else if ends(text, b"deg") {
+    end = end - 3
+  } else if ends(text, b"rad") {
+    end = end - 3
+    period = math.TAU
+  } else if ends(text, b"turn") {
+    end = end - 4
+    period = 1.0
+  }
+  let parsed = svg.number(Slice.view<u8>(text, 0, end))
+  let number = match &parsed {
+    Option<f64>.Some { value } => value
+    _ => {
+      return Option<f64>.None
+    }
+  }
+
+  // Reduce in the original unit before conversion, including huge finite angles.
+  let mut reduced = f64.abs(number)
+  let mut divisor = period
+  while divisor <= reduced * 0.5 {
+    divisor = divisor * 2.0
+  }
+  while divisor >= period {
+    if reduced >= divisor {
+      reduced = reduced - divisor
+    }
+    divisor = divisor * 0.5
+  }
+  if number < 0.0 && reduced != 0.0 {
+    reduced = period - reduced
+  }
+  return Option<f64>.some((reduced / period) * 360.0)
+}
+
+fn hslChannel(offset: f64, hue: f64, saturation: f64, lightness: f64) -> f64 {
+  let mut k = offset + hue / 30.0
+  if k >= 12.0 {
+    k = k - 12.0
+  }
+  let a = saturation * f64.min(lightness, 1.0 - lightness)
+  return clamp(lightness - a * f64.max(-1.0, f64.min(f64.min(k - 3.0, 9.0 - k), 1.0)))
+}
+
+fn functionalColor(data: &[u8]) -> Option<Color> {
+  let mut open: usize = 0
+  while open < data.length && data[open] != 40 {
+    open = open + 1
+  }
+  if open == data.length || data[data.length - 1] != 41 {
+    return Option<Color>.None
+  }
+  let name = Slice.view<u8>(data, 0, open)
+  let rgb = insensitive(name, b"rgb") || insensitive(name, b"rgba")
+  let hsl = insensitive(name, b"hsl") || insensitive(name, b"hsla")
+  if !rgb && !hsl {
+    return Option<Color>.None
+  }
+
+  // Legacy comma syntax. CSS Color 4 treats rgb/rgba and hsl/hsla as aliases.
+  let empty = Slice.view<u8>(data, 0, 0)
+  let mut parts: [&[u8]; 4] = [empty; 4]
+  let mut count: usize = 0
+  let mut start = open + 1
+  let mut at = start
+  while at < data.length {
+    if data[at] == 44 || at == data.length - 1 {
+      if count == 4 {
+        return Option<Color>.None
+      }
+      parts[count] = trim(Slice.view<u8>(data, start, at - start))
+      if parts[count].length == 0 {
+        return Option<Color>.None
+      }
+      count = count + 1
+      start = at + 1
+    }
+    at = at + 1
+  }
+  if count != 3 && count != 4 {
+    return Option<Color>.None
+  }
+  let mut opacity = 1.0
+  if count == 4 {
+    let parsed = alpha(parts[3])
+    opacity = match &parsed {
+      Option<f64>.Some { value } => value
+      _ => {
+        return Option<Color>.None
+      }
+    }
+  }
+  if rgb {
+    let percent = ends(parts[0], b"%")
+    let mut channels: [f64; 3] = [0.0, 0.0, 0.0]
+    let mut i: usize = 0
+    while i < 3 {
+      if ends(parts[i], b"%") != percent {
+        return Option<Color>.None
+      }
+      let suffixLength: usize = if percent {
+        1
+      } else {
+        0
+      }
+      let end = parts[i].length - suffixLength
+      let parsed = svg.number(Slice.view<u8>(parts[i], 0, end))
+      let number = match &parsed {
+        Option<f64>.Some { value } => value
+        _ => {
+          return Option<Color>.None
+        }
+      }
+      channels[i] = clamp(
+        number
+          / (if percent {
+            100.0
+          } else {
+            255.0
+          }),
+      )
+      i = i + 1
+    }
+    return Option<Color>.some(Color { r: channels[0], g: channels[1], b: channels[2], a: opacity })
+  }
+  if !ends(parts[1], b"%") || !ends(parts[2], b"%") {
+    return Option<Color>.None
+  }
+  let parsedHue = hue(parts[0])
+  let parsedSaturation = alpha(parts[1])
+  let parsedLightness = alpha(parts[2])
+  let h = match &parsedHue {
+    Option<f64>.Some { value } => value
+    _ => {
+      return Option<Color>.None
+    }
+  }
+  let s = match &parsedSaturation {
+    Option<f64>.Some { value } => value
+    _ => {
+      return Option<Color>.None
+    }
+  }
+  let l = match &parsedLightness {
+    Option<f64>.Some { value } => value
+    _ => {
+      return Option<Color>.None
+    }
+  }
+  return Option<Color>.some(
+    Color {
+      r: hslChannel(0.0, h, s, l),
+      g: hslChannel(8.0, h, s, l),
+      b: hslChannel(4.0, h, s, l),
+      a: opacity,
+    },
+  )
+}
+
+fn solid(data: &[u8]) -> Option<Color> {
+  let text = trim(data)
+  if text.length == 0 {
+    return Option<Color>.None
+  }
+  if text[0] == 35 {
+    return hexColor(text)
+  }
+  if insensitive(text, b"transparent") {
+    return Option<Color>.some(Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 })
+  }
+  if text[text.length - 1] == 41 {
+    return functionalColor(text)
+  }
+  return namedColor(text)
+}
+
+fn paint(data: &[u8], fallback: Paint) -> Paint {
+  if insensitive(data, b"none") {
+    return Paint.None
+  }
+  if insensitive(data, b"currentColor") {
+    return Paint.CurrentColor
+  }
+  let parsed = solid(data)
+  return match &parsed {
+    Option<Color>.Some { value } => Paint.Solid { color: value }
+    _ => fallback
+  }
+}
+
+fn numeric(data: &[u8], fallback: f64, base: f64, font: f64, minimum: f64) -> f64 {
+  let parsed = length(data, base, font)
+  return match &parsed {
+    Option<f64>.Some { value } => if value >= minimum {
+      value
+    } else {
+      fallback
+    }
+    _ => fallback
+  }
+}
+
+fn opacity(data: &[u8], fallback: f64) -> f64 {
+  let parsed = alpha(data)
+  return match &parsed {
+    Option<f64>.Some { value } => value
+    _ => fallback
+  }
+}
+
+// Parse once without allocations, then materialize only a wholly valid nonzero list.
+// The pool owns normalized even-length arrays. Index zero always means no dashes.
+effect fn dashArray(
+  data: &[u8],
+  fallback: usize,
+  base: f64,
+  font: f64,
+  pool: &mut List<List<f64>>,
+) -> usize
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  if insensitive(data, b"none") {
+    return 0
+  }
+  let mut count: usize = 0
+  let mut at: usize = 0
+  let mut sum = 0.0
+  while at < data.length {
+    let start = at
+    while at < data.length && !space(data[at]) && data[at] != 44 {
+      at = at + 1
+    }
+    let parsed = length(Slice.view<u8>(data, start, at - start), base, font)
+    let value = match &parsed {
+      Option<f64>.Some { value } => value
+      _ => {
+        return fallback
+      }
+    }
+    if value < 0.0 {
+      return fallback
+    }
+    sum = sum + value
+    if !f64.isFinite(sum) {
+      return fallback
+    }
+    count = count + 1
+    while at < data.length && space(data[at]) {
+      at = at + 1
+    }
+    if at < data.length && data[at] == 44 {
+      at = at + 1
+      while at < data.length && space(data[at]) {
+        at = at + 1
+      }
+      if at == data.length {
+        return fallback
+      }
+    }
+  }
+  if count == 0 {
+    return fallback
+  }
+  if sum == 0.0 {
+    return 0
+  }
+  let mut values = List<f64>.make()
+  at = 0
+  while at < data.length {
+    let start = at
+    while at < data.length && !space(data[at]) && data[at] != 44 {
+      at = at + 1
+    }
+    let parsed = length(Slice.view<u8>(data, start, at - start), base, font)
+    let value = match &parsed {
+      Option<f64>.Some { value } => value
+      _ => {
+        return fallback
+      }
+    }
+    run List<f64>.append(&mut values, value)
+    while at < data.length && (space(data[at]) || data[at] == 44) {
+      at = at + 1
+    }
+  }
+  if count % 2 == 1 {
+    let mut i: usize = 0
+    while i < count {
+      let value = List<f64>.get(&values, i)
+      run List<f64>.append(&mut values, value)
+      i = i + 1
+    }
+  }
+  if List<List<f64>>.length(&pool.*) == 0 {
+    run List<List<f64>>.append(&mut pool.*, List<f64>.make())
+  }
+  let index = List<List<f64>>.length(&pool.*)
+  run List<List<f64>>.append(&mut pool.*, move values)
+  return index
+}
+
+pub effect fn compute(
+  document: &Document,
+  id: NodeId,
+  parent: Style,
+  viewportWidth: f64,
+  viewportHeight: f64,
+  dashes: &mut List<List<f64>>,
+) -> Style
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let initial = Style.initial()
+  let mut result = parent
+  result.opacity = initial.opacity
+  result.displayed = initial.displayed
+
+  // font-size resolves against the parent's font; all other em units use this result.
+  let font = trim(attr(document, id, b"font-size"))
+  if insensitive(font, b"initial") {
+    result.fontSize = initial.fontSize
+  } else if !insensitive(font, b"inherit") && !insensitive(font, b"unset") {
+    result.fontSize = numeric(font, parent.fontSize, parent.fontSize, parent.fontSize, 0.0)
+  }
+  let scale = f64.max(f64.abs(viewportWidth), f64.abs(viewportHeight))
+  let x = if scale == 0.0 {
+    0.0
+  } else {
+    viewportWidth / scale
+  }
+  let y = if scale == 0.0 {
+    0.0
+  } else {
+    viewportHeight / scale
+  }
+  let base = scale * f64.sqrt((x * x + y * y) * 0.5)
+  let attributes = Document.attributes(document, id)
+  let mut at: usize = 0
+  while at < attributes.length {
+    let attribute = attributes[at]
+    at = at + 1
+    if Document.attributeNamespaceUri(document, attribute).length != 0 {
+      continue
+    }
+    let name = Document.attributeLocalName(document, attribute)
+    let data = trim(Document.attributeValue(document, attribute))
+    let reset = insensitive(data, b"initial")
+    let inherit = insensitive(data, b"inherit")
+    let unset = insensitive(data, b"unset")
+    let keyword = reset || inherit || unset
+    let source = if reset {
+      initial
+    } else {
+      parent
+    }
+    if equal(name, b"fill") {
+      result.fill = if keyword {
+        source.fill
+      } else {
+        paint(data, result.fill)
+      }
+    } else if equal(name, b"stroke") {
+      result.stroke = if keyword {
+        source.stroke
+      } else {
+        paint(data, result.stroke)
+      }
+    } else if equal(name, b"color") {
+      if keyword {
+        result.color = source.color
+      } else if insensitive(data, b"currentColor") {
+        result.color = parent.color
+      } else {
+        let parsed = solid(data)
+        result.color = match &parsed {
+          Option<Color>.Some { value } => value
+          _ => result.color
+        }
+      }
+    } else if equal(name, b"fill-opacity") {
+      result.fillOpacity = if keyword {
+        source.fillOpacity
+      } else {
+        opacity(data, result.fillOpacity)
+      }
+    } else if equal(name, b"stroke-opacity") {
+      result.strokeOpacity = if keyword {
+        source.strokeOpacity
+      } else {
+        opacity(data, result.strokeOpacity)
+      }
+    } else if equal(name, b"opacity") {
+      result.opacity = if inherit {
+        parent.opacity
+      } else if reset || unset {
+        initial.opacity
+      } else {
+        opacity(data, result.opacity)
+      }
+    } else if equal(name, b"stroke-width") {
+      result.strokeWidth = if keyword {
+        source.strokeWidth
+      } else {
+        numeric(data, result.strokeWidth, base, result.fontSize, 0.0)
+      }
+    } else if equal(name, b"stroke-dashoffset") {
+      result.dashOffset = if keyword {
+        source.dashOffset
+      } else {
+        numeric(data, result.dashOffset, base, result.fontSize, -f64.MAX)
+      }
+    } else if equal(name, b"stroke-miterlimit") {
+      if keyword {
+        result.miterLimit = source.miterLimit
+      } else {
+        let parsed = svg.number(data)
+        match &parsed {
+          Option<f64>.Some { value } => {
+            if value >= 1.0 {
+              result.miterLimit = value
+            }
+          }
+          _ => {}
+        }
+      }
+    } else if equal(name, b"stroke-dasharray") {
+      if keyword {
+        result.dashIndex = source.dashIndex
+      } else {
+        result.dashIndex = run dashArray(
+          data,
+          result.dashIndex,
+          base,
+          result.fontSize,
+          &mut dashes.*,
+        )
+      }
+    } else if equal(name, b"fill-rule") {
+      if keyword {
+        result.fillRule = source.fillRule
+      } else if insensitive(data, b"nonzero") {
+        result.fillRule = FillRule.Nonzero
+      } else if insensitive(data, b"evenodd") {
+        result.fillRule = FillRule.EvenOdd
+      }
+    } else if equal(name, b"stroke-linecap") {
+      if keyword {
+        result.lineCap = source.lineCap
+      } else if insensitive(data, b"butt") {
+        result.lineCap = LineCap.Butt
+      } else if insensitive(data, b"round") {
+        result.lineCap = LineCap.Round
+      } else if insensitive(data, b"square") {
+        result.lineCap = LineCap.Square
+      }
+    } else if equal(name, b"stroke-linejoin") {
+      if keyword {
+        result.lineJoin = source.lineJoin
+      } else if insensitive(data, b"miter") {
+        result.lineJoin = LineJoin.Miter
+      } else if insensitive(data, b"round") {
+        result.lineJoin = LineJoin.Round
+      } else if insensitive(data, b"bevel") {
+        result.lineJoin = LineJoin.Bevel
+      } else if insensitive(data, b"miter-clip") {
+        result.lineJoin = LineJoin.MiterClip
+      } else if insensitive(data, b"arcs") {
+        result.lineJoin = LineJoin.Arcs
+      }
+    } else if equal(name, b"visibility") {
+      if keyword {
+        result.visible = source.visible
+      } else if insensitive(data, b"visible") {
+        result.visible = true
+      } else if insensitive(data, b"hidden") || insensitive(data, b"collapse") {
+        result.visible = false
+      }
+    } else if equal(name, b"display") {
+      if inherit {
+        result.displayed = parent.displayed
+      } else if reset || unset {
+        result.displayed = initial.displayed
+      } else if insensitive(data, b"none") {
+        result.displayed = false
+      } else if displayValue(data) {
+        result.displayed = true
+      }
+    } else if equal(name, b"shape-rendering") {
+      if keyword {
+        result.crispEdges = source.crispEdges
+      } else if insensitive(data, b"crispEdges") {
+        result.crispEdges = true
+      } else if insensitive(data, b"auto") || insensitive(data, b"optimizeSpeed")
+        || insensitive(data, b"geometricPrecision") {
+        result.crispEdges = false
+      }
+    }
+  }
+  return result
+}
+
+fn displayValue(data: &[u8]) -> bool {
+  return insensitive(data, b"inline") || insensitive(data, b"block")
+    || insensitive(data, b"list-item")
+    || insensitive(data, b"inline-block")
+    || insensitive(data, b"table")
+    || insensitive(data, b"inline-table")
+    || insensitive(data, b"table-row-group")
+    || insensitive(data, b"table-header-group")
+    || insensitive(data, b"table-footer-group")
+    || insensitive(data, b"table-row")
+    || insensitive(data, b"table-column-group")
+    || insensitive(data, b"table-column")
+    || insensitive(data, b"table-cell")
+    || insensitive(data, b"table-caption")
+    || insensitive(data, b"contents")
+    || insensitive(data, b"flex")
+    || insensitive(data, b"inline-flex")
+    || insensitive(data, b"grid")
+    || insensitive(data, b"inline-grid")
+}
+
+// Normative data transcribed from CSS Color 4 #named-colors, pinned SHA-256
+// 43bfdad1d01d4ce47cbb350b5fdf058be5b63edc2f0416b6967de1d731ff7145.
+// Only the canonical name/hex table is used; no renderer implementation input.
+const COLOR_NAMES: [string; 148] = [
+  "aliceblue",
+  "antiquewhite",
+  "aqua",
+  "aquamarine",
+  "azure",
+  "beige",
+  "bisque",
+  "black",
+  "blanchedalmond",
+  "blue",
+  "blueviolet",
+  "brown",
+  "burlywood",
+  "cadetblue",
+  "chartreuse",
+  "chocolate",
+  "coral",
+  "cornflowerblue",
+  "cornsilk",
+  "crimson",
+  "cyan",
+  "darkblue",
+  "darkcyan",
+  "darkgoldenrod",
+  "darkgray",
+  "darkgreen",
+  "darkgrey",
+  "darkkhaki",
+  "darkmagenta",
+  "darkolivegreen",
+  "darkorange",
+  "darkorchid",
+  "darkred",
+  "darksalmon",
+  "darkseagreen",
+  "darkslateblue",
+  "darkslategray",
+  "darkslategrey",
+  "darkturquoise",
+  "darkviolet",
+  "deeppink",
+  "deepskyblue",
+  "dimgray",
+  "dimgrey",
+  "dodgerblue",
+  "firebrick",
+  "floralwhite",
+  "forestgreen",
+  "fuchsia",
+  "gainsboro",
+  "ghostwhite",
+  "gold",
+  "goldenrod",
+  "gray",
+  "green",
+  "greenyellow",
+  "grey",
+  "honeydew",
+  "hotpink",
+  "indianred",
+  "indigo",
+  "ivory",
+  "khaki",
+  "lavender",
+  "lavenderblush",
+  "lawngreen",
+  "lemonchiffon",
+  "lightblue",
+  "lightcoral",
+  "lightcyan",
+  "lightgoldenrodyellow",
+  "lightgray",
+  "lightgreen",
+  "lightgrey",
+  "lightpink",
+  "lightsalmon",
+  "lightseagreen",
+  "lightskyblue",
+  "lightslategray",
+  "lightslategrey",
+  "lightsteelblue",
+  "lightyellow",
+  "lime",
+  "limegreen",
+  "linen",
+  "magenta",
+  "maroon",
+  "mediumaquamarine",
+  "mediumblue",
+  "mediumorchid",
+  "mediumpurple",
+  "mediumseagreen",
+  "mediumslateblue",
+  "mediumspringgreen",
+  "mediumturquoise",
+  "mediumvioletred",
+  "midnightblue",
+  "mintcream",
+  "mistyrose",
+  "moccasin",
+  "navajowhite",
+  "navy",
+  "oldlace",
+  "olive",
+  "olivedra",
+  "orange",
+  "orangered",
+  "orchid",
+  "palegoldenrod",
+  "palegreen",
+  "paleturquoise",
+  "palevioletred",
+  "papayawhip",
+  "peachpuff",
+  "peru",
+  "pink",
+  "plum",
+  "powderblue",
+  "purple",
+  "rebeccapurple",
+  "red",
+  "rosybrown",
+  "royalblue",
+  "saddlebrown",
+  "salmon",
+  "sandybrown",
+  "seagreen",
+  "seashell",
+  "sienna",
+  "silver",
+  "skyblue",
+  "slateblue",
+  "slategray",
+  "slategrey",
+  "snow",
+  "springgreen",
+  "steelblue",
+  "tan",
+  "teal",
+  "thistle",
+  "tomato",
+  "turquoise",
+  "violet",
+  "wheat",
+  "white",
+  "whitesmoke",
+  "yellow",
+  "yellowgreen",
+]
+
+const COLOR_RGB: [u32; 148] = [
+  0xf0f8ff,
+  0xfaebd7,
+  0x00ffff,
+  0x7fffd4,
+  0xf0ffff,
+  0xf5f5dc,
+  0xffe4c4,
+  0x000000,
+  0xffebcd,
+  0x0000ff,
+  0x8a2be2,
+  0xa52a2a,
+  0xdeb887,
+  0x5f9ea0,
+  0x7fff00,
+  0xd2691e,
+  0xff7f50,
+  0x6495ed,
+  0xfff8dc,
+  0xdc143c,
+  0x00ffff,
+  0x00008b,
+  0x008b8b,
+  0xb8860b,
+  0xa9a9a9,
+  0x006400,
+  0xa9a9a9,
+  0xbdb76b,
+  0x8b008b,
+  0x556b2f,
+  0xff8c00,
+  0x9932cc,
+  0x8b0000,
+  0xe9967a,
+  0x8fbc8f,
+  0x483d8b,
+  0x2f4f4f,
+  0x2f4f4f,
+  0x00ced1,
+  0x9400d3,
+  0xff1493,
+  0x00bfff,
+  0x696969,
+  0x696969,
+  0x1e90ff,
+  0xb22222,
+  0xfffaf0,
+  0x228b22,
+  0xff00ff,
+  0xdcdcdc,
+  0xf8f8ff,
+  0xffd700,
+  0xdaa520,
+  0x808080,
+  0x008000,
+  0xadff2f,
+  0x808080,
+  0xf0fff0,
+  0xff69b4,
+  0xcd5c5c,
+  0x4b0082,
+  0xfffff0,
+  0xf0e68c,
+  0xe6e6fa,
+  0xfff0f5,
+  0x7cfc00,
+  0xfffacd,
+  0xadd8e6,
+  0xf08080,
+  0xe0ffff,
+  0xfafad2,
+  0xd3d3d3,
+  0x90ee90,
+  0xd3d3d3,
+  0xffb6c1,
+  0xffa07a,
+  0x20b2aa,
+  0x87cefa,
+  0x778899,
+  0x778899,
+  0xb0c4de,
+  0xffffe0,
+  0x00ff00,
+  0x32cd32,
+  0xfaf0e6,
+  0xff00ff,
+  0x800000,
+  0x66cdaa,
+  0x0000cd,
+  0xba55d3,
+  0x9370db,
+  0x3cb371,
+  0x7b68ee,
+  0x00fa9a,
+  0x48d1cc,
+  0xc71585,
+  0x191970,
+  0xf5fffa,
+  0xffe4e1,
+  0xffe4b5,
+  0xffdead,
+  0x000080,
+  0xfdf5e6,
+  0x808000,
+  0x6b8e23,
+  0xffa500,
+  0xff4500,
+  0xda70d6,
+  0xeee8aa,
+  0x98fb98,
+  0xafeeee,
+  0xdb7093,
+  0xffefd5,
+  0xffdab9,
+  0xcd853f,
+  0xffc0cb,
+  0xdda0dd,
+  0xb0e0e6,
+  0x800080,
+  0x663399,
+  0xff0000,
+  0xbc8f8f,
+  0x4169e1,
+  0x8b4513,
+  0xfa8072,
+  0xf4a460,
+  0x2e8b57,
+  0xfff5ee,
+  0xa0522d,
+  0xc0c0c0,
+  0x87ceeb,
+  0x6a5acd,
+  0x708090,
+  0x708090,
+  0xfffafa,
+  0x00ff7f,
+  0x4682b4,
+  0xd2b48c,
+  0x008080,
+  0xd8bfd8,
+  0xff6347,
+  0x40e0d0,
+  0xee82ee,
+  0xf5deb3,
+  0xffffff,
+  0xf5f5f5,
+  0xffff00,
+  0x9acd32,
+]
+
+fn namedColor(data: &[u8]) -> Option<Color> {
+  let mut i: usize = 0
+  while i < COLOR_NAMES.length {
+    if insensitive(data, String.utf8Bytes(COLOR_NAMES[i])) {
+      let rgb = COLOR_RGB[i]
+      return Option<Color>.some(
+        Color {
+          r: u32.toF64(rgb / 65536) / 255.0,
+          g: u32.toF64(rgb / 256 % 256) / 255.0,
+          b: u32.toF64(rgb % 256) / 255.0,
+          a: 1.0,
+        },
+      )
+    }
+    i = i + 1
+  }
+  return Option<Color>.None
+}

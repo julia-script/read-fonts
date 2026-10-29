@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   svg:
-    name: SVG geometry and conformance tooling
+    name: SVG rendering and conformance tooling
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -40,6 +40,13 @@ jobs:
             svg_tests/.cache/suites
           key: svg-references-${{ hashFiles('svg_core/specs.lock.json', 'svg_tests/suites.lock.json') }}
       - run: scripts/svg/check
+      - name: Upload SVG reference diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: svg-reference-diagnostics
+          path: build/svg/
+          if-no-files-found: ignore
 
   tests:
     name: Silk tests

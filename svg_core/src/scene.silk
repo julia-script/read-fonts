@@ -1,0 +1,174 @@
+//! Resolved SVG data and backend-neutral paint commands. Paths remain in user space;
+//! every drawing command carries its device transform and conservative device bounds.
+import svg_geometry.geometry { Path, Rect, Transform }
+import silk.collections.list { List }
+import silk.core.ownership { Copy }
+
+pub struct RenderOptions {
+  /// Zero requests intrinsic sizing; nonzero values override output pixels before zoom.
+  pub width: u32,
+  pub height: u32,
+  pub zoom: f64,
+  pub maxPixels: usize,
+}
+
+impl RenderOptions {
+  pub fn make() -> RenderOptions {
+    return RenderOptions { width: 0, height: 0, zoom: 1.0, maxPixels: 16000000 }
+  }
+}
+
+pub enum RenderError {
+  InvalidXml,
+  InvalidRoot,
+  InvalidSize,
+  TooLarge,
+  InvalidGeometry,
+  UnsupportedPerspective
+}
+
+/// Straight-alpha sRGB, normalized to [0, 1].
+pub struct Color {
+  pub r: f64,
+  pub g: f64,
+  pub b: f64,
+  pub a: f64
+}
+
+impl Copy for Color {}
+
+impl Color {
+  pub fn black() -> Color {
+    return Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
+  }
+}
+
+pub union Paint {
+  None,
+  CurrentColor,
+  Solid { pub color: Color }
+}
+
+impl Copy for Paint {}
+
+pub enum FillRule {
+  Nonzero,
+  EvenOdd
+}
+
+pub enum LineCap {
+  Butt,
+  Round,
+  Square
+}
+
+pub enum LineJoin {
+  Miter,
+  Round,
+  Bevel,
+  MiterClip,
+  Arcs
+}
+
+/// Computed presentation values; group opacity is deliberately not inherited.
+pub struct Style {
+  pub color: Color,
+  pub fill: Paint,
+  pub stroke: Paint,
+  pub fillOpacity: f64,
+  pub strokeOpacity: f64,
+  pub opacity: f64,
+  pub strokeWidth: f64,
+  pub miterLimit: f64,
+  pub lineCap: LineCap,
+  pub lineJoin: LineJoin,
+  pub fillRule: FillRule,
+  pub dashIndex: usize,
+  pub dashOffset: f64,
+  pub fontSize: f64,
+  pub visible: bool,
+  pub displayed: bool,
+  pub crispEdges: bool,
+}
+
+impl Copy for Style {}
+
+impl Style {
+  pub fn initial() -> Style {
+    return Style {
+      color: Color.black(),
+      fill: Paint.Solid { color: Color.black() },
+      stroke: Paint.None,
+      fillOpacity: 1.0,
+      strokeOpacity: 1.0,
+      opacity: 1.0,
+      strokeWidth: 1.0,
+      miterLimit: 4.0,
+      lineCap: LineCap.Butt,
+      lineJoin: LineJoin.Miter,
+      fillRule: FillRule.Nonzero,
+      dashIndex: 0,
+      dashOffset: 0.0,
+      fontSize: 16.0,
+      visible: true,
+      displayed: true,
+      crispEdges: false,
+    }
+  }
+}
+
+/// Depth-first group boundaries retain hierarchy without recursive owned allocations.
+pub union ResolvedNode {
+  BeginGroup { pub opacity: f64, pub bounds: Rect },
+  EndGroup,
+  Shape { pub path: usize, pub transform: Transform, pub bounds: Rect, pub style: Style },
+}
+
+pub struct RenderTree {
+  pub width: u32,
+  pub height: u32,
+  pub paths: List<Path>,
+  pub dashes: List<List<f64>>,
+  pub nodes: List<ResolvedNode>,
+}
+
+pub struct Stroke {
+  pub width: f64,
+  pub cap: LineCap,
+  pub join: LineJoin,
+  pub miterLimit: f64,
+  pub dashIndex: usize,
+  pub dashOffset: f64,
+}
+
+impl Copy for Stroke {}
+
+pub union Command {
+  FillPath {
+    pub path: usize,
+    pub transform: Transform,
+    pub bounds: Rect,
+    pub color: Color,
+    pub rule: FillRule,
+    pub crispEdges: bool
+  },
+  StrokePath {
+    pub path: usize,
+    pub transform: Transform,
+    pub bounds: Rect,
+    pub color: Color,
+    pub stroke: Stroke,
+    pub crispEdges: bool
+  },
+  PushLayer { pub opacity: f64, pub bounds: Rect },
+  PopLayer,
+}
+
+/// Retained, CPU/GPU-neutral commands. No backend handles, closures or rasterizer state.
+pub struct DisplayList {
+  pub width: u32,
+  pub height: u32,
+  pub paths: List<Path>,
+  pub dashes: List<List<f64>>,
+  pub commands: List<Command>,
+}

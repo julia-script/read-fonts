@@ -4,74 +4,74 @@
   "cases": [
     {
       "id": "shapes/circle/missing-cx-and-cy-attributes",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. Strict RGBA mismatch: 700 pixels, max alpha delta 87; every difference lies in a shared one-pixel alpha-edge neighborhood. Circle defaults are covered by own equivalent-path tests. Vector and tiny-skia use different flattening/coverage/8-bit demultiplication; no blanket pixel tolerance is applied. SVG2 conform.html#ConformingSVGViewers permits one-device-pixel geometry error; this remains a pixel-reference non-pass, not a claimed normative failure.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/circle/missing-cx-attribute",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. Strict RGBA mismatch: 1046 pixels, max alpha delta 87; every difference lies in a shared one-pixel alpha-edge neighborhood. Vector and tiny-skia use different flattening/coverage/8-bit demultiplication; no blanket pixel tolerance is applied. SVG2 conform.html#ConformingSVGViewers permits one-device-pixel geometry error; this remains a pixel-reference non-pass, not a claimed normative failure.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/circle/missing-cy-attribute",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. Strict RGBA mismatch: 806 pixels, max alpha delta 91; every difference lies in a shared one-pixel alpha-edge neighborhood. Vector and tiny-skia use different flattening/coverage/8-bit demultiplication; no blanket pixel tolerance is applied. SVG2 conform.html#ConformingSVGViewers permits one-device-pixel geometry error; this remains a pixel-reference non-pass, not a claimed normative failure.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/circle/missing-r-attribute",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. The absent radius correctly suppresses the red circle. The remaining green circle/frame differs at 1502 RGBA pixels, max alpha delta 65; every difference lies in a shared one-pixel alpha-edge neighborhood. No blanket pixel tolerance is applied. See SVG2 conform.html#ConformingSVGViewers for geometric accuracy; strict PNG equality is not normative conformance.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/circle/negative-r-attribute",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. The negative radius correctly suppresses the red circle. The remaining green circle/frame differs at 1502 RGBA pixels, max alpha delta 65; every difference lies in a shared one-pixel alpha-edge neighborhood. No blanket pixel tolerance is applied. See SVG2 conform.html#ConformingSVGViewers for geometric accuracy; strict PNG equality is not normative conformance.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/circle/simple-case",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "fail",
+      "reason": "Rendered at reference width 300. Strict RGBA mismatch: 1542 pixels, max alpha delta 88; every difference lies in a shared one-pixel alpha-edge neighborhood. Vector and tiny-skia use different flattening/coverage/8-bit demultiplication of the green circle over the approximate red cubic. No blanket pixel tolerance is applied. SVG2 conform.html#ConformingSVGViewers permits one-device-pixel geometry error; this remains a pixel-reference non-pass.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
     },
     {
       "id": "shapes/rect/invalid-coordinates",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: invalid coordinates use the initial geometry values; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     },
     {
       "id": "shapes/rect/invalid-length",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: invalid rectangle lengths do not paint; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     },
     {
       "id": "shapes/rect/missing-height-attribute-processing",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: missing height produces no rectangle; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     },
     {
       "id": "shapes/rect/missing-width-attribute-processing",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: missing width produces no rectangle; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     },
     {
       "id": "shapes/rect/negative-height-attribute-processing",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: negative height does not paint; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     },
     {
       "id": "shapes/rect/negative-width-attribute-processing",
-      "status": "skip",
-      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "status": "pass",
+      "reason": "Rendered at reference width 300: negative width does not paint; exact RGBA equality.",
       "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
     }
   ]

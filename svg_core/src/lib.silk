@@ -1,5 +1,7 @@
-//! Package boundary registered for the SVG implementation; no public API yet.
-import svg_geometry.geometry
+//! Document resolution and backend-neutral retained SVG data.
+import scene
+import presentation
+import resolve
 import font_types.lib as font_types
 import read_fonts.lib as read_fonts
 import harfrust.lib as harfrust

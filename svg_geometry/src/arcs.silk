@@ -1,0 +1,230 @@
+//! SVG endpoint arcs, normalized before arithmetic to avoid overflowing squares.
+//! https://www.w3.org/TR/2018/CR-SVG2-20181004/implnote.html#ArcImplementationNotes
+//! Cubics approximate the ellipse with a caller-supplied user-space tolerance.
+//! A renderer divides its device tolerance by an upper bound on CTM scale.
+import geometry { Point, Arc, Segment }
+import math
+import silk.core.option { Option }
+import silk.num.f64
+import silk.num.u32
+
+const MAX_SEGMENTS: u32 = 4096
+
+// Fixed-size state; construction and iteration never allocate. A precision or
+// representation limit stops iteration, never substitutes an incorrect line.
+pub struct ArcIter {
+  start: Point,
+  end: Point,
+  scale: f64,
+  rx: f64,
+  ry: f64,
+  cosine: f64,
+  sine: f64,
+  ux: f64,
+  uy: f64,
+  span: f64,
+  step: f64,
+  index: u32,
+  count: u32,
+  line: bool,
+  limited: bool,
+}
+
+impl ArcIter {
+  pub fn make(start: Point, arc: Arc, tolerance: f64) -> ArcIter {
+    let mut result = ArcIter {
+      start: start,
+      end: arc.to,
+      scale: 1.0,
+      rx: 0.0,
+      ry: 0.0,
+      cosine: 1.0,
+      sine: 0.0,
+      ux: 0.0,
+      uy: 0.0,
+      span: 0.0,
+      step: 0.0,
+      index: 0,
+      count: 0,
+      line: false,
+      limited: false,
+    }
+    if !Point.isFinite(start) || !Arc.isFinite(arc) || !f64.isFinite(tolerance)
+      || tolerance <= 0.0 {
+      result.limited = true
+      return move result
+    }
+    if start.x == arc.to.x && start.y == arc.to.y {
+      return move result
+    }
+    let originalRx = f64.abs(arc.radii.width)
+    let originalRy = f64.abs(arc.radii.height)
+    if originalRx == 0.0 || originalRy == 0.0 {
+      result.line = true
+      result.count = 1
+      return move result
+    }
+    let scale = f64.max(
+      f64.max(originalRx, originalRy),
+      f64.max(
+        f64.max(f64.abs(start.x), f64.abs(start.y)),
+        f64.max(f64.abs(arc.to.x), f64.abs(arc.to.y)),
+      ),
+    )
+    result.scale = scale
+    let angle = math.radians(arc.rotationDegrees)
+    let cosine = f64.cos(angle)
+    let sine = f64.sin(angle)
+    result.cosine = cosine
+    result.sine = sine
+    let dx = (start.x / scale - arc.to.x / scale) * 0.5
+    let dy = (start.y / scale - arc.to.y / scale) * 0.5
+    let x = cosine * dx + sine * dy
+    let y = -sine * dx + cosine * dy
+    let mut rx = originalRx / scale
+    let mut ry = originalRy / scale
+
+    // Equivalent to sqrt(lambda) radius correction without ever squaring a
+    // huge ratio. Use the original radii ratio so two tiny radii can both grow
+    // to a huge endpoint separation even if their normalized values underflow.
+    if originalRx >= originalRy {
+      let ratio = originalRy / originalRx
+      let correctedRy = math.hypot(x * ratio, y)
+      if correctedRy > ry || rx == 0.0 || ry == 0.0 {
+        if ratio == 0.0 {
+          result.limited = true
+          return move result
+        }
+        rx = math.hypot(x, y / ratio)
+        ry = correctedRy
+      }
+    } else {
+      let ratio = originalRx / originalRy
+      let correctedRx = math.hypot(x, y * ratio)
+      if correctedRx > rx || rx == 0.0 || ry == 0.0 {
+        if ratio == 0.0 {
+          result.limited = true
+          return move result
+        }
+        rx = correctedRx
+        ry = math.hypot(x / ratio, y)
+      }
+    }
+    if !f64.isFinite(rx) || !f64.isFinite(ry) || rx == 0.0 || ry == 0.0 {
+      result.limited = true
+      return move result
+    }
+    result.rx = rx
+    result.ry = ry
+    let nx = x / rx
+    let ny = y / ry
+    let distance = f64.min(math.hypot(nx, ny), 1.0)
+    if distance == 0.0 {
+      // Distinct endpoints collapsed below normalized floating-point range.
+      result.limited = true
+      return move result
+    }
+    let root = f64.sqrt(f64.max(0.0, (1.0 - distance) * (1.0 + distance)))
+    let sign = if arc.largeArc == arc.sweep {
+      -1.0
+    } else {
+      1.0
+    }
+    result.ux = nx - sign * (ny / distance) * root
+    result.uy = ny + sign * (nx / distance) * root
+
+    // Renormalize the start vector after rounding in radius correction.
+    let length = math.hypot(result.ux, result.uy)
+    result.ux = result.ux / length
+    result.uy = result.uy / length
+    let small = 2.0 * math.atan2(distance, root)
+    let magnitude = if arc.largeArc {
+      math.TAU - small
+    } else {
+      small
+    }
+    result.span = if arc.sweep {
+      magnitude
+    } else {
+      -magnitude
+    }
+    let mut count: u32 = 1
+    let mut step = magnitude
+    let normalizedTolerance = tolerance / scale
+    let radius = f64.max(rx, ry)
+
+    // For |step| <= pi/2 the standard tangent cubic's radial error is bounded
+    // conservatively by radius*step^6/1000. An ellipse is its affine image,
+    // so the maximum radius bounds the corresponding Hausdorff error.
+    // Halving needs at most 12 iterations; conversion to integer is never
+    // performed on an unbounded/infinite radius-to-tolerance quotient.
+    while true {
+      let square = step * step
+      let bound = radius * (square * square * square / 1000.0)
+      if step <= math.PI * 0.5 + 0.00000000000001 && bound <= normalizedTolerance {
+        break
+      }
+      if count == MAX_SEGMENTS {
+        result.limited = true
+        return move result
+      }
+      count = count * 2
+      step = step * 0.5
+    }
+    result.count = count
+    result.step = result.span / u32.toF64(count)
+    return move result
+  }
+
+  pub fn isLimited(self: &ArcIter) -> bool {
+    return self.limited
+  }
+
+  pub fn next(self: &mut ArcIter) -> Option<Segment> {
+    if self.limited || self.index == self.count {
+      return Option<Segment>.None
+    }
+    if self.line {
+      self.index = self.count
+      return Option<Segment>.some(Segment.LineTo { to: self.end })
+    }
+    let t0 = u32.toF64(self.index) * self.step
+    let t1 = if self.index + 1 == self.count {
+      self.span
+    } else {
+      u32.toF64(self.index + 1) * self.step
+    }
+    let quarter = self.step * 0.25
+    let alpha = (4.0 / 3.0) * f64.sin(quarter) / f64.cos(quarter)
+    let control1 = sample(&self.*, t0, alpha)
+    let control2 = sample(&self.*, t1, -alpha)
+    let to = if self.index + 1 == self.count {
+      self.end
+    } else {
+      sample(&self.*, t1, 0.0)
+    }
+    if !Point.isFinite(control1) || !Point.isFinite(control2) || !Point.isFinite(to) {
+      self.limited = true
+      return Option<Segment>.None
+    }
+    self.index = self.index + 1
+    return Option<Segment>.some(Segment.CubicTo { control1: control1, control2: control2, to: to })
+  }
+}
+
+fn sample(iter: &ArcIter, angle: f64, tangent: f64) -> Point {
+  let sine = f64.sin(angle)
+  let cosine = f64.cos(angle)
+  let halfSine = f64.sin(angle * 0.5)
+
+  // cos(angle)-1 loses tiny arcs; this identity preserves their displacement.
+  let cosineMinusOne = -2.0 * halfSine * halfSine
+  let x = iter.rx
+    * (iter.ux * cosineMinusOne - iter.uy * sine - tangent * (iter.ux * sine + iter.uy * cosine))
+  let y = iter.ry
+    * (iter.uy * cosineMinusOne + iter.ux * sine + tangent * (iter.ux * cosine - iter.uy * sine))
+  return Point.new(
+    (iter.start.x / iter.scale + iter.cosine * x - iter.sine * y) * iter.scale,
+    (iter.start.y / iter.scale + iter.sine * x + iter.cosine * y) * iter.scale,
+  )
+}

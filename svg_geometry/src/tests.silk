@@ -5,6 +5,9 @@ import silk.num.f64
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.testing.testing { Testing, AssertionError }
+import svg_tests
+import transform_tests
+import arc_tests
 
 fn near(a: f64, b: f64) -> bool {
   return f64.abs(a - b) <= 0.000000000001
@@ -296,5 +299,29 @@ test effect fn pathRejectsInvalidSegmentsWithoutMutation() -> ()
   run Testing.expect(
     moved && !bad && Path.length(&path) == 1 && hasPoint(Path.currentPoint(&path), 1.0, 2.0),
     "invalid control point leaves storage and cursor unchanged",
+  )
+}
+
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#TransformProperty
+test effect fn readOnlyGeometryAccessorsAndScaleBound() -> ()
+  ! AssertionError<'static> {
+  let point = Point.new(2.0, 3.0)
+  let coordinates = Point.coordinates(point)
+  run Testing.expect(coordinates[0] == 2.0 && coordinates[1] == 3.0, "point coordinate interchange")
+  let box = Rect { xMin: 1.0, yMin: 2.0, xMax: 4.0, yMax: 6.0 }
+  let origin = Rect.origin(box)
+  run Testing.expect(
+    origin.x == 1.0 && origin.y == 2.0 && Rect.width(box) == 3.0 && Rect.height(box) == 4.0,
+    "rectangle accessors",
+  )
+  let coefficients = Transform.coefficients(Transform.translation(7.0, 8.0))
+  run Testing.expect(coefficients[4] == 7.0 && coefficients[5] == 8.0, "SVG coefficient order")
+  run Testing.expect(
+    near(Transform.maxScale(Transform.scale(3.0, 4.0)), 4.0),
+    "largest singular value",
+  )
+  run Testing.expect(
+    near(Transform.maxScale(Transform.new(1.0, 1.0, 1.0, 1.0, 0.0, 0.0)), 2.0),
+    "sheared singular value",
   )
 }

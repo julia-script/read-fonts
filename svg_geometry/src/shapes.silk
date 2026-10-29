@@ -1,0 +1,243 @@
+//! Viewport mapping and SVG basic-shape equivalent paths.
+import geometry { Point, Size, Rect, Transform, Path, Segment, Arc }
+import numeric { Cursor }
+import numeric
+import silk.core.option { Option }
+import silk.num.f64
+import silk.collections.slice { Slice }
+import silk.mem.allocator { Allocator, OutOfMemoryError }
+
+pub fn viewBox(data: &[u8]) -> Option<Rect> {
+  let mut cursor = Cursor.make(data)
+  Cursor.space(&mut cursor)
+  let mut args: [f64; 4] = [0.0; 4]
+  let mut i: usize = 0
+  while i < 4 {
+    if i > 0 && !Cursor.requiredSeparator(&mut cursor) {
+      return Option<Rect>.None
+    }
+    let parsed = Cursor.number(&mut cursor)
+    match &parsed {
+      Option<f64>.Some { value } => {
+        args[i] = value
+      }
+      _ => {
+        return Option<Rect>.None
+      }
+    }
+    i = i + 1
+  }
+  Cursor.space(&mut cursor)
+  if cursor.at != data.length {
+    return Option<Rect>.None
+  }
+  return Rect.new(args[0], args[1], args[2], args[3])
+}
+
+fn equal(left: &[u8], right: &[u8]) -> bool {
+  if left.length != right.length {
+    return false
+  }
+  let mut i: usize = 0
+  while i < left.length {
+    if left[i] != right[i] {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn word<'a>(cursor: &mut Cursor<'a>) -> &'a [u8] {
+  Cursor.space(&mut cursor.*)
+  let start = cursor.at
+  while cursor.at < cursor.data.length && !numeric.whitespace(cursor.data[cursor.at]) {
+    cursor.at = cursor.at + 1
+  }
+  return Slice.view<u8>(cursor.data, start, cursor.at - start)
+}
+
+pub fn viewport(box: Rect, width: f64, height: f64, preserveAspectRatio: &[u8]) -> Option<
+  Transform
+> {
+  if Rect.isEmpty(box) || !f64.isFinite(width) || !f64.isFinite(height) || width < 0.0
+    || height < 0.0 {
+    return Option<Transform>.None
+  }
+  let size = Rect.size(box)
+  if !Size.isFinite(size) {
+    return Option<Transform>.None
+  }
+  let mut cursor = Cursor.make(preserveAspectRatio)
+  let first = word(&mut cursor)
+  let alignment = if equal(first, b"defer") {
+    word(&mut cursor)
+  } else {
+    first
+  }
+  let mode = word(&mut cursor)
+  Cursor.space(&mut cursor)
+  let mut x = 0.5
+  let mut y = 0.5
+  let mut valid = cursor.at == preserveAspectRatio.length
+  let mut none = equal(alignment, b"none")
+  if !none {
+    if alignment.length == 8 && equal(Slice.view<u8>(alignment, 0, 1), b"x")
+      && equal(Slice.view<u8>(alignment, 4, 1), b"Y") {
+      let horizontal = Slice.view<u8>(alignment, 1, 3)
+      let vertical = Slice.view<u8>(alignment, 5, 3)
+      if equal(horizontal, b"Min") {
+        x = 0.0
+      } else if equal(horizontal, b"Max") {
+        x = 1.0
+      } else if !equal(horizontal, b"Mid") {
+        valid = false
+      }
+      if equal(vertical, b"Min") {
+        y = 0.0
+      } else if equal(vertical, b"Max") {
+        y = 1.0
+      } else if !equal(vertical, b"Mid") {
+        valid = false
+      }
+    } else {
+      valid = false
+    }
+  }
+  let mut slice = equal(mode, b"slice")
+  if mode.length != 0 && !slice && !equal(mode, b"meet") {
+    valid = false
+  }
+  if !valid {
+    x = 0.5
+    y = 0.5
+    none = false
+    slice = false
+  }
+  let mut sx = width / size.width
+  let mut sy = height / size.height
+  if !none {
+    let scale = if slice {
+      f64.max(sx, sy)
+    } else {
+      f64.min(sx, sy)
+    }
+    sx = scale
+    sy = scale
+  }
+  let tx = -box.xMin * sx
+    + if none {
+      0.0
+    } else {
+      (width - size.width * sx) * x
+    }
+  let ty = -box.yMin * sy
+    + if none {
+      0.0
+    } else {
+      (height - size.height * sy) * y
+    }
+  let result = Transform.new(sx, 0.0, 0.0, sy, tx, ty)
+  if !Transform.isFinite(result) {
+    return Option<Transform>.None
+  }
+  return Option<Transform>.some(result)
+}
+
+fn arc(rx: f64, ry: f64, x: f64, y: f64) -> Segment {
+  return Segment.ArcTo {
+    arc: Arc {
+      radii: Size.new(rx, ry),
+      rotationDegrees: 0.0,
+      largeArc: false,
+      sweep: true,
+      to: Point.new(x, y),
+    },
+  }
+}
+
+effect fn appendAll(path: &mut Path, segments: &[Segment]) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  run Path.reserve(&mut path.*, segments.length)
+  let mut i: usize = 0
+  while i < segments.length {
+    let accepted = run Path.append(&mut path.*, segments[i])
+    i = i + 1
+  }
+}
+
+pub effect fn rectangle(x: f64, y: f64, width: f64, height: f64, rx: f64, ry: f64) -> Path
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut path = Path.make()
+  if !Point.isFinite(Point.new(x, y)) || !Size.isFinite(Size.new(width, height))
+    || !Size.isFinite(Size.new(rx, ry))
+    || width <= 0.0
+    || height <= 0.0
+    || rx < 0.0
+    || ry < 0.0 {
+    return move path
+  }
+  let right = x + width
+  let bottom = y + height
+  if !Point.isFinite(Point.new(right, bottom)) {
+    return move path
+  }
+  let radiusX = f64.min(rx, width / 2.0)
+  let radiusY = f64.min(ry, height / 2.0)
+  if radiusX == 0.0 || radiusY == 0.0 {
+    run appendAll(
+      &mut path,
+      &[
+        Segment.MoveTo { to: Point.new(x, y) },
+        Segment.LineTo { to: Point.new(right, y) },
+        Segment.LineTo { to: Point.new(right, bottom) },
+        Segment.LineTo { to: Point.new(x, bottom) },
+        Segment.Close,
+      ],
+    )
+  } else {
+    run appendAll(
+      &mut path,
+      &[
+        Segment.MoveTo { to: Point.new(x + radiusX, y) },
+        Segment.LineTo { to: Point.new(right - radiusX, y) },
+        arc(radiusX, radiusY, right, y + radiusY),
+        Segment.LineTo { to: Point.new(right, bottom - radiusY) },
+        arc(radiusX, radiusY, right - radiusX, bottom),
+        Segment.LineTo { to: Point.new(x + radiusX, bottom) },
+        arc(radiusX, radiusY, x, bottom - radiusY),
+        Segment.LineTo { to: Point.new(x, y + radiusY) },
+        arc(radiusX, radiusY, x + radiusX, y),
+        Segment.Close,
+      ],
+    )
+  }
+  return move path
+}
+
+pub effect fn ellipse(cx: f64, cy: f64, rx: f64, ry: f64) -> Path
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut path = Path.make()
+  if !Point.isFinite(Point.new(cx, cy)) || !Size.isFinite(Size.new(rx, ry)) || rx <= 0.0
+    || ry <= 0.0 {
+    return move path
+  }
+  if !Point.isFinite(Point.new(cx + rx, cy + ry)) || !Point.isFinite(Point.new(cx - rx, cy - ry)) {
+    return move path
+  }
+  run appendAll(
+    &mut path,
+    &[
+      Segment.MoveTo { to: Point.new(cx + rx, cy) },
+      arc(rx, ry, cx, cy + ry),
+      arc(rx, ry, cx - rx, cy),
+      arc(rx, ry, cx, cy - ry),
+      arc(rx, ry, cx + rx, cy),
+      Segment.Close,
+    ],
+  )
+  return move path
+}
