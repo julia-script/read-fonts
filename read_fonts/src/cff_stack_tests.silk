@@ -6,7 +6,7 @@ import tables.variations { ItemVariationStore }
 import generated_cff_fixtures { exampleCff2 }
 import font_data { FontData }
 import font_types.lib { Fixed, F2Dot14 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.collections.slice { Slice }

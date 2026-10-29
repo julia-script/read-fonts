@@ -18,7 +18,7 @@ import generated_dump_bitmap { dumpSmallGlyphMetrics, dumpBigGlyphMetrics, dumpB
 import font_types.lib { GlyphId, GlyphId16 }
 import dump_support { DumpPath, scalar, bytes, readError, absent }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.io.writer { Writer, WriterError }
 import silk.num.u32
 

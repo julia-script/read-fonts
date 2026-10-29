@@ -1,7 +1,7 @@
 // Tests ported from upstream/font-types/src/fixed.rs.
 import fixed { Fixed, F2Dot14, F4Dot12, F6Dot10, F26Dot6, F48Dot16 }
 import silk.testing.testing { Testing, AssertionError }
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 import silk.num.i16
 import silk.num.i32
 import silk.num.i64

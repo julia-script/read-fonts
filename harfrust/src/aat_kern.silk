@@ -31,7 +31,7 @@ import read_fonts.tables.kerx {
   Subtable6 as Kerx6
 }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.num.u8
 import silk.num.u16

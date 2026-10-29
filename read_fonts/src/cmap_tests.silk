@@ -33,7 +33,7 @@ import tables.cmap {
   PlatformId
 }
 import font_types.lib { GlyphId }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.num.usize

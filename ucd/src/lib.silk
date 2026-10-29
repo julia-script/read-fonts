@@ -43,7 +43,7 @@ pub import generated_properties {
 }
 pub import script { Script }
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.u32
 
 pub fn script(cp: u32) -> Script with Intrinsic.inlineAlways() {

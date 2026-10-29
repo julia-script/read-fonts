@@ -243,7 +243,7 @@ test effect fn stateTable() -> ()
 import tables.kerx { Subtable0 as KerningPairs }
 import tables.feat { Feat, FeatureName }
 import font_types.lib { NameId }
-import silk.option { Option }
+import silk.core.option { Option }
 
 test effect fn unsortedSearchesMatchRust() -> ()
   ! AssertionError<'static> {

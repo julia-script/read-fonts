@@ -17,7 +17,7 @@ import read_fonts.tables.variations { PackedDeltas, DeltaRunIter }
 import font_types.lib { GlyphId, Matrix, F2Dot14, Offset32 }
 import dump_support { DumpPath, scalar, absent, readError }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.io.writer { Writer, WriterError }
 import silk.num.u32
 import silk.num.f32

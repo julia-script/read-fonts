@@ -14,7 +14,7 @@ import generated_model_fixtures as Expected
 import lib { FontRef, FontData, ReadError }
 import font_types.lib { GlyphId, F48Dot16, BoundingBox, F2Dot14 }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }

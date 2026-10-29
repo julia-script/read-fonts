@@ -51,7 +51,7 @@ import font_types.lib {
   Offset32
 }
 import dump_support { DumpPath, DumpTable, scalar, absent, readError, versionBits, bytes }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.io.writer { Writer, WriterError }
 import silk.num.u8

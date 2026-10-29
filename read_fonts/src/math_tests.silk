@@ -27,7 +27,7 @@ import generated_misc_table_fixtures as Fixtures
 import test_font_builder as Builder
 import font_types.lib { GlyphId, GlyphId16, FWord, UfWord }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.slice { Slice }
 import silk.testing.testing { Testing, AssertionError }
 import silk.num.usize

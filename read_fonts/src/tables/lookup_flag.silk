@@ -1,11 +1,11 @@
 //! The lookup flag's high byte is a mark attachment class, not flag bits.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_types.lib { Scalar, FixedSize, readScalar, writeScalar }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
-import silk.equal { Equal }
-import silk.order { Order, Ordering }
-import silk.ops { BitOr, Subtract }
+import silk.core.equal { Equal }
+import silk.core.order { Order, Ordering }
+import silk.core.ops { BitOr, Subtract }
 import silk.num.u16
 
 pub struct LookupFlag {
