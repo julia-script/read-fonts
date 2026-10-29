@@ -1,3 +1,4 @@
+//! LIMITATION-7: local WHATWG URL/IDNA support; silk-lang/silk#2578 tracks the stdlib gap.
 import silk.collections.bytes { Bytes }
 import silk.collections.slice { Slice }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
@@ -108,7 +109,7 @@ impl Url {
   pub effect fn parseAbsolute(input: &[u8]) -> Url
     ! UrlError | OutOfMemoryError
     ? &mut Allocator {
-    // compiler-bugs/015 / silk-lang/silk#2580: an empty variant supplies no lifetime operand.
+    // LIMITATION-9 / silk-lang/silk#2580: an empty variant supplies no lifetime operand.
     return run parse(input, Option<&'static Url>.None)
   }
 
@@ -532,7 +533,7 @@ effect fn parseClean(input: &[u8], base: Option<&Url>) -> Url
     _ => {}
   }
   if isFile {
-    // compiler-bugs/015 / silk-lang/silk#2580: an empty variant supplies no lifetime operand.
+    // LIMITATION-9 / silk-lang/silk#2580: an empty variant supplies no lifetime operand.
     return run parseFile(suffix, Option<&'static Url>.None)
   }
   let mut result = empty()

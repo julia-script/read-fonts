@@ -180,10 +180,17 @@ The table is a register of cases to test, not a claim of complete rendering supp
 The pinned resvg revision is `91455ee06d08ac2bfeab2b035ed2cfbfd0a68614`.
 At the suite's 300-pixel reference width, all six curated rectangle cases match
 RGBA exactly. Six circle cases remain strict pixel-reference non-passes:
-700–1,542 pixels differ per case. All observed differences lie in the shared
-one-pixel alpha-edge neighborhood; opaque interiors agree. Missing/negative
-radii correctly suppress the circle. Per-case counts and reasons are retained
-in `svg_tests/expectations/resvg.txt`; none is silently skipped.
+696–1,518 pixels differ per case with the phase-3 renderer. All observed
+differences lie within one pixel of a color or alpha edge in both images;
+constant-color interiors away from those edges agree. Missing/negative radii
+correctly suppress the circle. Per-case counts and reasons are retained in
+`svg_tests/expectations/resvg.txt`; none is silently skipped.
+
+Phase 3 changes the shared vector geometry/precision path and therefore these
+edge samples. Compared with phase 2, all six cases have fewer differing pixels
+and lower maximum alpha differences (42–54 rather than 65–91). Their `fail`
+statuses and exact comparison tolerances are unchanged. This refresh records
+measured output, not a new exemption or a claim of resvg-equivalent coverage.
 
 [SVG 2 rendering accuracy](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ConformingSVGViewers)
 permits antialiasing and requires one-device-pixel spatial accuracy. Therefore

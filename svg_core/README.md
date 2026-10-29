@@ -20,8 +20,8 @@ CLI smoke also matches an independent affine/polygon control with zero differing
 pixels, including parent perspective and nested flattening boundaries. The CLI's
 512×512 stylesheet workload (2,048 rules and rectangles) matches an independent
 pixel control exactly; its benchmark checksum also agrees with resvg.
-The earlier phase-2 corpus and performance results below are historical, not
-proof that the current full viewer or every external reference case passes.
+The integrated phase-3 SVG gate passes on macOS arm64 and Ubuntu 24.04 arm64.
+These checks do not establish conformance for the full viewer.
 
 References, paint servers, clipping/masking, image decoding, filters, text,
 animation and ICC remain required work, not exclusions from scope. Parsing their
@@ -88,12 +88,13 @@ skips pinned-reference checks and the external corpus, not native/tooling tests
 or the actual own/malformed rendering runs. Formatting uses one manifest per
 package; a directory argument is outside its own `src/` selection in dev.27.
 
-The phase-2 macOS arm64 offline gate completed in 28.03 seconds with warm caches.
-The Linux arm64 offline SVG gate and `scripts/generate --check` also pass in an
-isolated Ubuntu workspace, with the same own/curated rendering outcomes.
+The phase-3 macOS arm64 offline SVG gate completed in 128.16 seconds. The Linux
+arm64 offline SVG gate plus `scripts/generate --check` completed in 176.05 seconds
+in an isolated Ubuntu workspace. Both used populated toolchain/reference caches
+and ran concurrently on the same host; these are not cold CI measurements.
 GitHub Actions has not supplied a cold-run result: the phase-1 jobs were refused
-before execution because of account billing/spending limits. Local timings are
-not a substitute for that CI budget verification.
+before execution because of account billing/spending limits. That budget check
+remains unverified.
 
 ## Specifications and suites
 
@@ -231,7 +232,7 @@ subdivision limits fail explicitly rather than returning under-resolved geometry
 ## Limitations and performance
 
 [Limitations](LIMITATIONS.md) records dependency/toolchain and backend constraints.
-No compiler or stdlib is patched. The measured Ubuntu 24.04 arm64 baseline in
+No compiler or stdlib is patched. The phase-3 Ubuntu 24.04 arm64 baseline in
 [`svg_bench/baseline.json`](../svg_bench/baseline.json) uses three native samples,
 one iteration and no warmup, plus a separate Valgrind 3.22.0 Callgrind pass.
 The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
@@ -239,15 +240,31 @@ The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
 
 | Workload | Parse + record time | Render time | End-to-end time | Render-process Ir |
 |---|---:|---:|---:|---:|
-| 128 original icons | 1.008× | 1.540× | 1.364× | 1.320× |
-| Tiger | 1.094× | 3.617× | 3.352× | 4.605× |
-| Large map/CAD | 1.437× | 9.147× | 7.963× | 8.900× |
-| Mixed curves | 1.112× | 1.481× | 1.351× | 1.533× |
+| 128 original icons | 11.082× | 1.893× | 5.153× | 4.242× |
+| Tiger | 5.653× | 2.052× | 2.356× | 2.835× |
+| Large map/CAD | 10.899× | 1.371× | 2.747× | 2.402× |
+| Mixed curves | 7.315× | 3.708× | 4.550× | 4.168× |
+| 2,048 stylesheet rules/rectangles | 0.567× | 0.563× | 0.538× | 0.427× |
 
-This is a baseline, **not performance parity**. Pixel checksums differ; timing
-does not certify rendering correctness. Native Tiger and large-map PNGs were
-visually inspected; librsvg supplied an independent Tiger diagnostic, not the
-definition of correct SVG.
+This is **not performance parity**. Only the stylesheet workload's pixel
+checksums agree with resvg; timing does not certify rendering correctness.
+The stylesheet workload also passed an independent exact pixel control.
+
+A separate `scripts/svg/ab` run used the preserved phase-2 binary and the
+phase-3 binary on identical shape inputs, with the same sampling configuration.
+These are full render-process instruction counts, including untimed parsing:
+
+| Workload | Phase 2 Ir | Phase 3 Ir |
+|---|---:|---:|
+| 128 original icons | 124,368,260 | 399,588,398 |
+| Tiger | 602,295,029 | 370,790,626 |
+| Large map/CAD | 2,534,800,659 | 684,205,904 |
+| Mixed curves | 132,520,054 | 360,197,270 |
+
+The comparison includes the new CSS pipeline and changed vector geometry, not
+an isolated optimization: old/new pixel checksums differ. Tiger and map costs
+fell; icons and mixed curves regressed. Closing every remaining performance
+gap is still required.
 
 ```sh
 silk build --release --manifest-path svg_bench/silk.toml

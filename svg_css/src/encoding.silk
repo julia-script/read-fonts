@@ -1,6 +1,7 @@
 //! External stylesheet byte decoding, before CSS input preprocessing.
 //! Syntax3 fallback precedence and Encoding Standard replacement decoding are
 //! independent of lexer CR/FF/NUL normalization. Preserve `encoding` for imports.
+//! LIMITATION-8: local web text codecs; silk-lang/silk#2579 tracks the stdlib gap.
 pub import encoding_types { Encoding }
 import encoding_data
 import encoding_multibyte

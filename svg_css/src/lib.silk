@@ -1,4 +1,5 @@
 //! Token-based CSS parsing, static selectors, typed values and conditional rules.
+//! LIMITATION-6: local CSS primitives until silk-lang/silk#2577 provides equivalent APIs.
 import tokens
 import input
 import element
