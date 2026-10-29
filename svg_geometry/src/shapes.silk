@@ -6,6 +6,35 @@ import silk.core.option { Option }
 import silk.num.f64
 import silk.collections.slice { Slice }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.core.ownership { Copy }
+
+pub enum Alignment {
+  None,
+  XMinYMin,
+  XMidYMin,
+  XMaxYMin,
+  XMinYMid,
+  XMidYMid,
+  XMaxYMid,
+  XMinYMax,
+  XMidYMax,
+  XMaxYMax,
+}
+
+pub struct AspectRatio {
+  pub alignment: Alignment,
+  pub slice: bool,
+  pub defer: bool,
+}
+
+impl Copy for AspectRatio {}
+
+impl AspectRatio {
+  /// SVG's initial xMidYMid meet value, without the legacy defer marker.
+  pub fn make() -> Self {
+    return Self { alignment: Alignment.XMidYMid, slice: false, defer: false }
+  }
+}
 
 pub fn viewBox(data: &[u8]) -> Option<Rect> {
   let mut cursor = Cursor.make(data)
@@ -57,7 +86,64 @@ fn word<'a>(cursor: &mut Cursor<'a>) -> &'a [u8] {
   return Slice.view<u8>(cursor.data, start, cursor.at - start)
 }
 
+/// Strict shared SVG2 grammar with the additive SVG1.1 defer marker.
+/// Invalid attributes may default; invalid fragment components must not.
+pub fn aspectRatio(data: &[u8]) -> Option<AspectRatio> {
+  let mut cursor = Cursor.make(data)
+  let first = word(&mut cursor)
+  let defer = equal(first, b"defer")
+  let token = if defer {
+    word(&mut cursor)
+  } else {
+    first
+  }
+  let alignment = if equal(token, b"none") {
+    Alignment.None
+  } else if equal(token, b"xMinYMin") {
+    Alignment.XMinYMin
+  } else if equal(token, b"xMidYMin") {
+    Alignment.XMidYMin
+  } else if equal(token, b"xMaxYMin") {
+    Alignment.XMaxYMin
+  } else if equal(token, b"xMinYMid") {
+    Alignment.XMinYMid
+  } else if equal(token, b"xMidYMid") {
+    Alignment.XMidYMid
+  } else if equal(token, b"xMaxYMid") {
+    Alignment.XMaxYMid
+  } else if equal(token, b"xMinYMax") {
+    Alignment.XMinYMax
+  } else if equal(token, b"xMidYMax") {
+    Alignment.XMidYMax
+  } else if equal(token, b"xMaxYMax") {
+    Alignment.XMaxYMax
+  } else {
+    return Option<AspectRatio>.None
+  }
+  let mode = word(&mut cursor)
+  let slice = equal(mode, b"slice")
+  Cursor.space(&mut cursor)
+  if (mode.length != 0 && !slice && !equal(mode, b"meet")) || cursor.at != data.length {
+    return Option<AspectRatio>.None
+  }
+  return Option<AspectRatio>.some(AspectRatio { alignment: alignment, slice: slice, defer: defer })
+}
+
+/// Parse an attribute and map it, defaulting invalid values to xMidYMid meet.
 pub fn viewport(box: Rect, width: f64, height: f64, preserveAspectRatio: &[u8]) -> Option<
+  Transform
+> {
+  let parsed = aspectRatio(preserveAspectRatio)
+  let ratio = match &parsed {
+    Option<AspectRatio>.Some { value } => value
+    _ => AspectRatio.make()
+  }
+  return viewportWithAspectRatio(box, width, height, ratio)
+}
+
+/// Map a parsed value without allocation or parsing; none ignores meetOrSlice.
+/// The retained legacy defer marker does not itself alter viewport mapping.
+pub fn viewportWithAspectRatio(box: Rect, width: f64, height: f64, ratio: AspectRatio) -> Option<
   Transform
 > {
   if Rect.isEmpty(box) || !f64.isFinite(width) || !f64.isFinite(height) || width < 0.0
@@ -68,56 +154,29 @@ pub fn viewport(box: Rect, width: f64, height: f64, preserveAspectRatio: &[u8]) 
   if !Size.isFinite(size) {
     return Option<Transform>.None
   }
-  let mut cursor = Cursor.make(preserveAspectRatio)
-  let first = word(&mut cursor)
-  let alignment = if equal(first, b"defer") {
-    word(&mut cursor)
-  } else {
-    first
+  let none = ratio.alignment == Alignment.None
+  let x = match &ratio.alignment {
+    Alignment.XMinYMin => 0.0
+    Alignment.XMinYMid => 0.0
+    Alignment.XMinYMax => 0.0
+    Alignment.XMaxYMin => 1.0
+    Alignment.XMaxYMid => 1.0
+    Alignment.XMaxYMax => 1.0
+    _ => 0.5
   }
-  let mode = word(&mut cursor)
-  Cursor.space(&mut cursor)
-  let mut x = 0.5
-  let mut y = 0.5
-  let mut valid = cursor.at == preserveAspectRatio.length
-  let mut none = equal(alignment, b"none")
-  if !none {
-    if alignment.length == 8 && equal(Slice.view<u8>(alignment, 0, 1), b"x")
-      && equal(Slice.view<u8>(alignment, 4, 1), b"Y") {
-      let horizontal = Slice.view<u8>(alignment, 1, 3)
-      let vertical = Slice.view<u8>(alignment, 5, 3)
-      if equal(horizontal, b"Min") {
-        x = 0.0
-      } else if equal(horizontal, b"Max") {
-        x = 1.0
-      } else if !equal(horizontal, b"Mid") {
-        valid = false
-      }
-      if equal(vertical, b"Min") {
-        y = 0.0
-      } else if equal(vertical, b"Max") {
-        y = 1.0
-      } else if !equal(vertical, b"Mid") {
-        valid = false
-      }
-    } else {
-      valid = false
-    }
-  }
-  let mut slice = equal(mode, b"slice")
-  if mode.length != 0 && !slice && !equal(mode, b"meet") {
-    valid = false
-  }
-  if !valid {
-    x = 0.5
-    y = 0.5
-    none = false
-    slice = false
+  let y = match &ratio.alignment {
+    Alignment.XMinYMin => 0.0
+    Alignment.XMidYMin => 0.0
+    Alignment.XMaxYMin => 0.0
+    Alignment.XMinYMax => 1.0
+    Alignment.XMidYMax => 1.0
+    Alignment.XMaxYMax => 1.0
+    _ => 0.5
   }
   let mut sx = width / size.width
   let mut sy = height / size.height
   if !none {
-    let scale = if slice {
+    let scale = if ratio.slice {
       f64.max(sx, sy)
     } else {
       f64.min(sx, sy)

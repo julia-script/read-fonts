@@ -75,6 +75,9 @@ def main():
     run(python, "scripts/svg/reftests", "--suite", "own",
         "--manifest", "svg_tests/fixtures/css/manifest.json", "--renderer", json.dumps(renderer),
         "--report", reports / "css.json", "--diff-dir", reports / "css-diffs")
+    run(python, "scripts/svg/reftests", "--suite", "own",
+        "--manifest", "svg_tests/fixtures/structure/manifest.json", "--renderer", json.dumps(renderer),
+        "--report", reports / "structure.json", "--diff-dir", reports / "structure-diffs")
     run(python, "scripts/svg/reftests", "--suite", "own", "--malformed", "--renderer", json.dumps(renderer),
         "--report", reports / "malformed.json", "--diff-dir", reports / "malformed-diffs")
     if not args.skip_fetch:

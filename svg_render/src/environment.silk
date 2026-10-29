@@ -1,11 +1,12 @@
 //! Host-owned styling inputs. Font metrics and system palettes are explicit, not OS guesses.
-import svg_core.document_styles { StyledDocument }
+import svg_core.document_styles { StyledGraph }
 import svg_core.document_styles
 import svg_core.stylesheets { Catalog }
 import svg_core.resources { Resolver }
 import svg_core.url { Url }
 import svg_core.scene { RenderError }
-import svg_xml.xml { Document }
+import svg_core.structure { Options as StructureOptions, Graph }
+import svg_core.view_selection
 import svg_css.computed { HostContext, ComputedError }
 import svg_css.media_features { Environment as MediaEnvironment }
 import svg_css.colors { Context as ColorContext, Color, Identity }
@@ -35,6 +36,7 @@ pub struct Environment<'a> {
   // Concrete font shorthand values, indexed caption/icon/menu/message-box/small-caption/status-bar.
   pub systemFonts: [&'a [u8]; 6],
   pub cssLimits: Limits,
+  pub structure: StructureOptions<'a>,
 }
 
 fn nonnegative(value: f64) -> bool {
@@ -160,7 +162,7 @@ effect fn systemFont(catalog: &mut Catalog, source: &[u8], limits: &Limits) -> T
   }
 }
 
-effect fn compute(document: &Document, environment: &Environment) -> StyledDocument
+effect fn compute(graph: &Graph, environment: &Environment) -> StyledGraph
   ! CssError | ComputedError | RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
   run validate(environment)
@@ -202,34 +204,46 @@ effect fn compute(document: &Document, environment: &Environment) -> StyledDocum
     fontFamily: family,
     revision: 0,
   }
-  let base = run Url.clone(environment.base)
-  return run document_styles.build(
-    document,
+  let fragment = match &environment.structure.fragment {
+    Option<&[u8]>.Some { value } => value
+    _ => match &environment.base.fragment() {
+      Option<&[u8]>.Some { value } => value
+      _ => b""
+    }
+  }
+  let selection = run view_selection.select(
+    graph,
+    fragment,
+    &mut catalog.engine.values,
+    &environment.cssLimits,
+  )
+  return run document_styles.buildGraph(
+    graph,
     move catalog,
     &host,
     &environment.media,
-    move base,
+    move selection,
     &environment.cssLimits,
   )
 }
 
-effect fn cssFailure(error: CssError) -> StyledDocument
+effect fn cssFailure(error: CssError) -> StyledGraph
   ! RenderError {
   drop error
   fail RenderError.TooLarge
 }
 
-effect fn contextFailure(error: ComputedError) -> StyledDocument
+effect fn contextFailure(error: ComputedError) -> StyledGraph
   ! RenderError {
   drop error
   fail RenderError.InvalidStyleContext
 }
 
-pub effect fn styles(document: &Document, environment: &Environment) -> StyledDocument
+pub effect fn styles(graph: &Graph, environment: &Environment) -> StyledGraph
   ! RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
   return run Effect.catch<ComputedError>(
-    Effect.catch<CssError>(compute(document, environment), cssFailure),
+    Effect.catch<CssError>(compute(graph, environment), cssFailure),
     contextFailure,
   )
 }

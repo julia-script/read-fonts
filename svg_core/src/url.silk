@@ -71,6 +71,22 @@ impl Url {
     return view(Url.bytes(self), self.hostStart, self.hostEnd)
   }
 
+  /// The normalized nondefault port. Parsing has already validated its decimal
+  /// representation and 0..65535 range; absent and default ports return None.
+  pub fn port(self: &Self) -> Option<usize> {
+    if !self.hasHost || self.hostEnd == self.pathStart {
+      return Option<usize>.None
+    }
+    let data = Url.bytes(self)
+    let mut at = self.hostEnd + 1
+    let mut number: usize = 0
+    while at < self.pathStart {
+      number = number * 10 + u8.toUsize(data[at] - 48)
+      at = at + 1
+    }
+    return Option<usize>.some(number)
+  }
+
   pub fn path(self: &Self) -> &[u8] {
     return view(Url.bytes(self), self.pathStart, self.pathEnd)
   }

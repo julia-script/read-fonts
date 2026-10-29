@@ -1,3 +1,5 @@
+import view_tests
+import svg_core.structure { Options as StructureOptions }
 import lib { RenderOptions, RenderError, Pixmap as Image }
 import lib as renderer
 import environment { Environment }
@@ -24,6 +26,7 @@ fn testEnvironment<'a>(base: &'a Url) -> Environment<'a> {
     fontFamily: b"\"Test Serif\"",
     systemFonts: [b"16px \"Test Serif\""; 6],
     cssLimits: Limits.make(),
+    structure: StructureOptions.defaults(),
   }
 }
 

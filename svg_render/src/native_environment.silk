@@ -1,3 +1,4 @@
+import svg_core.structure { Options as StructureOptions }
 //! CLI/benchmark styling policy, not an operating-system appearance query.
 //! The initial face is a real installed serif measured at 16 CSS px. All six
 //! system-font keywords deliberately alias that face/size. The light, contrasting
@@ -87,6 +88,7 @@ impl NativeHost {
       fontFamily: Slice.view<u8>(font, 5, font.length - 5),
       systemFonts: [font, font, font, font, font, font],
       cssLimits: Limits.make(),
+      structure: StructureOptions.defaults(),
     }
   }
 }

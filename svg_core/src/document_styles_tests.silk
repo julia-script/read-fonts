@@ -2,7 +2,14 @@
 import document_styles { StyledDocument }
 import document_styles
 import stylesheets { Catalog }
-import resources { Resolver, ResourceKind, ResourceError, DataOnly, Limits as ResourceLimits }
+import resources {
+  Resolver,
+  Response,
+  ResourceKind,
+  ResourceError,
+  DataOnly,
+  Limits as ResourceLimits
+}
 import url { Url, UrlError }
 import url_idna
 import svg_xml.xml { parse, Document, NodeId, NodeKind, XmlError }
@@ -304,7 +311,7 @@ struct Imports {
 }
 
 impl Imports {
-  effect fn fetch(self: &mut Self, address: &Url, kind: ResourceKind) -> Bytes
+  effect fn fetch(self: &mut Self, address: &Url, kind: ResourceKind) -> Response
     ! ResourceError | OutOfMemoryError
     ? &mut Allocator {
     self.calls = self.calls + 1
@@ -319,7 +326,7 @@ impl Imports {
     } else {
       fail ResourceError.Io
     }
-    return move bytes
+    return Response.fromBytes(move bytes)
   }
 }
 

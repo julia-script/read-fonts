@@ -3,7 +3,7 @@ name = "svg_core"
 version = "0.1.0"
 silk-version = "0.1.0-dev.29+94cf9559bf47"
 kind = "library"
-exports = ["scene", "mapping", "resolve", "url", "resources", "resources_native", "style_tree", "stylesheets", "document_styles", "font_metrics", "vector_path"]
+exports = ["scene", "mapping", "resolve", "url", "resources", "resources_native", "style_tree", "stylesheets", "document_styles", "font_metrics", "vector_path", "view_fragment", "view_selection", "conditional", "structure", "occurrence_tree"]
 
 [dependencies]
 svg_geometry = { path = "../svg_geometry" }

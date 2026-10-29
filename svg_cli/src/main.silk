@@ -10,6 +10,7 @@ import svg_core.resources_native { FileSystem as NativeFileSystem }
 import svg_image.png
 import silk.collections.bytes { Bytes }
 import silk.collections.list { List }
+import silk.collections.slice { Slice }
 import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
@@ -30,7 +31,7 @@ enum Failure {
 
 const HELP: string<
   'static
-> = "usage: svg_cli input.svg -o output.png [--width N] [--height N] [--zoom Z]\n       svg_cli --help | --version\n\nRender an SVG to a PNG file. Width and height are positive decimal integers;\nzoom is a positive finite decimal number. Omitted dimensions use SVG sizing.\nThe renderer applies its pixel limit after sizing and zoom.\nOptions take separate values and cannot repeat. Use -- before a dash-prefixed\ninput path, or prefix such file paths with ./ (including output paths).\nStylesheets may use data URLs or files confined to the input directory.\nNo stdin or stdout PNG, network resources, animation or CSS options.\n"
+> = "usage: svg_cli input.svg -o output.png [--width N] [--height N] [--zoom Z]\n       [--mode static|animated|secure-static|secure-animated] [--fragment FRAGMENT]\n       svg_cli --help | --version\n\nRender an SVG to a PNG file. Width and height are positive decimal integers;\nzoom is a positive finite decimal number. Omitted dimensions use SVG sizing.\nThe renderer applies its pixel limit after sizing and zoom.\nMode selects the SVG processing policy and defaults to static.\nFragment is encoded URL-fragment text; one optional leading # is stripped.\nAn empty fragment value explicitly clears the base fragment. Percent escapes\nare passed unchanged to SVG fragment resolution.\nOptions take separate values and cannot repeat. Use -- before a dash-prefixed\ninput path, or prefix such file paths with ./ (including output paths).\nResources may use data URLs or files confined to the input directory.\nSecure modes block external resource requests; data URLs remain available.\nNo stdin or stdout PNG, network resources, animation-time or CSS options.\n"
 
 effect fn stderr(text: string) -> ()
   ! WriterError {
@@ -106,7 +107,14 @@ effect fn renderFile(args: &[Bytes], parsed: &Parsed) -> i32
 
   // The embedding viewport is host policy; intrinsic SVG sizing remains in resolve.
   let host = run Effect.mapError(NativeHost.make(300.0, 150.0), renderFailure)
-  let environment = host.environment(&address)
+  let mut environment = host.environment(&address)
+  environment.structure.policy.mode = parsed.mode
+  if parsed.fragment != args.length {
+    let encoded = Bytes.asSlice(&args[parsed.fragment])
+    environment.structure.fragment = Option<&[u8]>.Some {
+      value: Slice.view<u8>(encoded, parsed.fragmentStart, encoded.length - parsed.fragmentStart),
+    }
+  }
   let image = run Effect.mapError(
     renderer.render(Bytes.asSlice(&data), &settings, &environment),
     renderFailure,

@@ -50,11 +50,14 @@ URLS = {
         "xmlbase xml-stylesheet xlink11 png-3"
     ).split()},
     "css-transforms-2": "https://drafts.csswg.org/css-transforms-2/",
+    "css-shadow-1": "https://drafts.csswg.org/css-shadow-1/",
     "css-values-4-ed": "https://drafts.csswg.org/css-values-4/",
     "encoding": "https://encoding.spec.whatwg.org/",
     "unicode-uts46": "https://www.unicode.org/reports/tr46/",
     "css-conditional-3-2022": "https://www.w3.org/TR/2022/CR-css-conditional-3-20220113/",
     "smil-animation": "https://www.w3.org/TR/2001/REC-smil-animation-20010904/",
+    "smil-content": "https://www.w3.org/TR/REC-smil/smil-content.html",
+    "media-frags": "https://www.w3.org/TR/2012/REC-media-frags-20120925/",
     "svg-animations-2": "https://svgwg.org/specs/animations/",
     **{f"unicode-uax{number}": f"https://www.unicode.org/reports/tr{number}/"
        for number in (9, 14, 24, 29, 50)},

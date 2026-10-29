@@ -5,12 +5,19 @@ import tokens { CssError, CssErrorKind }
 pub const NO_ELEMENT: usize = usize.MAX
 
 /// Providers expose element-only links and an acyclic tree. NO_ELEMENT denotes an absent link.
+/// Raw parents include shadow hosts. Child/sibling lists may mix tree scopes;
+/// matching filters them with containingHost and never exposes a host's outer links.
 /// Attribute names and namespaces are case-sensitive XML names; attribute values are decoded.
 /// isEmpty follows pinned Selectors 4: comments/PIs and document whitespace do not prevent :empty.
 /// language supplies the inherited document language, or empty when explicitly unknown.
 /// isLink reports document-language link semantics, not whether a URL was fetched or visited.
 pub interface ElementTree {
   fn parent(self: &Self, node: usize) -> usize
+
+  /// Host of the node's own tree scope, or NO_ELEMENT in an ordinary tree.
+  /// A host belongs to its enclosing scope, not the shadow tree that it hosts.
+  /// This scope identity is stable across matching, including host-function arguments.
+  fn containingHost(self: &Self, node: usize) -> usize
 
   fn firstChild(self: &Self, node: usize) -> usize
 
@@ -44,13 +51,20 @@ pub interface ElementTree {
 pub struct MatchContext {
   pub scope: usize,
   pub target: usize,
+  /// Host exposed as featureless in the current selector scope; absent in light context.
+  pub shadowHost: usize,
   /// Shared across a document's matching work; exhaustion is CssError.MatchLimit, never false.
   pub remainingSteps: usize,
 }
 
 impl MatchContext {
   pub fn make(scope: usize, target: usize) -> MatchContext {
-    return MatchContext { scope: scope, target: target, remainingSteps: 64000000 }
+    return MatchContext {
+      scope: scope,
+      target: target,
+      shadowHost: NO_ELEMENT,
+      remainingSteps: 64000000,
+    }
   }
 
   /// Charge bounded matching or candidate-discovery work before performing it.

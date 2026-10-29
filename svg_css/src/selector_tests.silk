@@ -17,6 +17,10 @@ import silk.testing.testing { Testing, AssertionError }
 struct Tree {}
 
 impl ElementTree for Tree {
+  fn containingHost(self: &Self, node: usize) -> usize {
+    return NO_ELEMENT
+  }
+
   fn parent(self: &Self, node: usize) -> usize {
     if node == 0 {
       return NO_ELEMENT
@@ -366,7 +370,12 @@ test effect fn matchingWorkIsSharedAndTyped() -> ()
   match &parsed {
     Option<SelectorList>.Some { value } => {
       let tree = Tree {}
-      let mut context = MatchContext { scope: 0, target: NO_ELEMENT, remainingSteps: 6 }
+      let mut context = MatchContext {
+        scope: 0,
+        target: NO_ELEMENT,
+        shadowHost: NO_ELEMENT,
+        remainingSteps: 6,
+      }
       let first = run selectors.matchElement(&value, &buffer, &tree, 2, &mut context)
       run Testing.expect(
         match &first {

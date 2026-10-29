@@ -1,6 +1,9 @@
 //! Resolve typed computed CSS and exact reference geometry into retained nodes.
 import scene { RenderOptions, RenderError, RenderTree, ResolvedNode, Style, Paint }
-import document_styles { StyledDocument }
+import document_styles { StyledGraph }
+import structure { Graph, OccurrenceId }
+import used_viewports { Metadata, Clip, ElementKind }
+import used_viewports
 import used_geometry
 import used_style { DashCache }
 import used_style
@@ -9,15 +12,20 @@ import reference_bounds { Cache as ReferenceBoundsCache }
 import mapping { Mapping, ProjectionClip }
 import vector.projective { HalfPlane }
 import vector.geometry_error { GeometryError }
-import svg_xml.xml { Document, NodeId, NodeKind }
+import svg_xml.xml { Document, NodeId }
 import svg_css.computed { Engine, StyleId }
 import svg_css.properties { Property }
 import svg_css.tokens { Limits, CssError, equal }
 import svg_css.transform_values { ReferenceBox }
+import svg_css.transform_values
+import svg_css.values { Value, ValueId }
+import svg_css.dimensions { Context }
+import view_fragment { SpatialView, SpatialUnit }
 import svg_geometry.geometry { Rect, Path, Transform }
 import svg_geometry.transforms { Matrix, Facing }
 import svg_geometry.transforms
 import svg_geometry.svg
+import svg_geometry.svg { AspectRatio }
 import silk.core.effect { Effect }
 import silk.core.ownership { Copy }
 import silk.collections.list { List }
@@ -25,6 +33,7 @@ import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.option { Option }
 import silk.num.f64
 import silk.num.u32
+import silk.num.u64
 import silk.num.usize
 
 struct Viewport {
@@ -33,13 +42,6 @@ struct Viewport {
   pixelsWidth: u32,
   pixelsHeight: u32,
   scale: Transform
-}
-
-fn attr<'a>(document: &'a Document, id: NodeId, name: &[u8]) -> &'a [u8] {
-  return match &Document.attribute(document, id, b"", name) {
-    Option<&[u8]>.Some { value } => value
-    _ => b""
-  }
 }
 
 fn positive(value: Option<f64>) -> Option<f64> {
@@ -193,6 +195,12 @@ struct Plan {
   path: Option<usize>,
   paintable: bool,
   container: bool,
+  ownBounds: bool,
+  instance: bool,
+  foreign: bool,
+  viewport: usize,
+  childViewport: usize,
+  layout: Option<usize>,
   local: Mapping,
   transformed: bool,
   perspective: bool,
@@ -202,6 +210,146 @@ struct Plan {
 }
 
 impl Copy for Plan {}
+
+// Sparse viewport/use data: ordinary geometry retains only arena indices.
+struct Layout {
+  supplement: Transform,
+  clip: Option<Clip>,
+  clipMapping: Mapping,
+  referenceMapping: bool,
+}
+
+struct Pending {
+  matrix: Matrix,
+  clip: Option<Matrix>,
+}
+
+struct MetadataCache {
+  indices: List<List<usize>>,
+  values: List<Metadata>,
+}
+
+effect fn metadata(graph: &Graph, engine: &mut Engine, limits: &Limits) -> MetadataCache
+  ! CssError | OutOfMemoryError
+  ? &mut Allocator {
+  let mut result = MetadataCache {
+    indices: List<List<usize>>.make(),
+    values: List<Metadata>.make(),
+  }
+  let mut documentIndex: usize = 0
+  while documentIndex < graph.documents.length() {
+    let document = &graph.documents.asSlice()[documentIndex].document
+    let mut indices = run List<usize>.makeWithCapacity(Document.nodes(document).length)
+    let mut i: usize = 0
+    while i < Document.nodes(document).length {
+      let node = NodeId { index: i }
+      let mut index = usize.MAX
+      if equal(Document.namespaceUri(document, node), b"http://www.w3.org/2000/svg") {
+        match &run used_viewports.parseMetadata(
+          document,
+          node,
+          &mut engine.values.numerics,
+          limits,
+        ) {
+          Option<Metadata>.Some { value } => {
+            index = result.values.length()
+            run result.values.append(value)
+          }
+          _ => {}
+        }
+      }
+      run indices.append(index)
+      i = i + 1
+    }
+    run result.indices.append(move indices)
+    documentIndex = documentIndex + 1
+  }
+  return move result
+}
+
+fn firstChild(graph: &Graph, id: OccurrenceId, plan: &Plan) -> Option<OccurrenceId> {
+  let occurrence = graph.occurrences.asSlice()[id.index]
+  return if plan.instance {
+    occurrence.shadow
+  } else {
+    occurrence.firstChild
+  }
+}
+
+// Known non-container elements cannot become unknown generic containers merely
+// because their specialised painting stage is not involved in this traversal.
+fn containerName(name: &[u8]) -> bool {
+  if equal(name, b"g") || equal(name, b"a") || equal(name, b"svg") || equal(name, b"use")
+    || equal(name, b"symbol")
+    || equal(name, b"switch")
+    || equal(name, b"foreignObject") {
+    return true
+  }
+  return !(equal(name, b"defs") || equal(name, b"desc") || equal(name, b"title")
+    || equal(name, b"metadata")
+    || equal(name, b"view")
+    || equal(name, b"style")
+    || equal(name, b"script")
+    || equal(name, b"linearGradient")
+    || equal(name, b"radialGradient")
+    || equal(name, b"stop")
+    || equal(name, b"pattern")
+    || equal(name, b"marker")
+    || equal(name, b"clipPath")
+    || equal(name, b"mask")
+    || equal(name, b"filter")
+    || equal(name, b"text")
+    || equal(name, b"tspan")
+    || equal(name, b"textPath")
+    || equal(name, b"image")
+    || equal(name, b"animate")
+    || equal(name, b"animateMotion")
+    || equal(name, b"animateTransform")
+    || equal(name, b"animateColor")
+    || equal(name, b"set")
+    || equal(name, b"mpath")
+    || equal(name, b"discard")
+    || equal(name, b"tref")
+    || equal(name, b"altGlyph")
+    || equal(name, b"altGlyphDef")
+    || equal(name, b"altGlyphItem")
+    || equal(name, b"glyphRef")
+    || equal(name, b"font")
+    || equal(name, b"glyph")
+    || equal(name, b"missing-glyph")
+    || equal(name, b"hkern")
+    || equal(name, b"vkern")
+    || equal(name, b"font-face")
+    || equal(name, b"font-face-src")
+    || equal(name, b"font-face-uri")
+    || equal(name, b"font-face-name")
+    || equal(name, b"definition-src")
+    || equal(name, b"feBlend")
+    || equal(name, b"feColorMatrix")
+    || equal(name, b"feComponentTransfer")
+    || equal(name, b"feComposite")
+    || equal(name, b"feConvolveMatrix")
+    || equal(name, b"feDiffuseLighting")
+    || equal(name, b"feDisplacementMap")
+    || equal(name, b"feDistantLight")
+    || equal(name, b"feDropShadow")
+    || equal(name, b"feFlood")
+    || equal(name, b"feFuncA")
+    || equal(name, b"feFuncB")
+    || equal(name, b"feFuncG")
+    || equal(name, b"feFuncR")
+    || equal(name, b"feGaussianBlur")
+    || equal(name, b"feImage")
+    || equal(name, b"feMerge")
+    || equal(name, b"feMergeNode")
+    || equal(name, b"feMorphology")
+    || equal(name, b"feOffset")
+    || equal(name, b"fePointLight")
+    || equal(name, b"feSpecularLighting")
+    || equal(name, b"feSpotLight")
+    || equal(name, b"feTile")
+    || equal(name, b"feTurbulence"))
+}
 
 effect fn rectangle(x: f64, y: f64, width: f64, height: f64) -> Rect
   ! RenderError {
@@ -224,44 +372,57 @@ fn united(left: Option<Rect>, right: Option<Rect>) -> Option<Rect> {
 }
 
 effect fn prepare(
-  document: &Document,
-  styles: &mut StyledDocument,
+  graph: &Graph,
+  styles: &mut StyledGraph,
+  metadata: &MetadataCache,
   paths: &mut List<Path>,
   dashes: &mut List<List<f64>>,
-  viewport: Rect,
+  spaces: &mut List<Rect>,
+  layouts: &mut List<Layout>,
   limits: &Limits,
 ) -> List<Option<Plan>>
   ! CssError | RenderError | OutOfMemoryError
   ? &mut Allocator {
-  let nodes = Document.nodes(document)
-  let root = Document.root(document)
-  let mut plans = run List<Option<Plan>>.makeWithCapacity(nodes.length)
+  let mut plans = run List<Option<Plan>>.makeWithCapacity(graph.occurrences.length())
   let mut dashCache = DashCache.make()
   let mut i: usize = 0
-  while i < nodes.length {
-    let id = NodeId { index: i }
-    let mut entry = Option<Plan>.None
-    let parentRendered = i == root.index
-      || match &nodes[i].parent {
-        Option<NodeId>.Some { value } => if value.index < plans.length() {
-          match &plans.asSlice()[value.index] {
-            Option<Plan>.Some { value: parent } => parent.container
-            _ => false
+  while i < graph.occurrences.length() {
+    let id = OccurrenceId { index: i }
+    let occurrence = graph.occurrences.asSlice()[i]
+    let source = occurrence.source
+    let document = graph.sourceDocument(source)
+    let name = Document.localName(document, source.node)
+    let svgElement = equal(
+      Document.namespaceUri(document, source.node),
+      b"http://www.w3.org/2000/svg",
+    )
+    let mut parentRendered = i == graph.root.index
+    let mut foreign = false
+    let mut viewportIndex: usize = 0
+    let mut host = Option<StyleId>.None
+    match &occurrence.parent {
+      Option<OccurrenceId>.Some { value } => match &plans.asSlice()[value.index] {
+        Option<Plan>.Some { value: parent } => {
+          parentRendered = parent.container && (!parent.instance || occurrence.shadowRoot)
+          foreign = parent.foreign
+          viewportIndex = parent.childViewport
+          if occurrence.shadowRoot {
+            host = Option<StyleId>.some(parent.styleId)
           }
-        } else {
-          false
         }
-        _ => false
+        _ => {}
       }
-    if parentRendered && nodes[i].kind == NodeKind.Element
-      && equal(Document.namespaceUri(document, id), b"http://www.w3.org/2000/svg") {
-      let name = Document.localName(document, id)
-      let container = i == root.index || equal(name, b"g") || equal(name, b"a")
-      let drawable = equal(name, b"path") || equal(name, b"rect") || equal(name, b"circle")
-        || equal(name, b"ellipse")
-        || equal(name, b"line")
-        || equal(name, b"polyline")
-        || equal(name, b"polygon")
+      _ => {}
+    }
+    let mut entry = Option<Plan>.None
+    if parentRendered && occurrence.eligible && (svgElement || foreign) {
+      let drawable = svgElement && !foreign
+        && (equal(name, b"path") || equal(name, b"rect") || equal(name, b"circle")
+          || equal(name, b"ellipse")
+          || equal(name, b"line")
+          || equal(name, b"polyline")
+          || equal(name, b"polygon"))
+      let container = !svgElement || (!drawable && containerName(name))
       if container || drawable {
         let styleId = match &styles.nodeStyle(id) {
           Option<StyleId>.Some { value } => value
@@ -269,6 +430,7 @@ effect fn prepare(
             fail RenderError.InvalidStyleContext
           }
         }
+        let viewport = spaces.asSlice()[viewportIndex]
         let style = run used_style.project(
           &styles.catalog.engine,
           styleId,
@@ -278,29 +440,105 @@ effect fn prepare(
           &mut dashes.*,
         )
         if style.displayed {
-          let geometry = run used_geometry.shape(
-            document,
-            id,
-            &mut styles.catalog.engine,
-            styleId,
-            viewport.width(),
-            viewport.height(),
-            &mut paths.*,
-            limits,
-          )
-          entry = Option<Plan>.Some {
-            value: Plan {
-              styleId: styleId,
-              style: style,
-              path: geometry.path,
-              paintable: geometry.paintable,
-              container: container,
-              local: Mapping.identity(),
-              transformed: used_transforms.transformed(&styles.catalog.engine, styleId),
-              perspective: used_transforms.hasPerspective(&styles.catalog.engine, styleId),
-              hiddenBackface: used_transforms.hiddenBackface(&styles.catalog.engine, styleId),
-              suppressed: false,
-              pending: Option<usize>.None,
+          let mut childViewport = viewportIndex
+          let mut layout = Option<usize>.None
+          let mut disabled = false
+          let mut path = Option<usize>.None
+          let mut paintable = false
+          let mut ownBounds = false
+          let instance = svgElement && equal(name, b"use")
+          if i == graph.root.index {
+            childViewport = 1
+            layout = Option<usize>.some(0)
+          } else if svgElement {
+            let metadataIndex = metadata.indices.asSlice()[source.document.index].asSlice()[source.node.index]
+            if metadataIndex != usize.MAX && (!foreign || equal(name, b"svg")) {
+              let data = &metadata.values.asSlice()[metadataIndex]
+              let used = run used_viewports.nested(
+                data,
+                &mut styles.catalog.engine,
+                styleId,
+                viewport,
+                host,
+              )
+              disabled = used.disabled
+              foreign = !used.establishesSvgViewport
+              childViewport = spaces.length()
+              run spaces.append(used.user)
+              layout = Option<usize>.some(layouts.length())
+              run layouts.append(
+                Layout {
+                  supplement: used.mapping,
+                  clip: used.clip,
+                  clipMapping: Mapping.identity(),
+                  referenceMapping: true,
+                },
+              )
+              if data.kind == ElementKind.ForeignObject && !disabled {
+                ownBounds = true
+                path = Option<usize>.some(paths.length())
+                run paths.append(
+                  run svg.rectangle(
+                    0.0,
+                    0.0,
+                    used.physical.width(),
+                    used.physical.height(),
+                    0.0,
+                    0.0,
+                  ),
+                )
+              }
+            } else if instance && !foreign {
+              layout = Option<usize>.some(layouts.length())
+              run layouts.append(
+                Layout {
+                  supplement: run used_viewports.useTranslation(
+                    &styles.catalog.engine,
+                    styleId,
+                    viewport,
+                  ),
+                  clip: Option<Clip>.None,
+                  clipMapping: Mapping.identity(),
+                  referenceMapping: false,
+                },
+              )
+            }
+          }
+          if drawable && !disabled {
+            let geometry = run used_geometry.shape(
+              document,
+              source.node,
+              &mut styles.catalog.engine,
+              styleId,
+              viewport.width(),
+              viewport.height(),
+              &mut paths.*,
+              limits,
+            )
+            path = geometry.path
+            paintable = geometry.paintable
+          }
+          if !disabled {
+            entry = Option<Plan>.Some {
+              value: Plan {
+                styleId: styleId,
+                style: style,
+                path: path,
+                paintable: paintable,
+                container: container,
+                ownBounds: ownBounds,
+                instance: instance,
+                foreign: foreign,
+                viewport: viewportIndex,
+                childViewport: childViewport,
+                layout: layout,
+                local: Mapping.identity(),
+                transformed: used_transforms.transformed(&styles.catalog.engine, styleId),
+                perspective: used_transforms.hasPerspective(&styles.catalog.engine, styleId),
+                hiddenBackface: used_transforms.hiddenBackface(&styles.catalog.engine, styleId),
+                suppressed: false,
+                pending: Option<usize>.None,
+              }
             }
           }
         }
@@ -316,9 +554,10 @@ effect fn prepare(
 // https://github.com/w3c/svgwg/issues/422
 // Positioned degenerate shapes remain finite boxes, unlike absent geometry.
 effect fn gather(
-  document: &Document,
-  id: NodeId,
+  graph: &Graph,
+  id: OccurrenceId,
   plans: &[Option<Plan>],
+  layouts: &[Layout],
   paths: &[Path],
   target: &Mapping,
   includeLocal: bool,
@@ -336,7 +575,14 @@ effect fn gather(
   let matrix = if includeLocal {
     run target.compose(&plan.local)
   } else {
-    target.*
+    match &plan.layout {
+      Option<usize>.Some { value } => if layouts[value].referenceMapping {
+        run target.compose(&Mapping.Affine { value: layouts[value].supplement })
+      } else {
+        target.*
+      }
+      _ => target.*
+    }
   }
   let mut result = Option<Rect>.None
   match &plan.path {
@@ -355,20 +601,23 @@ effect fn gather(
     }
     _ => {}
   }
-  if plan.container {
-    let mut child = Document.firstChild(document, id)
+
+  // SVG2 embedded#Placement: an embedded element's positioning rectangle is
+  // its bounding box, independently of overflowing child content.
+  if plan.container && !plan.ownBounds {
+    let mut child = firstChild(graph, id, &plan)
     while true {
       let next = match &child {
-        Option<NodeId>.Some { value } => value
+        Option<OccurrenceId>.Some { value } => value
         _ => {
           break
         }
       }
       result = united(
         result,
-        run gather(document, next, plans, paths, &matrix, true, stroke, &mut cache.*),
+        run gather(graph, next, plans, layouts, paths, &matrix, true, stroke, &mut cache.*),
       )
-      child = Document.nextSibling(document, next)
+      child = graph.occurrences.asSlice()[next.index].nextSibling
     }
   }
   return result
@@ -396,18 +645,19 @@ effect fn mapped(plan: &mut Plan, matrix: &Matrix, deferFacing: bool) -> ()
   }
 }
 
-// Child transforms must be known before a container's fill/stroke reference box.
-// The XML depth ceiling bounds recursion. AABB-of-AABB mapping is never used:
-// curved descendants are measured in the requested ancestor coordinate space.
+// The hard composed-occurrence depth ceiling bounds this recursion.
+// Curved descendants are measured in the requested coordinate space, not by
+// transforming intermediate axis-aligned bounding boxes.
 effect fn place(
-  document: &Document,
-  id: NodeId,
+  graph: &Graph,
+  id: OccurrenceId,
   engine: &Engine,
-  viewport: Rect,
-  rootMap: Transform,
+  spaces: &[Rect],
+  viewTransform: &Matrix,
   retain: bool,
   plans: &mut List<Option<Plan>>,
-  pending: &mut List<Matrix>,
+  layouts: &mut List<Layout>,
+  pending: &mut List<Pending>,
   paths: &[Path],
   cache: &mut ReferenceBoundsCache,
 ) -> ()
@@ -420,31 +670,33 @@ effect fn place(
     }
   }
   if plan.container {
-    let mut child = Document.firstChild(document, id)
+    let mut child = firstChild(graph, id, &plan)
     while true {
       let next = match &child {
-        Option<NodeId>.Some { value } => value
+        Option<OccurrenceId>.Some { value } => value
         _ => {
           break
         }
       }
       run place(
-        document,
+        graph,
         next,
         engine,
-        viewport,
-        rootMap,
+        spaces,
+        viewTransform,
         plan.perspective,
         &mut plans.*,
+        &mut layouts.*,
         &mut pending.*,
         paths,
         &mut cache.*,
       )
-      child = Document.nextSibling(document, next)
+      child = graph.occurrences.asSlice()[next.index].nextSibling
     }
   }
+  let viewport = spaces[plan.viewport]
   let mut reference = viewport
-  if plan.transformed || plan.perspective {
+  if (plan.transformed || plan.perspective) && id.index != graph.root.index {
     let kind = match &used_transforms.referenceBox(engine, plan.styleId) {
       Option<ReferenceBox>.Some { value } => value
       _ => {
@@ -453,26 +705,24 @@ effect fn place(
     }
     if kind != ReferenceBox.View {
       let stroke = kind == ReferenceBox.Border || kind == ReferenceBox.Stroke
-      reference = match &(run gather(
-        document,
+      reference = match &run gather(
+        graph,
         id,
         plans.asSlice(),
+        layouts.asSlice(),
         paths,
         &Mapping.identity(),
         false,
         stroke,
         &mut cache.*,
-      )) {
+      ) {
         Option<Rect>.Some { value } => value
         _ => run rectangle(0.0, 0.0, 0.0, 0.0)
       }
     }
   }
-
-  // The parent's perspective is composed with each child's FULL matrix before
-  // that child's plane is flattened. Only these children need retained matrices.
   if plan.container && plan.perspective {
-    let projection = match &used_transforms.perspective(
+    let mut projection = match &used_transforms.perspective(
       engine,
       plan.styleId,
       viewport,
@@ -484,10 +734,31 @@ effect fn place(
         fail RenderError.InvalidGeometry
       }
     }
-    let mut child = Document.firstChild(document, id)
+
+    // Viewport placement is outside its children's coordinate system. Express
+    // perspective in that child system before composing FULL child matrices.
+    match &plan.layout {
+      Option<usize>.Some { value } => {
+        let layout = &layouts.asSlice()[value]
+        if layout.referenceMapping {
+          let inverse = match &layout.supplement.inverse() {
+            Option<Transform>.Some { value: inverseValue } => inverseValue
+            _ => {
+              fail RenderError.InvalidGeometry
+            }
+          }
+          projection = transforms.multiply(
+            &transforms.fromAffine(inverse),
+            &transforms.multiply(&projection, &transforms.fromAffine(layout.supplement)),
+          )
+        }
+      }
+      _ => {}
+    }
+    let mut child = firstChild(graph, id, &plan)
     while true {
       let next = match &child {
-        Option<NodeId>.Some { value } => value
+        Option<OccurrenceId>.Some { value } => value
         _ => {
           break
         }
@@ -501,15 +772,27 @@ effect fn place(
               fail RenderError.InvalidGeometry
             }
           }
-          let matrix = transforms.multiply(&projection, &pending.asSlice()[index])
+          let retained = &pending.asSlice()[index]
+          let matrix = transforms.multiply(&projection, &retained.matrix)
           run mapped(&mut placed, &matrix, false)
+          match &placed.layout {
+            Option<usize>.Some { value: layoutIndex } => match &retained.clip {
+              Option<Matrix>.Some { value: clipMatrix } => {
+                let mapping = run Mapping.fromMatrix(&transforms.multiply(&projection, &clipMatrix))
+                let mut layoutEntries = layouts.asMutSlice()
+                layoutEntries[layoutIndex].clipMapping = mapping
+              }
+              _ => {}
+            }
+            _ => {}
+          }
           placed.pending = Option<usize>.None
           let mut entries = plans.asMutSlice()
           entries[next.index] = Option<Plan>.Some { value: placed }
         }
         _ => {}
       }
-      child = Document.nextSibling(document, next)
+      child = graph.occurrences.asSlice()[next.index].nextSibling
     }
   }
   let mut matrix = if plan.transformed {
@@ -522,24 +805,45 @@ effect fn place(
   } else {
     transforms.identity()
   }
-  if id.index == Document.root(document).index {
-    matrix = transforms.multiply(&matrix, &transforms.fromAffine(rootMap))
+  let clipMatrix = matrix
+  if id.index == graph.root.index {
+    matrix = transforms.multiply(&matrix, viewTransform)
+  }
+  let mut pendingClip = Option<Matrix>.None
+  match &plan.layout {
+    Option<usize>.Some { value } => {
+      let supplement = layouts.asSlice()[value].supplement
+      matrix = transforms.multiply(&matrix, &transforms.fromAffine(supplement))
+      match &layouts.asSlice()[value].clip {
+        Option<Clip>.Some { value: clip } => {
+          let mapping = run Mapping.fromMatrix(&clipMatrix)
+          let mut entries = layouts.asMutSlice()
+          entries[value].clipMapping = mapping
+          if retain {
+            pendingClip = Option<Matrix>.some(clipMatrix)
+          }
+        }
+        _ => {}
+      }
+    }
+    _ => {}
   }
   run mapped(&mut plan, &matrix, retain)
   if retain {
     plan.pending = Option<usize>.some(pending.length())
-    run pending.append(matrix)
+    run pending.append(Pending { matrix: matrix, clip: pendingClip })
   }
   let mut entries = plans.asMutSlice()
   entries[id.index] = Option<Plan>.Some { value: plan }
 }
 
 effect fn paint(
-  document: &Document,
-  id: NodeId,
+  graph: &Graph,
+  id: OccurrenceId,
   plans: &[Option<Plan>],
+  layouts: &[Layout],
   parent: &Mapping,
-  clip: Option<usize>,
+  inheritedClip: Option<usize>,
   outputBounds: Rect,
   nodes: &mut List<ResolvedNode>,
   clips: &mut List<ProjectionClip>,
@@ -554,6 +858,30 @@ effect fn paint(
   }
   if plan.style.opacity == 0.0 || plan.suppressed {
     return
+  }
+  let mut clip = inheritedClip
+  match &plan.layout {
+    Option<usize>.Some { value } => {
+      let layout = &layouts[value]
+      match &layout.clip {
+        Option<Clip>.Some { value: boundary } => {
+          if (boundary.x && boundary.rectangle.width() == 0.0)
+            || (boundary.y && boundary.rectangle.height() == 0.0) {
+            return
+          }
+          let clipMapping = run parent.compose(&layout.clipMapping)
+          clip = run clipMapping.clipRectangle(
+            boundary.rectangle,
+            boundary.x,
+            boundary.y,
+            clip,
+            &mut clips.*,
+          )
+        }
+        _ => {}
+      }
+    }
+    _ => {}
   }
   let matrix = run parent.compose(&plan.local)
   let layer = plan.style.opacity != 1.0
@@ -577,12 +905,12 @@ effect fn paint(
     }
   }
   if plan.container {
-    let mut child = Document.firstChild(document, id)
+    let mut child = firstChild(graph, id, &plan)
     let mut childClip = clip
     let mut preparedClip = false
     while true {
       let next = match &child {
-        Option<NodeId>.Some { value } => value
+        Option<OccurrenceId>.Some { value } => value
         _ => {
           break
         }
@@ -606,9 +934,10 @@ effect fn paint(
         preparedClip = true
       }
       run paint(
-        document,
+        graph,
         next,
         plans,
+        layouts,
         &matrix,
         if projected {
           childClip
@@ -619,7 +948,7 @@ effect fn paint(
         &mut nodes.*,
         &mut clips.*,
       )
-      child = Document.nextSibling(document, next)
+      child = graph.occurrences.asSlice()[next.index].nextSibling
     }
   }
   if layer {
@@ -628,8 +957,8 @@ effect fn paint(
 }
 
 effect fn resolveStyled(
-  document: Document,
-  inputStyles: StyledDocument,
+  graph: Graph,
+  inputStyles: StyledGraph,
   options: &RenderOptions,
   limits: &Limits,
   initialWidth: f64,
@@ -637,11 +966,7 @@ effect fn resolveStyled(
 ) -> RenderTree
   ! CssError | RenderError | GeometryError | OutOfMemoryError
   ? &mut Allocator {
-  let root = Document.root(&document)
-  if !equal(Document.localName(&document, root), b"svg")
-    || !equal(Document.namespaceUri(&document, root), b"http://www.w3.org/2000/svg") {
-    fail RenderError.InvalidRoot
-  }
+  let root = graph.root
   let mut styles = move inputStyles
   let rootStyle = match &styles.nodeStyle(root) {
     Option<StyleId>.Some { value } => value
@@ -649,7 +974,21 @@ effect fn resolveStyled(
       fail RenderError.InvalidStyleContext
     }
   }
-  let box = svg.viewBox(attr(&document, root, b"viewBox"))
+  let sourceMetadata = run metadata(&graph, &mut styles.catalog.engine, limits)
+  let source = graph.occurrences.asSlice()[root.index].source
+  let metadataIndex = sourceMetadata.indices.asSlice()[source.document.index].asSlice()[source.node.index]
+  if metadataIndex == usize.MAX {
+    fail RenderError.InvalidRoot
+  }
+  let rootMetadata = &sourceMetadata.values.asSlice()[metadataIndex]
+  let mut box = match &styles.selection.viewBox {
+    Option<Rect>.Some { value } => Option<Rect>.some(value)
+    _ => rootMetadata.viewBox
+  }
+  let ratio = match &styles.selection.aspectRatio {
+    Option<AspectRatio>.Some { value } => value
+    _ => rootMetadata.aspectRatio
+  }
   let viewport = run sizing(
     &styles.catalog.engine,
     rootStyle,
@@ -658,52 +997,133 @@ effect fn resolveStyled(
     initialWidth,
     initialHeight,
   )
+  match &styles.selection.spatial {
+    Option<SpatialView>.Some { value } => {
+      let xScale = if value.unit == SpatialUnit.Percent {
+        viewport.width / 100.0
+      } else {
+        1.0
+      }
+      let yScale = if value.unit == SpatialUnit.Percent {
+        viewport.height / 100.0
+      } else {
+        1.0
+      }
+      box = Option<Rect>.some(
+        run rectangle(
+          u64.toF64(value.x) * xScale,
+          u64.toF64(value.y) * yScale,
+          u64.toF64(value.width) * xScale,
+          u64.toF64(value.height) * yScale,
+        ),
+      )
+    }
+    _ => {}
+  }
   let outputBounds = run rectangle(
     0.0,
     0.0,
     u32.toF64(viewport.pixelsWidth),
     u32.toF64(viewport.pixelsHeight),
   )
+  let physical = run rectangle(0.0, 0.0, viewport.width, viewport.height)
   let userViewport = match &box {
     Option<Rect>.Some { value } => value
-    _ => run rectangle(0.0, 0.0, viewport.width, viewport.height)
+    _ => physical
   }
+  let mut viewTransform = transforms.identity()
+  match &styles.selection.transform {
+    Option<ValueId>.Some { value } => {
+      let context = match &styles.catalog.engine.metrics(rootStyle) {
+        Option<Context>.Some { value: metrics } => metrics
+        _ => {
+          fail RenderError.InvalidStyleContext
+        }
+      }
+      let computed = match &styles.catalog.engine.values.values.asSlice()[value.index] {
+        Value.Transform { value: transform } => run transform_values.compute(
+          &transform,
+          &mut styles.catalog.engine.values.numerics,
+          &context,
+        )
+        _ => {
+          fail RenderError.InvalidGeometry
+        }
+      }
+      viewTransform = match &used_transforms.value(
+        &styles.catalog.engine.values,
+        &computed,
+        physical,
+      ) {
+        Option<Matrix>.Some { value: matrix } => matrix
+        _ => {
+          fail RenderError.InvalidGeometry
+        }
+      }
+    }
+    _ => {}
+  }
+
+  // Styling of all occurrences is complete before the one path-arena transfer.
   let mut paths = move styles.catalog.engine.values.paths
   styles.catalog.engine.values.paths = List<Path>.make()
   let mut dashes = List<List<f64>>.make()
   run dashes.append(List<f64>.make())
-  let mut plans = run prepare(&document, &mut styles, &mut paths, &mut dashes, userViewport, limits)
   let mut nodes = List<ResolvedNode>.make()
   let mut projectionClips = List<ProjectionClip>.make()
   let rootMap = match &box {
-    Option<Rect>.Some { value } => svg.viewport(
+    Option<Rect>.Some { value } => svg.viewportWithAspectRatio(
       value,
       viewport.width,
       viewport.height,
-      attr(&document, root, b"preserveAspectRatio"),
+      ratio,
     )
-    _ => Option<Transform>.Some { value: Transform.identity() }
+    _ => Option<Transform>.some(Transform.identity())
   }
   match &rootMap {
     Option<Transform>.Some { value } => {
+      let mut spaces = List<Rect>.make()
+      run spaces.append(physical)
+      run spaces.append(userViewport)
+      let mut layouts = List<Layout>.make()
+      run layouts.append(
+        Layout {
+          supplement: value,
+          clip: Option<Clip>.None,
+          clipMapping: Mapping.identity(),
+          referenceMapping: true,
+        },
+      )
+      let mut plans = run prepare(
+        &graph,
+        &mut styles,
+        &sourceMetadata,
+        &mut paths,
+        &mut dashes,
+        &mut spaces,
+        &mut layouts,
+        limits,
+      )
       let mut cache = ReferenceBoundsCache.make()
-      let mut pending = List<Matrix>.make()
+      let mut pending = List<Pending>.make()
       run place(
-        &document,
+        &graph,
         root,
         &styles.catalog.engine,
-        userViewport,
-        value,
+        spaces.asSlice(),
+        &viewTransform,
         false,
         &mut plans,
+        &mut layouts,
         &mut pending,
         paths.asSlice(),
         &mut cache,
       )
       run paint(
-        &document,
+        &graph,
         root,
         plans.asSlice(),
+        layouts.asSlice(),
         &Mapping.Affine { value: viewport.scale },
         Option<usize>.None,
         outputBounds,
@@ -716,7 +1136,7 @@ effect fn resolveStyled(
   return RenderTree {
     width: viewport.pixelsWidth,
     height: viewport.pixelsHeight,
-    document: move document,
+    graph: move graph,
     styles: move styles,
     paths: move paths,
     dashes: move dashes,
@@ -738,8 +1158,8 @@ effect fn geometryLimit(error: GeometryError) -> RenderTree
 }
 
 pub effect fn resolve(
-  document: Document,
-  styles: StyledDocument,
+  graph: Graph,
+  styles: StyledGraph,
   options: &RenderOptions,
   limits: &Limits,
   initialWidth: f64,
@@ -749,7 +1169,7 @@ pub effect fn resolve(
   ? &mut Allocator {
   return run Effect.catch<GeometryError>(
     Effect.catch<CssError>(
-      resolveStyled(move document, move styles, options, limits, initialWidth, initialHeight),
+      resolveStyled(move graph, move styles, options, limits, initialWidth, initialHeight),
       cssLimit,
     ),
     geometryLimit,

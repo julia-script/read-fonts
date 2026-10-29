@@ -88,6 +88,26 @@ def generate_stylesheets(config):
     return {"stylesheets.svg": svg(size, ["<style>" + "\n".join(rules) + "</style>", *groups])}
 
 
+def generate_instances(config):
+    """Nested use shadows sharing two source paths, with per-instance inherited paint."""
+    size, grid = config["size"], config["grid"]
+    step = size // grid
+    definitions = (
+        '<defs><symbol id="tile" viewBox="0 0 16 16">'
+        '<path d="M1 1H15V15H1Z"/>'
+        '<path fill="white" d="M4 4H12V6H4Z M4 8H10V10H4Z"/>'
+        '</symbol><g id="badge"><use href="#tile" width="16" height="16"/></g></defs>'
+    )
+    instances = []
+    for row in range(grid):
+        for column in range(grid):
+            fill = "#e67e22" if (row + column) % 2 else "#2388dd"
+            instances.append(
+                f'<use href="#badge" x="{column * step}" y="{row * step}" fill="{fill}"/>'
+            )
+    return {"instances.svg": svg(size, [definitions, *instances])}
+
+
 def verify_asset(data, spec):
     if hashlib.sha256(data).hexdigest() != spec["sha256"]:
         raise ValueError("Tiger SHA-256 mismatch; refusing unpinned content")
@@ -109,7 +129,7 @@ def normalize_tiger(data, config):
 def prepare(manifest, cache, fetch_tiger=False, selected=None):
     cache = Path(cache)
     result = {}
-    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves, "stylesheets": generate_stylesheets}
+    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves, "stylesheets": generate_stylesheets, "instances": generate_instances}
     for name, spec in manifest["workloads"].items():
         if selected is not None and name not in selected:
             continue
