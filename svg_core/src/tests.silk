@@ -5,6 +5,7 @@ import resources_native_tests
 import style_tree_tests
 import stylesheets_tests
 import used_transforms_tests
+import used_vector_effects_tests
 import document_styles_tests
 import graph_styles_tests
 import font_metrics_tests
@@ -16,3 +17,8 @@ import structure_tests
 import occurrence_tree_tests
 import view_selection_tests
 import used_viewports_tests
+import paint_metadata_tests
+import used_markers_tests
+import used_patterns_tests
+import pattern_scene_tests
+import path_length_limit_tests

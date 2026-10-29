@@ -77,6 +77,24 @@ test effect fn rectangleUsesInitialBlackFillAndBounds() -> ()
   run Testing.expect(Image.data(&image)[128] == 0, "initial fill is black")
 }
 
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/pservers.html#PatternElement
+test effect fn sharedUserSpacePatternFitsOneTileBudget() -> ()
+  ! AssertionError<'static> | RenderError | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let mut options = RenderOptions.make()
+  options.maxPixels = 256
+  let image = run testRender(
+    b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><defs><pattern id='p' patternUnits='userSpaceOnUse' width='16' height='16'><rect width='16' height='16' fill='red'/></pattern></defs><rect width='8' height='16' fill='url(#p)'/><rect x='8' width='8' height='16' fill='url(#p)'/></svg>",
+    &options,
+  )
+    |> Effect.provideMut<Allocator>(&mut allocator)
+  run Testing.expect(
+    alpha(&image, 0, 0) == 255 && alpha(&image, 7, 15) == 255 && alpha(&image, 8, 0) == 255
+      && alpha(&image, 15, 15) == 255,
+    "both differing reference boxes render using one retained texture allocation",
+  )
+}
+
 // https://www.w3.org/TR/2018/CR-SVG2-20181004/render.html#Grouping
 // https://www.w3.org/TR/2018/CR-SVG2-20181004/painting.html#FillProperty
 test effect fn groupOpacityIsAppliedAfterChildrenAndFillInherits() -> ()

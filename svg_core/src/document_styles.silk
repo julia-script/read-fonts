@@ -15,16 +15,18 @@ import svg_xml.xml {
   Limits as XmlLimits,
   parsePseudoAttributes
 }
-import svg_css.tokens { Limits, CssError, CssErrorKind, TokenRange, equal, insensitive }
+import svg_css.tokens { Limits, CssError, CssErrorKind, TokenRange, Span, equal, insensitive }
 import svg_css.encoding { Encoding }
 import svg_css.encoding
 import svg_css.properties { Property }
 import svg_css.properties
-import svg_css.computed { HostContext, StyleId, ComputedError }
+import svg_css.computed { HostContext, StyleId, ComputedValue, ComputedError }
 import svg_css.cascade { Candidate, Priority, Origin }
 import svg_css.media_features { Environment }
 import svg_css.element { MatchContext, NO_ELEMENT }
 import silk.collections.bytes { Bytes }
+import silk.collections.hash { Hash, HashKey, HashSeed }
+import silk.collections.hash_map { HashMap }
 import silk.collections.list { List }
 import silk.collections.slice { Slice }
 import silk.core.effect { Effect }
@@ -33,8 +35,11 @@ import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.option { Option }
 import silk.core.ownership { Copy }
 import silk.num.usize
-import structure { Graph, SourceId, OccurrenceId }
+import structure { Graph, SourceId, OccurrenceId, Options, StructureError }
+import structure
+import svg_css.values { Value, Paint }
 import occurrence_tree
+import occurrence_tree { Cache as TreeCache }
 import view_selection { Selection }
 
 struct NodeDeclarations {
@@ -47,15 +52,45 @@ impl Copy for NodeDeclarations {}
 struct SourceStyles {
   rules: RuleSetId,
   nodes: List<NodeDeclarations>,
+  templateTransforms: HashMap<usize, usize>,
 }
 
 pub struct StyledGraph {
   pub catalog: Catalog,
   pub selection: Selection,
   styles: List<StyleId>,
+  resources: HashMap<ResourceKey, OccurrenceId>,
+  templates: HashMap<usize, OccurrenceId>,
+}
+
+struct ResourceKey {
+  node: usize,
+  property: usize,
+}
+
+impl Copy for ResourceKey {}
+
+impl HashKey for ResourceKey {
+  fn equals(a: &Self, b: &Self) -> bool {
+    return a.node == b.node && a.property == b.property
+  }
+
+  fn hash(value: &Self, seed: &HashSeed) -> u64 {
+    return Hash.combine(Hash.mix(seed, usize.toU64(value.node)), usize.toU64(value.property))
+  }
 }
 
 impl StyledGraph {
+  pub fn resource(self: &Self, node: OccurrenceId, property: Property) -> Option<OccurrenceId> {
+    return self.resources.get(
+      ResourceKey { node: node.index, property: properties.index(property) },
+    )
+  }
+
+  pub fn template(self: &Self, node: OccurrenceId) -> Option<OccurrenceId> {
+    return self.templates.get(node.index)
+  }
+
   pub fn nodeStyle(self: &Self, node: OccurrenceId) -> Option<StyleId> {
     return if node.index < self.styles.length() {
       Option<StyleId>.some(self.styles.asSlice()[node.index])
@@ -555,11 +590,12 @@ effect fn compileNodes(
   base: usize,
   nodeBases: &[usize],
   limits: &Limits,
-) -> List<NodeDeclarations>
+) -> SourceStyles
   ! CssError | OutOfMemoryError
   ? &mut Allocator {
   let nodes = Document.nodes(document)
   let mut result = run List<NodeDeclarations>.makeWithCapacity(nodes.length)
+  let mut transforms = HashMap<usize, usize>.make(Hash.seed(0))
   let mut i: usize = 0
   while i < nodes.length {
     let node = NodeId { index: i }
@@ -584,6 +620,11 @@ effect fn compileNodes(
                 value,
                 limits,
               )
+              if equal(name, b"gradientTransform") || equal(name, b"patternTransform") {
+                if let Option<usize>.Some { value: declaration } = parsed {
+                  drop run transforms.insert(i, declaration)
+                }
+              }
             }
             _ => {}
           }
@@ -604,7 +645,7 @@ effect fn compileNodes(
     run result.append(NodeDeclarations { presentation: presentation, inline: inline })
     i = i + 1
   }
-  return move result
+  return SourceStyles { rules: rules, nodes: move result, templateTransforms: move transforms }
 }
 
 effect fn appendNodeCandidates(
@@ -629,6 +670,45 @@ effect fn appendNodeCandidates(
     run candidates.append(Candidate { declaration: declaration, priority: priority })
     declaration = declaration + 1
   }
+}
+
+// A template presentation attribute participates in the HOST cascade. Copying
+// its computed transform afterwards would incorrectly override transform:none,
+// initial, inherit, and author stylesheet declarations on the host.
+fn templateTransform(
+  graph: &Graph,
+  sources: &[SourceStyles],
+  templates: &HashMap<usize, OccurrenceId>,
+  node: usize,
+) -> Option<usize> {
+  let mut next: Option<OccurrenceId> = templates.get(node)
+  if next.isNone() {
+    return Option<usize>.None
+  }
+  let source = graph.occurrences.asSlice()[node].source
+  let document = graph.sourceDocument(source)
+  let name = if equal(Document.localName(document, source.node), b"pattern") {
+    b"patternTransform"
+  } else {
+    b"gradientTransform"
+  }
+  if Document.attribute(document, source.node, b"", name).isSome()
+    || Document.attribute(document, source.node, b"", b"transform").isSome() {
+    return Option<usize>.None
+  }
+  let mut remaining = graph.occurrences.length()
+  while let Option<OccurrenceId>.Some { value } = next {
+    if remaining == 0 {
+      return Option<usize>.None
+    }
+    remaining = remaining - 1
+    let target = graph.occurrences.asSlice()[value.index].source
+    if Document.attribute(graph.sourceDocument(target), target.node, b"", name).isSome() {
+      return sources[target.document.index].templateTransforms.get(target.node.index)
+    }
+    next = templates.get(value.index)
+  }
+  return Option<usize>.None
 }
 
 // Independent source-document styling remains useful without instantiation.
@@ -670,7 +750,7 @@ pub effect fn build(
       run nodeStyles.append(Option<StyleId>.None)
     } else {
       let mut candidates = run catalog.matching(rules, &tree, i, &mut context)
-      run appendNodeCandidates(&declarations.asSlice()[i], 0, &mut candidates)
+      run appendNodeCandidates(&declarations.nodes.asSlice()[i], 0, &mut candidates)
       let parent = match &nodes[i].parent {
         Option<NodeId>.Some { value } => nodeStyles.asSlice()[value.index]
         _ => Option<StyleId>.None
@@ -710,14 +790,15 @@ effect fn sourceBase(
 }
 
 pub effect fn buildGraph(
-  graph: &Graph,
+  graph: &mut Graph,
   catalog: Catalog,
   host: &HostContext,
   mediaEnvironment: &Environment,
   selection: Selection,
   limits: &Limits,
+  options: &Options,
 ) -> StyledGraph
-  ! CssError | ComputedError | OutOfMemoryError
+  ! CssError | ComputedError | StructureError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
   let mut catalog = move catalog
   let mut mapped = run List<usize>.makeWithCapacity(graph.urls.length())
@@ -728,7 +809,7 @@ pub effect fn buildGraph(
   }
   let rootSource = graph.occurrences.asSlice()[graph.root.index].source
   let rootBase = run sourceBase(
-    graph,
+    &graph.*,
     graph.documents.asSlice()[rootSource.document.index].base,
     &mut mapped,
     &mut catalog,
@@ -743,40 +824,12 @@ pub effect fn buildGraph(
     limits,
   )
   let mut sources = run List<SourceStyles>.makeWithCapacity(graph.documents.length())
-  i = 0
-  while i < graph.documents.length() {
-    let source = &graph.documents.asSlice()[i]
-    let base = run sourceBase(graph, source.base, &mut mapped, &mut catalog)
-    let rules = run catalog.createRuleSet(base, source.policy)
-    let mut bases = run List<usize>.makeWithCapacity(source.nodeBases.length())
-    let mut node: usize = 0
-    while node < source.nodeBases.length() {
-      run bases.append(
-        run sourceBase(graph, source.nodeBases.asSlice()[node], &mut mapped, &mut catalog),
-      )
-      node = node + 1
-    }
-    run collectSheets(
-      &source.document,
-      &mut catalog,
-      rules,
-      base,
-      bases.asSlice(),
-      mediaEnvironment,
-      limits,
-    )
-    let declarations = run compileNodes(
-      &source.document,
-      &mut catalog,
-      rules,
-      base,
-      bases.asSlice(),
-      limits,
-    )
-    run sources.append(SourceStyles { rules: rules, nodes: move declarations })
-    i = i + 1
-  }
-  let tree = run occurrence_tree.make(graph)
+  let mut metadata = TreeCache.make()
+  let mut styles = run List<StyleId>.makeWithCapacity(graph.occurrences.length())
+  let mut resources = HashMap<ResourceKey, OccurrenceId>.make(Hash.seed(0))
+  let mut templates = HashMap<usize, OccurrenceId>.make(Hash.seed(0))
+  let mut referenceCursor: usize = 0
+  let mut templateCursor: usize = 0
   let mut targetNode = NO_ELEMENT
   if let Option<SourceId>.Some { value } = &selection.target {
     i = 0
@@ -791,65 +844,203 @@ pub effect fn buildGraph(
     }
   }
   let mut context = MatchContext.make(graph.root.index, targetNode)
-  let mut styles = run List<StyleId>.makeWithCapacity(graph.occurrences.length())
-  i = 0
-  while i < graph.occurrences.length() {
-    let occurrence = &graph.occurrences.asSlice()[i]
-    let scope = &graph.scopes.asSlice()[occurrence.scope]
-    context.shadowHost = match &scope.host {
-      Option<OccurrenceId>.Some { value } => value.index
-      _ => NO_ELEMENT
+  while true {
+    run structure.expand(&mut graph.*, options)
+    while mapped.length() < graph.urls.length() {
+      run mapped.append(usize.MAX)
     }
-    let source = &sources.asSlice()[occurrence.source.document.index]
-    let mut candidates = run catalog.matching(source.rules, &tree, i, &mut context)
-    let mut priorities = candidates.asMutSlice()
-    let mut c: usize = 0
-    while c < priorities.length {
-      priorities[c].priority.encapsulationDepth = scope.depth
-      c = c + 1
-    }
-    drop priorities
-    run appendNodeCandidates(
-      &source.nodes.asSlice()[occurrence.source.node.index],
-      scope.depth,
-      &mut candidates,
-    )
-
-    // The inner scope's :host rules participate before inheritance into children.
-    match &occurrence.shadow {
-      Option<OccurrenceId>.Some { value } => {
-        let inner = &graph.scopes.asSlice()[graph.occurrences.asSlice()[value.index].scope]
-        context.shadowHost = i
-        let innerCandidates = run catalog.matching(
-          sources.asSlice()[inner.document.index].rules,
-          &tree,
-          i,
-          &mut context,
+    i = sources.length()
+    while i < graph.documents.length() {
+      let source = &graph.documents.asSlice()[i]
+      let base = run sourceBase(&graph.*, source.base, &mut mapped, &mut catalog)
+      let rules = run catalog.createRuleSet(base, source.policy)
+      let mut bases = run List<usize>.makeWithCapacity(source.nodeBases.length())
+      let mut node: usize = 0
+      while node < source.nodeBases.length() {
+        run bases.append(
+          run sourceBase(&graph.*, source.nodeBases.asSlice()[node], &mut mapped, &mut catalog),
         )
-        c = 0
-        while c < innerCandidates.length() {
-          let mut candidate = innerCandidates.asSlice()[c]
-          candidate.priority.encapsulationDepth = inner.depth
-          run candidates.append(candidate)
-          c = c + 1
+        node = node + 1
+      }
+      run collectSheets(
+        &source.document,
+        &mut catalog,
+        rules,
+        base,
+        bases.asSlice(),
+        mediaEnvironment,
+        limits,
+      )
+      let declarations = run compileNodes(
+        &source.document,
+        &mut catalog,
+        rules,
+        base,
+        bases.asSlice(),
+        limits,
+      )
+      run sources.append(move declarations)
+      i = i + 1
+    }
+    while templateCursor < graph.occurrences.length() {
+      let node = OccurrenceId { index: templateCursor }
+      if let Option<SourceId>.Some { value } = graph.templateSource(node) {
+        if let Option<OccurrenceId>.Some { value: target } = run graph.occurrence(node, value) {
+          drop run templates.insert(node.index, target)
         }
       }
-      _ => {}
+      templateCursor = templateCursor + 1
     }
-    let parent = match &occurrence.parent {
-      Option<OccurrenceId>.Some { value } => Option<StyleId>.some(styles.asSlice()[value.index])
-      _ => Option<StyleId>.None
+    run metadata.extend(&graph.*)
+    let tree = occurrence_tree.make(&graph.*, &metadata)
+    i = styles.length()
+    while i < graph.occurrences.length() {
+      let occurrence = &graph.occurrences.asSlice()[i]
+      let scope = &graph.scopes.asSlice()[occurrence.scope]
+      context.scope = scope.root.index
+      context.shadowHost = match &scope.host {
+        Option<OccurrenceId>.Some { value } => value.index
+        _ => NO_ELEMENT
+      }
+      let source = &sources.asSlice()[occurrence.source.document.index]
+      let mut candidates = run catalog.matching(source.rules, &tree, i, &mut context)
+      let mut priorities = candidates.asMutSlice()
+      let mut c: usize = 0
+      while c < priorities.length {
+        priorities[c].priority.encapsulationDepth = scope.depth
+        c = c + 1
+      }
+      drop priorities
+      if let Option<usize>.Some { value } = templateTransform(
+        &graph.*,
+        sources.asSlice(),
+        &templates,
+        i,
+      ) {
+        let mut priority = Priority.make(Origin.Author, 0)
+        priority.encapsulationDepth = scope.depth
+        run candidates.append(Candidate { declaration: value, priority: priority })
+      }
+      run appendNodeCandidates(
+        &source.nodes.asSlice()[occurrence.source.node.index],
+        scope.depth,
+        &mut candidates,
+      )
+
+      // The inner scope's :host rules participate before inheritance into children.
+      match &occurrence.shadow {
+        Option<OccurrenceId>.Some { value } => {
+          let inner = &graph.scopes.asSlice()[graph.occurrences.asSlice()[value.index].scope]
+          context.shadowHost = i
+          let innerCandidates = run catalog.matching(
+            sources.asSlice()[inner.document.index].rules,
+            &tree,
+            i,
+            &mut context,
+          )
+          c = 0
+          while c < innerCandidates.length() {
+            let mut candidate = innerCandidates.asSlice()[c]
+            candidate.priority.encapsulationDepth = inner.depth
+            run candidates.append(candidate)
+            c = c + 1
+          }
+        }
+        _ => {}
+      }
+      let parent = match &occurrence.parent {
+        Option<OccurrenceId>.Some { value } => Option<StyleId>.some(styles.asSlice()[value.index])
+        _ => Option<StyleId>.None
+      }
+      let style = run catalog.engine.build(
+        catalog.buffers.asSlice(),
+        catalog.declarations.asSlice(),
+        candidates.asSlice(),
+        parent,
+        host,
+        limits,
+      )
+      run styles.append(style)
+      i = i + 1
     }
-    let style = run catalog.engine.build(
-      catalog.buffers.asSlice(),
-      catalog.declarations.asSlice(),
-      candidates.asSlice(),
-      parent,
-      host,
-      limits,
-    )
-    run styles.append(style)
-    i = i + 1
+    drop tree
+
+    // Only newly computed occurrences are inspected. Their URLs may append source
+    // documents, raw shadow forests and declarations for the next incremental pass.
+    let end = styles.length()
+    while referenceCursor < end {
+      let node = OccurrenceId { index: referenceCursor }
+      let referenceProperties = [
+        Property.Fill,
+        Property.Stroke,
+        Property.MarkerStart,
+        Property.MarkerMid,
+        Property.MarkerEnd,
+      ]
+      let mut p: usize = 0
+      while p < referenceProperties.length {
+        let property = referenceProperties[p]
+        if let Option<ComputedValue>.Some { value: entry } = catalog.engine.get(
+          styles.asSlice()[node.index],
+          property,
+        ) {
+          let reference = match &catalog.engine.values.get(entry.value).* {
+            Value.Paint { paint } => match &paint {
+              Paint.Server { url, fallback } => Option<Span>.some(url)
+              _ => Option<Span>.None
+            }
+            Value.Resource { url } => Option<Span>.some(url)
+            _ => Option<Span>.None
+          }
+          if let Option<Span>.Some { value: span } = reference {
+            let declarationBase = match &entry.sourceBuffer {
+              Option<usize>.Some { value: buffer } => catalog.base(buffer)
+              _ => Option<&'static Url>.None
+            }
+            let declarationDocument = match &entry.sourceBuffer {
+              Option<usize>.Some { value: buffer } => catalog.sourceDocument(buffer)
+              _ => Option<&'static Url>.None
+            }
+            let target = run structure.resolveResource(
+              &mut graph.*,
+              node,
+              declarationDocument,
+              declarationBase,
+              catalog.engine.values.text(span),
+              options,
+            )
+            if let Option<OccurrenceId>.Some { value } = target {
+              let targetSource = graph.occurrences.asSlice()[value.index].source
+              let targetDocument = graph.sourceDocument(targetSource)
+              let name = Document.localName(targetDocument, targetSource.node)
+              let paint = property == Property.Fill || property == Property.Stroke
+              if svg(targetDocument, targetSource.node)
+                && ((paint
+                  && (equal(name, b"linearGradient") || equal(name, b"radialGradient")
+                    || equal(name, b"pattern")))
+                  || (!paint && equal(name, b"marker"))) {
+                let ignored = run resources.insert(
+                  ResourceKey { node: node.index, property: properties.index(property) },
+                  value,
+                )
+                drop ignored
+              }
+            }
+          }
+        }
+        p = p + 1
+      }
+      referenceCursor = referenceCursor + 1
+    }
+    if styles.length() == graph.occurrences.length() {
+      break
+    }
   }
-  return StyledGraph { catalog: move catalog, styles: move styles, selection: move selection }
+  return StyledGraph {
+    catalog: move catalog,
+    styles: move styles,
+    selection: move selection,
+    resources: move resources,
+    templates: move templates,
+  }
 }

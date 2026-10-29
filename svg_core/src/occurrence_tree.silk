@@ -17,10 +17,14 @@ struct Language {
 
 impl Copy for Language {}
 
-pub struct Tree<'a> {
-  pub graph: &'a Graph,
+pub struct Cache {
   metadata: List<Metadata>,
   languages: List<Option<Language>>,
+}
+
+pub struct Tree<'a> {
+  pub graph: &'a Graph,
+  cache: &'a Cache,
 }
 
 fn index(id: Option<OccurrenceId>) -> usize {
@@ -30,35 +34,42 @@ fn index(id: Option<OccurrenceId>) -> usize {
   }
 }
 
-pub effect fn make<'a>(graph: &'a Graph) -> Tree<'a>
-  ! OutOfMemoryError
-  ? &mut Allocator {
-  let mut metadata = run List<Metadata>.makeWithCapacity(graph.documents.length())
-  let mut document: usize = 0
-  while document < graph.documents.length() {
-    run metadata.append(run style_tree.makeMetadata(&graph.documents.asSlice()[document].document))
-    document = document + 1
+impl Cache {
+  pub fn make() -> Cache {
+    return Cache { metadata: List<Metadata>.make(), languages: List<Option<Language>>.make() }
   }
-  let mut languages = run List<Option<Language>>.makeWithCapacity(graph.occurrences.length())
-  let mut i: usize = 0
-  while i < graph.occurrences.length() {
-    let occurrence = &graph.occurrences.asSlice()[i]
-    let own = metadata.asSlice()[occurrence.source.document.index].localLanguageAttribute(
-      occurrence.source.node,
-    )
-    let language = match &own {
-      Option<usize>.Some { value } => Option<Language>.Some {
-        value: Language { source: occurrence.source, attribute: value }
-      }
-      _ => match &occurrence.parent {
-        Option<OccurrenceId>.Some { value } => languages.asSlice()[value.index]
-        _ => Option<Language>.None
-      }
+
+  pub effect fn extend(self: &mut Self, graph: &Graph) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    while self.metadata.length() < graph.documents.length() {
+      let document = self.metadata.length()
+      run self.metadata.append(
+        run style_tree.makeMetadata(&graph.documents.asSlice()[document].document),
+      )
     }
-    run languages.append(language)
-    i = i + 1
+    while self.languages.length() < graph.occurrences.length() {
+      let i = self.languages.length()
+      let occurrence = &graph.occurrences.asSlice()[i]
+      let own = self.metadata.asSlice()[occurrence.source.document.index].localLanguageAttribute(
+        occurrence.source.node,
+      )
+      let language = match &own {
+        Option<usize>.Some { value } => Option<Language>.Some {
+          value: Language { source: occurrence.source, attribute: value }
+        }
+        _ => match &occurrence.parent {
+          Option<OccurrenceId>.Some { value } => self.languages.asSlice()[value.index]
+          _ => Option<Language>.None
+        }
+      }
+      run self.languages.append(language)
+    }
   }
-  return Tree { graph: graph, metadata: move metadata, languages: move languages }
+}
+
+pub fn make<'a>(graph: &'a Graph, cache: &'a Cache) -> Tree<'a> {
+  return Tree { graph: graph, cache: cache }
 }
 
 impl<'a> Tree<'a> {
@@ -106,7 +117,7 @@ impl<'a> ElementTree for Tree<'a> {
       return NO_ELEMENT
     }
     let occurrence = &self.graph.occurrences.asSlice()[node]
-    if occurrence.shadowRoot {
+    if occurrence.shadowRoot && occurrence.nextSibling.isNone() {
       let parent = index(occurrence.parent)
       return if parent == NO_ELEMENT {
         NO_ELEMENT
@@ -127,11 +138,18 @@ impl<'a> ElementTree for Tree<'a> {
       return previous
     }
     let parent = index(occurrence.parent)
-    return if parent == NO_ELEMENT {
-      NO_ELEMENT
-    } else {
-      index(self.graph.occurrences.asSlice()[parent].shadow)
+    if parent == NO_ELEMENT {
+      return NO_ELEMENT
     }
+    let mut last = index(self.graph.occurrences.asSlice()[parent].shadow)
+    while last != NO_ELEMENT {
+      let next = index(self.graph.occurrences.asSlice()[last].nextSibling)
+      if next == NO_ELEMENT {
+        break
+      }
+      last = next
+    }
+    return last
   }
 
   fn localName(self: &Self, node: usize) -> &[u8] {
@@ -232,10 +250,10 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn language(self: &Self, node: usize) -> &[u8] {
-    if node >= self.languages.length() {
+    if node >= self.cache.languages.length() {
       return b""
     }
-    return match &self.languages.asSlice()[node] {
+    return match &self.cache.languages.asSlice()[node] {
       Option<Language>.Some { value } => {
         let document = &self.graph.documents.asSlice()[value.source.document.index].document
         let attrs = Document.attributes(document, value.source.node)
@@ -246,21 +264,22 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn isRoot(self: &Self, node: usize) -> bool {
-    return node == self.graph.root.index
+    return node < self.graph.occurrences.length()
+      && self.graph.occurrences.asSlice()[node].parent.isNone()
   }
 
   fn isEmpty(self: &Self, node: usize) -> bool {
     return match &self.source(node) {
-      Option<SourceId>.Some { value } => self.metadata.asSlice()[value.document.index].isEmpty(
-        value.node,
-      )
+      Option<SourceId>.Some {
+        value
+      } => self.cache.metadata.asSlice()[value.document.index].isEmpty(value.node)
       _ => false
     }
   }
 
   fn isLink(self: &Self, node: usize) -> bool {
     return match &self.source(node) {
-      Option<SourceId>.Some { value } => self.metadata.asSlice()[value.document.index].isLink(
+      Option<SourceId>.Some { value } => self.cache.metadata.asSlice()[value.document.index].isLink(
         value.node,
       )
       _ => false

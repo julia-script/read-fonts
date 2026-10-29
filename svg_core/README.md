@@ -10,9 +10,10 @@ The renderer computes CSS over source documents and rendering occurrences before
 resolving outermost/nested `svg`, groups, `use`, `symbol`, paths and basic shapes.
 Selectors, cascade/custom properties, presentation attributes, inline/external
 stylesheets, media/supports conditions, typed geometry and transforms are integrated.
-Solid fills/strokes, viewports, inherited paint, visibility and isolated opacity
-produce premultiplied RGBA8 through the shared CPU `vector` backend. `svg_cli`
-writes PNG; source XML, occurrence/computed-style trees and display lists are public.
+Solid and paint-server fills/strokes, viewports, inherited paint, visibility and
+isolated opacity produce premultiplied RGBA8 through the shared CPU `vector`
+backend. `svg_cli` writes PNG; source XML, occurrence/computed-style trees and
+display lists are public.
 
 Integration checks exercise CSS precedence, reference geometry, projective
 transforms, nested positive-w clipping, backface visibility and resource limits.
@@ -34,9 +35,25 @@ processing modes, nested external uses and explicit fragment selection. The
 matches an independent integer-pixel control exactly. These are focused checks,
 not a full conformance claim.
 
-Paint servers, general clipping/masking, image decoding, filters, text, animation
-and ICC remain required work, not exclusions from scope. Parsing their CSS
-properties does not implement their rendering.
+Phase 5 adds linear and two-circle radial gradients, reusable pattern pictures,
+markers on equivalent shape paths, context paint, `paint-order`, host-space vector
+effects and linear-RGB interpolation/compositing. Paint metadata and resource
+children use computed CSS and the existing occurrence/reference machinery.
+`pathLength` calibrates absolute dash distances using certified native path
+metrics; viewport percentages remain unchanged. Numeric/resource refusal policies
+and unresolved specification choices are recorded in [SPECIFICATIONS.md](SPECIFICATIONS.md#paint-and-vector-effect-interpretation-decisions).
+
+The integrated dev.29 gate passes on macOS arm64, including 53 exact-RGBA
+painting reftests. These cover gradient degeneracies, reusable/nested pattern
+pictures and overflow, marker/context-paint placement, vector effects, painting
+order, linear-RGB compositing and calibrated dashes. Nanounit geometry magnified
+by a billion retains dash placement; signed-zero and unrepresentable period
+arithmetic have dedicated regression coverage. No existing expectation was relaxed.
+
+General clipping/masking, image decoding, filters, text, animation and ICC remain
+required later work, not exclusions from scope. `shape-rendering` controls current
+shape rasterization; computed image/text hints gain consumers in their own phases.
+Parsing those properties does not implement their rendering.
 
 ## Packages
 
@@ -103,9 +120,10 @@ The phase-3 macOS arm64 offline SVG gate completed in 128.16 seconds. The Linux
 arm64 offline SVG gate plus `scripts/generate --check` completed in 176.05 seconds
 in an isolated Ubuntu workspace. Both used populated toolchain/reference caches
 and ran concurrently on the same host; these are not cold CI measurements.
-GitHub Actions has not supplied a cold-run result: the phase-1 jobs were refused
-before execution because of account billing/spending limits. That budget check
-remains unverified.
+The merged-main [GitHub Actions run](https://github.com/julia-script/read-fonts/actions/runs/40931083367)
+passed all 11 jobs; its SVG job took 4m53s on a fresh hosted Ubuntu runner. Silk
+was a cache miss, but LLVM and pip were hits. This is not a fully cold-cache budget
+measurement.
 
 ## Specifications and suites
 
@@ -243,6 +261,10 @@ dimensions: a viewBox-only square occupies 150×150 in the 300×150 default obje
 size. CLI width/height select output resolution without rewriting the logical
 viewport. The executor also caps aggregate output/isolated surfaces at 64M
 pixels; excessively nested opacity groups fail before allocating their surfaces.
+The same `maxPixels` value separately caps aggregate cached pattern texels.
+User-space pattern pictures are shared across differently sized referring
+elements when their actual content layout and inherited context are identical;
+placement remains per paint instance.
 
 ## Geometry API
 

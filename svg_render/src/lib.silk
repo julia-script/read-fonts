@@ -32,11 +32,11 @@ effect fn invalidStructure(error: StructureError) -> Graph
 pub effect fn parse(data: &[u8], options: &RenderOptions, host: &Environment) -> RenderTree
   ! RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
-  let graph = run Effect.catch<StructureError>(
+  let mut graph = run Effect.catch<StructureError>(
     structure.build(data, &host.base, &host.structure),
     invalidStructure,
   )
-  let styles = run environment.styles(&graph, host)
+  let styles = run environment.styles(&mut graph, host)
   return run resolve.resolve(
     move graph,
     move styles,

@@ -108,6 +108,65 @@ def generate_instances(config):
     return {"instances.svg": svg(size, [definitions, *instances])}
 
 
+def generate_paintservers(config):
+    """Painted mosaic: shared user-space tiles containing linear/radial gradients."""
+    size, grid = config["size"], config["grid"]
+    step = (size - 64) // grid
+    edge = step - 8
+    definitions = (
+        '<defs>'
+        '<linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#b5dbd8"/>'
+        '<stop offset="0.5" stop-color="#548b97"/>'
+        '<stop offset="1" stop-color="#24475d"/>'
+        '</linearGradient>'
+        '<linearGradient id="thread" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="16" y2="16">'
+        '<stop offset="0" stop-color="#163347"/>'
+        '<stop offset="0.5" stop-color="#418a92"/>'
+        '<stop offset="1" stop-color="#91c4b0"/>'
+        '</linearGradient>'
+        '<radialGradient id="bead" gradientUnits="userSpaceOnUse" cx="8" cy="8" r="6" fx="8" fy="8" fr="0">'
+        '<stop offset="0" stop-color="#fff1b0"/>'
+        '<stop offset="0.5" stop-color="#d4a45c"/>'
+        '<stop offset="1" stop-color="#80512e"/>'
+        '</radialGradient>'
+        '<radialGradient id="jewel" cx="0.5" cy="0.5" r="0.5" fx="0.5" fy="0.5" fr="0">'
+        '<stop offset="0" stop-color="#e5f5df"/>'
+        '<stop offset="0.4" stop-color="#7bb9a0"/>'
+        '<stop offset="1" stop-color="#205263"/>'
+        '</radialGradient>'
+        '<pattern id="weave" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">'
+        '<rect width="16" height="16" fill="url(#thread)"/>'
+        '<path d="M0 4H16 M0 12H16" fill="none" stroke="#163347" stroke-width="2"/>'
+        '<path d="M4 0V16 M12 0V16" fill="none" stroke="#91c4b0" stroke-width="1"/>'
+        '</pattern>'
+        '<pattern id="beads" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">'
+        '<rect width="16" height="16" fill="url(#thread)"/>'
+        '<circle cx="8" cy="8" r="6" fill="url(#bead)"/>'
+        '</pattern>'
+        '</defs>'
+    )
+    shapes = [
+        definitions,
+        f'<rect width="{size}" height="{size}" fill="#102738"/>',
+        f'<rect x="16" y="16" width="{size - 32}" height="{size - 32}" rx="12" fill="url(#panel)"/>',
+        f'<rect x="24" y="24" width="{size - 48}" height="{size - 48}" rx="8" fill="#163347"/>',
+    ]
+    # Absolute coordinates and identical user-space tile definitions allow reuse
+    # across every panel; no per-shape transforms or object-bounding-box patterns.
+    for row in range(grid):
+        for column in range(grid):
+            left, top = 32 + column * step, 32 + row * step
+            cx, cy = left + edge // 2, top + edge // 2
+            shapes.extend([
+                f'<rect x="{left}" y="{top}" width="{edge}" height="{edge}" rx="6" fill="url(#panel)"/>',
+                f'<rect x="{left + 3}" y="{top + 3}" width="{edge - 6}" height="{edge - 6}" rx="4" fill="url(#weave)"/>',
+                f'<circle cx="{cx}" cy="{cy}" r="{edge // 3}" fill="url(#beads)" stroke="#e2c27a" stroke-width="2"/>',
+                f'<circle cx="{cx}" cy="{cy}" r="{edge // 6}" fill="url(#jewel)" stroke="#163347" stroke-width="1"/>',
+            ])
+    return {"paintservers.svg": svg(size, shapes)}
+
+
 def verify_asset(data, spec):
     if hashlib.sha256(data).hexdigest() != spec["sha256"]:
         raise ValueError("Tiger SHA-256 mismatch; refusing unpinned content")
@@ -129,7 +188,7 @@ def normalize_tiger(data, config):
 def prepare(manifest, cache, fetch_tiger=False, selected=None):
     cache = Path(cache)
     result = {}
-    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves, "stylesheets": generate_stylesheets, "instances": generate_instances}
+    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves, "stylesheets": generate_stylesheets, "instances": generate_instances, "paintservers": generate_paintservers}
     for name, spec in manifest["workloads"].items():
         if selected is not None and name not in selected:
             continue

@@ -2,7 +2,7 @@
 import scene { Style, Color, Paint, FillRule, LineCap, LineJoin, RenderError }
 import svg_css.dimensions { Context }
 import svg_css.computed { Engine, StyleId, ComputedValue }
-import svg_css.values { Value, ValueId, Paint as CssPaint, Fallback }
+import svg_css.values { Value, ValueId, Paint as CssPaint, Fallback, PaintLayer }
 import svg_css.values
 import svg_css.properties { Property }
 import svg_css.value_keywords { Keyword }
@@ -72,6 +72,17 @@ fn solid(value: CssColor) -> Paint {
   }
 }
 
+effect fn paintOrder(engine: &Engine, style: StyleId) -> [PaintLayer; 3]
+  ! RenderError {
+  let id = run entry(engine, style, Property.PaintOrder)
+  return match &engine.values.get(id).* {
+    Value.PaintOrder { order } => order
+    _ => {
+      fail RenderError.InvalidGeometry
+    }
+  }
+}
+
 effect fn paint(engine: &Engine, style: StyleId, property: Property) -> Paint
   ! RenderError {
   let id = run entry(engine, style, property)
@@ -86,9 +97,8 @@ effect fn paint(engine: &Engine, style: StyleId, property: Property) -> Paint
         _ => Paint.None
       }
 
-      // No context element exists for an ordinary, non-instanced shape.
-      CssPaint.ContextFill => Paint.None
-      CssPaint.ContextStroke => Paint.None
+      CssPaint.ContextFill => Paint.ContextFill
+      CssPaint.ContextStroke => Paint.ContextStroke
     }
     _ => {
       fail RenderError.InvalidGeometry
@@ -205,5 +215,7 @@ pub effect fn project(
     visible: (run keyword(engine, style, Property.Visibility)) == Keyword.Visible,
     displayed: (run keyword(engine, style, Property.Display)) != Keyword.None,
     crispEdges: hint == Keyword.CrispEdges || hint == Keyword.OptimizeSpeed,
+    linearRgb: (run keyword(engine, style, Property.ColorInterpolation)) == Keyword.LinearRGB,
+    paintOrder: run paintOrder(engine, style),
   }
 }

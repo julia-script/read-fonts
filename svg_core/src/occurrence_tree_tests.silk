@@ -1,5 +1,5 @@
 //! Selector behavior over actual use occurrences, not a synthetic tree provider.
-import occurrence_tree { Tree }
+import occurrence_tree { Tree, Cache }
 import occurrence_tree
 import structure { Graph, Options, StructureError }
 import structure
@@ -83,7 +83,9 @@ test effect fn actualShadowAndLightChildrenStayInTheirSelectorScopes() -> ()
   )
     |> Effect.provideMut<Resolver>(&mut resolver)
     |> Effect.provideMut<Allocator>(&mut allocator)
-  let tree = run occurrence_tree.make(&graph) |> Effect.provideMut<Allocator>(&mut allocator)
+  let mut cache = Cache.make()
+  run cache.extend(&graph) |> Effect.provideMut<Allocator>(&mut allocator)
+  let tree = occurrence_tree.make(&graph, &cache)
   let host = named(&graph, b"host", false)
   let leaf = named(&graph, b"leaf", true)
   let light = named(&graph, b"light", false)

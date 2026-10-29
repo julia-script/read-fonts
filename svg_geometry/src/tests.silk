@@ -9,6 +9,7 @@ import svg_tests
 import transform_tests
 import arc_tests
 import bounds_tests
+import marker_tests
 
 fn near(a: f64, b: f64) -> bool {
   return f64.abs(a - b) <= 0.000000000001

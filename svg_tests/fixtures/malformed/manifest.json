@@ -74,6 +74,16 @@
       "tolerance": {},
       "exit_code": 0,
       "output_present": true
+    },
+    {
+      "id": "path-length-rounded-period",
+      "input": "inputs/path-length-rounded-period.svg",
+      "status": "pass",
+      "reason": "The binary64 coefficient of (2^53+1) times an infinite calibration scale is uncertifiable. Explicit geometry-limit rejection is required instead of silently discarding the residual and painting an incorrect solid line; the SVG itself is valid.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/paths.html#PathLengthAttribute",
+      "tolerance": {},
+      "exit_code": 1,
+      "output_present": false
     }
   ]
 }
