@@ -6,7 +6,7 @@ import generated_layout { Condition, ConditionSet, LookupConditionRecord, Featur
 import model.error { Error }
 import font_types.lib { F2Dot14 }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 import silk.collections.slice { Slice }
 import silk.num.usize

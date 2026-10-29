@@ -2,7 +2,7 @@
 import cast
 import scalar { rawByteLen, readScalar, writeScalar }
 import silk.testing.testing { Testing, AssertionError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.i32
 import silk.num.u16
 

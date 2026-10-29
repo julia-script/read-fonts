@@ -10,7 +10,7 @@ import bidi {
 }
 import lib { BidiClass }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.testing.testing { Testing, AssertionError }
 import silk.core.effect { Effect }

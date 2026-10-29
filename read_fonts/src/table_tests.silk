@@ -4,7 +4,7 @@ import tables.head { Head, Flags }
 import tables.maxp { Maxp }
 import tables.cmap { Cmap0, Cmap4, CmapSubtable }
 import font_types.lib { Fixed, LongDateTime }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.testing.testing { Testing, AssertionError }

@@ -1,9 +1,9 @@
 //! Allocation-free paths for the bounded table graph traversal.
 import silk.core.ownership { Copy }
 import silk.io.writer { Writer, WriterError }
-import silk.format { Format }
+import silk.text.format { Format }
 import silk.text.string { String }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.slice { Slice }
 import font_types.lib { Version16Dot16, readScalar }
 import read_fonts.lib { ReadError }
@@ -224,7 +224,7 @@ fn appendDecimal(output: &mut [u8], at: usize, value: u64) -> usize {
   return at + count
 }
 
-/// A value that a dump line can hold. Integers bypass `silk.format`, which costs about a
+/// A value that a dump line can hold. Integers bypass `silk.text.format`, which costs about a
 /// thousand instructions a call.
 pub interface DumpValue {
   /// Writes `=value` and the line's newline.

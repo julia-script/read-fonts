@@ -20,11 +20,11 @@ import generated_cff_fixtures {
   iconsMatrixTable,
   cantarellTable
 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.text.string { String }
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 import silk.testing.testing { Testing, AssertionError }
 import silk.num.usize
 import silk.num.i32

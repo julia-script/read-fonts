@@ -7,7 +7,7 @@ import read_fonts.tables.mvar { Mvar, ValueRecord }
 import read_fonts.tables.variations { ItemVariationStore, VariationRegionList }
 import font_types.lib { GlyphId, F2Dot14, Fixed, F48Dot16 }
 import dump_support { DumpPath, scalar, absent, readError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.io.writer { Writer, WriterError }
 import silk.collections.slice { Slice }

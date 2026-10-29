@@ -1,8 +1,8 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_types.lib { BoundingBox, F48Dot16, Fixed, F26Dot6, F2Dot14, F4Dot12, F6Dot10 }
 import silk.core.ownership { Copy }
-import silk.order { Order }
-import silk.ops { Subtract }
+import silk.core.order { Order }
+import silk.core.ops { Subtract }
 import silk.num.f32
 
 pub struct GlyphExtents<T> {

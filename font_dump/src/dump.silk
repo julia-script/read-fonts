@@ -34,10 +34,10 @@ import read_fonts.lib {
   ScalarArray
 }
 import font_types.lib { Tag }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.io.writer { Writer, WriterError }
-import silk.format { Format }
+import silk.text.format { Format }
 import extensions_metric_variations
 import extensions_glyphs
 import generated_dump_head

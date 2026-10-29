@@ -17,7 +17,7 @@ import silk.num.usize
 import font_types.lib { Tag, F2Dot14, F48Dot16 }
 import silk.core.ownership { Copy }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.num.u16
 import silk.num.u32

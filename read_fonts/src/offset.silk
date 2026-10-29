@@ -2,7 +2,7 @@
 import font_data { FontData }
 import read { ReadError, FontRead, readWithArgs }
 import font_types.lib { Scalar, OffsetValue, Nullable, offsetValue }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.ownership { Copy }
 import silk.num.u32

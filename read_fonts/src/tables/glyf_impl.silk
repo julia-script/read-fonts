@@ -1,7 +1,7 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { Cursor }
 import font_types.lib { Point, F26Dot6 }
-import silk.ops { Add, Multiply }
+import silk.core.ops { Add, Multiply }
 import silk.num.i8
 import silk.num.f32
 

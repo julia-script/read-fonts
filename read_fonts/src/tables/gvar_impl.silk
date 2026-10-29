@@ -550,7 +550,7 @@ import tables.variations {
   ActiveTupleVariation
 }
 import font_types.lib { Point }
-import silk.ops { Multiply }
+import silk.core.ops { Multiply }
 
 impl GlyphDelta {
   pub fn applyScalar<D: PointCoord + Copy + Multiply<D, D>>(self: Self, scalar: Fixed) -> Point<D> {

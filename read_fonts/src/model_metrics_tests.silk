@@ -22,7 +22,7 @@ import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 
 effect fn must<T>(value: Result<T, ReadError>) -> T
   ! AssertionError<'static> {
