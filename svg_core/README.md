@@ -265,7 +265,7 @@ subdivision limits fail explicitly rather than returning under-resolved geometry
 ## Limitations and performance
 
 [Limitations](LIMITATIONS.md) records dependency/toolchain and backend constraints.
-No compiler or stdlib is patched. The phase-3 Ubuntu 24.04 arm64 baseline in
+No compiler or stdlib is patched. The phase-4 Ubuntu 24.04 arm64 baseline in
 [`svg_bench/baseline.json`](../svg_bench/baseline.json) uses three native samples,
 one iteration and no warmup, plus a separate Valgrind 3.22.0 Callgrind pass.
 The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
@@ -273,31 +273,33 @@ The isolated VM has four CPUs and 8 GiB RAM; binaries use Silk dev.27, LLVM
 
 | Workload | Parse + record time | Render time | End-to-end time | Render-process Ir |
 |---|---:|---:|---:|---:|
-| 128 original icons | 11.082× | 1.893× | 5.153× | 4.242× |
-| Tiger | 5.653× | 2.052× | 2.356× | 2.835× |
-| Large map/CAD | 10.899× | 1.371× | 2.747× | 2.402× |
-| Mixed curves | 7.315× | 3.708× | 4.550× | 4.168× |
-| 2,048 stylesheet rules/rectangles | 0.567× | 0.563× | 0.538× | 0.427× |
+| 128 original icons | 11.241× | 1.977× | 5.050× | 4.280× |
+| Tiger | 6.474× | 1.952× | 2.401× | 2.839× |
+| Large map/CAD | 13.513× | 1.228× | 2.762× | 2.408× |
+| Mixed curves | 9.977× | 3.598× | 4.869× | 4.177× |
+| 2,048 stylesheet rules/rectangles | 0.706× | 0.664× | 0.695× | 0.444× |
+| 1,024 nested symbol instances | 13.400× | 0.331× | 4.017× | 2.774× |
 
-This is **not performance parity**. Only the stylesheet workload's pixel
-checksums agree with resvg; timing does not certify rendering correctness.
-The stylesheet workload also passed an independent exact pixel control.
+This is **not performance parity**. Only the stylesheet and repeated-instance
+workloads' pixel checksums agree with resvg; timing does not certify rendering
+correctness. Both also passed independent exact pixel controls.
 
-A separate `scripts/svg/ab` run used the preserved phase-2 binary and the
-phase-3 binary on identical shape inputs, with the same sampling configuration.
+A separate `scripts/svg/ab` run used the preserved phase-3 binary and the
+phase-4 binary on identical inputs, with the same sampling configuration.
 These are full render-process instruction counts, including untimed parsing:
 
-| Workload | Phase 2 Ir | Phase 3 Ir |
+| Workload | Phase 3 Ir | Phase 4 Ir |
 |---|---:|---:|
-| 128 original icons | 124,368,260 | 399,588,398 |
-| Tiger | 602,295,029 | 370,790,626 |
-| Large map/CAD | 2,534,800,659 | 684,205,904 |
-| Mixed curves | 132,520,054 | 360,197,270 |
+| 128 original icons | 399,583,294 | 403,092,446 |
+| Tiger | 370,790,579 | 371,385,399 |
+| Large map/CAD | 684,211,626 | 685,797,643 |
+| Mixed curves | 360,197,259 | 360,945,157 |
+| 2,048 stylesheet rules/rectangles | 519,760,120 | 541,279,216 |
 
-The comparison includes the new CSS pipeline and changed vector geometry, not
-an isolated optimization: old/new pixel checksums differ. Tiger and map costs
-fell; icons and mixed curves regressed. Closing every remaining performance
-gap is still required.
+Old/new pixel checksums agree for all five workloads. Structural processing adds
+0.16–4.14% to full render-process instruction counts. The new repeated-instance
+workload is excluded from A/B because phase 3 could not render it. Closing every
+remaining performance gap is still required.
 
 ```sh
 silk build --release --manifest-path svg_bench/silk.toml
