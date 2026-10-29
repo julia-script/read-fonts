@@ -194,9 +194,33 @@ test effect fn malformedStructureAndCharacters() -> ()
   run rejected(b"<a>&unknown;</a>")
   run rejected(b"<?XML data?><a/>")
   run rejected(b" <?xml version='1.0'?><a/>")
-  run rejected(b"<?xml version='1.1'?><a/>")
+  run rejected(b"<?xml version='2.0'?><a/>")
+  run rejected(b"<?xml version='1.'?><a/>")
   run rejected(b"<a x='<bad'/>")
   run rejected(&[60, 97, 62, 192, 128, 60, 47, 97, 62])
+}
+
+// https://www.w3.org/TR/xml/#sec-versioning (any 1.x document is processed as 1.0)
+// https://www.w3.org/TR/xml/#wf-entdeclared (a parameter entity reference in the
+// internal subset makes an undeclared entity a validity error, not a fatal one)
+test effect fn laterVersionsAndUndeclaredAfterParameterEntities() -> ()
+  ! AssertionError<'static> | XmlError | OutOfMemoryError {
+  let mut allocator = Allocator.systemAllocatorProvider()
+  let later = run parse(b"<?xml version='1.7'?><a/>")
+    |> Effect.provideMut<Allocator>(&mut allocator)
+  run Testing.expect(equal(Document.localName(&later, Document.root(&later)), b"a"), "1.x accepted")
+  let referenced = run parse(
+    b"<!DOCTYPE a [<!ENTITY % pe \"<!ENTITY one 'text'>\">%pe;]><a>&two;</a>",
+  )
+    |> Effect.provideMut<Allocator>(&mut allocator)
+  run Testing.expect(
+    equal(Document.localName(&referenced, Document.root(&referenced)), b"a"),
+    "undeclared entity after a parameter entity reference",
+  )
+  run rejected(
+    b"<?xml version='1.0' standalone='yes'?><!DOCTYPE a [<!ENTITY % pe ''>%pe;]><a>&two;</a>",
+  )
+  run rejected(b"<!DOCTYPE a [<!ENTITY one 'text'>]><a>&two;</a>")
 }
 
 // https://www.w3.org/TR/xml-names/#nsc-NSDeclared
