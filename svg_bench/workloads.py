@@ -70,6 +70,24 @@ def generate_curves(config):
     return {"mixedcurves.svg": svg(size, shapes)}
 
 
+def generate_stylesheets(config):
+    """Shared CSS subset: selective child/class rules over a dense rectangle grid."""
+    size, rows, columns = config["size"], config["rows"], config["columns"]
+    width, height = size // columns, size // rows
+    rules = []
+    groups = []
+    for row in range(rows):
+        cells = []
+        for column in range(columns):
+            red = 32 + (row * 37 + column * 17) % 192
+            green = 32 + (row * 13 + column * 43) % 192
+            blue = 32 + (row * 29 + column * 7) % 192
+            rules.append(f".r{row} > rect.c{column} {{ fill: #{red:02x}{green:02x}{blue:02x}; }}")
+            cells.append(f'<rect class="c{column}" x="{column * width}" y="{row * height}" width="{width - 1}" height="{height - 1}"/>')
+        groups.append(f'<g class="r{row}">' + "".join(cells) + "</g>")
+    return {"stylesheets.svg": svg(size, ["<style>" + "\n".join(rules) + "</style>", *groups])}
+
+
 def verify_asset(data, spec):
     if hashlib.sha256(data).hexdigest() != spec["sha256"]:
         raise ValueError("Tiger SHA-256 mismatch; refusing unpinned content")
@@ -91,7 +109,7 @@ def normalize_tiger(data, config):
 def prepare(manifest, cache, fetch_tiger=False, selected=None):
     cache = Path(cache)
     result = {}
-    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves}
+    generators = {"iconset": generate_icons, "largemap": generate_map, "mixedcurves": generate_curves, "stylesheets": generate_stylesheets}
     for name, spec in manifest["workloads"].items():
         if selected is not None and name not in selected:
             continue

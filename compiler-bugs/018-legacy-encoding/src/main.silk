@@ -1,0 +1,7 @@
+// Proposed namespace, not an existing or promised API. See README.md.
+// Needed operation: decode windows-1252 byte 0x80 as U+20AC, not UTF-8 failure.
+import silk.text.encoding
+
+pub fn main() -> i32 {
+  return 0
+}

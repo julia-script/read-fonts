@@ -23,6 +23,64 @@ partial implementation of a broad item does not complete it. CSS, references,
 paint servers, images, filters, text, animation, ICC and the full conformance
 sweep remain in scope. Pinned documents and fetched corpora are not coverage.
 
+### CSS authority and current integration
+
+The CSS package implements tokenization, selectors, cascade/custom properties,
+typed values, computation, conditions and external stylesheet decoding. The
+core stylesheet catalog resolves conditional imports, keeps namespace bindings
+local to each sheet and retains winning declaration base URLs. The renderer now
+consumes this computed state, including CSS geometry and reference-box transforms.
+A standalone executable exercised conditional `data:` imports and namespace
+isolation; the actual CLI CSS fixture matches its reference with zero differing
+pixels. Projective geometry now uses the upstream backend, and an actual CLI smoke
+matches independent projected polygons and affine controls pixel-exactly. This
+is not a completed styling-conformance claim.
+
+Two corrections use the pinned SVG 2 Editor's Draft styling chapter
+(`dbbc1f8bcb1a3b05777d1ec03dac8040738b02941142018e44e2e02dad691195`):
+
+- [Presentation attributes](https://svgwg.org/svg2-draft/styling.html#PresentationAttributes)
+  precede author stylesheets. The CR's “following all other author-level style
+  sheets” is corrected to “followed by all other author-level style sheets.”
+- [The UA stylesheet](https://svgwg.org/svg2-draft/styling.html#UAStyleSheet)
+  uses `white-space-collapse`, not the CR's obsolete `text-space-collapse`.
+  The pinned CSS Text 4 longhands and shorthand expansion govern this property.
+
+The pinned [Selectors 4 `:empty`](https://www.w3.org/TR/selectors-4/#empty-pseudo)
+allows document whitespace. XML ID selectors use DTD-declared ID attributes
+and SVG's unqualified `id`, rather than guessing that any XML attribute named
+`id` has type ID. Font matching, ICC transforms, font-face loading and animation
+remain their later rendering phases; parsing a value does not implement those
+rendering effects.
+
+### Conditional Rules 3 general-enclosed reference
+
+The pinned [Conditional 3 grammar](https://www.w3.org/TR/css-conditional-3/#typedef-supports-in-parens)
+links `<general-enclosed>` to a removed Values 4 definition
+([CSSWG #14689](https://github.com/w3c/csswg-drafts/issues/14689)).
+We use the [2022 CR's reference](https://www.w3.org/TR/2022/CR-css-conditional-3-20220113/#typedef-supports-in-parens)
+to [Media Queries 5's production](https://www.w3.org/TR/mediaqueries-5/#typedef-general-enclosed):
+`[ <function-token> <any-value>? ) ] | [ ( <any-value>? ) ]`.
+Only the grammar is borrowed: [Conditional 3's evaluation rule](https://www.w3.org/TR/css-conditional-3/#at-supports)
+requires **false**, not MQ5's `unknown`. Thus `selector(svg)` is false and
+`not selector(svg)` is true; this does not adopt Conditional 4 selector queries.
+`supports_tests.silk::generalEnclosedIsFalseNotSelectorSupport` covers that choice.
+
+### Bounding-box ambiguity
+
+The pinned [SVG 2 bounding-box algorithm](https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#BoundingBoxes)
+initializes its accumulator to `(0,0,0,0)` before unions, which would spuriously
+include the origin. [SVGWG #422](https://github.com/w3c/svgwg/issues/422) records
+this unresolved inconsistency. We use an empty accumulator, return `(0,0,0,0)`
+only when no geometry contributes, and retain positioned zero-area geometry.
+Groups measure actual transformed descendant curves, not transformed child AABBs.
+Opacity and visibility do not remove geometry; non-rendered descendants do.
+Renderer regressions cover nested transformed quadratic extrema and a zero-width
+rectangle at a nonzero position. Stroke boxes union object geometry with the
+undashed stroke, regardless of paint opacity.
+
+
+
 ### XML error and resource policy
 
 Malformed XML rejects the complete document; no partial render tree is returned.
@@ -38,13 +96,13 @@ Default XML ceilings are 16 MiB input, 64 MiB retained storage, 8 MiB charged
 entity expansion, one million nodes/attributes/declarations, element depth 256
 and entity depth 32. `parseWithLimits` can lower them; hard recursion ceilings
 remain. Error offsets address normalized decoded UTF-8, except decoding errors,
-which address original input bytes. The renderer defaults to 16,777,216 output
+which address original input bytes. The renderer defaults to 16,000,000 output
 pixels and caps aggregate output/isolated surfaces at 67,108,864 pixels.
 These are implementation resource limits, not claims that larger SVGs are invalid.
 
 ## Baseline integrity
 
-`specs.lock.json` is the machine-readable standards baseline: **141 fetched documents**. Each record contains its original URL (`url`), the redirect-resolved URL observed while establishing the pin (`resolved`), and SHA-256 of the original downloaded bytes (`sha256`). No HTML rewriting, decoding, or content extraction precedes hashing; PDF references remain PDF bytes. The catalog in `../scripts/svg/fetch-specs.py` includes the complete documents and relevant individual SVG 1.1, SVG 2 CR, SVG 2 ED, and CSS 2.1 chapters, rather than pretending a table of contents contains the chapter anchors.
+`specs.lock.json` is the machine-readable standards baseline: **152 fetched documents**. Each record contains its original URL (`url`), redirect-resolved URL (`resolved`), and SHA-256 of the original downloaded bytes (`sha256`). No rewriting or text extraction precedes hashing; PDF references remain PDF bytes. The catalog in `../scripts/svg/fetch-specs.py` includes complete documents and individual SVG 1.1, SVG 2 CR/ED and CSS 2.1 chapters.
 
 From the workspace root:
 
@@ -122,10 +180,17 @@ The table is a register of cases to test, not a claim of complete rendering supp
 The pinned resvg revision is `91455ee06d08ac2bfeab2b035ed2cfbfd0a68614`.
 At the suite's 300-pixel reference width, all six curated rectangle cases match
 RGBA exactly. Six circle cases remain strict pixel-reference non-passes:
-700–1,542 pixels differ per case. All observed differences lie in the shared
-one-pixel alpha-edge neighborhood; opaque interiors agree. Missing/negative
-radii correctly suppress the circle. Per-case counts and reasons are retained
-in `svg_tests/expectations/resvg.txt`; none is silently skipped.
+696–1,518 pixels differ per case with the phase-3 renderer. All observed
+differences lie within one pixel of a color or alpha edge in both images;
+constant-color interiors away from those edges agree. Missing/negative radii
+correctly suppress the circle. Per-case counts and reasons are retained in
+`svg_tests/expectations/resvg.txt`; none is silently skipped.
+
+Phase 3 changes the shared vector geometry/precision path and therefore these
+edge samples. Compared with phase 2, all six cases have fewer differing pixels
+and lower maximum alpha differences (42–54 rather than 65–91). Their `fail`
+statuses and exact comparison tolerances are unchanged. This refresh records
+measured output, not a new exemption or a claim of resvg-equivalent coverage.
 
 [SVG 2 rendering accuracy](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ConformingSVGViewers)
 permits antialiasing and requires one-device-pixel spatial accuracy. Therefore
@@ -144,11 +209,23 @@ ignore errors in translucent fills or to apply a global 80/255 tolerance.
 ### Decisions deferred to their implementation phases
 
 Julia chose full 4×4 composition followed by flattening to the SVG plane for
-non-perspective 3D transforms. `preserve-3d` does not apply inside SVG. The
-geometry CSS parser implements that composition; applying CSS properties to
-documents belongs to phase 3. Perspective must use an upstream projective
-backend with homogeneous-w clipping and inverse paint mapping; it must not be
-silently approximated by an affine matrix.
+non-perspective 3D transforms. The handoff's flattening-only profile does not
+retain `preserve-3d` rendering contexts; that is a profile choice, not a claim
+that the property is inapplicable to SVG. CSS Transforms 2
+[explicitly includes SVG transformable elements](https://drafts.csswg.org/css-transforms-2/#svg-three-dimensional-functions).
+The renderer composes the parent's `perspective` property with the child's full
+matrix before flattening. Projective geometry uses upstream homogeneous-w
+clipping, including intermediate positive-w halfplanes for nested flattening;
+it is never silently approximated by an affine matrix. Upstream inverse
+projective paints are available for the later SVG paint-server/image phases.
+
+The pinned backface algorithm's m33 test has an acknowledged defect:
+[CSSWG issue 917](https://github.com/w3c/csswg-drafts/issues/917). We use the
+inverse-transpose normal's z sign, including perspective, rather than projected
+winding or m33 alone. Thus `scaleX(-1)` mirrors a front face while `rotateY(180deg)`
+turns it away; singular full 4×4 matrices, including `scaleZ(0)`, paint nothing.
+The issue also leaves arbitrary negative-perspective interpretations unresolved;
+this profile consistently uses the inverse-normal rule for those matrices.
 
 The checklist's “question 4” means whether CSS Animations join SMIL (ask in
 phase 11). Profile-switch necessity waits for phase 4, deferred SVG 2 features

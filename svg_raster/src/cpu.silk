@@ -2,10 +2,14 @@
 //! Colors are straight-alpha; the recorder has already folded element/paint opacity.
 //! Group opacity is applied exactly once to an isolated premultiplied surface.
 import svg_core.scene { DisplayList, Command, RenderError, Color, FillRule, LineCap, LineJoin }
-import svg_geometry.geometry { Path, Point, Segment, Transform }
-import svg_geometry.arcs { ArcIter }
+import svg_geometry.geometry { Path }
+import svg_core.mapping { Mapping, ProjectionClip }
+import svg_core.mapping
+import svg_core.vector_path
 import vector.path { Path as VectorPath }
-import vector.geometry { Affine, Rect as VectorRect }
+import vector.geometry { Rect as VectorRect }
+import vector.projective { Homography, HalfPlane }
+import vector.projective
 import vector.geometry_error { GeometryError }
 import vector.pixmap { Pixmap, Rgba8 }
 import vector.strips { Rasterizer, Coverage, NONZERO, EVENODD }
@@ -22,14 +26,51 @@ import silk.num.f64
 import silk.num.u32
 import checked
 
-struct Variant {
-  scale: f64,
-  path: VectorPath
+struct Prepared {
+  ready: bool,
+  path: VectorPath,
 }
 
-struct Prepared {
-  arcs: bool,
-  variants: List<Variant>
+struct ClipPlanes {
+  selected: Option<usize>,
+  planes: List<HalfPlane>,
+}
+
+impl ClipPlanes {
+  fn make() -> ClipPlanes {
+    return ClipPlanes { selected: Option<usize>.None, planes: List<HalfPlane>.make() }
+  }
+
+  effect fn select(self: &mut ClipPlanes, index: Option<usize>, clips: &[ProjectionClip]) -> ()
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let same = match &index {
+      Option<usize>.Some { value } => match &self.selected {
+        Option<usize>.Some { value: previous } => value == previous
+        _ => false
+      }
+      _ => match &self.selected {
+        Option<usize>.None => true
+        _ => false
+      }
+    }
+    if same {
+      return
+    }
+    self.planes.clear()
+    let mut cursor = index
+    while true {
+      let next = match &cursor {
+        Option<usize>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      run self.planes.append(clips[next].plane)
+      cursor = clips[next].parent
+    }
+    self.selected = index
+  }
 }
 
 struct Layer {
@@ -43,8 +84,7 @@ struct Layer {
 /// surfaces are reused across commands; no recursive executor calls are made.
 ///
 /// `crispEdges` remains a hint: pinned vector.strips.Rasterizer exposes no AA toggle.
-/// `LineJoin.Arcs` uses vector's documented flattened miter-clip approximation, not
-/// a curvature-correct SVG arcs join (an upstream prerequisite for conformance).
+/// Exact source ellipses and curvature-aware joins are delegated to vector.
 pub effect fn execute(list: &DisplayList) -> Pixmap
   ! RenderError | OutOfMemoryError
   ? &mut Allocator {
@@ -66,19 +106,7 @@ effect fn executeChecked(list: &DisplayList) -> Pixmap
   let sourcePaths = list.paths.asSlice()
   let mut p: usize = 0
   while p < sourcePaths.length {
-    let segments = sourcePaths[p].segments()
-    let mut hasArcs = false
-    let mut s: usize = 0
-    while s < segments.length {
-      match &segments[s] {
-        Segment.ArcTo { arc } => {
-          hasArcs = true
-        }
-        _ => {}
-      }
-      s = s + 1
-    }
-    run cache.append(Prepared { arcs: hasArcs, variants: List<Variant>.make() })
+    run cache.append(Prepared { ready: false, path: VectorPath.make() })
     p = p + 1
   }
   let mut stack = List<Layer>.make()
@@ -92,31 +120,42 @@ effect fn executeChecked(list: &DisplayList) -> Pixmap
   let mut dashIndex = list.dashes.length()
   let mut outline = VectorPath.make()
   let mut lines = List<Line>.make()
+  let mut planes = ClipPlanes.make()
+  let viewport = VectorRect.make(0.0, 0.0, u32.toF64(list.width), u32.toF64(list.height))
   let commands = list.commands.asSlice()
   let mut i: usize = 0
   while i < commands.length {
     match &commands[i] {
-      Command.FillPath { path, transform, bounds, color, rule, crispEdges } => {
-        let matrix = affine(transform)
-        let variant = run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path], transform)
-        let prepared = &cache.asSlice()[path].variants.asSlice()[variant].path
+      Command.FillPath { path, transform, clip, bounds, color, rule, crispEdges } => {
+        run planes.select(clip, list.projectionClips.asSlice())
+        run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path])
+        let prepared = &cache.asSlice()[path].path
         let fillRule = if rule == FillRule.EvenOdd {
           EVENODD
         } else {
           NONZERO
         }
-        run fill(prepared, &matrix, fillRule, &mut rasterizer, &mut coverage, &mut lines)
+        run fill(
+          prepared,
+          &transform,
+          viewport,
+          planes.planes.asSlice(),
+          fillRule,
+          TOLERANCE,
+          &mut rasterizer,
+          &mut coverage,
+          &mut lines,
+        )
         let rgba = run rgba(color)
         let target = stack.length() - 1
         stack.asMutSlice()[target].pixels.fillCoverage(&coverage, rgba)
       }
-      Command.StrokePath { path, transform, bounds, color, stroke, crispEdges } => {
-        let matrix = affine(transform)
-        let variant = run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path], transform)
-        let prepared = &cache.asSlice()[path].variants.asSlice()[variant].path
+      Command.StrokePath { path, transform, clip, bounds, color, stroke, crispEdges } => {
+        run planes.select(clip, list.projectionClips.asSlice())
+        run prepare(&sourcePaths[path], &mut cache.asMutSlice()[path])
+        let prepared = &cache.asSlice()[path].path
         let dashes = list.dashes.asSlice()[stroke.dashIndex].asSlice()
-        run checked.path(prepared, &matrix)
-        run checked.stroke(prepared, &matrix, stroke, dashes)
+        run checked.stroke(stroke, dashes)
         strokeStyle.width = stroke.width
         strokeStyle.miterLimit = stroke.miterLimit
         strokeStyle.dashOffset = stroke.dashOffset
@@ -137,8 +176,38 @@ effect fn executeChecked(list: &DisplayList) -> Pixmap
           dashIndex = stroke.dashIndex
         }
         outline.clear()
-        run stroker.stroke(prepared, &strokeStyle, &matrix, TOLERANCE * 0.5, &mut outline)
-        run fill(&outline, &matrix, NONZERO, &mut rasterizer, &mut coverage, &mut lines)
+        match &transform {
+          Mapping.Affine { value } => {
+            run stroker.stroke(
+              prepared,
+              &strokeStyle,
+              &mapping.affine(value),
+              TOLERANCE * 0.5,
+              &mut outline,
+            )
+          }
+          Mapping.Projective { value } => {
+            run stroker.strokeProjective(
+              prepared,
+              &strokeStyle,
+              &value,
+              viewport,
+              TOLERANCE * 0.5,
+              &mut outline,
+            )
+          }
+        }
+        run fill(
+          &outline,
+          &transform,
+          viewport,
+          planes.planes.asSlice(),
+          NONZERO,
+          TOLERANCE * 0.5,
+          &mut rasterizer,
+          &mut coverage,
+          &mut lines,
+        )
         let rgba = run rgba(color)
         let target = stack.length() - 1
         stack.asMutSlice()[target].pixels.fillCoverage(&coverage, rgba)
@@ -176,6 +245,25 @@ effect fn executeChecked(list: &DisplayList) -> Pixmap
 effect fn validateCommands(list: &DisplayList) -> ()
   ! RenderError {
   let commands = list.commands.asSlice()
+  let clips = list.projectionClips.asSlice()
+  let mut c: usize = 0
+  while c < clips.length {
+    let plane = &clips[c].plane
+    if !f64.isFinite(plane.x) || !f64.isFinite(plane.y) || !f64.isFinite(plane.w) {
+      fail RenderError.InvalidGeometry
+    }
+
+    // Parents precede children: this also rules out cycles before traversal.
+    match &clips[c].parent {
+      Option<usize>.Some { value } => {
+        if value >= c {
+          fail RenderError.InvalidGeometry
+        }
+      }
+      _ => {}
+    }
+    c = c + 1
+  }
 
   // dimensions() established a positive, checked pixel count before this call.
   let surfaceLimit = checked.MAX_SURFACE_PIXELS
@@ -184,20 +272,22 @@ effect fn validateCommands(list: &DisplayList) -> ()
   let mut i: usize = 0
   while i < commands.length {
     match &commands[i] {
-      Command.FillPath { path, transform, bounds, color, rule, crispEdges } => {
+      Command.FillPath { path, transform, clip, bounds, color, rule, crispEdges } => {
         if path >= list.paths.length() {
           fail RenderError.InvalidGeometry
         }
-        if !Transform.isFinite(transform) || !bounds.isValid() {
+        run clipIndex(clip, clips.length)
+        if !transform.isFinite() || !bounds.isValid() {
           fail RenderError.InvalidGeometry
         }
         run checked.color(color)
       }
-      Command.StrokePath { path, transform, bounds, color, stroke, crispEdges } => {
+      Command.StrokePath { path, transform, clip, bounds, color, stroke, crispEdges } => {
         if path >= list.paths.length() || stroke.dashIndex >= list.dashes.length() {
           fail RenderError.InvalidGeometry
         }
-        if !Transform.isFinite(transform) || !bounds.isValid() {
+        run clipIndex(clip, clips.length)
+        if !transform.isFinite() || !bounds.isValid() {
           fail RenderError.InvalidGeometry
         }
         run checked.color(color)
@@ -226,9 +316,16 @@ effect fn validateCommands(list: &DisplayList) -> ()
   }
 }
 
-fn affine(transform: Transform) -> Affine {
-  let c = transform.coefficients()
-  return Affine { a: c[0], b: c[1], c: c[2], d: c[3], e: c[4], f: c[5] }
+effect fn clipIndex(index: Option<usize>, count: usize) -> ()
+  ! RenderError {
+  match &index {
+    Option<usize>.Some { value } => {
+      if value >= count {
+        fail RenderError.InvalidGeometry
+      }
+    }
+    _ => {}
+  }
 }
 
 effect fn rgba(color: Color) -> Rgba8
@@ -241,134 +338,49 @@ effect fn rgba(color: Color) -> Rgba8
   )
 }
 
-effect fn prepare(source: &Path, prepared: &mut Prepared, transform: Transform) -> usize
+effect fn prepare(source: &Path, prepared: &mut Prepared) -> ()
   ! RenderError | OutOfMemoryError
   ? &mut Allocator {
-  let scale = if prepared.arcs {
-    transform.maxScale()
-  } else {
-    0.0
+  if !prepared.ready {
+    prepared.path = run vector_path.convert(source)
+    prepared.ready = true
   }
-  if !f64.isFinite(scale) {
-    fail RenderError.InvalidGeometry
-  }
-  let mut i: usize = 0
-  while i < prepared.variants.length() {
-    if prepared.variants.asSlice()[i].scale == scale {
-      return i
-    }
-    i = i + 1
-  }
-
-  // A zero transform collapses every arc, so any finite user-space tolerance suffices.
-  let tolerance = if scale > 0.0 {
-    TOLERANCE / scale
-  } else {
-    TOLERANCE
-  }
-  if !(tolerance > 0.0) || !f64.isFinite(tolerance) {
-    fail RenderError.InvalidGeometry
-  }
-  let path = run convert(source, tolerance)
-  run prepared.variants.append(Variant { scale: scale, path: move path })
-  return i
-}
-
-effect fn convert(source: &Path, tolerance: f64) -> VectorPath
-  ! RenderError | OutOfMemoryError
-  ? &mut Allocator {
-  let mut result = VectorPath.make()
-  let segments = source.segments()
-  let mut current = Point.new(0.0, 0.0)
-  let mut start = current
-  let mut i: usize = 0
-  while i < segments.length {
-    match &segments[i] {
-      Segment.MoveTo { to } => {
-        let xy = to.coordinates()
-        run result.moveTo(xy[0], xy[1])
-        current = to
-        start = to
-      }
-      Segment.LineTo { to } => {
-        let xy = to.coordinates()
-        run result.lineTo(xy[0], xy[1])
-        current = to
-      }
-      Segment.QuadraticTo { control, to } => {
-        let c = control.coordinates()
-        let xy = to.coordinates()
-        run result.quadTo(c[0], c[1], xy[0], xy[1])
-        current = to
-      }
-      Segment.CubicTo { control1, control2, to } => {
-        let a = control1.coordinates()
-        let b = control2.coordinates()
-        let xy = to.coordinates()
-        run result.cubicTo(a[0], a[1], b[0], b[1], xy[0], xy[1])
-        current = to
-      }
-      Segment.ArcTo { arc } => {
-        let mut iterator = ArcIter.make(current, arc, tolerance)
-        if iterator.isLimited() {
-          fail RenderError.InvalidGeometry
-        }
-        while true {
-          let next = iterator.next()
-          match &next {
-            Option<Segment>.None => {
-              break
-            }
-            Option<Segment>.Some { value } => {
-              match &value {
-                Segment.LineTo { to } => {
-                  let xy = to.coordinates()
-                  run result.lineTo(xy[0], xy[1])
-                }
-                Segment.CubicTo { control1, control2, to } => {
-                  let a = control1.coordinates()
-                  let b = control2.coordinates()
-                  let xy = to.coordinates()
-                  run result.cubicTo(a[0], a[1], b[0], b[1], xy[0], xy[1])
-                }
-                _ => {
-                  fail RenderError.InvalidGeometry
-                }
-              }
-            }
-          }
-        }
-        if iterator.isLimited() {
-          fail RenderError.InvalidGeometry
-        }
-        current = arc.to
-      }
-      Segment.Close => {
-        run result.close()
-        current = start
-      }
-    }
-    i = i + 1
-  }
-  return move result
 }
 
 effect fn fill(
   path: &VectorPath,
-  matrix: &Affine,
+  matrix: &Mapping,
+  clip: VectorRect,
+  planes: &[HalfPlane],
   rule: u8,
+  tolerance: f64,
   rasterizer: &mut Rasterizer,
   coverage: &mut Coverage,
   lines: &mut List<Line>,
 ) -> ()
   ! RenderError | GeometryError | OutOfMemoryError
   ? &mut Allocator {
-  run checked.path(path, matrix)
   lines.clear()
-
-  // Clipping to the canvas keeps huge finite coordinates representable in f32 device space.
-  let clip = VectorRect.make(0.0, 0.0, u32.toF64(coverage.width()), u32.toF64(coverage.height()))
-  run flattening.fillClipped(path, matrix, &clip, TOLERANCE, &mut lines)
+  match &matrix.* {
+    Mapping.Affine { value } => {
+      let affine = mapping.affine(value)
+      if planes.length == 0 {
+        run flattening.fillClipped(path, &affine, &clip, tolerance, &mut lines)
+      } else {
+        run projective.fillWithPlanes(
+          path,
+          &Homography.fromAffine(&affine),
+          clip,
+          planes,
+          tolerance,
+          &mut lines,
+        )
+      }
+    }
+    Mapping.Projective { value } => {
+      run projective.fillWithPlanes(path, &value, clip, planes, tolerance, &mut lines)
+    }
+  }
   run checked.lines(lines.asSlice(), coverage.width(), coverage.height())
 
   // Current vector has no checked fill/borrowed-line entry point: fillPolylines

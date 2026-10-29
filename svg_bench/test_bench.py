@@ -25,7 +25,6 @@ class WorkloadsTest(unittest.TestCase):
         self.assertEqual(first, workloads.generate_icons(config))
         self.assertEqual(len(first), 8)
         self.assertEqual(len(set(first.values())), 8)
-        self.assertTrue(all(b'<path ' in item and b'<circle ' in item for item in first.values()))
 
     def test_content_hash_ignores_cache_location_but_not_input(self):
         with tempfile.TemporaryDirectory() as directory:

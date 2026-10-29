@@ -11,6 +11,9 @@
       "mixedcurves/end-to-end": false,
       "mixedcurves/parse": false,
       "mixedcurves/render": false,
+      "stylesheets/end-to-end": true,
+      "stylesheets/parse": true,
+      "stylesheets/render": true,
       "tiger/end-to-end": false,
       "tiger/parse": false,
       "tiger/render": false
@@ -18,18 +21,21 @@
     "checksum_note": "FNV-1a over every premultiplied RGBA byte. Numerical rasterization differences are allowed; equality is not a pixel-conformance verdict.",
     "ratio_definition": "silk/rust native median stage time; >1 means silk slower",
     "ratios": {
-      "iconset/end-to-end": 1.3644530531403745,
-      "iconset/parse": 1.0080707104908424,
-      "iconset/render": 1.5398134984635194,
-      "largemap/end-to-end": 7.963134340296703,
-      "largemap/parse": 1.4373536506549422,
-      "largemap/render": 9.147240660204664,
-      "mixedcurves/end-to-end": 1.3511154891112658,
-      "mixedcurves/parse": 1.1117721003789216,
-      "mixedcurves/render": 1.4813095114485733,
-      "tiger/end-to-end": 3.3517699688607205,
-      "tiger/parse": 1.0936707118356535,
-      "tiger/render": 3.6166352469436025
+      "iconset/end-to-end": 5.152574121370273,
+      "iconset/parse": 11.081946729054685,
+      "iconset/render": 1.893354479849552,
+      "largemap/end-to-end": 2.7466143462754755,
+      "largemap/parse": 10.899382330217584,
+      "largemap/render": 1.3710294907176004,
+      "mixedcurves/end-to-end": 4.549682543286773,
+      "mixedcurves/parse": 7.3147188807222365,
+      "mixedcurves/render": 3.708457341577518,
+      "stylesheets/end-to-end": 0.5380906811181198,
+      "stylesheets/parse": 0.5674241926286084,
+      "stylesheets/render": 0.5629492463834399,
+      "tiger/end-to-end": 2.3556021315884434,
+      "tiger/parse": 5.653193860880873,
+      "tiger/render": 2.052490906841377
     }
   },
   "config": {
@@ -55,7 +61,7 @@
       },
       "silk": {
         "path": "/home/juliaortiz.guest/svg-work/build/llvm/aarch64-unknown-linux-gnu/release/svg_bench",
-        "sha256": "9b7f6bd370befc9e8c9e51e01f15220c68f200e13f7e80cc2e6e4fc9f692062e",
+        "sha256": "53c0ce014c98a447bfafc91be08b362fadb3c336469034ce256126d6f4a85150",
         "version": "svg_bench protocol 1; parse=parse+record; fresh pixmap per render"
       }
     },
@@ -75,14 +81,14 @@
       "valgrind": "valgrind-3.22.0"
     }
   },
-  "measured_at_utc": "2026-10-29T04:01:45.443982+00:00",
+  "measured_at_utc": "2026-10-29T11:15:17.006471+00:00",
   "protocol": 1,
   "reference_pin": "91455ee06d08ac2bfeab2b035ed2cfbfd0a68614",
   "results": {
     "rust": {
       "iconset/end-to-end": {
-        "callgrind_process_Ir": 113962648,
-        "median_ns": 5772974.0,
+        "callgrind_process_Ir": 113965464,
+        "median_ns": 5763520.0,
         "outputs": {
           "icon-000.svg": {
             "checksum": "7010441481690326263",
@@ -725,21 +731,21 @@
             "width": 32
           }
         },
-        "process_wall_median_ns": 54558796,
+        "process_wall_median_ns": 57082482,
         "process_wall_samples_ns": [
-          56937923,
-          54558796,
-          54340779
+          59138375,
+          57082482,
+          56329549
         ],
         "samples_ns": [
-          5867221.0,
-          5700165.0,
-          5772974.0
+          5794063.0,
+          5763520.0,
+          5731980.0
         ]
       },
       "iconset/parse": {
-        "callgrind_process_Ir": 113962008,
-        "median_ns": 2034889.0,
+        "callgrind_process_Ir": 113963160,
+        "median_ns": 2225641.0,
         "outputs": {
           "icon-000.svg": {
             "checksum": "7010441481690326263",
@@ -1382,21 +1388,21 @@
             "width": 32
           }
         },
-        "process_wall_median_ns": 61517749,
+        "process_wall_median_ns": 77117206,
         "process_wall_samples_ns": [
-          61517749,
-          61065020,
-          65975840
+          74952410,
+          77117206,
+          79864875
         ],
         "samples_ns": [
-          2034889.0,
-          1997226.0,
-          2135937.0
+          2145606.0,
+          2225641.0,
+          2287903.0
         ]
       },
       "iconset/render": {
-        "callgrind_process_Ir": 94189537,
-        "median_ns": 3766725.0,
+        "callgrind_process_Ir": 94189025,
+        "median_ns": 3825374.0,
         "outputs": {
           "icon-000.svg": {
             "checksum": "7010441481690326263",
@@ -2039,21 +2045,21 @@
             "width": 32
           }
         },
-        "process_wall_median_ns": 53582706,
+        "process_wall_median_ns": 54708575,
         "process_wall_samples_ns": [
-          54351012,
-          53582706,
-          53067562
+          54058597,
+          57479222,
+          54708575
         ],
         "samples_ns": [
-          3766725.0,
-          3742978.0,
-          3782972.0
+          3861418.0,
+          3825374.0,
+          3750752.0
         ]
       },
       "largemap/end-to-end": {
-        "callgrind_process_Ir": 323702285,
-        "median_ns": 17340121.0,
+        "callgrind_process_Ir": 323702320,
+        "median_ns": 17512866.0,
         "outputs": {
           "largemap.svg": {
             "checksum": "14598352634358608230",
@@ -2061,21 +2067,21 @@
             "width": 1024
           }
         },
-        "process_wall_median_ns": 26428565,
+        "process_wall_median_ns": 26741221,
         "process_wall_samples_ns": [
-          26498568,
-          26172254,
-          26428565
+          26725138,
+          26977183,
+          26741221
         ],
         "samples_ns": [
-          17429252.0,
-          17292742.0,
-          17340121.0
+          17417948.0,
+          18026206.0,
+          17512866.0
         ]
       },
       "largemap/parse": {
-        "callgrind_process_Ir": 323702272,
-        "median_ns": 2746425.0,
+        "callgrind_process_Ir": 323702268,
+        "median_ns": 2670197.0,
         "outputs": {
           "largemap.svg": {
             "checksum": "14598352634358608230",
@@ -2083,21 +2089,21 @@
             "width": 1024
           }
         },
-        "process_wall_median_ns": 26708407,
+        "process_wall_median_ns": 26857139,
         "process_wall_samples_ns": [
-          27547044,
-          26708407,
-          26456141
+          26857139,
+          26597719,
+          27332644
         ],
         "samples_ns": [
-          2761842.0,
-          2746425.0,
-          2600666.0
+          2696030.0,
+          2670197.0,
+          2639030.0
         ]
       },
       "largemap/render": {
-        "callgrind_process_Ir": 284796217,
-        "median_ns": 14612499.0,
+        "callgrind_process_Ir": 284796226,
+        "median_ns": 16195435.0,
         "outputs": {
           "largemap.svg": {
             "checksum": "14598352634358608230",
@@ -2105,21 +2111,21 @@
             "width": 1024
           }
         },
-        "process_wall_median_ns": 23757431,
+        "process_wall_median_ns": 25759376,
         "process_wall_samples_ns": [
-          23508498,
-          23925192,
-          23757431
+          25759376,
+          24140900,
+          26893889
         ],
         "samples_ns": [
-          14538369.0,
-          14950063.0,
-          14612499.0
+          16195435.0,
+          14687250.0,
+          16675565.0
         ]
       },
       "mixedcurves/end-to-end": {
-        "callgrind_process_Ir": 103616634,
-        "median_ns": 6308309.0,
+        "callgrind_process_Ir": 103616652,
+        "median_ns": 5725190.0,
         "outputs": {
           "mixedcurves.svg": {
             "checksum": "5322352365615507831",
@@ -2127,21 +2133,21 @@
             "width": 512
           }
         },
-        "process_wall_median_ns": 10498181,
+        "process_wall_median_ns": 9031020,
         "process_wall_samples_ns": [
-          11241566,
-          9671042,
-          10498181
+          9108020,
+          8912061,
+          9031020
         ],
         "samples_ns": [
-          6854306.0,
-          6021290.0,
-          6308309.0
+          5737857.0,
+          5725190.0,
+          5712482.0
         ]
       },
       "mixedcurves/parse": {
-        "callgrind_process_Ir": 103616578,
-        "median_ns": 1331674.0,
+        "callgrind_process_Ir": 103616626,
+        "median_ns": 1269390.0,
         "outputs": {
           "mixedcurves.svg": {
             "checksum": "5322352365615507831",
@@ -2149,21 +2155,21 @@
             "width": 512
           }
         },
-        "process_wall_median_ns": 10588309,
+        "process_wall_median_ns": 9260814,
         "process_wall_samples_ns": [
-          10588309,
-          10492303,
-          10638105
+          9302606,
+          9092437,
+          9260814
         ],
         "samples_ns": [
-          1293672.0,
-          1331674.0,
-          1423389.0
+          1321682.0,
+          1269390.0,
+          1255890.0
         ]
       },
       "mixedcurves/render": {
-        "callgrind_process_Ir": 86421117,
-        "median_ns": 4786579.0,
+        "callgrind_process_Ir": 86421152,
+        "median_ns": 4433509.0,
         "outputs": {
           "mixedcurves.svg": {
             "checksum": "5322352365615507831",
@@ -2171,21 +2177,87 @@
             "width": 512
           }
         },
-        "process_wall_median_ns": 8608175,
+        "process_wall_median_ns": 7741880,
         "process_wall_samples_ns": [
-          8608175,
-          7830205,
-          8721766
+          7803298,
+          7588878,
+          7741880
         ],
         "samples_ns": [
-          4786579.0,
-          4416137.0,
-          4862709.0
+          4424926.0,
+          4443342.0,
+          4433509.0
+        ]
+      },
+      "stylesheets/end-to-end": {
+        "callgrind_process_Ir": 2383131942,
+        "median_ns": 73073713.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 145040581,
+        "process_wall_samples_ns": [
+          146187885,
+          145040581,
+          144786495
+        ],
+        "samples_ns": [
+          73582969.0,
+          73073713.0,
+          72558166.0
+        ]
+      },
+      "stylesheets/parse": {
+        "callgrind_process_Ir": 2383131927,
+        "median_ns": 69359251.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 144528526,
+        "process_wall_samples_ns": [
+          147561145,
+          144528526,
+          144151480
+        ],
+        "samples_ns": [
+          69797006.0,
+          69328584.0,
+          69359251.0
+        ]
+      },
+      "stylesheets/render": {
+        "callgrind_process_Ir": 1218636455,
+        "median_ns": 2689365.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 74484229,
+        "process_wall_samples_ns": [
+          75310154,
+          74016848,
+          74484229
+        ],
+        "samples_ns": [
+          2770031.0,
+          2689365.0,
+          2687989.0
         ]
       },
       "tiger/end-to-end": {
-        "callgrind_process_Ir": 143563195,
-        "median_ns": 10607503.0,
+        "callgrind_process_Ir": 143565966,
+        "median_ns": 10771873.0,
         "outputs": {
           "tiger-sized.svg": {
             "checksum": "778800141856034146",
@@ -2193,21 +2265,21 @@
             "width": 900
           }
         },
-        "process_wall_median_ns": 16575879,
+        "process_wall_median_ns": 16977485,
         "process_wall_samples_ns": [
-          16575879,
-          16601297,
-          16423203
+          17935704,
+          16799858,
+          16977485
         ],
         "samples_ns": [
-          10607503.0,
-          10686674.0,
-          10589085.0
+          11485714.0,
+          10763539.0,
+          10771873.0
         ]
       },
       "tiger/parse": {
-        "callgrind_process_Ir": 143566968,
-        "median_ns": 1075192.0,
+        "callgrind_process_Ir": 143564161,
+        "median_ns": 1098138.0,
         "outputs": {
           "tiger-sized.svg": {
             "checksum": "778800141856034146",
@@ -2215,21 +2287,21 @@
             "width": 900
           }
         },
-        "process_wall_median_ns": 16621572,
+        "process_wall_median_ns": 16777190,
         "process_wall_samples_ns": [
-          17027055,
-          16415434,
-          16621572
+          16951526,
+          16645606,
+          16777190
         ],
         "samples_ns": [
-          1125861.0,
-          1062358.0,
-          1075192.0
+          1080220.0,
+          1098138.0,
+          1108471.0
         ]
       },
       "tiger/render": {
-        "callgrind_process_Ir": 130791906,
-        "median_ns": 9856866.0,
+        "callgrind_process_Ir": 130794482,
+        "median_ns": 10434493.0,
         "outputs": {
           "tiger-sized.svg": {
             "checksum": "778800141856034146",
@@ -2237,2187 +2309,2253 @@
             "width": 900
           }
         },
-        "process_wall_median_ns": 16092173,
+        "process_wall_median_ns": 16910692,
         "process_wall_samples_ns": [
-          16092173,
-          17826907,
-          15890202
+          17195904,
+          16910692,
+          16872275
         ],
         "samples_ns": [
-          9856866.0,
-          11688481.0,
-          9742818.0
+          10724372.0,
+          10385868.0,
+          10434493.0
         ]
       }
     },
     "silk": {
       "iconset/end-to-end": {
-        "callgrind_process_Ir": 148175570,
-        "median_ns": 7876952.0,
+        "callgrind_process_Ir": 672643232,
+        "median_ns": 29696964.0,
         "outputs": {
           "icon-000.svg": {
-            "checksum": "2307189646780880024",
+            "checksum": "13973340914304042946",
             "height": 32,
             "width": 32
           },
           "icon-001.svg": {
-            "checksum": "13505428038026562297",
+            "checksum": "1328221625182242676",
             "height": 32,
             "width": 32
           },
           "icon-002.svg": {
-            "checksum": "9011571192124095864",
+            "checksum": "17368737106350186837",
             "height": 32,
             "width": 32
           },
           "icon-003.svg": {
-            "checksum": "17669131748628934297",
+            "checksum": "2539442438781710998",
             "height": 32,
             "width": 32
           },
           "icon-004.svg": {
-            "checksum": "4464568186848642769",
+            "checksum": "7917550719805567945",
             "height": 32,
             "width": 32
           },
           "icon-005.svg": {
-            "checksum": "4805919339897797348",
+            "checksum": "10490423779911852728",
             "height": 32,
             "width": 32
           },
           "icon-006.svg": {
-            "checksum": "17952218124589914386",
+            "checksum": "13747555368227631786",
             "height": 32,
             "width": 32
           },
           "icon-007.svg": {
-            "checksum": "235104461596583940",
+            "checksum": "3959526426144146771",
             "height": 32,
             "width": 32
           },
           "icon-008.svg": {
-            "checksum": "7397790360224552611",
+            "checksum": "1708287716224575548",
             "height": 32,
             "width": 32
           },
           "icon-009.svg": {
-            "checksum": "17635601223542667602",
+            "checksum": "1924909706418816706",
             "height": 32,
             "width": 32
           },
           "icon-010.svg": {
-            "checksum": "14566975826474869955",
+            "checksum": "8517533963406155978",
             "height": 32,
             "width": 32
           },
           "icon-011.svg": {
-            "checksum": "2846438646536299692",
+            "checksum": "15208715619170532402",
             "height": 32,
             "width": 32
           },
           "icon-012.svg": {
-            "checksum": "18152944461634235746",
+            "checksum": "18359241886301814213",
             "height": 32,
             "width": 32
           },
           "icon-013.svg": {
-            "checksum": "14532150244466320482",
+            "checksum": "13200609903931000591",
             "height": 32,
             "width": 32
           },
           "icon-014.svg": {
-            "checksum": "12549671524291118673",
+            "checksum": "15396376740071624088",
             "height": 32,
             "width": 32
           },
           "icon-015.svg": {
-            "checksum": "18072736061205904528",
+            "checksum": "15090912237054920649",
             "height": 32,
             "width": 32
           },
           "icon-016.svg": {
-            "checksum": "7663847404277342685",
+            "checksum": "8190795726211068413",
             "height": 32,
             "width": 32
           },
           "icon-017.svg": {
-            "checksum": "14435207673173952470",
+            "checksum": "11796134574249633077",
             "height": 32,
             "width": 32
           },
           "icon-018.svg": {
-            "checksum": "15220751260529665609",
+            "checksum": "3736968835283429781",
             "height": 32,
             "width": 32
           },
           "icon-019.svg": {
-            "checksum": "8583591952771768182",
+            "checksum": "17813286056336569405",
             "height": 32,
             "width": 32
           },
           "icon-020.svg": {
-            "checksum": "15004872293653521264",
+            "checksum": "1879746844641739706",
             "height": 32,
             "width": 32
           },
           "icon-021.svg": {
-            "checksum": "16333035740775582135",
+            "checksum": "1161640827947130538",
             "height": 32,
             "width": 32
           },
           "icon-022.svg": {
-            "checksum": "17496131110233868801",
+            "checksum": "3845977736902303769",
             "height": 32,
             "width": 32
           },
           "icon-023.svg": {
-            "checksum": "204506842201259580",
+            "checksum": "7290856212575005152",
             "height": 32,
             "width": 32
           },
           "icon-024.svg": {
-            "checksum": "2432615159382576987",
+            "checksum": "5546304996692680431",
             "height": 32,
             "width": 32
           },
           "icon-025.svg": {
-            "checksum": "7450717629850505833",
+            "checksum": "8538514990058261315",
             "height": 32,
             "width": 32
           },
           "icon-026.svg": {
-            "checksum": "7709708675737996120",
+            "checksum": "5100658667484464782",
             "height": 32,
             "width": 32
           },
           "icon-027.svg": {
-            "checksum": "13639340827973121154",
+            "checksum": "1566795951729794538",
             "height": 32,
             "width": 32
           },
           "icon-028.svg": {
-            "checksum": "17553514638202007719",
+            "checksum": "14752643736327551600",
             "height": 32,
             "width": 32
           },
           "icon-029.svg": {
-            "checksum": "16856705602390465312",
+            "checksum": "4927270265779782909",
             "height": 32,
             "width": 32
           },
           "icon-030.svg": {
-            "checksum": "7897583396515544300",
+            "checksum": "9764290330500717983",
             "height": 32,
             "width": 32
           },
           "icon-031.svg": {
-            "checksum": "1441012938584839666",
+            "checksum": "15070349831733709604",
             "height": 32,
             "width": 32
           },
           "icon-032.svg": {
-            "checksum": "7252201766771224607",
+            "checksum": "13436256146513471943",
             "height": 32,
             "width": 32
           },
           "icon-033.svg": {
-            "checksum": "4545691889034606189",
+            "checksum": "12932416776389802231",
             "height": 32,
             "width": 32
           },
           "icon-034.svg": {
-            "checksum": "17057377474692305734",
+            "checksum": "7755857143614420446",
             "height": 32,
             "width": 32
           },
           "icon-035.svg": {
-            "checksum": "14638315559992274393",
+            "checksum": "11249469172376746620",
             "height": 32,
             "width": 32
           },
           "icon-036.svg": {
-            "checksum": "6535102575059966916",
+            "checksum": "4285045163930614454",
             "height": 32,
             "width": 32
           },
           "icon-037.svg": {
-            "checksum": "4635176867012366071",
+            "checksum": "13064508941764411799",
             "height": 32,
             "width": 32
           },
           "icon-038.svg": {
-            "checksum": "10995300709786206894",
+            "checksum": "12864366404643259859",
             "height": 32,
             "width": 32
           },
           "icon-039.svg": {
-            "checksum": "9557955879074098003",
+            "checksum": "11969484770169061743",
             "height": 32,
             "width": 32
           },
           "icon-040.svg": {
-            "checksum": "9222038538944229790",
+            "checksum": "17460375367093976741",
             "height": 32,
             "width": 32
           },
           "icon-041.svg": {
-            "checksum": "4010083862741467331",
+            "checksum": "1025286210084811587",
             "height": 32,
             "width": 32
           },
           "icon-042.svg": {
-            "checksum": "6434095275607373618",
+            "checksum": "6860431653169496038",
             "height": 32,
             "width": 32
           },
           "icon-043.svg": {
-            "checksum": "9709958952915763795",
+            "checksum": "10673767596377070626",
             "height": 32,
             "width": 32
           },
           "icon-044.svg": {
-            "checksum": "4069072218324792953",
+            "checksum": "8063548437547949688",
             "height": 32,
             "width": 32
           },
           "icon-045.svg": {
-            "checksum": "6730512746281058850",
+            "checksum": "16910326476621354104",
             "height": 32,
             "width": 32
           },
           "icon-046.svg": {
-            "checksum": "15768442709286536442",
+            "checksum": "3744681068347782199",
             "height": 32,
             "width": 32
           },
           "icon-047.svg": {
-            "checksum": "17114918599109948013",
+            "checksum": "17642176712469208330",
             "height": 32,
             "width": 32
           },
           "icon-048.svg": {
-            "checksum": "3067710829095700178",
+            "checksum": "947043587335596463",
             "height": 32,
             "width": 32
           },
           "icon-049.svg": {
-            "checksum": "3833310240272736072",
+            "checksum": "17453866603479422995",
             "height": 32,
             "width": 32
           },
           "icon-050.svg": {
-            "checksum": "272391755779045646",
+            "checksum": "12712380112584473743",
             "height": 32,
             "width": 32
           },
           "icon-051.svg": {
-            "checksum": "16034250590163139818",
+            "checksum": "14198897194145201383",
             "height": 32,
             "width": 32
           },
           "icon-052.svg": {
-            "checksum": "6529546701694437865",
+            "checksum": "8827872673072113085",
             "height": 32,
             "width": 32
           },
           "icon-053.svg": {
-            "checksum": "3613467674420533652",
+            "checksum": "5049146480391837807",
             "height": 32,
             "width": 32
           },
           "icon-054.svg": {
-            "checksum": "5447883408521332065",
+            "checksum": "3407383393997178096",
             "height": 32,
             "width": 32
           },
           "icon-055.svg": {
-            "checksum": "17888297728603934609",
+            "checksum": "9567175356598324784",
             "height": 32,
             "width": 32
           },
           "icon-056.svg": {
-            "checksum": "12936936290144441531",
+            "checksum": "15313715338553707502",
             "height": 32,
             "width": 32
           },
           "icon-057.svg": {
-            "checksum": "761407722732340486",
+            "checksum": "1469173846197176792",
             "height": 32,
             "width": 32
           },
           "icon-058.svg": {
-            "checksum": "8830857411762462248",
+            "checksum": "18315419641847226142",
             "height": 32,
             "width": 32
           },
           "icon-059.svg": {
-            "checksum": "7229807426927144135",
+            "checksum": "3406842206574698897",
             "height": 32,
             "width": 32
           },
           "icon-060.svg": {
-            "checksum": "3445345493149402627",
+            "checksum": "3377220652167790288",
             "height": 32,
             "width": 32
           },
           "icon-061.svg": {
-            "checksum": "8780957625957918302",
+            "checksum": "10167986333966628934",
             "height": 32,
             "width": 32
           },
           "icon-062.svg": {
-            "checksum": "5352641423316687979",
+            "checksum": "9748795581689756496",
             "height": 32,
             "width": 32
           },
           "icon-063.svg": {
-            "checksum": "15228739046470358437",
+            "checksum": "9740165104098643782",
             "height": 32,
             "width": 32
           },
           "icon-064.svg": {
-            "checksum": "14117805852955902441",
+            "checksum": "1923960159580780095",
             "height": 32,
             "width": 32
           },
           "icon-065.svg": {
-            "checksum": "7181987237862092627",
+            "checksum": "2551217825711215808",
             "height": 32,
             "width": 32
           },
           "icon-066.svg": {
-            "checksum": "3828088792944315175",
+            "checksum": "8234280092747510563",
             "height": 32,
             "width": 32
           },
           "icon-067.svg": {
-            "checksum": "15249999026939767884",
+            "checksum": "16205995052982649132",
             "height": 32,
             "width": 32
           },
           "icon-068.svg": {
-            "checksum": "16686867343544618722",
+            "checksum": "10689009369297543383",
             "height": 32,
             "width": 32
           },
           "icon-069.svg": {
-            "checksum": "10222892568074002971",
+            "checksum": "9159649896939669941",
             "height": 32,
             "width": 32
           },
           "icon-070.svg": {
-            "checksum": "6111505874394014418",
+            "checksum": "10000942490024342205",
             "height": 32,
             "width": 32
           },
           "icon-071.svg": {
-            "checksum": "4208495307702615643",
+            "checksum": "5870856904384100895",
             "height": 32,
             "width": 32
           },
           "icon-072.svg": {
-            "checksum": "15604160036816684612",
+            "checksum": "2983639121835143231",
             "height": 32,
             "width": 32
           },
           "icon-073.svg": {
-            "checksum": "14661060081104592809",
+            "checksum": "7815978188443071730",
             "height": 32,
             "width": 32
           },
           "icon-074.svg": {
-            "checksum": "17608301997046029749",
+            "checksum": "15858489206705554307",
             "height": 32,
             "width": 32
           },
           "icon-075.svg": {
-            "checksum": "852723024466747804",
+            "checksum": "2860120300183279639",
             "height": 32,
             "width": 32
           },
           "icon-076.svg": {
-            "checksum": "3250268698061044154",
+            "checksum": "17195489124555158996",
             "height": 32,
             "width": 32
           },
           "icon-077.svg": {
-            "checksum": "2901405900530421251",
+            "checksum": "10376628092043340000",
             "height": 32,
             "width": 32
           },
           "icon-078.svg": {
-            "checksum": "5095219603544771885",
+            "checksum": "5866654338644963447",
             "height": 32,
             "width": 32
           },
           "icon-079.svg": {
-            "checksum": "18184255207620089127",
+            "checksum": "17032599185136556716",
             "height": 32,
             "width": 32
           },
           "icon-080.svg": {
-            "checksum": "274725321198300315",
+            "checksum": "12214500278548729109",
             "height": 32,
             "width": 32
           },
           "icon-081.svg": {
-            "checksum": "1467675785301279633",
+            "checksum": "1395961718218207555",
             "height": 32,
             "width": 32
           },
           "icon-082.svg": {
-            "checksum": "193048233666317683",
+            "checksum": "15206358557868499042",
             "height": 32,
             "width": 32
           },
           "icon-083.svg": {
-            "checksum": "1396598729969955529",
+            "checksum": "9032446319613446657",
             "height": 32,
             "width": 32
           },
           "icon-084.svg": {
-            "checksum": "11970678942312768769",
+            "checksum": "14316768806122765685",
             "height": 32,
             "width": 32
           },
           "icon-085.svg": {
-            "checksum": "2849318902145114075",
+            "checksum": "6830518245233577555",
             "height": 32,
             "width": 32
           },
           "icon-086.svg": {
-            "checksum": "13682237339132088699",
+            "checksum": "4586707412888380276",
             "height": 32,
             "width": 32
           },
           "icon-087.svg": {
-            "checksum": "15778181687822341086",
+            "checksum": "1856850601045859535",
             "height": 32,
             "width": 32
           },
           "icon-088.svg": {
-            "checksum": "985772380730126106",
+            "checksum": "4248756594701107513",
             "height": 32,
             "width": 32
           },
           "icon-089.svg": {
-            "checksum": "3992618509151327173",
+            "checksum": "8663473214747595483",
             "height": 32,
             "width": 32
           },
           "icon-090.svg": {
-            "checksum": "16952273554007667049",
+            "checksum": "3952840389500446596",
             "height": 32,
             "width": 32
           },
           "icon-091.svg": {
-            "checksum": "13827232209404126014",
+            "checksum": "14201989195205199155",
             "height": 32,
             "width": 32
           },
           "icon-092.svg": {
-            "checksum": "14406441742684416455",
+            "checksum": "6793862551867554688",
             "height": 32,
             "width": 32
           },
           "icon-093.svg": {
-            "checksum": "773801492764462",
+            "checksum": "13659448163286860322",
             "height": 32,
             "width": 32
           },
           "icon-094.svg": {
-            "checksum": "11770384179294316530",
+            "checksum": "16046687398955040073",
             "height": 32,
             "width": 32
           },
           "icon-095.svg": {
-            "checksum": "12769851257918641103",
+            "checksum": "18167053694927290236",
             "height": 32,
             "width": 32
           },
           "icon-096.svg": {
-            "checksum": "4985567953911054597",
+            "checksum": "7403593225335169961",
             "height": 32,
             "width": 32
           },
           "icon-097.svg": {
-            "checksum": "7312584244679081489",
+            "checksum": "6642137868112287579",
             "height": 32,
             "width": 32
           },
           "icon-098.svg": {
-            "checksum": "12503638387031088246",
+            "checksum": "560655581965617587",
             "height": 32,
             "width": 32
           },
           "icon-099.svg": {
-            "checksum": "15387917384088902702",
+            "checksum": "17606537162033033421",
             "height": 32,
             "width": 32
           },
           "icon-100.svg": {
-            "checksum": "4565814772832727230",
+            "checksum": "9597614556789408892",
             "height": 32,
             "width": 32
           },
           "icon-101.svg": {
-            "checksum": "13554290448398557243",
+            "checksum": "15374007499741024576",
             "height": 32,
             "width": 32
           },
           "icon-102.svg": {
-            "checksum": "10400827646444496796",
+            "checksum": "13412473980200579629",
             "height": 32,
             "width": 32
           },
           "icon-103.svg": {
-            "checksum": "17869539622670626943",
+            "checksum": "5108057623062450185",
             "height": 32,
             "width": 32
           },
           "icon-104.svg": {
-            "checksum": "1343970033739192462",
+            "checksum": "12007226420087295901",
             "height": 32,
             "width": 32
           },
           "icon-105.svg": {
-            "checksum": "18375139211289408245",
+            "checksum": "4868867135464516977",
             "height": 32,
             "width": 32
           },
           "icon-106.svg": {
-            "checksum": "5905033523292396365",
+            "checksum": "9211034688488035319",
             "height": 32,
             "width": 32
           },
           "icon-107.svg": {
-            "checksum": "5060839758801385368",
+            "checksum": "13000978127439825369",
             "height": 32,
             "width": 32
           },
           "icon-108.svg": {
-            "checksum": "16471397656412234011",
+            "checksum": "9715889535539278637",
             "height": 32,
             "width": 32
           },
           "icon-109.svg": {
-            "checksum": "5957864006295220504",
+            "checksum": "9167935372838593552",
             "height": 32,
             "width": 32
           },
           "icon-110.svg": {
-            "checksum": "9597195004438065960",
+            "checksum": "2964825803359733250",
             "height": 32,
             "width": 32
           },
           "icon-111.svg": {
-            "checksum": "5306509503594145326",
+            "checksum": "11981321531283635374",
             "height": 32,
             "width": 32
           },
           "icon-112.svg": {
-            "checksum": "4566508202559585263",
+            "checksum": "3777128756154727313",
             "height": 32,
             "width": 32
           },
           "icon-113.svg": {
-            "checksum": "14020851926360298226",
+            "checksum": "6443347390927216242",
             "height": 32,
             "width": 32
           },
           "icon-114.svg": {
-            "checksum": "13279967258234960680",
+            "checksum": "9264983392901480900",
             "height": 32,
             "width": 32
           },
           "icon-115.svg": {
-            "checksum": "10036464447975474216",
+            "checksum": "9616173445454969757",
             "height": 32,
             "width": 32
           },
           "icon-116.svg": {
-            "checksum": "5488395474719011158",
+            "checksum": "12349482336011557825",
             "height": 32,
             "width": 32
           },
           "icon-117.svg": {
-            "checksum": "1154211985007490571",
+            "checksum": "4095039347035084738",
             "height": 32,
             "width": 32
           },
           "icon-118.svg": {
-            "checksum": "482296358201407283",
+            "checksum": "12201691106809526716",
             "height": 32,
             "width": 32
           },
           "icon-119.svg": {
-            "checksum": "12434002730047608296",
+            "checksum": "11377555324892986497",
             "height": 32,
             "width": 32
           },
           "icon-120.svg": {
-            "checksum": "11466754637307713454",
+            "checksum": "18393516985331882969",
             "height": 32,
             "width": 32
           },
           "icon-121.svg": {
-            "checksum": "13211104856831542109",
+            "checksum": "6427602937955224425",
             "height": 32,
             "width": 32
           },
           "icon-122.svg": {
-            "checksum": "15612350187638658014",
+            "checksum": "3363760308452816984",
             "height": 32,
             "width": 32
           },
           "icon-123.svg": {
-            "checksum": "10543618731495010451",
+            "checksum": "2919633687795465831",
             "height": 32,
             "width": 32
           },
           "icon-124.svg": {
-            "checksum": "10315061292997865700",
+            "checksum": "1309239982119738273",
             "height": 32,
             "width": 32
           },
           "icon-125.svg": {
-            "checksum": "5826300237144321773",
+            "checksum": "12759315897916759647",
             "height": 32,
             "width": 32
           },
           "icon-126.svg": {
-            "checksum": "12167347572323065973",
+            "checksum": "13512963429834459027",
             "height": 32,
             "width": 32
           },
           "icon-127.svg": {
-            "checksum": "13572444056610846156",
+            "checksum": "9458184855868978708",
             "height": 32,
             "width": 32
           }
         },
-        "process_wall_median_ns": 50055889,
+        "process_wall_median_ns": 117006065,
         "process_wall_samples_ns": [
-          50055889,
-          50808055,
-          47244695
+          119306211,
+          117006065,
+          116866889
         ],
         "samples_ns": [
-          7876952.0,
-          7979417.0,
-          7489468.0
+          29863254.0,
+          29696964.0,
+          29461915.0
         ]
       },
       "iconset/parse": {
-        "callgrind_process_Ir": 148166354,
-        "median_ns": 2051312.0,
+        "callgrind_process_Ir": 672632736,
+        "median_ns": 24664435.0,
         "outputs": {
           "icon-000.svg": {
-            "checksum": "2307189646780880024",
+            "checksum": "13973340914304042946",
             "height": 32,
             "width": 32
           },
           "icon-001.svg": {
-            "checksum": "13505428038026562297",
+            "checksum": "1328221625182242676",
             "height": 32,
             "width": 32
           },
           "icon-002.svg": {
-            "checksum": "9011571192124095864",
+            "checksum": "17368737106350186837",
             "height": 32,
             "width": 32
           },
           "icon-003.svg": {
-            "checksum": "17669131748628934297",
+            "checksum": "2539442438781710998",
             "height": 32,
             "width": 32
           },
           "icon-004.svg": {
-            "checksum": "4464568186848642769",
+            "checksum": "7917550719805567945",
             "height": 32,
             "width": 32
           },
           "icon-005.svg": {
-            "checksum": "4805919339897797348",
+            "checksum": "10490423779911852728",
             "height": 32,
             "width": 32
           },
           "icon-006.svg": {
-            "checksum": "17952218124589914386",
+            "checksum": "13747555368227631786",
             "height": 32,
             "width": 32
           },
           "icon-007.svg": {
-            "checksum": "235104461596583940",
+            "checksum": "3959526426144146771",
             "height": 32,
             "width": 32
           },
           "icon-008.svg": {
-            "checksum": "7397790360224552611",
+            "checksum": "1708287716224575548",
             "height": 32,
             "width": 32
           },
           "icon-009.svg": {
-            "checksum": "17635601223542667602",
+            "checksum": "1924909706418816706",
             "height": 32,
             "width": 32
           },
           "icon-010.svg": {
-            "checksum": "14566975826474869955",
+            "checksum": "8517533963406155978",
             "height": 32,
             "width": 32
           },
           "icon-011.svg": {
-            "checksum": "2846438646536299692",
+            "checksum": "15208715619170532402",
             "height": 32,
             "width": 32
           },
           "icon-012.svg": {
-            "checksum": "18152944461634235746",
+            "checksum": "18359241886301814213",
             "height": 32,
             "width": 32
           },
           "icon-013.svg": {
-            "checksum": "14532150244466320482",
+            "checksum": "13200609903931000591",
             "height": 32,
             "width": 32
           },
           "icon-014.svg": {
-            "checksum": "12549671524291118673",
+            "checksum": "15396376740071624088",
             "height": 32,
             "width": 32
           },
           "icon-015.svg": {
-            "checksum": "18072736061205904528",
+            "checksum": "15090912237054920649",
             "height": 32,
             "width": 32
           },
           "icon-016.svg": {
-            "checksum": "7663847404277342685",
+            "checksum": "8190795726211068413",
             "height": 32,
             "width": 32
           },
           "icon-017.svg": {
-            "checksum": "14435207673173952470",
+            "checksum": "11796134574249633077",
             "height": 32,
             "width": 32
           },
           "icon-018.svg": {
-            "checksum": "15220751260529665609",
+            "checksum": "3736968835283429781",
             "height": 32,
             "width": 32
           },
           "icon-019.svg": {
-            "checksum": "8583591952771768182",
+            "checksum": "17813286056336569405",
             "height": 32,
             "width": 32
           },
           "icon-020.svg": {
-            "checksum": "15004872293653521264",
+            "checksum": "1879746844641739706",
             "height": 32,
             "width": 32
           },
           "icon-021.svg": {
-            "checksum": "16333035740775582135",
+            "checksum": "1161640827947130538",
             "height": 32,
             "width": 32
           },
           "icon-022.svg": {
-            "checksum": "17496131110233868801",
+            "checksum": "3845977736902303769",
             "height": 32,
             "width": 32
           },
           "icon-023.svg": {
-            "checksum": "204506842201259580",
+            "checksum": "7290856212575005152",
             "height": 32,
             "width": 32
           },
           "icon-024.svg": {
-            "checksum": "2432615159382576987",
+            "checksum": "5546304996692680431",
             "height": 32,
             "width": 32
           },
           "icon-025.svg": {
-            "checksum": "7450717629850505833",
+            "checksum": "8538514990058261315",
             "height": 32,
             "width": 32
           },
           "icon-026.svg": {
-            "checksum": "7709708675737996120",
+            "checksum": "5100658667484464782",
             "height": 32,
             "width": 32
           },
           "icon-027.svg": {
-            "checksum": "13639340827973121154",
+            "checksum": "1566795951729794538",
             "height": 32,
             "width": 32
           },
           "icon-028.svg": {
-            "checksum": "17553514638202007719",
+            "checksum": "14752643736327551600",
             "height": 32,
             "width": 32
           },
           "icon-029.svg": {
-            "checksum": "16856705602390465312",
+            "checksum": "4927270265779782909",
             "height": 32,
             "width": 32
           },
           "icon-030.svg": {
-            "checksum": "7897583396515544300",
+            "checksum": "9764290330500717983",
             "height": 32,
             "width": 32
           },
           "icon-031.svg": {
-            "checksum": "1441012938584839666",
+            "checksum": "15070349831733709604",
             "height": 32,
             "width": 32
           },
           "icon-032.svg": {
-            "checksum": "7252201766771224607",
+            "checksum": "13436256146513471943",
             "height": 32,
             "width": 32
           },
           "icon-033.svg": {
-            "checksum": "4545691889034606189",
+            "checksum": "12932416776389802231",
             "height": 32,
             "width": 32
           },
           "icon-034.svg": {
-            "checksum": "17057377474692305734",
+            "checksum": "7755857143614420446",
             "height": 32,
             "width": 32
           },
           "icon-035.svg": {
-            "checksum": "14638315559992274393",
+            "checksum": "11249469172376746620",
             "height": 32,
             "width": 32
           },
           "icon-036.svg": {
-            "checksum": "6535102575059966916",
+            "checksum": "4285045163930614454",
             "height": 32,
             "width": 32
           },
           "icon-037.svg": {
-            "checksum": "4635176867012366071",
+            "checksum": "13064508941764411799",
             "height": 32,
             "width": 32
           },
           "icon-038.svg": {
-            "checksum": "10995300709786206894",
+            "checksum": "12864366404643259859",
             "height": 32,
             "width": 32
           },
           "icon-039.svg": {
-            "checksum": "9557955879074098003",
+            "checksum": "11969484770169061743",
             "height": 32,
             "width": 32
           },
           "icon-040.svg": {
-            "checksum": "9222038538944229790",
+            "checksum": "17460375367093976741",
             "height": 32,
             "width": 32
           },
           "icon-041.svg": {
-            "checksum": "4010083862741467331",
+            "checksum": "1025286210084811587",
             "height": 32,
             "width": 32
           },
           "icon-042.svg": {
-            "checksum": "6434095275607373618",
+            "checksum": "6860431653169496038",
             "height": 32,
             "width": 32
           },
           "icon-043.svg": {
-            "checksum": "9709958952915763795",
+            "checksum": "10673767596377070626",
             "height": 32,
             "width": 32
           },
           "icon-044.svg": {
-            "checksum": "4069072218324792953",
+            "checksum": "8063548437547949688",
             "height": 32,
             "width": 32
           },
           "icon-045.svg": {
-            "checksum": "6730512746281058850",
+            "checksum": "16910326476621354104",
             "height": 32,
             "width": 32
           },
           "icon-046.svg": {
-            "checksum": "15768442709286536442",
+            "checksum": "3744681068347782199",
             "height": 32,
             "width": 32
           },
           "icon-047.svg": {
-            "checksum": "17114918599109948013",
+            "checksum": "17642176712469208330",
             "height": 32,
             "width": 32
           },
           "icon-048.svg": {
-            "checksum": "3067710829095700178",
+            "checksum": "947043587335596463",
             "height": 32,
             "width": 32
           },
           "icon-049.svg": {
-            "checksum": "3833310240272736072",
+            "checksum": "17453866603479422995",
             "height": 32,
             "width": 32
           },
           "icon-050.svg": {
-            "checksum": "272391755779045646",
+            "checksum": "12712380112584473743",
             "height": 32,
             "width": 32
           },
           "icon-051.svg": {
-            "checksum": "16034250590163139818",
+            "checksum": "14198897194145201383",
             "height": 32,
             "width": 32
           },
           "icon-052.svg": {
-            "checksum": "6529546701694437865",
+            "checksum": "8827872673072113085",
             "height": 32,
             "width": 32
           },
           "icon-053.svg": {
-            "checksum": "3613467674420533652",
+            "checksum": "5049146480391837807",
             "height": 32,
             "width": 32
           },
           "icon-054.svg": {
-            "checksum": "5447883408521332065",
+            "checksum": "3407383393997178096",
             "height": 32,
             "width": 32
           },
           "icon-055.svg": {
-            "checksum": "17888297728603934609",
+            "checksum": "9567175356598324784",
             "height": 32,
             "width": 32
           },
           "icon-056.svg": {
-            "checksum": "12936936290144441531",
+            "checksum": "15313715338553707502",
             "height": 32,
             "width": 32
           },
           "icon-057.svg": {
-            "checksum": "761407722732340486",
+            "checksum": "1469173846197176792",
             "height": 32,
             "width": 32
           },
           "icon-058.svg": {
-            "checksum": "8830857411762462248",
+            "checksum": "18315419641847226142",
             "height": 32,
             "width": 32
           },
           "icon-059.svg": {
-            "checksum": "7229807426927144135",
+            "checksum": "3406842206574698897",
             "height": 32,
             "width": 32
           },
           "icon-060.svg": {
-            "checksum": "3445345493149402627",
+            "checksum": "3377220652167790288",
             "height": 32,
             "width": 32
           },
           "icon-061.svg": {
-            "checksum": "8780957625957918302",
+            "checksum": "10167986333966628934",
             "height": 32,
             "width": 32
           },
           "icon-062.svg": {
-            "checksum": "5352641423316687979",
+            "checksum": "9748795581689756496",
             "height": 32,
             "width": 32
           },
           "icon-063.svg": {
-            "checksum": "15228739046470358437",
+            "checksum": "9740165104098643782",
             "height": 32,
             "width": 32
           },
           "icon-064.svg": {
-            "checksum": "14117805852955902441",
+            "checksum": "1923960159580780095",
             "height": 32,
             "width": 32
           },
           "icon-065.svg": {
-            "checksum": "7181987237862092627",
+            "checksum": "2551217825711215808",
             "height": 32,
             "width": 32
           },
           "icon-066.svg": {
-            "checksum": "3828088792944315175",
+            "checksum": "8234280092747510563",
             "height": 32,
             "width": 32
           },
           "icon-067.svg": {
-            "checksum": "15249999026939767884",
+            "checksum": "16205995052982649132",
             "height": 32,
             "width": 32
           },
           "icon-068.svg": {
-            "checksum": "16686867343544618722",
+            "checksum": "10689009369297543383",
             "height": 32,
             "width": 32
           },
           "icon-069.svg": {
-            "checksum": "10222892568074002971",
+            "checksum": "9159649896939669941",
             "height": 32,
             "width": 32
           },
           "icon-070.svg": {
-            "checksum": "6111505874394014418",
+            "checksum": "10000942490024342205",
             "height": 32,
             "width": 32
           },
           "icon-071.svg": {
-            "checksum": "4208495307702615643",
+            "checksum": "5870856904384100895",
             "height": 32,
             "width": 32
           },
           "icon-072.svg": {
-            "checksum": "15604160036816684612",
+            "checksum": "2983639121835143231",
             "height": 32,
             "width": 32
           },
           "icon-073.svg": {
-            "checksum": "14661060081104592809",
+            "checksum": "7815978188443071730",
             "height": 32,
             "width": 32
           },
           "icon-074.svg": {
-            "checksum": "17608301997046029749",
+            "checksum": "15858489206705554307",
             "height": 32,
             "width": 32
           },
           "icon-075.svg": {
-            "checksum": "852723024466747804",
+            "checksum": "2860120300183279639",
             "height": 32,
             "width": 32
           },
           "icon-076.svg": {
-            "checksum": "3250268698061044154",
+            "checksum": "17195489124555158996",
             "height": 32,
             "width": 32
           },
           "icon-077.svg": {
-            "checksum": "2901405900530421251",
+            "checksum": "10376628092043340000",
             "height": 32,
             "width": 32
           },
           "icon-078.svg": {
-            "checksum": "5095219603544771885",
+            "checksum": "5866654338644963447",
             "height": 32,
             "width": 32
           },
           "icon-079.svg": {
-            "checksum": "18184255207620089127",
+            "checksum": "17032599185136556716",
             "height": 32,
             "width": 32
           },
           "icon-080.svg": {
-            "checksum": "274725321198300315",
+            "checksum": "12214500278548729109",
             "height": 32,
             "width": 32
           },
           "icon-081.svg": {
-            "checksum": "1467675785301279633",
+            "checksum": "1395961718218207555",
             "height": 32,
             "width": 32
           },
           "icon-082.svg": {
-            "checksum": "193048233666317683",
+            "checksum": "15206358557868499042",
             "height": 32,
             "width": 32
           },
           "icon-083.svg": {
-            "checksum": "1396598729969955529",
+            "checksum": "9032446319613446657",
             "height": 32,
             "width": 32
           },
           "icon-084.svg": {
-            "checksum": "11970678942312768769",
+            "checksum": "14316768806122765685",
             "height": 32,
             "width": 32
           },
           "icon-085.svg": {
-            "checksum": "2849318902145114075",
+            "checksum": "6830518245233577555",
             "height": 32,
             "width": 32
           },
           "icon-086.svg": {
-            "checksum": "13682237339132088699",
+            "checksum": "4586707412888380276",
             "height": 32,
             "width": 32
           },
           "icon-087.svg": {
-            "checksum": "15778181687822341086",
+            "checksum": "1856850601045859535",
             "height": 32,
             "width": 32
           },
           "icon-088.svg": {
-            "checksum": "985772380730126106",
+            "checksum": "4248756594701107513",
             "height": 32,
             "width": 32
           },
           "icon-089.svg": {
-            "checksum": "3992618509151327173",
+            "checksum": "8663473214747595483",
             "height": 32,
             "width": 32
           },
           "icon-090.svg": {
-            "checksum": "16952273554007667049",
+            "checksum": "3952840389500446596",
             "height": 32,
             "width": 32
           },
           "icon-091.svg": {
-            "checksum": "13827232209404126014",
+            "checksum": "14201989195205199155",
             "height": 32,
             "width": 32
           },
           "icon-092.svg": {
-            "checksum": "14406441742684416455",
+            "checksum": "6793862551867554688",
             "height": 32,
             "width": 32
           },
           "icon-093.svg": {
-            "checksum": "773801492764462",
+            "checksum": "13659448163286860322",
             "height": 32,
             "width": 32
           },
           "icon-094.svg": {
-            "checksum": "11770384179294316530",
+            "checksum": "16046687398955040073",
             "height": 32,
             "width": 32
           },
           "icon-095.svg": {
-            "checksum": "12769851257918641103",
+            "checksum": "18167053694927290236",
             "height": 32,
             "width": 32
           },
           "icon-096.svg": {
-            "checksum": "4985567953911054597",
+            "checksum": "7403593225335169961",
             "height": 32,
             "width": 32
           },
           "icon-097.svg": {
-            "checksum": "7312584244679081489",
+            "checksum": "6642137868112287579",
             "height": 32,
             "width": 32
           },
           "icon-098.svg": {
-            "checksum": "12503638387031088246",
+            "checksum": "560655581965617587",
             "height": 32,
             "width": 32
           },
           "icon-099.svg": {
-            "checksum": "15387917384088902702",
+            "checksum": "17606537162033033421",
             "height": 32,
             "width": 32
           },
           "icon-100.svg": {
-            "checksum": "4565814772832727230",
+            "checksum": "9597614556789408892",
             "height": 32,
             "width": 32
           },
           "icon-101.svg": {
-            "checksum": "13554290448398557243",
+            "checksum": "15374007499741024576",
             "height": 32,
             "width": 32
           },
           "icon-102.svg": {
-            "checksum": "10400827646444496796",
+            "checksum": "13412473980200579629",
             "height": 32,
             "width": 32
           },
           "icon-103.svg": {
-            "checksum": "17869539622670626943",
+            "checksum": "5108057623062450185",
             "height": 32,
             "width": 32
           },
           "icon-104.svg": {
-            "checksum": "1343970033739192462",
+            "checksum": "12007226420087295901",
             "height": 32,
             "width": 32
           },
           "icon-105.svg": {
-            "checksum": "18375139211289408245",
+            "checksum": "4868867135464516977",
             "height": 32,
             "width": 32
           },
           "icon-106.svg": {
-            "checksum": "5905033523292396365",
+            "checksum": "9211034688488035319",
             "height": 32,
             "width": 32
           },
           "icon-107.svg": {
-            "checksum": "5060839758801385368",
+            "checksum": "13000978127439825369",
             "height": 32,
             "width": 32
           },
           "icon-108.svg": {
-            "checksum": "16471397656412234011",
+            "checksum": "9715889535539278637",
             "height": 32,
             "width": 32
           },
           "icon-109.svg": {
-            "checksum": "5957864006295220504",
+            "checksum": "9167935372838593552",
             "height": 32,
             "width": 32
           },
           "icon-110.svg": {
-            "checksum": "9597195004438065960",
+            "checksum": "2964825803359733250",
             "height": 32,
             "width": 32
           },
           "icon-111.svg": {
-            "checksum": "5306509503594145326",
+            "checksum": "11981321531283635374",
             "height": 32,
             "width": 32
           },
           "icon-112.svg": {
-            "checksum": "4566508202559585263",
+            "checksum": "3777128756154727313",
             "height": 32,
             "width": 32
           },
           "icon-113.svg": {
-            "checksum": "14020851926360298226",
+            "checksum": "6443347390927216242",
             "height": 32,
             "width": 32
           },
           "icon-114.svg": {
-            "checksum": "13279967258234960680",
+            "checksum": "9264983392901480900",
             "height": 32,
             "width": 32
           },
           "icon-115.svg": {
-            "checksum": "10036464447975474216",
+            "checksum": "9616173445454969757",
             "height": 32,
             "width": 32
           },
           "icon-116.svg": {
-            "checksum": "5488395474719011158",
+            "checksum": "12349482336011557825",
             "height": 32,
             "width": 32
           },
           "icon-117.svg": {
-            "checksum": "1154211985007490571",
+            "checksum": "4095039347035084738",
             "height": 32,
             "width": 32
           },
           "icon-118.svg": {
-            "checksum": "482296358201407283",
+            "checksum": "12201691106809526716",
             "height": 32,
             "width": 32
           },
           "icon-119.svg": {
-            "checksum": "12434002730047608296",
+            "checksum": "11377555324892986497",
             "height": 32,
             "width": 32
           },
           "icon-120.svg": {
-            "checksum": "11466754637307713454",
+            "checksum": "18393516985331882969",
             "height": 32,
             "width": 32
           },
           "icon-121.svg": {
-            "checksum": "13211104856831542109",
+            "checksum": "6427602937955224425",
             "height": 32,
             "width": 32
           },
           "icon-122.svg": {
-            "checksum": "15612350187638658014",
+            "checksum": "3363760308452816984",
             "height": 32,
             "width": 32
           },
           "icon-123.svg": {
-            "checksum": "10543618731495010451",
+            "checksum": "2919633687795465831",
             "height": 32,
             "width": 32
           },
           "icon-124.svg": {
-            "checksum": "10315061292997865700",
+            "checksum": "1309239982119738273",
             "height": 32,
             "width": 32
           },
           "icon-125.svg": {
-            "checksum": "5826300237144321773",
+            "checksum": "12759315897916759647",
             "height": 32,
             "width": 32
           },
           "icon-126.svg": {
-            "checksum": "12167347572323065973",
+            "checksum": "13512963429834459027",
             "height": 32,
             "width": 32
           },
           "icon-127.svg": {
-            "checksum": "13572444056610846156",
+            "checksum": "9458184855868978708",
             "height": 32,
             "width": 32
           }
         },
-        "process_wall_median_ns": 59080766,
+        "process_wall_median_ns": 152001826,
         "process_wall_samples_ns": [
-          67553048,
-          51117253,
-          59080766
+          149594002,
+          152001826,
+          157221086
         ],
         "samples_ns": [
-          2095761.0,
-          1896056.0,
-          2051312.0
+          24664435.0,
+          24391637.0,
+          25324604.0
         ]
       },
       "iconset/render": {
-        "callgrind_process_Ir": 124368644,
-        "median_ns": 5800054.0,
+        "callgrind_process_Ir": 399586734,
+        "median_ns": 7242789.0,
         "outputs": {
           "icon-000.svg": {
-            "checksum": "2307189646780880024",
+            "checksum": "13973340914304042946",
             "height": 32,
             "width": 32
           },
           "icon-001.svg": {
-            "checksum": "13505428038026562297",
+            "checksum": "1328221625182242676",
             "height": 32,
             "width": 32
           },
           "icon-002.svg": {
-            "checksum": "9011571192124095864",
+            "checksum": "17368737106350186837",
             "height": 32,
             "width": 32
           },
           "icon-003.svg": {
-            "checksum": "17669131748628934297",
+            "checksum": "2539442438781710998",
             "height": 32,
             "width": 32
           },
           "icon-004.svg": {
-            "checksum": "4464568186848642769",
+            "checksum": "7917550719805567945",
             "height": 32,
             "width": 32
           },
           "icon-005.svg": {
-            "checksum": "4805919339897797348",
+            "checksum": "10490423779911852728",
             "height": 32,
             "width": 32
           },
           "icon-006.svg": {
-            "checksum": "17952218124589914386",
+            "checksum": "13747555368227631786",
             "height": 32,
             "width": 32
           },
           "icon-007.svg": {
-            "checksum": "235104461596583940",
+            "checksum": "3959526426144146771",
             "height": 32,
             "width": 32
           },
           "icon-008.svg": {
-            "checksum": "7397790360224552611",
+            "checksum": "1708287716224575548",
             "height": 32,
             "width": 32
           },
           "icon-009.svg": {
-            "checksum": "17635601223542667602",
+            "checksum": "1924909706418816706",
             "height": 32,
             "width": 32
           },
           "icon-010.svg": {
-            "checksum": "14566975826474869955",
+            "checksum": "8517533963406155978",
             "height": 32,
             "width": 32
           },
           "icon-011.svg": {
-            "checksum": "2846438646536299692",
+            "checksum": "15208715619170532402",
             "height": 32,
             "width": 32
           },
           "icon-012.svg": {
-            "checksum": "18152944461634235746",
+            "checksum": "18359241886301814213",
             "height": 32,
             "width": 32
           },
           "icon-013.svg": {
-            "checksum": "14532150244466320482",
+            "checksum": "13200609903931000591",
             "height": 32,
             "width": 32
           },
           "icon-014.svg": {
-            "checksum": "12549671524291118673",
+            "checksum": "15396376740071624088",
             "height": 32,
             "width": 32
           },
           "icon-015.svg": {
-            "checksum": "18072736061205904528",
+            "checksum": "15090912237054920649",
             "height": 32,
             "width": 32
           },
           "icon-016.svg": {
-            "checksum": "7663847404277342685",
+            "checksum": "8190795726211068413",
             "height": 32,
             "width": 32
           },
           "icon-017.svg": {
-            "checksum": "14435207673173952470",
+            "checksum": "11796134574249633077",
             "height": 32,
             "width": 32
           },
           "icon-018.svg": {
-            "checksum": "15220751260529665609",
+            "checksum": "3736968835283429781",
             "height": 32,
             "width": 32
           },
           "icon-019.svg": {
-            "checksum": "8583591952771768182",
+            "checksum": "17813286056336569405",
             "height": 32,
             "width": 32
           },
           "icon-020.svg": {
-            "checksum": "15004872293653521264",
+            "checksum": "1879746844641739706",
             "height": 32,
             "width": 32
           },
           "icon-021.svg": {
-            "checksum": "16333035740775582135",
+            "checksum": "1161640827947130538",
             "height": 32,
             "width": 32
           },
           "icon-022.svg": {
-            "checksum": "17496131110233868801",
+            "checksum": "3845977736902303769",
             "height": 32,
             "width": 32
           },
           "icon-023.svg": {
-            "checksum": "204506842201259580",
+            "checksum": "7290856212575005152",
             "height": 32,
             "width": 32
           },
           "icon-024.svg": {
-            "checksum": "2432615159382576987",
+            "checksum": "5546304996692680431",
             "height": 32,
             "width": 32
           },
           "icon-025.svg": {
-            "checksum": "7450717629850505833",
+            "checksum": "8538514990058261315",
             "height": 32,
             "width": 32
           },
           "icon-026.svg": {
-            "checksum": "7709708675737996120",
+            "checksum": "5100658667484464782",
             "height": 32,
             "width": 32
           },
           "icon-027.svg": {
-            "checksum": "13639340827973121154",
+            "checksum": "1566795951729794538",
             "height": 32,
             "width": 32
           },
           "icon-028.svg": {
-            "checksum": "17553514638202007719",
+            "checksum": "14752643736327551600",
             "height": 32,
             "width": 32
           },
           "icon-029.svg": {
-            "checksum": "16856705602390465312",
+            "checksum": "4927270265779782909",
             "height": 32,
             "width": 32
           },
           "icon-030.svg": {
-            "checksum": "7897583396515544300",
+            "checksum": "9764290330500717983",
             "height": 32,
             "width": 32
           },
           "icon-031.svg": {
-            "checksum": "1441012938584839666",
+            "checksum": "15070349831733709604",
             "height": 32,
             "width": 32
           },
           "icon-032.svg": {
-            "checksum": "7252201766771224607",
+            "checksum": "13436256146513471943",
             "height": 32,
             "width": 32
           },
           "icon-033.svg": {
-            "checksum": "4545691889034606189",
+            "checksum": "12932416776389802231",
             "height": 32,
             "width": 32
           },
           "icon-034.svg": {
-            "checksum": "17057377474692305734",
+            "checksum": "7755857143614420446",
             "height": 32,
             "width": 32
           },
           "icon-035.svg": {
-            "checksum": "14638315559992274393",
+            "checksum": "11249469172376746620",
             "height": 32,
             "width": 32
           },
           "icon-036.svg": {
-            "checksum": "6535102575059966916",
+            "checksum": "4285045163930614454",
             "height": 32,
             "width": 32
           },
           "icon-037.svg": {
-            "checksum": "4635176867012366071",
+            "checksum": "13064508941764411799",
             "height": 32,
             "width": 32
           },
           "icon-038.svg": {
-            "checksum": "10995300709786206894",
+            "checksum": "12864366404643259859",
             "height": 32,
             "width": 32
           },
           "icon-039.svg": {
-            "checksum": "9557955879074098003",
+            "checksum": "11969484770169061743",
             "height": 32,
             "width": 32
           },
           "icon-040.svg": {
-            "checksum": "9222038538944229790",
+            "checksum": "17460375367093976741",
             "height": 32,
             "width": 32
           },
           "icon-041.svg": {
-            "checksum": "4010083862741467331",
+            "checksum": "1025286210084811587",
             "height": 32,
             "width": 32
           },
           "icon-042.svg": {
-            "checksum": "6434095275607373618",
+            "checksum": "6860431653169496038",
             "height": 32,
             "width": 32
           },
           "icon-043.svg": {
-            "checksum": "9709958952915763795",
+            "checksum": "10673767596377070626",
             "height": 32,
             "width": 32
           },
           "icon-044.svg": {
-            "checksum": "4069072218324792953",
+            "checksum": "8063548437547949688",
             "height": 32,
             "width": 32
           },
           "icon-045.svg": {
-            "checksum": "6730512746281058850",
+            "checksum": "16910326476621354104",
             "height": 32,
             "width": 32
           },
           "icon-046.svg": {
-            "checksum": "15768442709286536442",
+            "checksum": "3744681068347782199",
             "height": 32,
             "width": 32
           },
           "icon-047.svg": {
-            "checksum": "17114918599109948013",
+            "checksum": "17642176712469208330",
             "height": 32,
             "width": 32
           },
           "icon-048.svg": {
-            "checksum": "3067710829095700178",
+            "checksum": "947043587335596463",
             "height": 32,
             "width": 32
           },
           "icon-049.svg": {
-            "checksum": "3833310240272736072",
+            "checksum": "17453866603479422995",
             "height": 32,
             "width": 32
           },
           "icon-050.svg": {
-            "checksum": "272391755779045646",
+            "checksum": "12712380112584473743",
             "height": 32,
             "width": 32
           },
           "icon-051.svg": {
-            "checksum": "16034250590163139818",
+            "checksum": "14198897194145201383",
             "height": 32,
             "width": 32
           },
           "icon-052.svg": {
-            "checksum": "6529546701694437865",
+            "checksum": "8827872673072113085",
             "height": 32,
             "width": 32
           },
           "icon-053.svg": {
-            "checksum": "3613467674420533652",
+            "checksum": "5049146480391837807",
             "height": 32,
             "width": 32
           },
           "icon-054.svg": {
-            "checksum": "5447883408521332065",
+            "checksum": "3407383393997178096",
             "height": 32,
             "width": 32
           },
           "icon-055.svg": {
-            "checksum": "17888297728603934609",
+            "checksum": "9567175356598324784",
             "height": 32,
             "width": 32
           },
           "icon-056.svg": {
-            "checksum": "12936936290144441531",
+            "checksum": "15313715338553707502",
             "height": 32,
             "width": 32
           },
           "icon-057.svg": {
-            "checksum": "761407722732340486",
+            "checksum": "1469173846197176792",
             "height": 32,
             "width": 32
           },
           "icon-058.svg": {
-            "checksum": "8830857411762462248",
+            "checksum": "18315419641847226142",
             "height": 32,
             "width": 32
           },
           "icon-059.svg": {
-            "checksum": "7229807426927144135",
+            "checksum": "3406842206574698897",
             "height": 32,
             "width": 32
           },
           "icon-060.svg": {
-            "checksum": "3445345493149402627",
+            "checksum": "3377220652167790288",
             "height": 32,
             "width": 32
           },
           "icon-061.svg": {
-            "checksum": "8780957625957918302",
+            "checksum": "10167986333966628934",
             "height": 32,
             "width": 32
           },
           "icon-062.svg": {
-            "checksum": "5352641423316687979",
+            "checksum": "9748795581689756496",
             "height": 32,
             "width": 32
           },
           "icon-063.svg": {
-            "checksum": "15228739046470358437",
+            "checksum": "9740165104098643782",
             "height": 32,
             "width": 32
           },
           "icon-064.svg": {
-            "checksum": "14117805852955902441",
+            "checksum": "1923960159580780095",
             "height": 32,
             "width": 32
           },
           "icon-065.svg": {
-            "checksum": "7181987237862092627",
+            "checksum": "2551217825711215808",
             "height": 32,
             "width": 32
           },
           "icon-066.svg": {
-            "checksum": "3828088792944315175",
+            "checksum": "8234280092747510563",
             "height": 32,
             "width": 32
           },
           "icon-067.svg": {
-            "checksum": "15249999026939767884",
+            "checksum": "16205995052982649132",
             "height": 32,
             "width": 32
           },
           "icon-068.svg": {
-            "checksum": "16686867343544618722",
+            "checksum": "10689009369297543383",
             "height": 32,
             "width": 32
           },
           "icon-069.svg": {
-            "checksum": "10222892568074002971",
+            "checksum": "9159649896939669941",
             "height": 32,
             "width": 32
           },
           "icon-070.svg": {
-            "checksum": "6111505874394014418",
+            "checksum": "10000942490024342205",
             "height": 32,
             "width": 32
           },
           "icon-071.svg": {
-            "checksum": "4208495307702615643",
+            "checksum": "5870856904384100895",
             "height": 32,
             "width": 32
           },
           "icon-072.svg": {
-            "checksum": "15604160036816684612",
+            "checksum": "2983639121835143231",
             "height": 32,
             "width": 32
           },
           "icon-073.svg": {
-            "checksum": "14661060081104592809",
+            "checksum": "7815978188443071730",
             "height": 32,
             "width": 32
           },
           "icon-074.svg": {
-            "checksum": "17608301997046029749",
+            "checksum": "15858489206705554307",
             "height": 32,
             "width": 32
           },
           "icon-075.svg": {
-            "checksum": "852723024466747804",
+            "checksum": "2860120300183279639",
             "height": 32,
             "width": 32
           },
           "icon-076.svg": {
-            "checksum": "3250268698061044154",
+            "checksum": "17195489124555158996",
             "height": 32,
             "width": 32
           },
           "icon-077.svg": {
-            "checksum": "2901405900530421251",
+            "checksum": "10376628092043340000",
             "height": 32,
             "width": 32
           },
           "icon-078.svg": {
-            "checksum": "5095219603544771885",
+            "checksum": "5866654338644963447",
             "height": 32,
             "width": 32
           },
           "icon-079.svg": {
-            "checksum": "18184255207620089127",
+            "checksum": "17032599185136556716",
             "height": 32,
             "width": 32
           },
           "icon-080.svg": {
-            "checksum": "274725321198300315",
+            "checksum": "12214500278548729109",
             "height": 32,
             "width": 32
           },
           "icon-081.svg": {
-            "checksum": "1467675785301279633",
+            "checksum": "1395961718218207555",
             "height": 32,
             "width": 32
           },
           "icon-082.svg": {
-            "checksum": "193048233666317683",
+            "checksum": "15206358557868499042",
             "height": 32,
             "width": 32
           },
           "icon-083.svg": {
-            "checksum": "1396598729969955529",
+            "checksum": "9032446319613446657",
             "height": 32,
             "width": 32
           },
           "icon-084.svg": {
-            "checksum": "11970678942312768769",
+            "checksum": "14316768806122765685",
             "height": 32,
             "width": 32
           },
           "icon-085.svg": {
-            "checksum": "2849318902145114075",
+            "checksum": "6830518245233577555",
             "height": 32,
             "width": 32
           },
           "icon-086.svg": {
-            "checksum": "13682237339132088699",
+            "checksum": "4586707412888380276",
             "height": 32,
             "width": 32
           },
           "icon-087.svg": {
-            "checksum": "15778181687822341086",
+            "checksum": "1856850601045859535",
             "height": 32,
             "width": 32
           },
           "icon-088.svg": {
-            "checksum": "985772380730126106",
+            "checksum": "4248756594701107513",
             "height": 32,
             "width": 32
           },
           "icon-089.svg": {
-            "checksum": "3992618509151327173",
+            "checksum": "8663473214747595483",
             "height": 32,
             "width": 32
           },
           "icon-090.svg": {
-            "checksum": "16952273554007667049",
+            "checksum": "3952840389500446596",
             "height": 32,
             "width": 32
           },
           "icon-091.svg": {
-            "checksum": "13827232209404126014",
+            "checksum": "14201989195205199155",
             "height": 32,
             "width": 32
           },
           "icon-092.svg": {
-            "checksum": "14406441742684416455",
+            "checksum": "6793862551867554688",
             "height": 32,
             "width": 32
           },
           "icon-093.svg": {
-            "checksum": "773801492764462",
+            "checksum": "13659448163286860322",
             "height": 32,
             "width": 32
           },
           "icon-094.svg": {
-            "checksum": "11770384179294316530",
+            "checksum": "16046687398955040073",
             "height": 32,
             "width": 32
           },
           "icon-095.svg": {
-            "checksum": "12769851257918641103",
+            "checksum": "18167053694927290236",
             "height": 32,
             "width": 32
           },
           "icon-096.svg": {
-            "checksum": "4985567953911054597",
+            "checksum": "7403593225335169961",
             "height": 32,
             "width": 32
           },
           "icon-097.svg": {
-            "checksum": "7312584244679081489",
+            "checksum": "6642137868112287579",
             "height": 32,
             "width": 32
           },
           "icon-098.svg": {
-            "checksum": "12503638387031088246",
+            "checksum": "560655581965617587",
             "height": 32,
             "width": 32
           },
           "icon-099.svg": {
-            "checksum": "15387917384088902702",
+            "checksum": "17606537162033033421",
             "height": 32,
             "width": 32
           },
           "icon-100.svg": {
-            "checksum": "4565814772832727230",
+            "checksum": "9597614556789408892",
             "height": 32,
             "width": 32
           },
           "icon-101.svg": {
-            "checksum": "13554290448398557243",
+            "checksum": "15374007499741024576",
             "height": 32,
             "width": 32
           },
           "icon-102.svg": {
-            "checksum": "10400827646444496796",
+            "checksum": "13412473980200579629",
             "height": 32,
             "width": 32
           },
           "icon-103.svg": {
-            "checksum": "17869539622670626943",
+            "checksum": "5108057623062450185",
             "height": 32,
             "width": 32
           },
           "icon-104.svg": {
-            "checksum": "1343970033739192462",
+            "checksum": "12007226420087295901",
             "height": 32,
             "width": 32
           },
           "icon-105.svg": {
-            "checksum": "18375139211289408245",
+            "checksum": "4868867135464516977",
             "height": 32,
             "width": 32
           },
           "icon-106.svg": {
-            "checksum": "5905033523292396365",
+            "checksum": "9211034688488035319",
             "height": 32,
             "width": 32
           },
           "icon-107.svg": {
-            "checksum": "5060839758801385368",
+            "checksum": "13000978127439825369",
             "height": 32,
             "width": 32
           },
           "icon-108.svg": {
-            "checksum": "16471397656412234011",
+            "checksum": "9715889535539278637",
             "height": 32,
             "width": 32
           },
           "icon-109.svg": {
-            "checksum": "5957864006295220504",
+            "checksum": "9167935372838593552",
             "height": 32,
             "width": 32
           },
           "icon-110.svg": {
-            "checksum": "9597195004438065960",
+            "checksum": "2964825803359733250",
             "height": 32,
             "width": 32
           },
           "icon-111.svg": {
-            "checksum": "5306509503594145326",
+            "checksum": "11981321531283635374",
             "height": 32,
             "width": 32
           },
           "icon-112.svg": {
-            "checksum": "4566508202559585263",
+            "checksum": "3777128756154727313",
             "height": 32,
             "width": 32
           },
           "icon-113.svg": {
-            "checksum": "14020851926360298226",
+            "checksum": "6443347390927216242",
             "height": 32,
             "width": 32
           },
           "icon-114.svg": {
-            "checksum": "13279967258234960680",
+            "checksum": "9264983392901480900",
             "height": 32,
             "width": 32
           },
           "icon-115.svg": {
-            "checksum": "10036464447975474216",
+            "checksum": "9616173445454969757",
             "height": 32,
             "width": 32
           },
           "icon-116.svg": {
-            "checksum": "5488395474719011158",
+            "checksum": "12349482336011557825",
             "height": 32,
             "width": 32
           },
           "icon-117.svg": {
-            "checksum": "1154211985007490571",
+            "checksum": "4095039347035084738",
             "height": 32,
             "width": 32
           },
           "icon-118.svg": {
-            "checksum": "482296358201407283",
+            "checksum": "12201691106809526716",
             "height": 32,
             "width": 32
           },
           "icon-119.svg": {
-            "checksum": "12434002730047608296",
+            "checksum": "11377555324892986497",
             "height": 32,
             "width": 32
           },
           "icon-120.svg": {
-            "checksum": "11466754637307713454",
+            "checksum": "18393516985331882969",
             "height": 32,
             "width": 32
           },
           "icon-121.svg": {
-            "checksum": "13211104856831542109",
+            "checksum": "6427602937955224425",
             "height": 32,
             "width": 32
           },
           "icon-122.svg": {
-            "checksum": "15612350187638658014",
+            "checksum": "3363760308452816984",
             "height": 32,
             "width": 32
           },
           "icon-123.svg": {
-            "checksum": "10543618731495010451",
+            "checksum": "2919633687795465831",
             "height": 32,
             "width": 32
           },
           "icon-124.svg": {
-            "checksum": "10315061292997865700",
+            "checksum": "1309239982119738273",
             "height": 32,
             "width": 32
           },
           "icon-125.svg": {
-            "checksum": "5826300237144321773",
+            "checksum": "12759315897916759647",
             "height": 32,
             "width": 32
           },
           "icon-126.svg": {
-            "checksum": "12167347572323065973",
+            "checksum": "13512963429834459027",
             "height": 32,
             "width": 32
           },
           "icon-127.svg": {
-            "checksum": "13572444056610846156",
+            "checksum": "9458184855868978708",
             "height": 32,
             "width": 32
           }
         },
-        "process_wall_median_ns": 46073327,
+        "process_wall_median_ns": 93131619,
         "process_wall_samples_ns": [
-          51847333,
-          45957378,
-          46073327
+          96344614,
+          93131619,
+          92282071
         ],
         "samples_ns": [
-          5960091.0,
-          5800054.0,
-          5671346.0
+          7323369.0,
+          7242789.0,
+          7014868.0
         ]
       },
       "largemap/end-to-end": {
-        "callgrind_process_Ir": 2593956190,
-        "median_ns": 138081713.0,
+        "callgrind_process_Ir": 999013688,
+        "median_ns": 48101089.0,
         "outputs": {
           "largemap.svg": {
-            "checksum": "7264596378071453205",
+            "checksum": "2994233956011191820",
             "height": 1024,
             "width": 1024
           }
         },
-        "process_wall_median_ns": 149254420,
+        "process_wall_median_ns": 88641760,
         "process_wall_samples_ns": [
-          149254420,
-          148249061,
-          150222486
+          89054349,
+          87942544,
+          88641760
         ],
         "samples_ns": [
-          138081713.0,
-          137689062.0,
-          139373009.0
+          48101089.0,
+          48036922.0,
+          48279092.0
         ]
       },
       "largemap/parse": {
-        "callgrind_process_Ir": 2593956103,
-        "median_ns": 3947584.0,
+        "callgrind_process_Ir": 999013606,
+        "median_ns": 29103498.0,
         "outputs": {
           "largemap.svg": {
-            "checksum": "7264596378071453205",
+            "checksum": "2994233956011191820",
             "height": 1024,
             "width": 1024
           }
         },
-        "process_wall_median_ns": 153943917,
+        "process_wall_median_ns": 96101051,
         "process_wall_samples_ns": [
-          156473953,
-          147750274,
-          153943917
+          91702585,
+          98796249,
+          96101051
         ],
         "samples_ns": [
-          3947584.0,
-          3942542.0,
-          4114387.0
+          28835953.0,
+          30105676.0,
+          29103498.0
         ]
       },
       "largemap/render": {
-        "callgrind_process_Ir": 2534800640,
-        "median_ns": 133664045.0,
+        "callgrind_process_Ir": 684205891,
+        "median_ns": 22204419.0,
         "outputs": {
           "largemap.svg": {
-            "checksum": "7264596378071453205",
+            "checksum": "2994233956011191820",
             "height": 1024,
             "width": 1024
           }
         },
-        "process_wall_median_ns": 144299825,
+        "process_wall_median_ns": 62790424,
         "process_wall_samples_ns": [
-          144299825,
-          144524632,
-          144236321
+          65369328,
+          61908205,
+          62790424
         ],
         "samples_ns": [
-          133646627.0,
-          133990067.0,
-          133664045.0
+          22204419.0,
+          22590090.0,
+          21781206.0
         ]
       },
       "mixedcurves/end-to-end": {
-        "callgrind_process_Ir": 152938366,
-        "median_ns": 8523254.0,
+        "callgrind_process_Ir": 474800421,
+        "median_ns": 26047797.0,
         "outputs": {
           "mixedcurves.svg": {
-            "checksum": "1588578471914882077",
+            "checksum": "10161863629459192945",
             "height": 512,
             "width": 512
           }
         },
-        "process_wall_median_ns": 12322349,
+        "process_wall_median_ns": 38920194,
         "process_wall_samples_ns": [
-          15059163,
-          12322349,
-          12197840
+          39708287,
+          38920194,
+          38741942
         ],
         "samples_ns": [
-          10697445.0,
-          8523254.0,
-          8386411.0
+          26047797.0,
+          26087631.0,
+          25910087.0
         ]
       },
       "mixedcurves/parse": {
-        "callgrind_process_Ir": 152938127,
-        "median_ns": 1480518.0,
+        "callgrind_process_Ir": 474800328,
+        "median_ns": 9285231.0,
         "outputs": {
           "mixedcurves.svg": {
-            "checksum": "1588578471914882077",
+            "checksum": "10161863629459192945",
             "height": 512,
             "width": 512
           }
         },
-        "process_wall_median_ns": 13186613,
+        "process_wall_median_ns": 38815777,
         "process_wall_samples_ns": [
-          15026698,
-          13186613,
-          12742083
+          39835330,
+          38798734,
+          38815777
         ],
         "samples_ns": [
-          1471309.0,
-          1806166.0,
-          1480518.0
+          9483483.0,
+          9285231.0,
+          9261481.0
         ]
       },
       "mixedcurves/render": {
-        "callgrind_process_Ir": 132520014,
-        "median_ns": 7090405.0,
+        "callgrind_process_Ir": 360197257,
+        "median_ns": 16441479.0,
         "outputs": {
           "mixedcurves.svg": {
-            "checksum": "1588578471914882077",
+            "checksum": "10161863629459192945",
             "height": 512,
             "width": 512
           }
         },
-        "process_wall_median_ns": 11070887,
+        "process_wall_median_ns": 29210708,
         "process_wall_samples_ns": [
-          11128099,
-          11070887,
-          10420800
+          29277501,
+          29190916,
+          29210708
         ],
         "samples_ns": [
-          7090405.0,
-          7437387.0,
-          6983189.0
+          16333811.0,
+          16441479.0,
+          16720065.0
+        ]
+      },
+      "stylesheets/end-to-end": {
+        "callgrind_process_Ir": 1005815948,
+        "median_ns": 39320284.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 87563463,
+        "process_wall_samples_ns": [
+          87563463,
+          87050457,
+          88417306
+        ],
+        "samples_ns": [
+          39084906.0,
+          39320284.0,
+          39846373.0
+        ]
+      },
+      "stylesheets/parse": {
+        "callgrind_process_Ir": 1005815868,
+        "median_ns": 39356117.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 90951748,
+        "process_wall_samples_ns": [
+          88859557,
+          92109011,
+          90951748
+        ],
+        "samples_ns": [
+          39657911.0,
+          39356117.0,
+          38542899.0
+        ]
+      },
+      "stylesheets/render": {
+        "callgrind_process_Ir": 519760085,
+        "median_ns": 1513976.0,
+        "outputs": {
+          "stylesheets.svg": {
+            "checksum": "15851226093616132389",
+            "height": 512,
+            "width": 512
+          }
+        },
+        "process_wall_median_ns": 48481722,
+        "process_wall_samples_ns": [
+          48481722,
+          49727653,
+          47135706
+        ],
+        "samples_ns": [
+          1513976.0,
+          1533267.0,
+          1503934.0
         ]
       },
       "tiger/end-to-end": {
-        "callgrind_process_Ir": 619460548,
-        "median_ns": 35553910.0,
+        "callgrind_process_Ir": 451629342,
+        "median_ns": 25374247.0,
         "outputs": {
           "tiger-sized.svg": {
-            "checksum": "10913409686959847900",
+            "checksum": "4594215698344372726",
             "height": 900,
             "width": 900
           }
         },
-        "process_wall_median_ns": 41346275,
+        "process_wall_median_ns": 37872222,
         "process_wall_samples_ns": [
-          41741259,
-          41346275,
-          41248103
+          38157475,
+          37583177,
+          37872222
         ],
         "samples_ns": [
-          35713962.0,
-          35553910.0,
-          35480822.0
+          25534041.0,
+          25374247.0,
+          25200869.0
         ]
       },
       "tiger/parse": {
-        "callgrind_process_Ir": 619460469,
-        "median_ns": 1175906.0,
+        "callgrind_process_Ir": 451629256,
+        "median_ns": 6207987.0,
         "outputs": {
           "tiger-sized.svg": {
-            "checksum": "10913409686959847900",
+            "checksum": "4594215698344372726",
             "height": 900,
             "width": 900
           }
         },
-        "process_wall_median_ns": 41641832,
+        "process_wall_median_ns": 37222006,
         "process_wall_samples_ns": [
-          41988265,
-          41641832,
-          41639123
+          39400531,
+          37197048,
+          37222006
         ],
         "samples_ns": [
-          1175906.0,
-          1153405.0,
-          1179532.0
+          6521116.0,
+          6207987.0,
+          6101194.0
         ]
       },
       "tiger/render": {
-        "callgrind_process_Ir": 602295010,
-        "median_ns": 35648689.0,
+        "callgrind_process_Ir": 370790613,
+        "median_ns": 21416702.0,
         "outputs": {
           "tiger-sized.svg": {
-            "checksum": "10913409686959847900",
+            "checksum": "4594215698344372726",
             "height": 900,
             "width": 900
           }
         },
-        "process_wall_median_ns": 41901830,
+        "process_wall_median_ns": 35369485,
         "process_wall_samples_ns": [
-          41415633,
-          43833659,
-          41901830
+          36927795,
+          35369485,
+          34806812
         ],
         "samples_ns": [
-          35292333.0,
-          37300292.0,
-          35648689.0
+          22727674.0,
+          21416702.0,
+          21109073.0
         ]
       }
     }
@@ -4427,7 +4565,7 @@
     "parse": "XML + computed style + geometry resolve + Silk record / usvg render-ready retained tree; not raw resolve. Retained result rasterized and consumed outside timing.",
     "render": "Reuse retained display list/tree; allocate and zero a fresh destination inside every timed render; checksum and destination destruction outside timing."
   },
-  "workload_manifest_sha256": "68bb4b39368e621575f072dc594f17fd75ba24075c8115958a7983a363267f9d",
+  "workload_manifest_sha256": "d89e63c497356111737433c2aa904b9c57d66b93d4513b4dcc5dbd56c97d5d58",
   "workloads": {
     "iconset": {
       "bytes": 61557,
@@ -4459,6 +4597,18 @@
       "spec": {
         "config": {
           "grid": 16,
+          "size": 512
+        }
+      }
+    },
+    "stylesheets": {
+      "bytes": 186884,
+      "documents": 1,
+      "sha256": "d7bdeb1de19e9c43890c93602e61a967a610d67bd94df33d58444c88b3bc3c6d",
+      "spec": {
+        "config": {
+          "columns": 64,
+          "rows": 32,
           "size": 512
         }
       }

@@ -92,3 +92,55 @@ and observed missing-module diagnostics:
 [XML #2563](https://github.com/silk-lang/silk/issues/2563) and
 [PNG #2564](https://github.com/silk-lang/silk/issues/2564).
 There is no working stdlib alternative for a before/after Ir comparison.
+
+## 011 — reusable CSS syntax, selectors and cascade
+
+The dev.27 source/module inventory contains JSON/TOML scanners and UTF-8/Unicode
+primitives, but no CSS tokenizer, component-value/rule/declaration parser,
+selector parser/matcher/specificity API, or property-independent cascade.
+Filed [silk-lang/silk#2577](https://github.com/silk-lang/silk/issues/2577).
+The [pinned import probe](../compiler-bugs/016-css-api/README.md) names an
+illustrative namespace; absence of that name alone is not the inventory evidence.
+`svg_css` owns syntax, static selectors, cascade, variables and conditional-rule
+evaluation. Replace the general-purpose pieces when released APIs cover their
+standards and bounded-resource contracts; SVG property semantics, element-tree
+adaptation and computed-value projection remain project-owned.
+
+## 012 — WHATWG URLs and IDNA
+
+Filed [silk-lang/silk#2578](https://github.com/silk-lang/silk/issues/2578).
+The existing `silk.uri` API implements RFC 3986, not WHATWG URL parsing:
+`uri/uri.silk:1-14` excludes normalization/default-port rules and
+`uri/reference.silk:21-24` excludes raw non-ASCII input.
+`net/address.silk:415-416,897-931` checks ASCII/Punycode labels but explicitly
+leaves Unicode mapping, contextual/bidi checks and internationalized-name
+conversion to callers. It is not a complete UTS #46 implementation.
+The [real-API probe](../compiler-bugs/017-whatwg-url/README.md) distinguishes this
+documented contract from the WHATWG acceptance condition; it is not a claim that
+the RFC 3986 API is broken. `svg_core/src/url*.silk` owns URL parsing/resolution/
+serialization and IDNA mapping/Punycode, reusing `ucd` normalization/properties.
+Replace those general-purpose parts together when released URL/IDNA semantics
+and resource bounds match; SVG resource authorization remains local.
+
+## 013 — WHATWG legacy character encodings
+
+Filed [silk-lang/silk#2579](https://github.com/silk-lang/silk/issues/2579).
+The dev.27 `silk.text` inventory provides strict UTF-8 decoding and Unicode
+normalization; `silk.encoding` contains Base64 and UUID, not text codecs.
+There is no Encoding Standard label registry, legacy single-/multibyte decoder
+suite, or replacement-decoding API. This includes windows-1252, GBK/GB18030,
+Big5, EUC-JP, ISO-2022-JP, Shift_JIS and EUC-KR, not merely a missing UTF-8 helper.
+See the [pinned import probe](../compiler-bugs/018-legacy-encoding/README.md).
+`svg_css/src/encoding*.silk` owns label lookup, pinned decoding tables and bounded
+Unicode/legacy replacement decoding. Replace the generic codecs/tables when the
+stdlib supplies equivalent error/reconsumption and output-bound contracts;
+stylesheet protocol/`@charset`/environment fallback selection remains CSS-owned.
+The existing XML request #2563 does not cover this web legacy decoder suite.
+
+For 011–013, dev.27 source inventory establishes the gaps; illustrative import
+names alone do not. Duplicate searches found no covering upstream requests.
+The linked reproducers record observed macOS arm64 results: CSS/encoding import
+checks report `MOD0001`; the real URI probe checks/builds successfully but rejects
+the Unicode-host URL. There is no working stdlib A/B path, so no runtime
+instruction saving is claimed. Local parsing, matching, decoding, normalization
+and storage have real costs; full-renderer measurements do not isolate them.

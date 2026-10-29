@@ -1,0 +1,28 @@
+import silk.option { Option }
+
+pub struct Value {
+  pub code: u64,
+}
+
+fn consume(input: &[u8], base: Option<&Value>) -> u64 {
+  return match &base {
+    Option<&Value>.Some { value } => value.code
+    _ => 0
+  }
+}
+
+pub fn present(base: &Value, input: &[u8]) -> u64 {
+  return consume(input, Option<&Value>.Some { value: base })
+}
+
+pub fn absent(input: &[u8]) -> u64 {
+  return consume(input, Option<&Value>.None)
+}
+
+pub fn main() -> i32 {
+  return if absent(b"") == 0 {
+    0
+  } else {
+    1
+  }
+}

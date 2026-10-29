@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generator": "workloads.py",
-  "generator_sha256": "fe93fbb4ba5f8f4c0da96698e42114ac653d1a464ff077c54a8ec8bd6f61d353",
+  "generator_sha256": "364e7104ff376ec1a8f9a702e77e67d4734177269839f2b61f14f2a20a051b3b",
   "generated_provenance": "Original deterministic SVG geometry authored for this repository; no imported icon or map data.",
   "workloads": {
     "iconset": {
@@ -41,6 +41,13 @@
       "config": {
         "size": 512,
         "grid": 16
+      }
+    },
+    "stylesheets": {
+      "config": {
+        "size": 512,
+        "rows": 32,
+        "columns": 64
       }
     }
   }

@@ -1,0 +1,6 @@
+// Proposed namespace, not an existing or promised API. See README.md.
+import silk.css
+
+pub fn main() -> i32 {
+  return 0
+}

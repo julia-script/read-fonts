@@ -3,6 +3,10 @@ import options { Parsed, Action, ArgumentError }
 import options
 import svg_render.lib { RenderOptions }
 import svg_render.lib as renderer
+import svg_render.native_environment { NativeHost }
+import svg_core.url { Url }
+import svg_core.resources { Resolver, Limits as ResourceLimits }
+import svg_core.resources_native { FileSystem as NativeFileSystem }
 import svg_image.png
 import silk.collections.bytes { Bytes }
 import silk.collections.list { List }
@@ -26,7 +30,7 @@ enum Failure {
 
 const HELP: string<
   'static
-> = "usage: svg_cli input.svg -o output.png [--width N] [--height N] [--zoom Z]\n       svg_cli --help | --version\n\nRender an SVG to a PNG file. Width and height are positive decimal integers;\nzoom is a positive finite decimal number. Omitted dimensions use SVG sizing.\nThe renderer applies its pixel limit after sizing and zoom.\nOptions take separate values and cannot repeat. Use -- before a dash-prefixed\ninput path, or prefix such file paths with ./ (including output paths).\nNo stdin or stdout PNG, external resources, animation or CSS options.\n"
+> = "usage: svg_cli input.svg -o output.png [--width N] [--height N] [--zoom Z]\n       svg_cli --help | --version\n\nRender an SVG to a PNG file. Width and height are positive decimal integers;\nzoom is a positive finite decimal number. Omitted dimensions use SVG sizing.\nThe renderer applies its pixel limit after sizing and zoom.\nOptions take separate values and cannot repeat. Use -- before a dash-prefixed\ninput path, or prefix such file paths with ./ (including output paths).\nStylesheets may use data URLs or files confined to the input directory.\nNo stdin or stdout PNG, network resources, animation or CSS options.\n"
 
 effect fn stderr(text: string) -> ()
   ! WriterError {
@@ -87,7 +91,27 @@ effect fn renderFile(args: &[Bytes], parsed: &Parsed) -> i32
   settings.width = parsed.width
   settings.height = parsed.height
   settings.zoom = parsed.zoom
-  let image = run Effect.mapError(renderer.render(Bytes.asSlice(&data), &settings), renderFailure)
+  let address = run Effect.mapError(Url.fromFilePath(Path.rawBytes(&input)), inputFailure)
+  let parent = run Path.parent(&input)
+  let directory = match &parent {
+    Option<Path>.Some { value } => Path.rawBytes(&value)
+    _ => {
+      fail Failure.Input
+    }
+  }
+  let mut resolver = run Effect.mapError(
+    NativeFileSystem.make(directory, ResourceLimits.defaults()),
+    inputFailure,
+  )
+
+  // The embedding viewport is host policy; intrinsic SVG sizing remains in resolve.
+  let host = run Effect.mapError(NativeHost.make(300.0, 150.0), renderFailure)
+  let environment = host.environment(&address)
+  let image = run Effect.mapError(
+    renderer.render(Bytes.asSlice(&data), &settings, &environment),
+    renderFailure,
+  )
+    |> Effect.provideMut<Resolver>(&mut resolver)
   let encoded = run Effect.mapError(
     png.encodePixels(image.width(), image.height(), image.data()),
     encodeFailure,
@@ -143,7 +167,7 @@ effect fn failedStage(error: Failure) -> i32
   let text = match error {
     Failure.Input => "svg_cli: unable to read input SVG file\n"
     Failure.Output => "svg_cli: unable to write output PNG file\n"
-    Failure.Render => "svg_cli: render failed (invalid SVG, invalid or excessive image size, unsupported perspective, or allocation failure)\n"
+    Failure.Render => "svg_cli: render failed (invalid SVG or host style context, no usable installed serif font, invalid or excessive image size, geometry precision/resource limit, or allocation failure)\n"
     Failure.Encode => "svg_cli: PNG encoding failed (invalid image size or allocation failure)\n"
   }
   run stderr(text)

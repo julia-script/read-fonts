@@ -3,11 +3,13 @@ name = "svg_render"
 version = "0.1.0"
 silk-version = "0.1.0-dev.29+94cf9559bf47"
 kind = "library"
-exports = ["lib", "record"]
+exports = ["lib", "record", "environment", "native_environment"]
 
 [dependencies]
 svg_core = { path = "../svg_core" }
 svg_raster = { path = "../svg_raster" }
 svg_xml = { path = "../svg_xml" }
+svg_css = { path = "../svg_css" }
+read_fonts = { path = "../read_fonts" }
 # CPU output is the backend-owned pixmap; encoding borrows its pixels without a copy.
 vector = { path = "../vendor/silk-gpu/vector" }

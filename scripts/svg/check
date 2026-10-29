@@ -42,6 +42,15 @@ def main():
     clang = os.environ.get("SILK_CLANG", "")
     if not Path(clang).is_absolute() or not Path(clang).is_file():
         parser.error("SILK_CLANG must be the absolute path to Clang 22 or newer (see README)")
+    # Check only SVG tables here, not the font/UCD generators in scripts/generate.
+    generated = ("svg_css/src/encoding_data.silk", "svg_core/src/url_idna_data.silk")
+    for generator in ("encodings", "idna"):
+        run(python, f"scripts/svg/generate-{generator}")
+    run(silk, "format", *generated)
+    changed = subprocess.check_output(
+        ["git", "status", "--porcelain", "--", *generated], cwd=ROOT, text=True)
+    if changed:
+        parser.exit(1, "Generated SVG output differs from the committed files:\n" + changed)
     # Keep compiles serial: the font/shaping dependency closure can be memory-heavy.
     run(silk, "check", "--workspace")
     run(silk, "build", "--manifest-path", vector)
@@ -63,6 +72,9 @@ def main():
     run(binary, "--version")
     run(python, "scripts/svg/reftests", "--suite", "own", "--renderer", json.dumps(renderer),
         "--report", reports / "own.json", "--diff-dir", reports / "own-diffs")
+    run(python, "scripts/svg/reftests", "--suite", "own",
+        "--manifest", "svg_tests/fixtures/css/manifest.json", "--renderer", json.dumps(renderer),
+        "--report", reports / "css.json", "--diff-dir", reports / "css-diffs")
     run(python, "scripts/svg/reftests", "--suite", "own", "--malformed", "--renderer", json.dumps(renderer),
         "--report", reports / "malformed.json", "--diff-dir", reports / "malformed-diffs")
     if not args.skip_fetch:

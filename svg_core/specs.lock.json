@@ -26,6 +26,11 @@
       "resolved": "https://www.w3.org/TR/css-conditional-3/",
       "sha256": "672eb79c78c53b9c92a460ffcfd8718af3c1e38ecf317566d955ffa1df470b35"
     },
+    "css-conditional-3-2022": {
+      "url": "https://www.w3.org/TR/2022/CR-css-conditional-3-20220113/",
+      "resolved": "https://www.w3.org/TR/2022/CR-css-conditional-3-20220113/",
+      "sha256": "83661f96d78a01e99c1bfc94fb870f7e21c9fdba63a4867a6701ab4dcaaa8eb8"
+    },
     "css-fonts-4": {
       "url": "https://www.w3.org/TR/css-fonts-4/",
       "resolved": "https://www.w3.org/TR/css-fonts-4/",
@@ -66,6 +71,11 @@
       "resolved": "https://www.w3.org/TR/css-text-3/",
       "sha256": "17c26f1b41455947f106dac81736944b12da328ee4892c7c5b601f5b65ced55a"
     },
+    "css-text-4": {
+      "url": "https://www.w3.org/TR/css-text-4/",
+      "resolved": "https://www.w3.org/TR/css-text-4/",
+      "sha256": "106c5cd086ab23b0edea5aa3ff6876b61cc623154f728aa269b74f0527dba19d"
+    },
     "css-text-decor-3": {
       "url": "https://www.w3.org/TR/css-text-decor-3/",
       "resolved": "https://www.w3.org/TR/css-text-decor-3/",
@@ -90,6 +100,11 @@
       "url": "https://www.w3.org/TR/css-values-4/",
       "resolved": "https://www.w3.org/TR/css-values-4/",
       "sha256": "7b6b68c34d00d7f6945e66e4e2efa913266299f597d5825393cae85dac1cc78c"
+    },
+    "css-values-4-ed": {
+      "url": "https://drafts.csswg.org/css-values-4/",
+      "resolved": "https://drafts.csswg.org/css-values-4/",
+      "sha256": "26dac2780d37795863209f71d101aec95f3628d6e9affdce1bcb8f5b92ff8315"
     },
     "css-variables-1": {
       "url": "https://www.w3.org/TR/css-variables-1/",
@@ -206,6 +221,16 @@
       "resolved": "https://www.w3.org/TR/2011/REC-CSS2-20110607/visuren.html",
       "sha256": "3f334c530cf450f6964062e5badccc3e9f4fed9589917a0e62c6be10dabc72a4"
     },
+    "cssom": {
+      "url": "https://www.w3.org/TR/cssom/",
+      "resolved": "https://www.w3.org/TR/cssom/",
+      "sha256": "24d77393e4ea56b04570066701d42c9ff6546a6d5e97d433a18cc1deaf6c9cd4"
+    },
+    "encoding": {
+      "url": "https://encoding.spec.whatwg.org/",
+      "resolved": "https://encoding.spec.whatwg.org/",
+      "sha256": "e1421f1791b202717883c452a6267129ce5fb3ca13652e5022a2b6d2a11fc262"
+    },
     "filter-effects-1": {
       "url": "https://www.w3.org/TR/filter-effects-1/",
       "resolved": "https://www.w3.org/TR/filter-effects-1/",
@@ -231,30 +256,50 @@
       "resolved": "https://www.w3.org/TR/mediaqueries-4/",
       "sha256": "41310724809c30304b674442d35e09ec59b0b7b74ba6104bb1d90334953522e0"
     },
+    "mediaqueries-5": {
+      "url": "https://www.w3.org/TR/mediaqueries-5/",
+      "resolved": "https://www.w3.org/TR/mediaqueries-5/",
+      "sha256": "9e761f96f6a9935591264b470bdf5e4c1b5b15874c376b9de70e670171671c95"
+    },
     "png-3": {
       "url": "https://www.w3.org/TR/png-3/",
       "resolved": "https://www.w3.org/TR/png-3/",
       "sha256": "a3ac82bb9eb8664b93961a2a9ff6def3d70e3a9f63d92721143c1f391d04edec"
     },
     "rfc1950": {
-      "url": "https://www.rfc-editor.org/rfc/rfc1950",
-      "resolved": "https://www.rfc-editor.org/info/rfc1950/",
-      "sha256": "eec01f43e7d5771411a35c959e894fb37473bb3fe9a05b073410cff76b61fd2b"
+      "url": "https://www.rfc-editor.org/rfc/rfc1950.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc1950.html",
+      "sha256": "d3c9d031292be13c93f0bacc854b71c1654f8995df4865eb119748592a6a1cc9"
     },
     "rfc1951": {
-      "url": "https://www.rfc-editor.org/rfc/rfc1951",
-      "resolved": "https://www.rfc-editor.org/info/rfc1951/",
-      "sha256": "a11e3b05b0aead9b0b39e1217bc82b3ec81a87cf76821488b65116cdcbd5a1e6"
+      "url": "https://www.rfc-editor.org/rfc/rfc1951.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc1951.html",
+      "sha256": "c9f66817477f02bff589f0afa05a654d730e979930f0e9c2a82644a3ebc7a3e4"
     },
     "rfc1952": {
-      "url": "https://www.rfc-editor.org/rfc/rfc1952",
-      "resolved": "https://www.rfc-editor.org/info/rfc1952/",
-      "sha256": "406a8e27e288330b6b8ba2913956b4d024b2bfd3036c43d46934f592ccf3142a"
+      "url": "https://www.rfc-editor.org/rfc/rfc1952.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc1952.html",
+      "sha256": "fb98ac09af618ee985c5a48798dc874957bf89be1fd4984c8cac57cc84756fb6"
     },
     "rfc2397": {
-      "url": "https://www.rfc-editor.org/rfc/rfc2397",
-      "resolved": "https://www.rfc-editor.org/info/rfc2397/",
-      "sha256": "4e16a5040b2329440b85c1117cd489b3397a2a395f7d7e28f6f8cd56e504ecb0"
+      "url": "https://www.rfc-editor.org/rfc/rfc2397.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc2397.html",
+      "sha256": "f57196bfd10b6f1169453a3705fe444844b83318721fe153fb127fd8d0f5ec3b"
+    },
+    "rfc3492": {
+      "url": "https://www.rfc-editor.org/rfc/rfc3492.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc3492.html",
+      "sha256": "75bd0eacf25e05792356185156060d9861af3ce0c19c4d858f3be905eba28b26"
+    },
+    "rfc5892": {
+      "url": "https://www.rfc-editor.org/rfc/rfc5892.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc5892.html",
+      "sha256": "f933a07a32d7d88a2504fcb06c75a5ead2ea2124b8e9ee20952f78561cf1d388"
+    },
+    "rfc5893": {
+      "url": "https://www.rfc-editor.org/rfc/rfc5893.html",
+      "resolved": "https://www.rfc-editor.org/rfc/rfc5893.html",
+      "sha256": "52b177192747217f1530569d0aaeeced8d06d068ec17ac67566786ae17d63a98"
     },
     "selectors-4": {
       "url": "https://www.w3.org/TR/selectors-4/",
@@ -681,6 +726,11 @@
       "resolved": "https://www.unicode.org/reports/tr9/",
       "sha256": "3c281b38800bad85b16bf3a169b8cb693d8a2dbceb60903feb26e68a2659ee8a"
     },
+    "unicode-uts46": {
+      "url": "https://www.unicode.org/reports/tr46/",
+      "resolved": "https://www.unicode.org/reports/tr46/",
+      "sha256": "c7fa2526acfd49f431ef0473c1278133b6194f6c08ff778b4ce183c8bc221fc4"
+    },
     "url": {
       "url": "https://url.spec.whatwg.org/",
       "resolved": "https://url.spec.whatwg.org/",
@@ -700,6 +750,11 @@
       "url": "https://www.w3.org/TR/xml-names/",
       "resolved": "https://www.w3.org/TR/xml-names/",
       "sha256": "b4a649e5fdab9852d68eca21442481599164949bcdee5549f2ec7e38fb3cd3a8"
+    },
+    "xml-stylesheet": {
+      "url": "https://www.w3.org/TR/xml-stylesheet/",
+      "resolved": "https://www.w3.org/TR/xml-stylesheet/",
+      "sha256": "a0e1a5198a21c2aa4b623fc35b3c890d6e51c6c14ee126aed71cf3b93157515a"
     },
     "xmlbase": {
       "url": "https://www.w3.org/TR/xmlbase/",
