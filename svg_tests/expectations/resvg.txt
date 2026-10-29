@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "suite": "resvg",
+  "cases": [
+    {
+      "id": "shapes/circle/missing-cx-and-cy-attributes",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/circle/missing-cx-attribute",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/circle/missing-cy-attribute",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/circle/missing-r-attribute",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/circle/negative-r-attribute",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/circle/simple-case",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#CircleElement"
+    },
+    {
+      "id": "shapes/rect/invalid-coordinates",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    },
+    {
+      "id": "shapes/rect/invalid-length",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    },
+    {
+      "id": "shapes/rect/missing-height-attribute-processing",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    },
+    {
+      "id": "shapes/rect/missing-width-attribute-processing",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    },
+    {
+      "id": "shapes/rect/negative-height-attribute-processing",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    },
+    {
+      "id": "shapes/rect/negative-width-attribute-processing",
+      "status": "skip",
+      "reason": "Phase 1 has no SVG renderer; fetched reference only, not rendered or evaluated. Enable and triage when phase 2 renders shapes.",
+      "spec": "https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement"
+    }
+  ]
+}

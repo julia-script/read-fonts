@@ -4,3 +4,6 @@
 [submodule "test-data/harfrust"]
 	path = test-data/harfrust
 	url = https://github.com/harfbuzz/harfrust.git
+[submodule "vendor/silk-gpu"]
+	path = vendor/silk-gpu
+	url = https://github.com/julia-script/silk-gpu.git

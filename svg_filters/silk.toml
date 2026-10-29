@@ -1,0 +1,10 @@
+[package]
+name = "svg_filters"
+version = "0.1.0"
+silk-version = "0.1.0-dev.27+323ceb59e7ee"
+kind = "library"
+exports = []
+
+[dependencies]
+svg_geometry = { path = "../svg_geometry" }
+svg_image = { path = "../svg_image" }

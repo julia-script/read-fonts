@@ -1,0 +1,16 @@
+[package]
+name = "svg_core"
+version = "0.1.0"
+silk-version = "0.1.0-dev.27+323ceb59e7ee"
+kind = "library"
+exports = []
+
+[dependencies]
+svg_geometry = { path = "../svg_geometry" }
+svg_xml = { path = "../svg_xml" }
+svg_css = { path = "../svg_css" }
+svg_image = { path = "../svg_image" }
+font_types = { path = "../font_types" }
+read_fonts = { path = "../read_fonts" }
+harfrust = { path = "../harfrust" }
+ucd = { path = "../ucd" }

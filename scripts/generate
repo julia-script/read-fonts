@@ -83,9 +83,12 @@ subprocess.run([str(ROOT / "scripts/generate-unicode-dictionaries")], check=True
 for generator in ("unicode", "machines", "languages", "fixtures", "tests"):
     subprocess.run([str(ROOT / f"scripts/generate-shaping-{generator}")], check=True)
 
-packages = ["font_types", "read_fonts", "font_dump", "font_bench", "ucd", "ucd_dictionary", "ucd_bench", "harfrust", "hr_shape", "hr_wasm"]
-subprocess.run([os.environ.get("SILK", "silk"), "format"] + [str(ROOT / package) for package in packages], check=True,
-               stdout=subprocess.DEVNULL)
+packages = ["font_types", "read_fonts", "font_dump", "font_bench", "ucd", "ucd_dictionary", "ucd_bench", "harfrust", "hr_shape", "hr_wasm",
+            "svg_geometry", "svg_xml", "svg_css", "svg_image", "svg_core", "svg_raster", "svg_filters",
+            "svg_render", "svg_cli", "svg_tests", "svg_bench"]
+for package in packages:
+    subprocess.run([os.environ.get("SILK", "silk"), "format", "--manifest-path",
+                    str(ROOT / package / "silk.toml")], check=True, stdout=subprocess.DEVNULL)
 if args.check:
     changed = subprocess.check_output(["git", "status", "--porcelain", "--"] + packages, cwd=ROOT, text=True)
     if changed:
