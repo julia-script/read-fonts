@@ -17,11 +17,12 @@ fill/stroke/layer commands, the vector CPU executor, PNG encoding and the CLI.
 Local tests and actual rendering results are summarized in [README.md](README.md).
 The first shape-heavy resvg timing baseline is measured, not a parity claim.
 
-Julia authorized local continuation without merging phase 1. The section-level
-checklist still reserves check marks for merged, fully covered requirements:
-partial implementation of a broad item does not complete it. Full conformance,
-paint servers, images, filters, text, animation and ICC remain in scope.
-Pinned documents and fetched corpora are not coverage.
+Phases 1–4 are merged. Phase 5 integrates paint servers, marker pictures, vector
+effects, dash calibration and painting controls. The section-level checklist
+still reserves check marks for merged, fully covered requirements: partial
+implementation of a broad item does not complete it. Images, filters, text,
+animation and ICC remain later work. Pinned documents and fetched corpora are
+not coverage, and the current renderer is not a full-conformance claim.
 
 ### CSS authority and current integration
 
@@ -238,10 +239,11 @@ The table is a register of cases to test, not a claim of complete rendering supp
 |---|---|---|---|
 | `requiredFeatures` / `switch` | Evaluate supported feature strings | Attribute removed; SVG 2 mandates language-priority reordering | SVG 2: ignore `requiredFeatures`; tested conditional selection |
 | `use` instances | Deep-cloned instance model | Shadow trees and different selector matching | SVG 2; tested host inheritance, scoped matching and external templates |
-| Markers on shapes | Paths, lines, polylines, polygons | Markers extended to shapes | SVG 2; phase 5 tests pending |
-| `overflow` on `symbol`, `marker`, `pattern` | Check element and clipping rules | SVG 2 element rules and UA stylesheet | Symbol/viewports tested, including non-scrolling auto; marker/pattern integration follows in phase 5 |
+| Markers on shapes | Paths, lines, polylines, polygons | Markers extended to shapes | SVG 2; equivalent-path vertex/tangent placement, including basic shapes |
+| `overflow` on `symbol`, `marker`, `pattern` | Check element and clipping rules | SVG 2 element rules and UA stylesheet | Viewport and resource-local clips; visible pattern overflow follows the policy below |
 | `symbol` geometry | No SVG 2 geometry properties | `x`, `y`, `width`, `height`, `refX`/`refY` supported | SVG 2; tested used instance dimensions and reference coordinates |
 | `version` | SVG 1.1 version metadata | Ignored in SVG 2 | Retained by XML; ignored by the phase-2 resolver |
+| Radial focal geometry | Focal point constrained to the outer circle | `fr` and two-circle geometry, including external focal circles | SVG 2; explicit shrinking, tangent, coincident and external-cone fixtures |
 
 ### Browser and resvg differences
 
@@ -297,9 +299,101 @@ this profile consistently uses the inverse-normal rule for those matrices.
 
 The checklist's “question 4” means whether CSS Animations join SMIL (ask in
 phase 11). Julia confirmed SVG 2 defaults without a `Profile` API for phase 4.
-Deferred SVG 2 features wait for phase 5, GIF/WebP for phase 7, and ICC depth for
-phase 12. These decisions are not reasons to omit mandatory reference pins.
+For phase 5, Julia deferred mesh gradients, hatches and `solidcolor`; revisit
+them in the optional-feature phase. GIF/WebP wait for phase 7, and ICC depth
+for phase 12. These decisions are not reasons to omit mandatory reference pins.
 HTML/media engines, GPU backends, demos and optional hit testing are not silently added.
+
+### Paint and vector-effect interpretation decisions
+
+The pinned CR's [`vector-effect` host rules](https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#VectorEffectProperty)
+retain `viewport` (the immediate SVG viewport) and `screen` (root content CSS
+pixels, before output scaling). Stroke width, dash lengths and dash offset all
+use the chosen stroke-host coordinate system; see
+[SVGWG issue 323](https://github.com/w3c/svgwg/issues/323).
+
+[SVGWG issue 2448](https://www.w3.org/Graphics/SVG/WG/track/issues/2448)
+leaves vector effects inside patterns and markers undefined. Effects on their
+contents use the resource's local drawing surface as their host, before the
+resource-placement transform. This makes a pattern a repeatable paint rather
+than a different drawing at every repetition. This does **not** create a new
+SVG viewport for percentage lengths: the pinned
+[`ElementsThatEstablishViewports`](https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#ElementsThatEstablishViewports)
+explicitly excludes patterns and markers, even with `viewBox`. Their
+attribute-specific percentage rules (for example marker reference points)
+still apply. Separately, a non-scaling stroke on the **marked shape** makes
+its `markerUnits="strokeWidth"` markers use that shape's stroke-host space.
+
+For an exactly antiparallel marker join, choose the incoming tangent rotated
+clockwise by 90 degrees; the bisector is otherwise ambiguous
+([SVGWG issue 333](https://github.com/w3c/svgwg/issues/333)).
+
+For `overflow:visible` patterns, render every overlapping tile permitted by
+the resource limits, left-to-right within top-to-bottom rows. Do not truncate
+overflow to the eight neighboring tiles. This follows the encouragement in
+[`PatternNotes`](https://www.w3.org/TR/2018/CR-SVG2-20181004/pservers.html#PatternNotes)
+while its normative result remains unresolved
+([SVGWG issue 129](https://github.com/w3c/svgwg/issues/129)).
+
+Pattern definitions retain a resource-local drawing, an origin-zero physical tile
+and conservative painted-content bounds. Their handles address the owning
+render tree/display list's shared path, paint, dash and clip arenas; backend
+textures are not public scene data. Bounds include strokes, non-scaling strokes,
+markers and nested pictures. A finite two-axis tile clip bounds even an
+unbounded positive-w centerline without requiring its unclipped bounds. Legacy
+`clip` may retain overflow outside the physical tile. A valid empty resource
+paints nothing; it neither selects URL fallback paint nor allocates a texture.
+
+The CPU executor caches native textures by resource and adequate sampling size,
+uses a conservative projective Jacobian bound over the finite destination, and
+wraps every bilinear sample tap. `RenderOptions.maxPixels` also caps cumulative
+cached pattern pixels; the occurrence budget caps repeated picture-command work.
+Combined temporary-surface limits and active-resource checks still apply.
+Excessive dimensions, overflow copies or nested allocations fail explicitly,
+rather than lowering sampling quality or silently dropping tiles.
+
+[`pathLength`](https://www.w3.org/TR/2018/CR-SVG2-20181004/paths.html#PathLengthAttribute)
+is non-inherited geometry metadata. Invalid or negative values are unspecified.
+Absolute distance terms in dash math are calibrated in the stroke's coordinate
+space; percentage distances retain their nearest SVG viewport basis, including
+inside mixed `calc()` expressions. Dimensionless ratios are not distances.
+Normal strokes measure source geometry; non-scaling strokes measure the chosen
+host centerline, before output zoom. Metrics cover every contour and close
+segment and are cached by path/host mapping. The native measurement reports its
+certified uncertainty; calibration refines it to at most `0.0001` coordinate
+units and one part per million of the certified lower length bound. This keeps
+tiny source paths accurate when magnified without coupling the metric to output
+zoom. A zero estimate with nonzero uncertainty is refined, not treated as empty.
+At most eight metric calls are permitted; unbounded projective length, underflow,
+or unattainable precision (including extremely small returning curves) produces
+`InvalidGeometry` rather than an uncalibrated or incorrectly solid stroke.
+
+For author length zero, follow the positive-scale limit described by
+[SVGWG issue 81](https://github.com/w3c/svgwg/issues/81) and
+[issue 383](https://github.com/w3c/svgwg/issues/383): zero distances stay zero,
+positive absolute distances become infinite, and percentages stay finite.
+Resolve the periodic offset before taking limits, so an offset of one complete
+period does not become `Infinity/Infinity`. Keep finite prefix intervals and cap
+transitions; replace only a terminal infinite interval with a guard beyond the
+entire measured path. Do not approximate zero with an arbitrary small author
+length. An infinite offset against a finite percentage-only period uses the
+largest finite representable position permitted by issue 81.
+
+The zero-author evaluator limits polynomial degree to 64 and coefficient work to
+131,072 operations. Unrepresentable coefficient arithmetic is an explicit
+numeric refusal, not rounded phase selection; for example `(2^53+1)S` must not
+silently become `2^53 S`. An unbounded period quotient has no limiting phase;
+quotients beyond exact integer selection (`2^52`) also fail explicitly.
+Signed zero and NaN remain internal CSS math values until the outer used-value
+boundary; division by negative zero must not select the positive-infinity
+`min()`/`max()` branch.
+
+`color-interpolation:linearRGB` controls both gradient interpolation and alpha
+compositing, including opacity groups; output storage remains premultiplied
+sRGB RGBA8. Context paint exists only for actual `use`/marker membership, not
+merely because an element references a paint server. Rendering-hint parsing
+remains separate from image/text consumers in their later implementation phases.
+
 
 ## Section-level coverage checklist
 

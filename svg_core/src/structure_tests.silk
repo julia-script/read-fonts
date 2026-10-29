@@ -237,11 +237,8 @@ test effect fn instancesUseIncludingModeAndRedirectAliasesAreCached() -> ()
     if item.source.document.index == 1
       && equal(Document.localName(&external.document, item.source.node), b"use") {
       run Testing.expect(
-        match &item.shadow {
-          Option<OccurrenceId>.Some { value } => true
-          _ => false
-        },
-        "cloned instances may load additional resources in the including document's mode",
+        item.shadow.isSome() == graph.scopes.asSlice()[item.scope].host.isSome(),
+        "cloned instances retain including mode while ordinary source references stay secure",
       )
     }
     i = i + 1
@@ -601,7 +598,7 @@ test effect fn cloneXmlBaseCannotChangeIncludingOrigin() -> ()
     }
     i = i + 1
   }
-  run Testing.expect(nested == 1, "nested source use remains represented")
+  run Testing.expect(nested == 2, "ordinary source and cloned use both remain represented")
 }
 
 struct OriginRedirectHost {

@@ -1322,7 +1322,9 @@ fn maximum(a: f64, b: f64) -> f64 {
   }
 }
 
-fn evaluateTree(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
+/// Evaluates canonical units without censoring NaN or signed zero. Consumers
+/// composing further numeric operations must defer censorship to their boundary.
+pub fn evaluateUncensored(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
   return match &store.get(id).* {
     Expr.Literal { value, unit: unitValue } => {
       if unitValue == Unit.Percent {
@@ -1330,9 +1332,9 @@ fn evaluateTree(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
       }
       return converted(value, unitValue, absoluteFactor(unitValue))
     }
-    Expr.Calc { value } => evaluateTree(store, value, percentageBasis)
+    Expr.Calc { value } => evaluateUncensored(store, value, percentageBasis)
     Expr.PercentContext { value, percentage } => {
-      let result = evaluateTree(store, value, 100.0)
+      let result = evaluateUncensored(store, value, 100.0)
       return if percentage {
         result * 0.01 * percentageBasis
       } else {
@@ -1340,8 +1342,8 @@ fn evaluateTree(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
       }
     }
     Expr.Binary { operation, left, right } => {
-      let a = evaluateTree(store, left, percentageBasis)
-      let b = evaluateTree(store, right, percentageBasis)
+      let a = evaluateUncensored(store, left, percentageBasis)
+      let b = evaluateUncensored(store, right, percentageBasis)
       return match operation {
         Operation.Add => a + b
         Operation.Subtract => a - b
@@ -1358,7 +1360,7 @@ fn evaluateTree(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
 /// font/viewport units. Absolute-only trees (including color angles) need no context.
 /// NaN and negative zero censor to positive zero only at the outermost boundary.
 pub fn evaluate(store: &Store, id: ExprId, percentageBasis: f64) -> f64 {
-  let value = evaluateTree(store, id, percentageBasis)
+  let value = evaluateUncensored(store, id, percentageBasis)
   if value != value || value == 0.0 {
     return 0.0
   }

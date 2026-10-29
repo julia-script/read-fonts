@@ -5,7 +5,7 @@ import svg_core.stylesheets { Catalog }
 import svg_core.resources { Resolver }
 import svg_core.url { Url }
 import svg_core.scene { RenderError }
-import svg_core.structure { Options as StructureOptions, Graph }
+import svg_core.structure { Options as StructureOptions, Graph, StructureError }
 import svg_core.view_selection
 import svg_css.computed { HostContext, ComputedError }
 import svg_css.media_features { Environment as MediaEnvironment }
@@ -162,8 +162,8 @@ effect fn systemFont(catalog: &mut Catalog, source: &[u8], limits: &Limits) -> T
   }
 }
 
-effect fn compute(graph: &Graph, environment: &Environment) -> StyledGraph
-  ! CssError | ComputedError | RenderError | OutOfMemoryError
+effect fn compute(graph: &mut Graph, environment: &Environment) -> StyledGraph
+  ! CssError | ComputedError | StructureError | RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
   run validate(environment)
   let mut catalog = run Catalog.make()
@@ -212,18 +212,19 @@ effect fn compute(graph: &Graph, environment: &Environment) -> StyledGraph
     }
   }
   let selection = run view_selection.select(
-    graph,
+    &graph.*,
     fragment,
     &mut catalog.engine.values,
     &environment.cssLimits,
   )
   return run document_styles.buildGraph(
-    graph,
+    &mut graph.*,
     move catalog,
     &host,
     &environment.media,
     move selection,
     &environment.cssLimits,
+    &environment.structure,
   )
 }
 
@@ -239,11 +240,29 @@ effect fn contextFailure(error: ComputedError) -> StyledGraph
   fail RenderError.InvalidStyleContext
 }
 
-pub effect fn styles(graph: &Graph, environment: &Environment) -> StyledGraph
+effect fn structureFailure(error: StructureError) -> StyledGraph
+  ! RenderError {
+  match error {
+    StructureError.InvalidXml => {
+      fail RenderError.InvalidXml
+    }
+    StructureError.InvalidRoot => {
+      fail RenderError.InvalidRoot
+    }
+    StructureError.TooLarge => {
+      fail RenderError.TooLarge
+    }
+  }
+}
+
+pub effect fn styles(graph: &mut Graph, environment: &Environment) -> StyledGraph
   ! RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
-  return run Effect.catch<ComputedError>(
-    Effect.catch<CssError>(compute(graph, environment), cssFailure),
-    contextFailure,
+  return run Effect.catch<StructureError>(
+    Effect.catch<ComputedError>(
+      Effect.catch<CssError>(compute(&mut graph.*, environment), cssFailure),
+      contextFailure,
+    ),
+    structureFailure,
   )
 }

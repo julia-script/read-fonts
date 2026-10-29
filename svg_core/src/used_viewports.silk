@@ -150,7 +150,7 @@ effect fn dimension(
 // (<length>) than its percentage-keyword prose and the linked marker grammar.
 // Accept the complete number/length/percentage grammar, including CSS math.
 // Percentages/keywords use the extent, NOT viewBox min + extent * fraction.
-effect fn parseReference(
+pub effect fn parseReference(
   bytes: &[u8],
   horizontal: bool,
   numerics: &mut NumericStore,
@@ -305,9 +305,12 @@ effect fn clipsAxis(engine: &Engine, style: StyleId, property: Property) -> bool
 // The static renderer has no scrolling mechanism: SVG2 auto must be visible.
 // Overflow clips physical extents; legacy clip rectangles are user-space values.
 // These mappings contain only positive scale/translation, never a CSS transform.
-effect fn clipping(engine: &Engine, style: StyleId, physical: Rect, mapping: Transform) -> Option<
-  Clip
->
+pub effect fn clipping(
+  engine: &Engine,
+  style: StyleId,
+  physical: Rect,
+  mapping: Transform,
+) -> Option<Clip>
   ! RenderError {
   // Engine already performs CSS computed-value cross-axis coupling. SVG's
   // non-scrolling auto behavior applies afterward, independently per axis.

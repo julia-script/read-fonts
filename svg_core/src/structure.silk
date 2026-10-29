@@ -25,7 +25,8 @@ import svg_xml.xml {
 }
 import svg_css.tokens { equal, insensitive }
 import silk.collections.bytes { Bytes }
-import silk.collections.hash { Hash }
+import silk.collections.hash { Hash, HashKey, HashSeed }
+import silk.collections.hash_map { HashMap }
 import silk.collections.list { List }
 import silk.core.effect { Effect }
 import silk.core.ownership { Copy }
@@ -139,8 +140,7 @@ impl Order for IdEntry {
 
 struct Reference {
   url: Option<usize>,
-  resolved: bool,
-  target: Option<SourceId>,
+  // The URL is source-local; authorization and targets are occurrence-local.
 }
 
 impl Copy for Reference {}
@@ -152,6 +152,7 @@ pub struct SourceDocument {
   pub policy: Policy,
   ids: List<IdEntry>,
   references: List<Reference>,
+  ordinaryScope: Option<usize>,
 }
 
 pub struct Occurrence {
@@ -174,6 +175,7 @@ pub struct Scope {
   pub root: OccurrenceId,
   pub document: DocumentId,
   pub depth: usize,
+  pub policy: Policy,
 }
 
 impl Copy for Scope {}
@@ -191,10 +193,60 @@ pub struct Graph {
   pub occurrences: List<Occurrence>,
   pub scopes: List<Scope>,
   pub root: OccurrenceId,
+  pub limits: Limits,
   cache: List<CachedDocument>,
   totalBytes: usize,
   urlBytes: usize,
   requests: usize,
+  templates: HashMap<usize, SourceId>,
+  referenceTargets: HashMap<ReferenceKey, Option<SourceId>>,
+  lookup: HashMap<ScopedSource, OccurrenceId>,
+  indexed: usize,
+  expanded: usize,
+}
+
+struct ScopedSource {
+  scope: usize,
+  document: usize,
+  node: usize,
+}
+
+impl Copy for ScopedSource {}
+
+impl HashKey for ScopedSource {
+  fn equals(a: &Self, b: &Self) -> bool {
+    return a.scope == b.scope && a.document == b.document && a.node == b.node
+  }
+
+  fn hash(value: &Self, seed: &HashSeed) -> u64 {
+    return Hash.combine(
+      Hash.combine(Hash.mix(seed, usize.toU64(value.scope)), usize.toU64(value.document)),
+      usize.toU64(value.node),
+    )
+  }
+}
+
+struct ReferenceKey {
+  request: usize,
+  mode: ProcessingMode,
+}
+
+impl Copy for ReferenceKey {}
+
+impl HashKey for ReferenceKey {
+  fn equals(a: &Self, b: &Self) -> bool {
+    return a.request == b.request && a.mode == b.mode
+  }
+
+  fn hash(value: &Self, seed: &HashSeed) -> u64 {
+    let mode: u64 = match value.mode {
+      ProcessingMode.Static => 0
+      ProcessingMode.Animated => 1
+      ProcessingMode.SecureStatic => 2
+      ProcessingMode.SecureAnimated => 3
+    }
+    return Hash.combine(Hash.mix(seed, usize.toU64(value.request)), mode)
+  }
 }
 
 fn fingerprint(text: &[u8]) -> u64 {
@@ -309,6 +361,7 @@ effect fn addDocument(
     policy: policy,
     ids: List<IdEntry>.make(),
     references: List<Reference>.make(),
+    ordinaryScope: Option<usize>.None,
   }
   let mut i: usize = 0
   while i < Document.nodes(&source.document).length {
@@ -359,12 +412,9 @@ effect fn addDocument(
       }
     }
     run source.nodeBases.append(nodeBase)
-    let mut reference = Reference {
-      url: Option<usize>.None,
-      resolved: false,
-      target: Option<SourceId>.None,
-    }
-    if svg(&source.document, node) && equal(Document.localName(&source.document, node), b"use") {
+    let mut reference = Reference { url: Option<usize>.None }
+    let name = Document.localName(&source.document, node)
+    if svg(&source.document, node) && (equal(name, b"use") || paintServer(name)) {
       let href = match Document.attribute(&source.document, node, b"", b"href") {
         Option<&[u8]>.Some { value } => Option<&[u8]>.Some { value: value }
         _ => Document.attribute(&source.document, node, b"http://www.w3.org/1999/xlink", b"href")
@@ -554,7 +604,9 @@ effect fn externalDocument(
         if value == ResourceError.TooLarge {
           fail StructureError.TooLarge
         }
-        run graph.cache.append(CachedDocument { url: request, document: Option<DocumentId>.None })
+        if value != ResourceError.BlockedLocation {
+          run graph.cache.append(CachedDocument { url: request, document: Option<DocumentId>.None })
+        }
         return Option<DocumentId>.None
       }
       OutOfMemoryError value => {
@@ -670,18 +722,36 @@ effect fn referenceTarget(
 ) -> Option<SourceId>
   ! StructureError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
-  let reference = &graph.documents.asSlice()[source.document.index].references.asSlice()[source.node.index]
-  if reference.resolved {
-    return reference.target
-  }
-  let request = match reference.url {
+  let request = match graph.documents.asSlice()[source.document.index].references.asSlice()[source.node.index].url {
     Option<usize>.Some { value } => value
     _ => {
       return Option<SourceId>.None
     }
   }
-  let base = graph.documents.asSlice()[source.document.index].base
-  let mut targetDocument = Option<DocumentId>.Some { value: source.document }
+
+  // A source reference has a stable base and URL. Scope modes remain distinct:
+  // secure denial neither poisons nor authorizes an including-document clone.
+  let key = ReferenceKey { request: request, mode: policy.mode }
+  let cached: Option<Option<SourceId>> = graph.referenceTargets.get(key)
+  if let Option<Option<SourceId>>.Some { value } = cached {
+    return value
+  }
+  let target = run addressTarget(&mut graph.*, source.document, request, policy, limits)
+  drop run graph.referenceTargets.insert(key, target)
+  return target
+}
+
+effect fn addressTarget(
+  graph: &mut Graph,
+  document: DocumentId,
+  request: usize,
+  policy: Policy,
+  limits: &Limits,
+) -> Option<SourceId>
+  ! StructureError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  let base = graph.documents.asSlice()[document.index].base
+  let mut targetDocument = Option<DocumentId>.Some { value: document }
   if !equal(
     Url.withoutFragment(&graph.urls.asSlice()[request]),
     Url.withoutFragment(&graph.urls.asSlice()[base]),
@@ -693,7 +763,7 @@ effect fn referenceTarget(
       let entry = &graph.cache.asSlice()[i]
       match entry.document {
         Option<DocumentId>.Some { value } => {
-          if value.index == source.document.index
+          if value.index == document.index
             && equal(
               Url.withoutFragment(&graph.urls.asSlice()[request]),
               Url.withoutFragment(&graph.urls.asSlice()[entry.url]),
@@ -757,9 +827,6 @@ effect fn referenceTarget(
     }
     _ => {}
   }
-  let cached = &mut graph.documents.asMutSlice()[source.document.index].references.asMutSlice()[source.node.index]
-  cached.resolved = true
-  cached.target = target
   return target
 }
 
@@ -843,10 +910,16 @@ pub effect fn build(data: &[u8], base: &Url, options: &Options) -> Graph
     occurrences: List<Occurrence>.make(),
     scopes: List<Scope>.make(),
     root: OccurrenceId { index: 0 },
+    limits: options.limits,
     cache: List<CachedDocument>.make(),
     totalBytes: data.length,
     urlBytes: 0,
     requests: 0,
+    templates: HashMap<usize, SourceId>.make(Hash.seed(0)),
+    referenceTargets: HashMap<ReferenceKey, Option<SourceId>>.make(Hash.seed(0)),
+    lookup: HashMap<ScopedSource, OccurrenceId>.make(Hash.seed(0)),
+    indexed: 0,
+    expanded: 0,
   }
   if Url.bytes(base).length > options.limits.maxUrlBytes {
     fail StructureError.TooLarge
@@ -863,117 +936,397 @@ pub effect fn build(data: &[u8], base: &Url, options: &Options) -> Graph
   run graph.cache.append(
     CachedDocument { url: 0, document: Option<DocumentId>.Some { value: documentId } },
   )
+  run ordinaryRoot(&mut graph, documentId, 0, options)
+  run expand(&mut graph, options)
+  return move graph
+}
+
+fn paintServer(name: &[u8]) -> bool {
+  return equal(name, b"linearGradient") || equal(name, b"radialGradient") || equal(name, b"pattern")
+}
+
+fn compatible(graph: &Graph, host: SourceId, target: SourceId) -> bool {
+  let document = graph.sourceDocument(target)
+  if !svg(document, target.node) {
+    return false
+  }
+  let name = Document.localName(document, target.node)
+  let hostName = Document.localName(graph.sourceDocument(host), host.node)
+  return if equal(hostName, b"pattern") {
+    equal(name, b"pattern")
+  } else {
+    equal(name, b"linearGradient") || equal(name, b"radialGradient")
+  }
+}
+
+fn hasContent(graph: &Graph, source: SourceId) -> bool {
+  let document = graph.sourceDocument(source)
+  let mut child = Document.firstChild(document, source.node)
+  while let Option<NodeId>.Some { value } = child {
+    if Document.nodes(document)[value.index].kind == NodeKind.Element {
+      let name = Document.localName(document, value)
+      if !svg(document, value)
+        || !(equal(name, b"desc") || equal(name, b"title") || equal(name, b"metadata")) {
+        return true
+      }
+    }
+    child = Document.nextSibling(document, value)
+  }
+  return false
+}
+
+effect fn ordinaryRoot(
+  graph: &mut Graph,
+  document: DocumentId,
+  depth: usize,
+  options: &Options,
+) -> ()
+  ! StructureError | OutOfMemoryError
+  ? &mut Allocator {
+  if graph.documents.asSlice()[document.index].ordinaryScope.isSome() {
+    return
+  }
+  let scope = graph.scopes.length()
+  let source = SourceId {
+    document: document,
+    node: Document.root(&graph.documents.asSlice()[document.index].document),
+  }
   let config = Config {
     languages: options.languages,
     supportedExtensions: options.supportedExtensions,
   }
-  let source = SourceId {
-    document: documentId,
-    node: Document.root(&graph.documents.asSlice()[0].document),
-  }
   let eligible = qualifies(graph.sourceDocument(source), source.node, &config)
   let root = run appendOccurrence(
-    &mut graph,
+    &mut graph.*,
     source,
     Option<OccurrenceId>.None,
-    0,
+    scope,
     false,
     eligible,
     &options.limits,
   )
+  let policy = graph.documents.asSlice()[document.index].policy
   run graph.scopes.append(
-    Scope { host: Option<OccurrenceId>.None, root: root, document: documentId, depth: 0 },
+    Scope {
+      host: Option<OccurrenceId>.None,
+      root: root,
+      document: document,
+      depth: depth,
+      policy: policy,
+    },
   )
-  let mut index: usize = 0
-  while index < graph.occurrences.length() {
-    let host = OccurrenceId { index: index }
-    let source = graph.occurrences.asSlice()[index].source
-    let containingScope = graph.occurrences.asSlice()[index].scope
-    let switch = svg(graph.sourceDocument(source), source.node)
-      && equal(Document.localName(graph.sourceDocument(source), source.node), b"switch")
-    let selected = if switch {
-      selectSwitchChild(graph.sourceDocument(source), source.node, &config)
-    } else {
-      Option<NodeId>.None
-    }
-    let mut child = Document.firstChild(graph.sourceDocument(source), source.node)
-    let mut previous: Option<OccurrenceId> = Option<OccurrenceId>.None
-    while true {
-      let node = match child {
-        Option<NodeId>.Some { value } => value
+  let mut documents = graph.documents.asMutSlice()
+  documents[document.index].ordinaryScope = Option<usize>.some(scope)
+}
+
+effect fn children(
+  graph: &mut Graph,
+  host: OccurrenceId,
+  source: SourceId,
+  scope: usize,
+  shadow: bool,
+  options: &Options,
+) -> Option<OccurrenceId>
+  ! StructureError | OutOfMemoryError
+  ? &mut Allocator {
+  let config = Config {
+    languages: options.languages,
+    supportedExtensions: options.supportedExtensions,
+  }
+  let switch = svg(graph.sourceDocument(source), source.node)
+    && equal(Document.localName(graph.sourceDocument(source), source.node), b"switch")
+  let selected = if switch {
+    selectSwitchChild(graph.sourceDocument(source), source.node, &config)
+  } else {
+    Option<NodeId>.None
+  }
+  let mut child = Document.firstChild(graph.sourceDocument(source), source.node)
+  let mut first = Option<OccurrenceId>.None
+  let mut previous = Option<OccurrenceId>.None
+  while let Option<NodeId>.Some { value: node } = child {
+    child = Document.nextSibling(graph.sourceDocument(source), node)
+    if Document.nodes(graph.sourceDocument(source))[node.index].kind == NodeKind.Element {
+      let mut eligible = qualifies(graph.sourceDocument(source), node, &config)
+      if switch {
+        eligible = eligible
+          && match &selected {
+            Option<NodeId>.Some { value } => value.index == node.index
+            _ => false
+          }
+      }
+      let id = run appendOccurrence(
+        &mut graph.*,
+        SourceId { document: source.document, node: node },
+        Option<OccurrenceId>.some(host),
+        scope,
+        shadow,
+        eligible,
+        &options.limits,
+      )
+      let mut entries = graph.occurrences.asMutSlice()
+      entries[id.index].previousSibling = previous
+      match previous {
+        Option<OccurrenceId>.Some { value } => {
+          entries[value.index].nextSibling = Option<OccurrenceId>.some(id)
+        }
         _ => {
-          break
+          first = Option<OccurrenceId>.some(id)
         }
       }
-      child = Document.nextSibling(graph.sourceDocument(source), node)
-      if Document.nodes(graph.sourceDocument(source))[node.index].kind == NodeKind.Element {
-        let mut eligible = qualifies(graph.sourceDocument(source), node, &config)
-        if switch {
-          eligible = eligible
-            && match selected {
-              Option<NodeId>.Some { value } => value.index == node.index
-              _ => false
+      previous = Option<OccurrenceId>.some(id)
+    }
+  }
+  return first
+}
+
+// Raw reference closure precedes all style computation, including :host matching.
+pub effect fn expand(graph: &mut Graph, options: &Options) -> ()
+  ! StructureError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  while graph.expanded < graph.occurrences.length() {
+    let index = graph.expanded
+    let previousDocuments = graph.documents.length()
+    let host = OccurrenceId { index: index }
+    let occurrence = graph.occurrences.asSlice()[index]
+    let scope = graph.scopes.asSlice()[occurrence.scope]
+    let source = occurrence.source
+    let light = run children(&mut graph.*, host, source, occurrence.scope, false, options)
+    let mut entries = graph.occurrences.asMutSlice()
+    entries[index].firstChild = light
+    drop entries
+    let isPaint = svg(graph.sourceDocument(source), source.node)
+      && paintServer(Document.localName(graph.sourceDocument(source), source.node))
+    let target = run referenceTarget(&mut graph.*, source, scope.policy, &options.limits)
+    if let Option<SourceId>.Some { value } = target {
+      if !active(&graph.*, host, value) && (!isPaint || compatible(&graph.*, source, value)) {
+        if scope.depth >= options.limits.maxReferenceDepth {
+          fail StructureError.TooLarge
+        }
+        if isPaint {
+          let ignored = run graph.templates.insert(index, value)
+          drop ignored
+        }
+        let mut content = Option<SourceId>.some(value)
+        if isPaint {
+          let needsContent = !hasContent(&graph.*, source)
+          content = Option<SourceId>.None
+          let mut chain = List<SourceId>.make()
+          run chain.append(source)
+          let mut current = value
+          let mut contentDepth = usize.MAX
+          while true {
+            let mut cycleStart = usize.MAX
+            let mut j: usize = 0
+            while j < chain.length() {
+              let seen = chain.asSlice()[j]
+              if seen.document.index == current.document.index
+                && seen.node.index == current.node.index {
+                cycleStart = j
+              }
+              j = j + 1
             }
-        }
-        let childId = run appendOccurrence(
-          &mut graph,
-          SourceId { document: source.document, node: node },
-          Option<OccurrenceId>.Some { value: host },
-          containingScope,
-          false,
-          eligible,
-          &options.limits,
-        )
-        let mut entries = graph.occurrences.asMutSlice()
-        entries[childId.index].previousSibling = previous
-        match previous {
-          Option<OccurrenceId>.Some { value } => {
-            entries[value.index].nextSibling = Option<OccurrenceId>.Some { value: childId }
+            if cycleStart != usize.MAX {
+              // Only references that lead back to their own source are invalid.
+              // An incoming edge may still use the cycle entry's own attributes
+              // and children, but not content beyond its invalid href.
+              if cycleStart == 0 {
+                let ignored = graph.templates.remove(index)
+                drop ignored
+              }
+              if contentDepth > cycleStart {
+                content = Option<SourceId>.None
+              }
+              break
+            }
+            if chain.length() > options.limits.maxReferenceDepth - scope.depth {
+              fail StructureError.TooLarge
+            }
+            if needsContent && content.isNone() && hasContent(&graph.*, current) {
+              content = Option<SourceId>.some(current)
+              contentDepth = chain.length()
+            }
+            run chain.append(current)
+
+            // A referenced external template is processed securely; only the
+            // children subsequently cloned into the host regain its policy.
+            let policy = if current.document.index == source.document.index {
+              scope.policy
+            } else {
+              graph.documents.asSlice()[current.document.index].policy
+            }
+            let next = run referenceTarget(&mut graph.*, current, policy, &options.limits)
+            match next {
+              Option<SourceId>.Some { value: nextSource } => {
+                if !compatible(&graph.*, current, nextSource) {
+                  break
+                }
+                current = nextSource
+              }
+              _ => {
+                break
+              }
+            }
           }
-          _ => {
-            entries[index].firstChild = Option<OccurrenceId>.Some { value: childId }
+        }
+        if let Option<SourceId>.Some { value: contentSource } = content {
+          let inner = graph.scopes.length()
+          let shadow = if isPaint {
+            run children(&mut graph.*, host, contentSource, inner, true, options)
+          } else {
+            let config = Config {
+              languages: options.languages,
+              supportedExtensions: options.supportedExtensions,
+            }
+            let eligible = qualifies(
+              graph.sourceDocument(contentSource),
+              contentSource.node,
+              &config,
+            )
+            let instance = run appendOccurrence(
+              &mut graph.*,
+              contentSource,
+              Option<OccurrenceId>.some(host),
+              inner,
+              true,
+              eligible,
+              &options.limits,
+            )
+            Option<OccurrenceId>.Some { value: instance }
+          }
+          if let Option<OccurrenceId>.Some { value: root } = shadow {
+            run graph.scopes.append(
+              Scope {
+                host: Option<OccurrenceId>.some(host),
+                root: root,
+                document: contentSource.document,
+                depth: scope.depth + 1,
+                policy: scope.policy,
+              },
+            )
+            let mut entries = graph.occurrences.asMutSlice()
+            entries[index].shadow = shadow
           }
         }
-        previous = Option<OccurrenceId>.Some { value: childId }
       }
     }
 
-    // SVG2 #referencing-modes: source templates are secure static, but cloned
-    // instances may request resources in the including document's mode.
-    let target = run referenceTarget(&mut graph, source, options.policy, &options.limits)
-    match target {
-      Option<SourceId>.Some { value } => {
-        if !active(&graph, host, value) {
-          let depth = graph.scopes.asSlice()[containingScope].depth
-          if depth >= options.limits.maxReferenceDepth {
-            fail StructureError.TooLarge
-          }
-          let scope = graph.scopes.length()
-          let eligible = qualifies(graph.sourceDocument(value), value.node, &config)
-          let shadow = run appendOccurrence(
-            &mut graph,
-            value,
-            Option<OccurrenceId>.Some { value: host },
-            scope,
-            true,
-            eligible,
-            &options.limits,
-          )
-          run graph.scopes.append(
-            Scope {
-              host: Option<OccurrenceId>.Some { value: host },
-              root: shadow,
-              document: value.document,
-              depth: depth + 1,
-            },
-          )
-          let mut entries = graph.occurrences.asMutSlice()
-          entries[index].shadow = Option<OccurrenceId>.Some { value: shadow }
+    // External source definitions have their own ordinary ancestor/style context.
+    let mut document = previousDocuments
+    while document < graph.documents.length() {
+      if graph.documents.asSlice()[document].ordinaryScope.isNone() {
+        if scope.depth >= options.limits.maxReferenceDepth {
+          fail StructureError.TooLarge
         }
+        run ordinaryRoot(&mut graph.*, DocumentId { index: document }, scope.depth + 1, options)
       }
-      _ => {}
+      document = document + 1
     }
-    index = index + 1
+    graph.expanded = index + 1
   }
-  return move graph
+}
+
+impl Graph {
+  pub fn templateSource(self: &Self, node: OccurrenceId) -> Option<SourceId> {
+    return self.templates.get(node.index)
+  }
+
+  // Built only when a resolved resource needs occurrence identity; each new entry
+  // is indexed once, never rescanned for each URL on a shape.
+  pub effect fn occurrence(self: &mut Self, consumer: OccurrenceId, source: SourceId) -> Option<
+    OccurrenceId
+  >
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    while self.indexed < self.occurrences.length() {
+      let i = self.indexed
+      let entry = self.occurrences.asSlice()[i]
+      let ignored = run self.lookup.insert(
+        ScopedSource {
+          scope: entry.scope,
+          document: entry.source.document.index,
+          node: entry.source.node.index,
+        },
+        OccurrenceId { index: i },
+      )
+      drop ignored
+      self.indexed = i + 1
+    }
+    let scope = self.occurrences.asSlice()[consumer.index].scope
+    let found: Option<OccurrenceId> = self.lookup.get(
+      ScopedSource { scope: scope, document: source.document.index, node: source.node.index },
+    )
+    if found.isSome() {
+      return found
+    }
+    let ordinary = match self.documents.asSlice()[source.document.index].ordinaryScope {
+      Option<usize>.Some { value } => value
+      _ => {
+        return Option<OccurrenceId>.None
+      }
+    }
+    return self.lookup.get(
+      ScopedSource { scope: ordinary, document: source.document.index, node: source.node.index },
+    )
+  }
+}
+
+pub effect fn resolveResource(
+  graph: &mut Graph,
+  consumer: OccurrenceId,
+  declarationDocument: Option<&Url>,
+  declarationBase: Option<&Url>,
+  reference: &[u8],
+  options: &Options,
+) -> Option<OccurrenceId>
+  ! StructureError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  let occurrence = graph.occurrences.asSlice()[consumer.index]
+  let scope = graph.scopes.asSlice()[occurrence.scope]
+  let sourceDocument = &graph.documents.asSlice()[occurrence.source.document.index]
+  let documentBase = match &declarationDocument {
+    Option<&Url>.Some { value } => value
+    _ => &graph.urls.asSlice()[sourceDocument.base]
+  }
+  let urlBase = match &declarationBase {
+    Option<&Url>.Some { value } => value
+    _ => &graph.urls.asSlice()[sourceDocument.nodeBases.asSlice()[occurrence.source.node.index]]
+  }
+  let base = if reference.length > 0 && reference[0] == 35 {
+    documentBase
+  } else {
+    urlBase
+  }
+  let address = run resolved(base, reference)
+
+  // Fragment-only URLs retain the declaring source document, even when inherited.
+  let mut document = occurrence.source.document
+  let mut i: usize = 0
+  while i < graph.documents.length() {
+    if equal(
+      Url.withoutFragment(documentBase),
+      Url.withoutFragment(&graph.urls.asSlice()[graph.documents.asSlice()[i].base]),
+    ) {
+      document = DocumentId { index: i }
+      break
+    }
+    i = i + 1
+  }
+  let request = match move address {
+    Option<Url>.Some { value } => run appendUrl(&mut graph.*, move value, &options.limits)
+    _ => {
+      return Option<OccurrenceId>.None
+    }
+  }
+  let target = run addressTarget(&mut graph.*, document, request, scope.policy, &options.limits)
+  if let Option<SourceId>.Some { value } = target {
+    if graph.documents.asSlice()[value.document.index].ordinaryScope.isNone() {
+      if scope.depth >= options.limits.maxReferenceDepth {
+        fail StructureError.TooLarge
+      }
+      run ordinaryRoot(&mut graph.*, value.document, scope.depth + 1, options)
+    }
+    run expand(&mut graph.*, options)
+    return run graph.occurrence(consumer, value)
+  }
+  return Option<OccurrenceId>.None
 }

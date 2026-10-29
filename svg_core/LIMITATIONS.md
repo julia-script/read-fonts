@@ -132,8 +132,9 @@ Required backend changes stay upstream; there is no second local rasterizer.
 - Isolated surfaces currently cover the full viewport. The aggregate 64M-pixel
   ceiling prevents nested opacity from multiplying allocations without bound;
   tighter, offset layers require the later clipping/compositing integration.
-- `crispEdges` remains a rendering hint: the pinned vector backend has no AA
-  toggle. It is not implemented by thresholding alpha after compositing.
+- `crispEdges` and `optimizeSpeed` select vector's binary coverage before paint
+  application. Paint alpha and compositing stay unchanged; output alpha is never
+  thresholded. `geometricPrecision` uses the tighter curve-flattening budget.
 - Perspective uses checked upstream homogeneous clipping and source-space strokes.
   Numeric, subdivision and work limits return `InvalidGeometry`; they never
   trigger an affine approximation or coordinate saturation.
