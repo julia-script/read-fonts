@@ -1,6 +1,6 @@
 // Copyright 2026 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import tables.glyf { PointFrom, convertPointCoord, coordLessEqual, coordGreaterEqual, coordGreater }
-import silk.ops { Divide }
+import silk.core.ops { Divide }
 
 pub struct DeltaBuffers<'a, D> {
   pub deltas: &'a mut [Point<D>],

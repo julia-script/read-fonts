@@ -6,7 +6,7 @@ import svg_render.lib as renderer
 import silk.collections.bytes { Bytes }
 import silk.collections.list { List }
 import silk.text.string { String, InvalidUtf8 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
@@ -18,7 +18,7 @@ import silk.system.monotonic_clock_native { OsMonotonicClock }
 import silk.system.system_clock { Instant, SystemClock }
 import silk.io.writer { Writer, WriterError }
 import silk.io.writer_native { StdoutWriter, StderrWriter }
-import silk.format { Format, ParseError }
+import silk.text.format { Format, ParseError }
 import silk.num.u8
 import silk.num.u32
 import silk.num.u64

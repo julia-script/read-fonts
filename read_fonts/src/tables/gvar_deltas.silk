@@ -2,7 +2,7 @@
 pub import tables.variations { DeltaBuffers }
 import tables.variations { zeroDeltas, checkSimpleBuffers }
 import tables.glyf { PointFlags, PointFrom }
-import silk.ops { Add, Divide }
+import silk.core.ops { Add, Divide }
 
 impl<'a> SelectedGvar<'a> {
   pub fn simpleDeltas<

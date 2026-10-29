@@ -1,7 +1,7 @@
 //! Numeric transform contracts; citations refer to specs.lock.json snapshots.
 import geometry { Transform }
 import transforms { transform, cssTransform, CssTransformResult }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.testing.testing { Testing, AssertionError }
 

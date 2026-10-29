@@ -37,14 +37,14 @@ import font_types.lib {
   Offset32,
   Nullable
 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.ownership { Copy }
-import silk.equal { Equal }
-import silk.order { Order, Ordering }
-import silk.format { Debug, Formatter }
+import silk.core.equal { Equal }
+import silk.core.order { Order, Ordering }
+import silk.text.format { Debug, Formatter }
 import silk.io.writer { Writer, WriterError }
-import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
+import silk.core.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.num.usize
 import silk.num.u8
 import silk.num.u16
@@ -1515,7 +1515,7 @@ import tables.variations {
   ActiveTupleVariation
 }
 import font_types.lib { Point }
-import silk.ops { Multiply }
+import silk.core.ops { Multiply }
 
 impl GlyphDelta {
   pub fn applyScalar<D: PointCoord + Copy + Multiply<D, D>>(self: Self, scalar: Fixed) -> Point<D> {
@@ -1728,7 +1728,7 @@ impl<'a> GvarExtended<'a> {
 pub import tables.variations { DeltaBuffers }
 import tables.variations { zeroDeltas, checkSimpleBuffers }
 import tables.glyf { PointFlags, PointFrom }
-import silk.ops { Add, Divide }
+import silk.core.ops { Add, Divide }
 
 impl<'a> SelectedGvar<'a> {
   pub fn simpleDeltas<

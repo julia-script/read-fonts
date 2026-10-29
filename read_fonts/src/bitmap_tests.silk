@@ -21,7 +21,7 @@ import tables.eblc { Eblc }
 import generated_misc_table_fixtures as Fixtures
 import test_font_builder as Builder
 import font_types.lib { GlyphId, GlyphId16, Tag, Offset32 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.testing.testing { Testing, AssertionError }

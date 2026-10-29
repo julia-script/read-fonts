@@ -1,7 +1,7 @@
 import geometry { Point, Size, Arc, Segment }
 import arcs { ArcIter }
 import math
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.testing.testing { Testing, AssertionError }
 

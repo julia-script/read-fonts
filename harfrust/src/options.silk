@@ -1,6 +1,6 @@
 import shape_plan { ShapePlan }
 import feature { Feature }
-import silk.option { Option }
+import silk.core.option { Option }
 
 pub struct ShapeOptions<'a: 'p, 'p> {
   pub plan: Option<&'p ShapePlan<'a>>,

@@ -7,7 +7,7 @@ import view { View }
 import font_types.lib { Tag }
 import silk.text.string { String }
 import silk.collections.slice { Slice }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

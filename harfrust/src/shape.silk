@@ -5,7 +5,7 @@ import feature { Feature }
 import plan { OtPlan, LookupStep }
 import shape_plan { ShapePlan }
 import options { ShapeOptions }
-import silk.option { Option }
+import silk.core.option { Option }
 import scale { Scale, sub }
 import normalize
 import preprocess

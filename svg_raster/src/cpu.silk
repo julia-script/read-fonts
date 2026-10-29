@@ -5,7 +5,8 @@ import svg_core.scene { DisplayList, Command, RenderError, Color, FillRule, Line
 import svg_geometry.geometry { Path, Point, Segment, Transform }
 import svg_geometry.arcs { ArcIter }
 import vector.path { Path as VectorPath }
-import vector.geometry { Affine }
+import vector.geometry { Affine, Rect as VectorRect }
+import vector.geometry_error { GeometryError }
 import vector.pixmap { Pixmap, Rgba8 }
 import vector.strips { Rasterizer, Coverage, NONZERO, EVENODD }
 import vector.stroke as strokes
@@ -14,8 +15,9 @@ import vector.flatten { Line, TOLERANCE }
 import vector.flatten as flattening
 import vector.layer as layers
 import silk.collections.list { List }
+import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.num.u32
 import checked
@@ -45,6 +47,18 @@ struct Layer {
 /// a curvature-correct SVG arcs join (an upstream prerequisite for conformance).
 pub effect fn execute(list: &DisplayList) -> Pixmap
   ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  return run Effect.catch<GeometryError>(executeChecked(list), geometryFailure)
+}
+
+effect fn geometryFailure(error: GeometryError) -> Pixmap
+  ! RenderError {
+  drop error
+  fail RenderError.InvalidGeometry
+}
+
+effect fn executeChecked(list: &DisplayList) -> Pixmap
+  ! RenderError | GeometryError | OutOfMemoryError
   ? &mut Allocator {
   run checked.dimensions(list.width, list.height)
   run validateCommands(list)
@@ -123,7 +137,7 @@ pub effect fn execute(list: &DisplayList) -> Pixmap
           dashIndex = stroke.dashIndex
         }
         outline.clear()
-        run stroker.stroke(prepared, &strokeStyle, &matrix, &mut outline)
+        run stroker.stroke(prepared, &strokeStyle, &matrix, TOLERANCE * 0.5, &mut outline)
         run fill(&outline, &matrix, NONZERO, &mut rasterizer, &mut coverage, &mut lines)
         let rgba = run rgba(color)
         let target = stack.length() - 1
@@ -347,11 +361,14 @@ effect fn fill(
   coverage: &mut Coverage,
   lines: &mut List<Line>,
 ) -> ()
-  ! RenderError | OutOfMemoryError
+  ! RenderError | GeometryError | OutOfMemoryError
   ? &mut Allocator {
   run checked.path(path, matrix)
   lines.clear()
-  run flattening.fill(path, matrix, TOLERANCE, &mut lines)
+
+  // Clipping to the canvas keeps huge finite coordinates representable in f32 device space.
+  let clip = VectorRect.make(0.0, 0.0, u32.toF64(coverage.width()), u32.toF64(coverage.height()))
+  run flattening.fillClipped(path, matrix, &clip, TOLERANCE, &mut lines)
   run checked.lines(lines.asSlice(), coverage.width(), coverage.height())
 
   // Current vector has no checked fill/borrowed-line entry point: fillPolylines

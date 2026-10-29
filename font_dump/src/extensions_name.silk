@@ -8,7 +8,7 @@ import read_fonts.tables.name {
   languageIdToBcp47
 }
 import dump_support { DumpPath, scalar, absent, readError, bytes }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.text.char
 import silk.text.string { String }

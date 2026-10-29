@@ -3,7 +3,7 @@ import font_data { FontData }
 import font { FontRef }
 import read { FontRead, ReadError, readWithArgs }
 import font_types.lib { Tag }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import tables.head { Head }
 import tables.maxp { Maxp, MaxpExtended, SelectedMaxp }
