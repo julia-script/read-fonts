@@ -1,7 +1,7 @@
 //! SVG grammar and equivalent-path contracts; links refer to specs.lock.json pins.
 import svg
 import geometry { Path, Segment, Point, Rect, Transform }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

@@ -1,7 +1,7 @@
 import utf8
 import test_support as Scan
 import silk.testing.testing { Testing, AssertionError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.text.utf8_decoder { Utf8Decoder, Utf8Step }
 import silk.collections.slice { Slice }
 import silk.num.u8

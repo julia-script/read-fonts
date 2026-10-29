@@ -6,7 +6,7 @@ import read_args { ReadArgs2 }
 import array { ScalarArray }
 import font_types.lib { Fixed, NameId }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.u16
 
 pub struct InstanceRecord<'a> {

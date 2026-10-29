@@ -4,7 +4,7 @@ import tokens { Kind, insensitive }
 import value_cursor { Cursor }
 import dimensions { Context, Store, ExprId, Dimension }
 import dimensions
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.slice { Slice }
 import silk.core.ownership { Copy }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

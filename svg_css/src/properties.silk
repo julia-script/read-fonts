@@ -1,6 +1,6 @@
 //! SVG property catalog. Facts from pinned SVG2 styling #RequiredProperties and defining property tables.
 import tokens
-import silk.option { Option }
+import silk.core.option { Option }
 
 pub enum Property {
   Fill,

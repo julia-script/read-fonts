@@ -5,7 +5,7 @@ import condition_cursor { Structure }
 import condition_cursor
 import media_features { Environment, MediaType, Truth }
 import media_features
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 struct Parsed {

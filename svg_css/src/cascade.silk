@@ -12,7 +12,7 @@ import input { Input }
 import condition_cursor
 import declaration_values
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub enum Origin {

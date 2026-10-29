@@ -15,7 +15,7 @@ import tables.cff { Cff }
 import ps.cff.font { CffFontRef }
 import model.error { Error }
 import font_types.lib { GlyphId, Tag }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.list { List }
 import silk.text.string { String }

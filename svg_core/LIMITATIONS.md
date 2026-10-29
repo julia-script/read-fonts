@@ -1,6 +1,6 @@
 # SVG implementation limitations
 
-Toolchain: Silk `0.1.0-dev.27+323ceb59e7ee`. No compiler or stdlib patches.
+Toolchain: Silk `0.1.0-dev.29+94cf9559bf47`. No compiler or stdlib patches.
 This file records implementation workarounds, not the unimplemented SVG coverage
 listed in [SPECIFICATIONS.md](SPECIFICATIONS.md).
 
@@ -21,7 +21,7 @@ listed in [SPECIFICATIONS.md](SPECIFICATIONS.md).
 
 ## Local geometry types
 
-The installed dev.27 stdlib has no geometry module. The handoff explicitly permits
+The installed dev.29 stdlib has no geometry module. The handoff explicitly permits
 local `svg_geometry` types until it ships; they are contained in one exported
 module. No duplicate geometry-proposal issue was filed: this is the handoff's
 chosen API boundary, not a compiler correctness workaround.

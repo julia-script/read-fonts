@@ -35,7 +35,7 @@ import generated_gsub {
 import generated_gpos { ValueFormat, ValueRecord }
 import font_types.lib { GlyphId16, Offset16, Nullable }
 import generated_layout_fixtures
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.num.u16
@@ -1554,4 +1554,4 @@ test effect fn defaultForGenerics() -> ()
   }
 }
 
-import silk.equal { Equal }
+import silk.core.equal { Equal }

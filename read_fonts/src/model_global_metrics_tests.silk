@@ -5,9 +5,9 @@ import generated_model_fixtures { tinos, vorgFont, namesOnly, amstelvar }
 import lib { FontRef, FontData, TableProvider, ReadError }
 import font_types.lib { F48Dot16, F2Dot14, Tag, GlyphId }
 import silk.testing.testing { Testing, AssertionError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 import silk.core.ownership { Copy }
 import silk.collections.list { List }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

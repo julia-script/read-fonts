@@ -9,7 +9,7 @@ import array { ComputedArray, ScalarArray, VarLenArray }
 import read { ReadError }
 import read_args { ReadArgs2 }
 import font_types.lib { Fixed, F2Dot14, Tag, NameId }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

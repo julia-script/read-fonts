@@ -9,7 +9,7 @@ import properties { Property }
 import input { Input }
 import value_cursor { Cursor }
 import tokens { Limits, CssError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.testing.testing { Testing, AssertionError }

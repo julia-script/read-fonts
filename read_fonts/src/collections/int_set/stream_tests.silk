@@ -3,7 +3,7 @@ import collections.int_set.branch_factor { BranchFactor }
 import collections.int_set.input_bit_stream { InputBitStream, StreamHeader }
 import collections.int_set.output_bit_stream { OutputBitStream }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }

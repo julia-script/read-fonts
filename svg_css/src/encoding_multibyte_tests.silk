@@ -3,7 +3,7 @@
 import encoding { decodeStylesheet }
 import encoding_types { Encoding }
 import tokens { CssError, equal }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.testing.testing { Testing, AssertionError }
 import silk.core.effect { Effect }

@@ -9,7 +9,7 @@ import silk.collections.list { List }
 import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 
 fn empty(width: u32, height: u32) -> DisplayList {

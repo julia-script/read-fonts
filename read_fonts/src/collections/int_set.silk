@@ -2,11 +2,11 @@
 pub import collections.int_set.bitset { U32Set, U32SetIter, U32SetRangeIter, U32SetBuilder }
 pub import collections.int_set.bitpage { U32Range }
 import font_types.lib { GlyphId, GlyphId16, NameId, Tag }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.equal { Equal }
-import silk.order { Order, Ordering }
+import silk.core.equal { Equal }
+import silk.core.order { Order, Ordering }
 import silk.collections.hash { Hash, HashKey, HashSeed }
 import silk.num.u8
 import silk.num.u16
@@ -1002,7 +1002,7 @@ impl Domain for NameId {
   }
 }
 
-import silk.format { Display, Formatter }
+import silk.text.format { Display, Formatter }
 import silk.io.writer { Writer, WriterError }
 
 impl<T: Domain + Copy + Display> Display for IntSet<T> {

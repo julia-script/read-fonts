@@ -4,7 +4,7 @@ import model.error { Error }
 import font_data { Cursor }
 import font_types.lib { Matrix, Fixed }
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.num.i32
 import silk.num.i64
@@ -209,7 +209,7 @@ impl ScaledFontMatrix {
   }
 }
 
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 
 impl Equal for ScaledFontMatrix {
   fn equals(a: &ScaledFontMatrix, b: &ScaledFontMatrix) -> bool {

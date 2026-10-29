@@ -1,7 +1,7 @@
 // Port of the three upstream TableDataRef tests using a borrowed header view.
 import table_data { TableDataRef, HeaderRead }
 import scalar { FixedSize, readScalar }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.slice { Slice }
 import silk.testing.testing { Testing, AssertionError }
 

@@ -1,7 +1,7 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 // Ports of all 27 upstream collections/int_set/bitpage.rs tests.
 import collections.int_set.bitpage { BitPage, BitIter, PageIter, RangeIter, U32Range }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }

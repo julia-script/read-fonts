@@ -6,7 +6,7 @@ import document_styles { StyledDocument }
 import svg_xml.xml { Document }
 import silk.collections.list { List }
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 
 pub struct RenderOptions {
   /// Zero requests intrinsic sizing; nonzero values override output pixels before zoom.

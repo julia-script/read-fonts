@@ -106,7 +106,7 @@ impl HintingParams {
   }
 }
 
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 
 impl Equal for Blues {
   fn equals(a: &Blues, b: &Blues) -> bool {
