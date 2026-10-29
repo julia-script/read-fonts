@@ -7,7 +7,7 @@ import tables.glyf { Glyf, Glyph, SimpleGlyph, PointIter, CurvePoint, PointFlags
 import tables.loca { Loca }
 import generated_variation_fixtures as Fixtures
 import font_types.lib { Point, Fixed, F2Dot14, GlyphId }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.collections.slice { Slice }

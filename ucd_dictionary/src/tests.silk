@@ -7,7 +7,7 @@ import silk.core.effect { Effect }
 import silk.testing.testing { Testing, AssertionError }
 import silk.num.u8
 import silk.num.u32
-import silk.format { Format }
+import silk.text.format { Format }
 import silk.io.writer_native { StderrWriter }
 import silk.io.writer { Writer, WriterError }
 

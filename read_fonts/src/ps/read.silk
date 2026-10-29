@@ -2,7 +2,7 @@
 // Internal adapters keep the public parser APIs as Result values.
 import model.error { Error }
 import read { ReadError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 
 pub effect fn take<T>(result: Result<T, Error>) -> T

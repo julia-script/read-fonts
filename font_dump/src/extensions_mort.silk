@@ -15,7 +15,7 @@ import font_types.lib { GlyphId16 }
 import extensions_aat_common { dumpLegacyState, dumpArray, dumpGlyphs, dumpLookupU16 }
 import dump_support { DumpPath, scalar, readError, absent }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.io.writer { Writer, WriterError }
 import silk.num.u16
 import silk.num.u32

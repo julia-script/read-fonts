@@ -14,7 +14,7 @@ import test_support as Scan
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.bytes { Bytes }
 import silk.system.filesystem { Path, FileSystem, FileError }
 import silk.system.filesystem_native { OsFileSystem }

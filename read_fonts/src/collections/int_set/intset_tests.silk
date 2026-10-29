@@ -13,12 +13,12 @@ import collections.int_set {
   orderedValues
 }
 import font_types.lib { GlyphId, GlyphId16, NameId, Tag }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }
-import silk.order { Order, Ordering }
+import silk.core.order { Order, Ordering }
 import silk.collections.hash { Hash }
 import silk.collections.hash_set { HashSet }
 import silk.num.u8

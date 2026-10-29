@@ -1,7 +1,7 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import scalar { Scalar, rawByteLen, readScalar, writeScalar }
 import integer_types { Offset16, Offset24, Offset32, Uint24 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
 
 pub interface OffsetValue {
@@ -93,7 +93,7 @@ impl<T: Scalar + OffsetValue + Copy> FixedSize for Nullable<T> {
   }
 }
 
-import silk.equal { Equal }
+import silk.core.equal { Equal }
 
 impl<T: Scalar + OffsetValue + Copy + Equal> Equal for Nullable<T> {
   fn equals(left: &Self, right: &Self) -> bool {

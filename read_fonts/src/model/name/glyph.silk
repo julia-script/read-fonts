@@ -12,16 +12,16 @@ import font_data { FontData }
 import font_types.lib { GlyphId, GlyphId16 }
 import read { ReadError }
 import model.error { Error }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.ownership { Copy }
 import silk.text.string { String, InvalidUtf8 }
 import silk.collections.slice { Slice }
 import silk.collections.list { List }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.format { Display, Formatter }
+import silk.text.format { Display, Formatter }
 import silk.io.writer { Writer, WriterError }
-import silk.order { Order, Ordering }
+import silk.core.order { Order, Ordering }
 import silk.num.u8
 import silk.num.u16
 import silk.num.u32

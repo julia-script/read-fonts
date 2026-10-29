@@ -5,8 +5,8 @@ import ps.transform { Transform, ScaledFontMatrix, isDegenerate, combineScaled }
 import font_data { FontData, Cursor }
 import font_types.lib { Fixed, Matrix }
 import silk.core.result { Result }
-import silk.option { Option }
-import silk.equal { Equal }
+import silk.core.option { Option }
+import silk.core.equal { Equal }
 
 // silk-lang/silk#2448: `==` misses generic Equal conformances; go through the bound.
 fn equal<T: Equal>(a: T, b: T) -> bool {

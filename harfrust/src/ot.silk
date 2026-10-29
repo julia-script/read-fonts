@@ -34,7 +34,7 @@ import read_fonts.tables.variations { ItemVariationStore, DeltaSetIndex }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.ownership { Copy }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.num.u16
 import silk.num.u32

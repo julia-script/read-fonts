@@ -39,7 +39,7 @@ Setup and checks are in `README.md`.
   and lengths.
 - Performance: match unions by reference (`match &self.* { ... }`), since
   `match self.*` copies the whole union (silk-lang/silk#2404). Keep
-  `silk.format` out of per-item hot paths. Small hot helpers can take
+  `silk.text.format` out of per-item hot paths. Small hot helpers can take
   `with Intrinsic.inline()` / `inlineAlways()`. Measure with callgrind and
   `scripts/bench-library` before and after.
 - Compiler or stdlib limitations that block or slow the code get a minimal

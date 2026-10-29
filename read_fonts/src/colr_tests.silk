@@ -3,7 +3,7 @@ import lib { FontData, ReadError }
 import tables.colr { Colr, Paint, PaintGlyph2, PaintSolid, PaintWithId, ColorLayer }
 import font_types.lib { GlyphId, GlyphId16, GlyphId24, Offset24, F2Dot14 }
 import test_font_builder as Builder
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.testing.testing { Testing, AssertionError }

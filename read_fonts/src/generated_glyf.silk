@@ -37,14 +37,14 @@ import font_types.lib {
   Offset32,
   Nullable
 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.ownership { Copy }
-import silk.equal { Equal }
-import silk.order { Order, Ordering }
-import silk.format { Debug, Formatter }
+import silk.core.equal { Equal }
+import silk.core.order { Order, Ordering }
+import silk.text.format { Debug, Formatter }
 import silk.io.writer { Writer, WriterError }
-import silk.ops { BitAnd, BitOr, BitXor, Not, Subtract }
+import silk.core.ops { BitAnd, BitOr, BitXor, Not, Subtract }
 import silk.num.usize
 import silk.num.u8
 import silk.num.u16
@@ -1164,7 +1164,7 @@ impl<'a> FontRead<'a, ()> for Glyph<'a> {
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import font_data { Cursor }
 import font_types.lib { Point, F26Dot6 }
-import silk.ops { Add, Multiply }
+import silk.core.ops { Add, Multiply }
 import silk.num.i8
 import silk.num.f32
 

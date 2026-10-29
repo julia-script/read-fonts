@@ -22,7 +22,7 @@ import generated_dump_cff
 import generated_dump_cff2
 import generated_dump_variations
 import dump_support { DumpPath, DumpValue, scalar, absent, readError, bytes }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.io.writer { Writer, WriterError }
 import silk.text.string { String }
