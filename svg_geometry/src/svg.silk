@@ -4,6 +4,7 @@ import numeric { Cursor }
 import numeric
 import transforms
 import shapes
+pub import shapes { Alignment, AspectRatio }
 import silk.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
@@ -17,6 +18,18 @@ pub fn transform(data: &[u8]) -> Option<Transform> {
 
 pub fn viewBox(data: &[u8]) -> Option<Rect> {
   return shapes.viewBox(data)
+}
+
+/// Strict preserveAspectRatio parsing; unlike viewport, invalid input stays absent.
+pub fn aspectRatio(data: &[u8]) -> Option<AspectRatio> {
+  return shapes.aspectRatio(data)
+}
+
+/// Allocation-free viewport mapping for an already parsed preserveAspectRatio value.
+pub fn viewportWithAspectRatio(box: Rect, width: f64, height: f64, ratio: AspectRatio) -> Option<
+  Transform
+> {
+  return shapes.viewportWithAspectRatio(box, width, height, ratio)
 }
 
 pub fn viewport(box: Rect, width: f64, height: f64, preserveAspectRatio: &[u8]) -> Option<

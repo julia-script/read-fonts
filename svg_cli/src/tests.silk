@@ -7,6 +7,7 @@ import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.testing.testing { Testing, AssertionError }
+import svg_core.resources { ProcessingMode }
 
 // Arguments exclude argv[0], just as options.parse expects.
 effect fn parse(args: &[string]) -> Result<Parsed, ArgumentError>
@@ -97,7 +98,7 @@ effect fn invocationCases() -> ()
   run rejects(&empty, ArgumentError.MissingInput)
   run rejects(&["in.svg"], ArgumentError.MissingOutput)
   run rejects(&["-o", "out.png"], ArgumentError.MissingInput)
-  let valued: &[string] = &["-o", "--width", "--height", "--zoom"]
+  let valued: &[string] = &["-o", "--width", "--height", "--zoom", "--mode", "--fragment"]
   let mut index: usize = 0
   while index < valued.length {
     let flag = valued[index]
@@ -106,11 +107,11 @@ effect fn invocationCases() -> ()
   }
   let unsupported: &[string] = &[
     "--time",
-    "--fragment",
-    "--mode",
     "--font-dir",
     "--bogus",
     "--width=10",
+    "--mode=static",
+    "--fragment=target",
     "-x",
   ]
   index = 0
@@ -145,6 +146,98 @@ effect fn invocationCases() -> ()
   run Testing.expect(valid, "double dash permits a dash-prefixed file name")
 }
 
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#static-mode
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#animated-mode
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#secure-static-mode
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#secure-animated-mode
+effect fn processingModeCases() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let defaults = run parse(&["in.svg", "-o", "out.png"])
+  let defaultMode = match &defaults {
+    Result<Parsed, ArgumentError>.Success { value } => value.mode == ProcessingMode.Static
+      && value.fragment == 3
+    _ => false
+  }
+  run Testing.expect(defaultMode, "static mode and no fragment override are defaults")
+  let names: &[string] = &["static", "animated", "secure-static", "secure-animated"]
+  let modes: &[ProcessingMode] = &[
+    ProcessingMode.Static,
+    ProcessingMode.Animated,
+    ProcessingMode.SecureStatic,
+    ProcessingMode.SecureAnimated,
+  ]
+  let mut index: usize = 0
+  while index < names.length {
+    let result = run parse(&["--mode", names[index], "in.svg", "-o", "out.png"])
+    let selected = match &result {
+      Result<Parsed, ArgumentError>.Success { value } => value.mode == modes[index]
+      _ => false
+    }
+    run Testing.expect(selected, "each mode selects its resource processing policy")
+    index = index + 1
+  }
+  let invalid: &[string] = &["", "Static", "secure", "dynamic", " static", "animated "]
+  index = 0
+  while index < invalid.length {
+    run rejects(&["in.svg", "-o", "out.png", "--mode", invalid[index]], ArgumentError.InvalidMode)
+    index = index + 1
+  }
+  run rejects(&["in.svg", "-o", "out.png", "--mode", "--fragment"], ArgumentError.MissingValue)
+  run rejects(
+    &["in.svg", "-o", "out.png", "--mode", "static", "--mode", "animated"],
+    ArgumentError.DuplicateOption,
+  )
+  let escaped = run parse(&["-o", "out.png", "--", "--mode"])
+  let isInput = match &escaped {
+    Result<Parsed, ArgumentError>.Success { value } => value.input == 3
+      && value.mode == ProcessingMode.Static
+    _ => false
+  }
+  run Testing.expect(isInput, "mode flag after end-options is an input path")
+}
+
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/linking.html#SVGFragmentIdentifiersDefinitions
+// CLI policy: strip one optional #; leave percent decoding to SVG fragment resolution.
+effect fn fragmentCases() -> ()
+  ! AssertionError<'static> | OutOfMemoryError
+  ? &mut Allocator {
+  let fragments: &[string] = &["target", "a%2520b", "", "#", "#target", "##target", "#%23target"]
+  let offsets: [usize; 7] = [0, 0, 0, 1, 1, 1, 1]
+  let mut index: usize = 0
+  while index < fragments.length {
+    let result = run parse(&["--fragment", fragments[index], "in.svg", "-o", "out.png"])
+    let retained = match &result {
+      Result<Parsed, ArgumentError>.Success { value } => value.fragment == 1
+        && value.fragmentStart == offsets[index]
+      _ => false
+    }
+    run Testing.expect(retained, "fragment borrows original encoded bytes after at most one hash")
+    index = index + 1
+  }
+  run rejects(&["in.svg", "-o", "out.png", "--fragment", "--mode"], ArgumentError.MissingValue)
+  run rejects(
+    &["in.svg", "-o", "out.png", "--fragment", "", "--fragment", "target"],
+    ArgumentError.DuplicateOption,
+  )
+  let escaped = run parse(&["-o", "out.png", "--", "--fragment"])
+  let isInput = match &escaped {
+    Result<Parsed, ArgumentError>.Success { value } => value.input == 3 && value.fragment == 4
+    _ => false
+  }
+  run Testing.expect(isInput, "fragment flag after end-options is an input path")
+  let combined = run parse(
+    &["--fragment", "a%2520b", "--mode", "secure-animated", "in.svg", "-o", "out.png"],
+  )
+  let selected = match &combined {
+    Result<Parsed, ArgumentError>.Success { value } => value.fragment == 1
+      && value.fragmentStart == 0
+      && value.mode == ProcessingMode.SecureAnimated
+    _ => false
+  }
+  run Testing.expect(selected, "fragment and processing policy can be combined before input")
+}
+
 // https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#processing-modes
 // CLI policy: informational invocations stand alone, so unknown flags never disappear behind help.
 effect fn informationCases() -> ()
@@ -173,5 +266,7 @@ test effect fn commandLinePolicy() -> ()
   let mut allocator = Allocator.systemAllocatorProvider()
   run numberCases() |> Effect.provideMut<Allocator>(&mut allocator)
   run invocationCases() |> Effect.provideMut<Allocator>(&mut allocator)
+  run processingModeCases() |> Effect.provideMut<Allocator>(&mut allocator)
+  run fragmentCases() |> Effect.provideMut<Allocator>(&mut allocator)
   run informationCases() |> Effect.provideMut<Allocator>(&mut allocator)
 }

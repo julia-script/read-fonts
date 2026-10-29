@@ -1,8 +1,8 @@
 //! XML stylesheet collection and parent-first computed styles over a borrowed document.
 //! Pinned SVG2ED styling.html #UAStyleSheet / #PresentationAttributes, CSSOM #add-a-css-style-sheet.
-import stylesheets { Catalog }
+import stylesheets { Catalog, RuleSetId }
 import style_tree
-import resources { Resolver }
+import resources { Resolver, Policy, ProcessingMode, Limits as ResourceLimits }
 import url { Url, UrlError }
 import svg_xml.xml {
   Document,
@@ -15,7 +15,7 @@ import svg_xml.xml {
   Limits as XmlLimits,
   parsePseudoAttributes
 }
-import svg_css.tokens { Limits, CssError, CssErrorKind, equal, insensitive }
+import svg_css.tokens { Limits, CssError, CssErrorKind, TokenRange, equal, insensitive }
 import svg_css.encoding { Encoding }
 import svg_css.encoding
 import svg_css.properties { Property }
@@ -31,6 +31,39 @@ import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.option { Option }
+import silk.core.ownership { Copy }
+import silk.num.usize
+import structure { Graph, SourceId, OccurrenceId }
+import occurrence_tree
+import view_selection { Selection }
+
+struct NodeDeclarations {
+  presentation: TokenRange,
+  inline: TokenRange,
+}
+
+impl Copy for NodeDeclarations {}
+
+struct SourceStyles {
+  rules: RuleSetId,
+  nodes: List<NodeDeclarations>,
+}
+
+pub struct StyledGraph {
+  pub catalog: Catalog,
+  pub selection: Selection,
+  styles: List<StyleId>,
+}
+
+impl StyledGraph {
+  pub fn nodeStyle(self: &Self, node: OccurrenceId) -> Option<StyleId> {
+    return if node.index < self.styles.length() {
+      Option<StyleId>.some(self.styles.asSlice()[node.index])
+    } else {
+      Option<StyleId>.None
+    }
+  }
+}
 
 pub struct StyledDocument {
   pub catalog: Catalog,
@@ -215,6 +248,7 @@ fn nextDescendant(document: &Document, root: NodeId, current: NodeId) -> Option<
 
 effect fn embedded(
   catalog: &mut Catalog,
+  rules: RuleSetId,
   document: &Document,
   node: NodeId,
   base: usize,
@@ -232,6 +266,7 @@ effect fn embedded(
         match &Document.nextSibling(document, value) {
           Option<NodeId>.None => {
             run catalog.addSheet(
+              rules,
               Document.text(document, value),
               base,
               environmentEncoding,
@@ -269,6 +304,7 @@ effect fn embedded(
     current = nextDescendant(document, node, id)
   }
   run catalog.addSheet(
+    rules,
     Bytes.asSlice(&text),
     base,
     environmentEncoding,
@@ -403,24 +439,19 @@ fn presentation(element: &[u8], name: &[u8]) -> Option<Property> {
   }
 }
 
-// Caller creates the catalog first and allocates host.fontFamily in catalog.engine.values.
-// The host is explicit: no synthetic font selection, system fonts or color palette.
-// URL ownership transfers into the catalog, which retains every declaration's source base.
-pub effect fn build(
+effect fn collectSheets(
   document: &Document,
-  catalog: Catalog,
-  host: &HostContext,
+  catalog: &mut Catalog,
+  rules: RuleSetId,
+  base: usize,
+  nodeBases: &[usize],
   mediaEnvironment: &Environment,
-  documentBase: Url,
   limits: &Limits,
-) -> StyledDocument
-  ! CssError | ComputedError | OutOfMemoryError
+) -> ()
+  ! CssError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
-  let mut catalog = move catalog
-  let base = run catalog.registerBase(move documentBase)
   let collected = run sheets(document, limits)
   let sourceEncoding = documentEncoding(document)
-  run catalog.addSheet(uaSheet(), base, Encoding.Utf8, Origin.UserAgent, mediaEnvironment, limits)
 
   // Resolve the preferred set before applying sheets, including earlier alternate sheets.
   // Media does not participate in selection of the preferred title.
@@ -444,17 +475,23 @@ pub effect fn build(
     if (name.length == 0 && !alternate(sheet)) || equal(name, preferredTitle) {
       match &sheet.* {
         Sheet.Embedded { node } => {
+          let sheetBase = if node.index < nodeBases.length {
+            nodeBases[node.index]
+          } else {
+            base
+          }
           if run catalog.matchesMedia(
             attribute(document, node, b"media"),
-            base,
+            sheetBase,
             mediaEnvironment,
             limits,
           ) {
             run embedded(
-              &mut catalog,
+              &mut catalog.*,
+              rules,
               document,
               node,
-              base,
+              sheetBase,
               sourceEncoding,
               mediaEnvironment,
               limits,
@@ -482,6 +519,7 @@ pub effect fn build(
             match move resolved {
               Result<Url, UrlError | OutOfMemoryError>.Success { value } => {
                 run catalog.addExternal(
+                  rules,
                   move value,
                   encoding,
                   Origin.Author,
@@ -506,58 +544,133 @@ pub effect fn build(
     }
     i = i + 1
   }
+}
+
+// Compile source attributes once; each occurrence cascades these same declarations
+// against its own inherited style and tree-scope selector matches.
+effect fn compileNodes(
+  document: &Document,
+  catalog: &mut Catalog,
+  rules: RuleSetId,
+  base: usize,
+  nodeBases: &[usize],
+  limits: &Limits,
+) -> List<NodeDeclarations>
+  ! CssError | OutOfMemoryError
+  ? &mut Allocator {
+  let nodes = Document.nodes(document)
+  let mut result = run List<NodeDeclarations>.makeWithCapacity(nodes.length)
+  let mut i: usize = 0
+  while i < nodes.length {
+    let node = NodeId { index: i }
+    let nodeBase = if i < nodeBases.length {
+      nodeBases[i]
+    } else {
+      base
+    }
+    let start = catalog.declarations.length()
+    if nodes[i].kind == NodeKind.Element && svg(document, node) {
+      let attrs = Document.attributes(document, node)
+      let mut a: usize = 0
+      while a < attrs.length {
+        if Document.attributeNamespaceUri(document, attrs[a]).length == 0 {
+          let name = Document.attributeLocalName(document, attrs[a])
+          match &presentation(Document.localName(document, node), name) {
+            Option<Property>.Some { value } => {
+              let parsed = run catalog.addPresentation(
+                rules,
+                Document.attributeValue(document, attrs[a]),
+                nodeBase,
+                value,
+                limits,
+              )
+            }
+            _ => {}
+          }
+        }
+        a = a + 1
+      }
+    }
+    let presentation = TokenRange { start: start, end: catalog.declarations.length() }
+    let mut inline = TokenRange { start: presentation.end, end: presentation.end }
+    if nodes[i].kind == NodeKind.Element && svg(document, node) {
+      match &Document.attribute(document, node, b"", b"style") {
+        Option<&[u8]>.Some { value } => {
+          inline = run catalog.addInline(rules, value, nodeBase, limits)
+        }
+        _ => {}
+      }
+    }
+    run result.append(NodeDeclarations { presentation: presentation, inline: inline })
+    i = i + 1
+  }
+  return move result
+}
+
+effect fn appendNodeCandidates(
+  node: &NodeDeclarations,
+  depth: usize,
+  candidates: &mut List<Candidate>,
+) -> ()
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let mut declaration = node.presentation.start
+  while declaration < node.presentation.end {
+    let mut priority = Priority.make(Origin.Author, 0)
+    priority.encapsulationDepth = depth
+    run candidates.append(Candidate { declaration: declaration, priority: priority })
+    declaration = declaration + 1
+  }
+  declaration = node.inline.start
+  while declaration < node.inline.end {
+    let mut priority = Priority.make(Origin.Author, declaration + 1)
+    priority.encapsulationDepth = depth
+    priority.inline = true
+    run candidates.append(Candidate { declaration: declaration, priority: priority })
+    declaration = declaration + 1
+  }
+}
+
+// Independent source-document styling remains useful without instantiation.
+pub effect fn build(
+  document: &Document,
+  catalog: Catalog,
+  host: &HostContext,
+  mediaEnvironment: &Environment,
+  documentBase: Url,
+  limits: &Limits,
+) -> StyledDocument
+  ! CssError | ComputedError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  let mut catalog = move catalog
+  let base = run catalog.registerBase(move documentBase)
+  let rules = run catalog.createRuleSet(
+    base,
+    Policy { mode: ProcessingMode.Static, limits: ResourceLimits.defaults() },
+  )
+  run catalog.addSheet(
+    RuleSetId { index: 0 },
+    uaSheet(),
+    base,
+    Encoding.Utf8,
+    Origin.UserAgent,
+    mediaEnvironment,
+    limits,
+  )
+  run collectSheets(document, &mut catalog, rules, base, &[], mediaEnvironment, limits)
+  let declarations = run compileNodes(document, &mut catalog, rules, base, &[], limits)
   let tree = run style_tree.make(document)
   let nodes = Document.nodes(document)
   let mut nodeStyles = run List<Option<StyleId>>.makeWithCapacity(nodes.length)
   let mut context = MatchContext.make(Document.root(document).index, NO_ELEMENT)
-  i = 0
+  let mut i: usize = 0
   while i < nodes.length {
     let node = NodeId { index: i }
     if nodes[i].kind != NodeKind.Element {
       run nodeStyles.append(Option<StyleId>.None)
     } else {
-      let mut candidates = run catalog.matching(&tree, i, &mut context)
-      if svg(document, node) {
-        let attrs = Document.attributes(document, node)
-        let mut a: usize = 0
-        while a < attrs.length {
-          if Document.attributeNamespaceUri(document, attrs[a]).length == 0 {
-            let name = Document.attributeLocalName(document, attrs[a])
-            match &presentation(Document.localName(document, node), name) {
-              Option<Property>.Some { value: property } => {
-                match &run catalog.addPresentation(
-                  Document.attributeValue(document, attrs[a]),
-                  base,
-                  property,
-                  limits,
-                ) {
-                  Option<usize>.Some { value } => {
-                    run candidates.append(
-                      Candidate { declaration: value, priority: Priority.make(Origin.Author, 0) },
-                    )
-                  }
-                  _ => {}
-                }
-              }
-              _ => {}
-            }
-          }
-          a = a + 1
-        }
-        match &Document.attribute(document, node, b"", b"style") {
-          Option<&[u8]>.Some { value } => {
-            let range = run catalog.addInline(value, base, limits)
-            let mut declaration = range.start
-            while declaration < range.end {
-              let mut priority = Priority.make(Origin.Author, declaration + 1)
-              priority.inline = true
-              run candidates.append(Candidate { declaration: declaration, priority: priority })
-              declaration = declaration + 1
-            }
-          }
-          _ => {}
-        }
-      }
+      let mut candidates = run catalog.matching(rules, &tree, i, &mut context)
+      run appendNodeCandidates(&declarations.asSlice()[i], 0, &mut candidates)
       let parent = match &nodes[i].parent {
         Option<NodeId>.Some { value } => nodeStyles.asSlice()[value.index]
         _ => Option<StyleId>.None
@@ -575,4 +688,168 @@ pub effect fn build(
     i = i + 1
   }
   return StyledDocument { catalog: move catalog, nodeStyles: move nodeStyles }
+}
+
+effect fn sourceBase(
+  graph: &Graph,
+  index: usize,
+  mapped: &mut List<usize>,
+  catalog: &mut Catalog,
+) -> usize
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let existing = mapped.asSlice()[index]
+  if existing != usize.MAX {
+    return existing
+  }
+  let base = run graph.urls.asSlice()[index].clone()
+  let registered = run catalog.registerBase(move base)
+  let mut entries = mapped.asMutSlice()
+  entries[index] = registered
+  return registered
+}
+
+pub effect fn buildGraph(
+  graph: &Graph,
+  catalog: Catalog,
+  host: &HostContext,
+  mediaEnvironment: &Environment,
+  selection: Selection,
+  limits: &Limits,
+) -> StyledGraph
+  ! CssError | ComputedError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  let mut catalog = move catalog
+  let mut mapped = run List<usize>.makeWithCapacity(graph.urls.length())
+  let mut i: usize = 0
+  while i < graph.urls.length() {
+    run mapped.append(usize.MAX)
+    i = i + 1
+  }
+  let rootSource = graph.occurrences.asSlice()[graph.root.index].source
+  let rootBase = run sourceBase(
+    graph,
+    graph.documents.asSlice()[rootSource.document.index].base,
+    &mut mapped,
+    &mut catalog,
+  )
+  run catalog.addSheet(
+    RuleSetId { index: 0 },
+    uaSheet(),
+    rootBase,
+    Encoding.Utf8,
+    Origin.UserAgent,
+    mediaEnvironment,
+    limits,
+  )
+  let mut sources = run List<SourceStyles>.makeWithCapacity(graph.documents.length())
+  i = 0
+  while i < graph.documents.length() {
+    let source = &graph.documents.asSlice()[i]
+    let base = run sourceBase(graph, source.base, &mut mapped, &mut catalog)
+    let rules = run catalog.createRuleSet(base, source.policy)
+    let mut bases = run List<usize>.makeWithCapacity(source.nodeBases.length())
+    let mut node: usize = 0
+    while node < source.nodeBases.length() {
+      run bases.append(
+        run sourceBase(graph, source.nodeBases.asSlice()[node], &mut mapped, &mut catalog),
+      )
+      node = node + 1
+    }
+    run collectSheets(
+      &source.document,
+      &mut catalog,
+      rules,
+      base,
+      bases.asSlice(),
+      mediaEnvironment,
+      limits,
+    )
+    let declarations = run compileNodes(
+      &source.document,
+      &mut catalog,
+      rules,
+      base,
+      bases.asSlice(),
+      limits,
+    )
+    run sources.append(SourceStyles { rules: rules, nodes: move declarations })
+    i = i + 1
+  }
+  let tree = run occurrence_tree.make(graph)
+  let mut targetNode = NO_ELEMENT
+  if let Option<SourceId>.Some { value } = &selection.target {
+    i = 0
+    while i < graph.occurrences.length() {
+      let occurrence = &graph.occurrences.asSlice()[i]
+      if occurrence.scope == 0 && occurrence.source.document.index == value.document.index
+        && occurrence.source.node.index == value.node.index {
+        targetNode = i
+        break
+      }
+      i = i + 1
+    }
+  }
+  let mut context = MatchContext.make(graph.root.index, targetNode)
+  let mut styles = run List<StyleId>.makeWithCapacity(graph.occurrences.length())
+  i = 0
+  while i < graph.occurrences.length() {
+    let occurrence = &graph.occurrences.asSlice()[i]
+    let scope = &graph.scopes.asSlice()[occurrence.scope]
+    context.shadowHost = match &scope.host {
+      Option<OccurrenceId>.Some { value } => value.index
+      _ => NO_ELEMENT
+    }
+    let source = &sources.asSlice()[occurrence.source.document.index]
+    let mut candidates = run catalog.matching(source.rules, &tree, i, &mut context)
+    let mut priorities = candidates.asMutSlice()
+    let mut c: usize = 0
+    while c < priorities.length {
+      priorities[c].priority.encapsulationDepth = scope.depth
+      c = c + 1
+    }
+    drop priorities
+    run appendNodeCandidates(
+      &source.nodes.asSlice()[occurrence.source.node.index],
+      scope.depth,
+      &mut candidates,
+    )
+
+    // The inner scope's :host rules participate before inheritance into children.
+    match &occurrence.shadow {
+      Option<OccurrenceId>.Some { value } => {
+        let inner = &graph.scopes.asSlice()[graph.occurrences.asSlice()[value.index].scope]
+        context.shadowHost = i
+        let innerCandidates = run catalog.matching(
+          sources.asSlice()[inner.document.index].rules,
+          &tree,
+          i,
+          &mut context,
+        )
+        c = 0
+        while c < innerCandidates.length() {
+          let mut candidate = innerCandidates.asSlice()[c]
+          candidate.priority.encapsulationDepth = inner.depth
+          run candidates.append(candidate)
+          c = c + 1
+        }
+      }
+      _ => {}
+    }
+    let parent = match &occurrence.parent {
+      Option<OccurrenceId>.Some { value } => Option<StyleId>.some(styles.asSlice()[value.index])
+      _ => Option<StyleId>.None
+    }
+    let style = run catalog.engine.build(
+      catalog.buffers.asSlice(),
+      catalog.declarations.asSlice(),
+      candidates.asSlice(),
+      parent,
+      host,
+      limits,
+    )
+    run styles.append(style)
+    i = i + 1
+  }
+  return StyledGraph { catalog: move catalog, styles: move styles, selection: move selection }
 }

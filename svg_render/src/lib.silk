@@ -2,8 +2,8 @@
 pub import svg_core.scene { RenderOptions, RenderError, RenderTree, DisplayList }
 pub import vector.pixmap { Pixmap }
 pub import record { record }
-import svg_xml.xml { Document, XmlError }
-import svg_xml.xml
+import svg_core.structure { Graph, StructureError }
+import svg_core.structure
 import svg_core.resolve
 import svg_raster.cpu
 pub import environment { Environment }
@@ -13,19 +13,32 @@ import svg_core.resources { Resolver }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
-effect fn invalidXml(error: XmlError) -> Document
+effect fn invalidStructure(error: StructureError) -> Graph
   ! RenderError {
-  fail RenderError.InvalidXml
+  match error {
+    StructureError.InvalidXml => {
+      fail RenderError.InvalidXml
+    }
+    StructureError.InvalidRoot => {
+      fail RenderError.InvalidRoot
+    }
+    StructureError.TooLarge => {
+      fail RenderError.TooLarge
+    }
+  }
 }
 
 /// Parse XML, compute CSS for every element, and resolve retained geometry.
 pub effect fn parse(data: &[u8], options: &RenderOptions, host: &Environment) -> RenderTree
   ! RenderError | OutOfMemoryError
   ? &mut Resolver | &mut Allocator {
-  let document = run Effect.catch<XmlError>(xml.parse(data), invalidXml)
-  let styles = run environment.styles(&document, host)
+  let graph = run Effect.catch<StructureError>(
+    structure.build(data, &host.base, &host.structure),
+    invalidStructure,
+  )
+  let styles = run environment.styles(&graph, host)
   return run resolve.resolve(
-    move document,
+    move graph,
     move styles,
     options,
     &host.cssLimits,

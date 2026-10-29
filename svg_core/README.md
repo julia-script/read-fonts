@@ -6,12 +6,13 @@ references. See [authority, scope and coverage](SPECIFICATIONS.md).
 
 ## Current status
 
-The renderer computes CSS before resolving outermost `svg`, `g`, paths and basic
-shapes: selectors, cascade/custom properties, presentation attributes, inline and
-external stylesheets, media/supports conditions, typed geometry and transforms.
-Solid fills/strokes, `viewBox`/`preserveAspectRatio`, inherited paint, visibility
-and isolated opacity produce premultiplied RGBA8 through the shared CPU `vector`
-backend. `svg_cli` writes PNG; the XML/computed-style tree and display list are public.
+The renderer computes CSS over source documents and rendering occurrences before
+resolving outermost/nested `svg`, groups, `use`, `symbol`, paths and basic shapes.
+Selectors, cascade/custom properties, presentation attributes, inline/external
+stylesheets, media/supports conditions, typed geometry and transforms are integrated.
+Solid fills/strokes, viewports, inherited paint, visibility and isolated opacity
+produce premultiplied RGBA8 through the shared CPU `vector` backend. `svg_cli`
+writes PNG; source XML, occurrence/computed-style trees and display lists are public.
 
 Integration checks exercise CSS precedence, reference geometry, projective
 transforms, nested positive-w clipping, backface visibility and resource limits.
@@ -20,12 +21,22 @@ CLI smoke also matches an independent affine/polygon control with zero differing
 pixels, including parent perspective and nested flattening boundaries. The CLI's
 512×512 stylesheet workload (2,048 rules and rectangles) matches an independent
 pixel control exactly; its benchmark checksum also agrees with resvg.
-The integrated phase-3 SVG gate passes on macOS arm64 and Ubuntu 24.04 arm64.
+The integrated phase-4 SVG gate passes on macOS arm64 and Ubuntu 24.04 arm64.
 These checks do not establish conformance for the full viewer.
 
-References, paint servers, clipping/masking, image decoding, filters, text,
-animation and ICC remain required work, not exclusions from scope. Parsing their
-CSS properties does not implement their rendering.
+The phase-4 structural fixtures match 12 literal pixel references exactly,
+including shadow inheritance, symbol sizing, switch selection, foreign-content
+boundaries and reference boxes, asymmetric overflow and projective viewport clips.
+Fragment tests exercise `:target`, selected views, view-transform ordering, spatial
+media fragments and malformed-fragment recovery. Actual CLI checks cover all four
+processing modes, nested external uses and explicit fragment selection. The
+512×512 repeated-instance workload, containing 1,024 nested symbol instances,
+matches an independent integer-pixel control exactly. These are focused checks,
+not a full conformance claim.
+
+Paint servers, general clipping/masking, image decoding, filters, text, animation
+and ICC remain required work, not exclusions from scope. Parsing their CSS
+properties does not implement their rendering.
 
 ## Packages
 
@@ -99,7 +110,7 @@ remains unverified.
 ## Specifications and suites
 
 ```sh
-python3 scripts/svg/fetch-specs.py             # verify/fetch all 152 locked documents
+python3 scripts/svg/fetch-specs.py             # verify/fetch all 155 locked documents
 python3 scripts/svg/fetch-specs.py --offline   # verify all cached original bytes
 python3 scripts/svg/fetch-suites              # only 12 curated SVG/PNG pairs
 python3 scripts/svg/reftests --validate       # schema, cache integrity and coverage; renders nothing
@@ -154,6 +165,7 @@ The Python Pillow dependency belongs only to this tooling, not the Silk runtime.
 silk build --release --manifest-path svg_cli/silk.toml
 build/llvm/aarch64-apple-darwin/release/svg_cli input.svg -o output.png
 build/llvm/aarch64-apple-darwin/release/svg_cli input.svg -o output.png --width 300 --zoom 2
+build/llvm/aarch64-apple-darwin/release/svg_cli input.svg -o detail.png --fragment '#detail' --mode secure-static
 ```
 
 Use `aarch64-unknown-linux-gnu` or `x86_64-unknown-linux-gnu` for the corresponding
@@ -165,7 +177,7 @@ Import `svg_render.lib`:
 
 | Entry point | Ownership and result |
 |---|---|
-| `parse(data, &options, &environment)` | XML bytes → owned `RenderTree` including document/computed styles, without rasterizing |
+| `parse(data, &options, &environment)` | XML bytes → owned `RenderTree` including source graph/computed styles, without rasterizing |
 | `record(move tree)` | Moves geometry into a backend-neutral `DisplayList` |
 | `renderDisplayList(&list)` | Reusable retained input → owned `vector.pixmap.Pixmap` |
 | `render(data, &options, &environment)` | Combined path → premultiplied sRGB RGBA8 pixmap |
@@ -174,14 +186,31 @@ All entry points require an allocator; `parse` and `render` also require the
 `svg_core.resources.Resolver` effect. Errors are typed `RenderError` or
 `OutOfMemoryError`. `Environment` supplies the base URL, embedding viewport,
 measured font metrics, system colors, concrete system-font values and CSS limits.
+Its `structure` options supply processing mode/resource budgets, ordered languages,
+supported extension identifiers, reference-expansion budgets and an optional
+encoded fragment override. An absent override uses the base URL fragment; a
+present empty override clears it. SVG 2 behavior is the default; there is no `Profile` API.
 `NativeHost` measures a selected installed serif at 16 CSS px; all six system-font
 keywords alias that face. The headless palette is explicit light sRGB, not the
 operating system's appearance. Linux CI installs `fonts-dejavu-core`.
 
-The CLI permits `data:` stylesheets and files confined to the input directory;
-it does not fetch network resources. Its 300×150 embedding viewport is independent
-of output-resolution overrides. Portable hosts can provide measured font bytes
-through `NativeHost.fromFontBytes`, or configure `Environment` directly.
+The CLI permits `data:` resources and files confined to the input directory;
+it does not fetch network resources. `--mode` accepts `static` (default),
+`animated`, `secure-static` and `secure-animated`. Secure modes block external
+requests before invoking a host resolver. Animation sampling is a later phase;
+the current mode selection governs resource access, not a running timeline.
+`--fragment` accepts encoded text with one optional leading `#`.
+The 300×150 embedding viewport is independent of output-resolution overrides.
+Portable hosts can provide measured font bytes through `NativeHost.fromFontBytes`,
+or configure `Environment` directly.
+
+`Resolver.fetch` returns `Response { bytes, finalUrl, mediaType, charset }`.
+`Response.fromBytes` supplies absent transport metadata. Redirect URLs establish
+relative-reference bases; metadata governs stylesheet encoding/MIME and external
+SVG decoding. HTTP(S) `use` requests and final redirects must match the including
+document's normalized scheme/host/port. File/custom-scheme authorization remains
+the host's responsibility. External use templates are secure-static; cloned
+occurrences request additional resources under the including document's mode.
 URL normalization byte/scalar/work exhaustion remains a resource error:
 `UrlError.InputLimit` propagates through stylesheet loading to `RenderError.TooLarge`.
 Both processing instructions and `@import` stop the render rather than treating
@@ -194,13 +223,17 @@ Adding stylesheet rules invalidates the index. Candidate discovery and matching
 share a 64,000,000-step document budget; exhaustion remains `CssError.MatchLimit`
 (`RenderError.TooLarge` at the rendering boundary), not a selector nonmatch.
 
-`RenderTree.document` retains XML metadata and `RenderTree.styles` retains
-computed values and stylesheet source bases. CSS path handles resolve in
-`RenderTree.paths` after resolution; the CSS store's path arena is moved there
-without copying. `record` consumes this tree and retains only drawing data.
-`DisplayList.projectionClips` contains plain homogeneous halfplane chains for
-nested flattening. Parents must precede their children; execution validates this
-ordering and command indices before traversing the chains.
+`RenderTree.graph` owns each source document once and retains metadata/private
+data. Occurrences contain source IDs and separate light-child/shadow links; the
+graph retains non-rendering sources as well as selected rendering instances.
+`RenderTree.styles` retains occurrence styles, declaration source bases and the
+selected view. A stylesheet rule set is scoped to its source document, while
+all sets share one value/path arena. CSS path handles resolve in `RenderTree.paths`
+after its single move from the CSS store. `record` consumes the tree and retains
+only drawing data.
+`DisplayList.projectionClips` contains device-space homogeneous halfplane chains
+for physical viewport boundaries and nested positive-w flattening boundaries.
+Parents precede children; execution validates that ordering and command indices.
 `svg_image.png.encodePixels(width, height, pixels)` borrows premultiplied pixels;
 no intermediate owned image copy is required.
 

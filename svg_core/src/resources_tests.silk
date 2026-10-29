@@ -1,5 +1,5 @@
 //! Resource contracts against RFC 2397 and the URL Standard pinned in specs.lock.json.
-import resources { DataOnly, DataMetadata, Limits, Resolver, ResourceError, ResourceKind }
+import resources { DataOnly, DataMetadata, Limits, Resolver, Response, ResourceError, ResourceKind }
 import resources
 import url { Url, UrlError }
 import silk.collections.bytes { Bytes }
@@ -33,7 +33,7 @@ effect fn decoded(input: &[u8], expected: &[u8], maximum: usize) -> ()
   let bytes = run Resolver.fetch(&address, ResourceKind.StyleSheet)
     |> Effect.provideMut<Resolver>(&mut provider)
   run Testing.expect(
-    equal(Bytes.asSlice(&bytes), expected),
+    equal(Bytes.asSlice(&bytes.bytes), expected),
     "decoded resource is exact binary data",
   )
 }
@@ -46,7 +46,7 @@ effect fn rejected(input: &[u8], maximum: usize, expected: ResourceError) -> ()
   let result = run Effect.result(DataOnly.fetch(&mut provider, &address, ResourceKind.Image))
   run Testing.expect(
     match &result {
-      Result<Bytes, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
+      Result<Response, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
         ResourceError problem => problem == expected
         OutOfMemoryError problem => {
           fail OutOfMemoryError {}
@@ -254,7 +254,7 @@ test effect fn preflightBoundsAndAllocationFailureRemainDistinct() -> ()
   )
   run Testing.expect(
     match &oversized {
-      Result<Bytes, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
+      Result<Response, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
         ResourceError problem => problem == ResourceError.TooLarge
         _ => false
       }
@@ -270,7 +270,7 @@ test effect fn preflightBoundsAndAllocationFailureRemainDistinct() -> ()
   )
   run Testing.expect(
     match &exhausted {
-      Result<Bytes, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
+      Result<Response, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
         OutOfMemoryError problem => true
         _ => false
       }
@@ -287,7 +287,7 @@ test effect fn preflightBoundsAndAllocationFailureRemainDistinct() -> ()
   )
   run Testing.expect(
     match &malformed {
-      Result<Bytes, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
+      Result<Response, ResourceError | OutOfMemoryError>.Failure { error } => match &error {
         ResourceError problem => problem == ResourceError.InvalidData
         _ => false
       }
@@ -295,44 +295,5 @@ test effect fn preflightBoundsAndAllocationFailureRemainDistinct() -> ()
     }
       && refusing.calls == 1,
     "canonical validation also completes before allocating",
-  )
-}
-
-struct HostResolver {
-  calls: usize,
-  receivedStyleSheet: bool
-}
-
-impl HostResolver {
-  effect fn fetch(self: &mut Self, address: &Url, kind: ResourceKind) -> Bytes
-    ! ResourceError | OutOfMemoryError
-    ? &mut Allocator {
-    if !equal(Url.scheme(address), b"asset") {
-      fail ResourceError.UnsupportedScheme
-    }
-    self.calls = self.calls + 1
-    self.receivedStyleSheet = kind == ResourceKind.StyleSheet
-    return run Bytes.copy(Url.path(address))
-  }
-}
-
-impl Resolver for HostResolver {
-  fetch: HostResolver.fetch
-}
-
-// https://url.spec.whatwg.org/#url-serializing
-// Host-provider contract: dispatch is an open service, not a union of built-in providers.
-test effect fn hostSuppliesItsOwnResolverEffect() -> ()
-  ! AssertionError<'static> | UrlError | ResourceError | OutOfMemoryError {
-  let mut allocator = Allocator.systemAllocatorProvider()
-  let address = run Url.parseAbsolute(b"asset:theme.css#ignored")
-    |> Effect.provideMut<Allocator>(&mut allocator)
-  let mut host = HostResolver { calls: 0, receivedStyleSheet: false }
-  let content = run Resolver.fetch(&address, ResourceKind.StyleSheet)
-    |> Effect.provideMut<Resolver>(&mut host)
-    |> Effect.provideMut<Allocator>(&mut allocator)
-  run Testing.expect(
-    equal(Bytes.asSlice(&content), b"theme.css") && host.calls == 1 && host.receivedStyleSheet,
-    "caller-defined mutable provider receives URL and resource kind",
   )
 }

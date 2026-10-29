@@ -16,3 +16,4 @@ import encoding_multibyte_tests
 import cascade_tests
 import variables_tests
 import computed_tests
+import shadow_selector_tests

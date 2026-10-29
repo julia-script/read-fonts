@@ -7,7 +7,6 @@ import properties { Property }
 import value_cursor { Cursor }
 import dimensions { ExprId, Dimension, Unit }
 import dimensions
-import colors
 import svg_geometry.geometry { Transform }
 import svg_geometry.transforms as transforms
 import silk.option { Option }
@@ -1140,7 +1139,6 @@ pub effect fn compute(
   value: &TransformValue,
   numerics: &mut dimensions.Store,
   context: &dimensions.Context,
-  colorContext: &colors.Context,
 ) -> TransformValue
   ! OutOfMemoryError
   ? &mut Allocator {

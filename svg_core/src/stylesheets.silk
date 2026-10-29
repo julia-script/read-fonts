@@ -1,6 +1,14 @@
 //! Stylesheet-local namespaces, conditional imports and ordered cascade candidates.
 import url { Url, UrlError }
-import resources { Resolver, ResourceKind, ResourceError, DataMetadata }
+import resources {
+  Resolver,
+  Response,
+  ResourceKind,
+  ResourceError,
+  Policy,
+  ProcessingMode,
+  Limits as ResourceLimits
+}
 import resources
 import svg_css.tokens {
   TokenBuffer,
@@ -40,16 +48,33 @@ import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.option { Option }
 import silk.num.usize
 
+pub struct RuleSetId {
+  pub index: usize,
+}
+
+impl Copy for RuleSetId {}
+
+struct RuleSet {
+  base: usize,
+  policy: Policy,
+  rules: List<usize>,
+  index: CandidateIndex,
+}
+
 struct Source {
   url: usize,
-  encoding: Encoding
+  encoding: Encoding,
+  ruleSet: RuleSetId,
 }
 
 impl Copy for Source {}
 
 struct Cached {
+  request: usize,
   url: usize,
-  bytes: Bytes
+  bytes: Bytes,
+  protocol: Option<Encoding>,
+  supported: bool,
 }
 
 struct StyleRule {
@@ -67,13 +92,42 @@ pub struct Catalog {
   urls: List<Url>,
   cache: List<Cached>,
   rules: List<StyleRule>,
-  index: CandidateIndex,
+  sets: List<RuleSet>,
   active: List<usize>,
   inputBytes: usize,
   storageBytes: usize,
   tokenCount: usize,
   ruleCount: usize,
   declarationCount: usize,
+}
+
+struct SheetMetadata {
+  protocol: Option<Encoding>,
+  supported: bool,
+}
+
+effect fn sheetMetadata(address: &Url, response: &Response) -> SheetMetadata
+  ! ResourceError | OutOfMemoryError
+  ? &mut Allocator {
+  let mut result = SheetMetadata { protocol: Option<Encoding>.None, supported: true }
+  if equal(Url.scheme(address), b"data") {
+    let metadata = run resources.inspectData(address)
+    result.supported = run metadata.matchesMediaType(b"text/css")
+    if result.supported {
+      let charset = run metadata.decodedCharset()
+      if let Option<Bytes>.Some { value } = &charset {
+        result.protocol = encoding.label(Bytes.asSlice(&value))
+      }
+    }
+  } else {
+    if let Option<Bytes>.Some { value } = &response.mediaType {
+      result.supported = insensitive(Bytes.asSlice(&value), b"text/css")
+    }
+    if let Option<Bytes>.Some { value } = &response.charset {
+      result.protocol = encoding.label(Bytes.asSlice(&value))
+    }
+  }
+  return move result
 }
 
 // Every sheet, import occurrence and inline block consumes the same aggregate budget.
@@ -173,7 +227,18 @@ impl Catalog {
     let mut buffers = List<TokenBuffer>.make()
     let closing = run variables.appendClosingBuffer(&mut buffers)
     let mut sources = List<Source>.make()
-    run sources.append(Source { url: usize.MAX, encoding: Encoding.Utf8 })
+    run sources.append(
+      Source { url: usize.MAX, encoding: Encoding.Utf8, ruleSet: RuleSetId { index: 0 } },
+    )
+    let mut sets = List<RuleSet>.make()
+    run sets.append(
+      RuleSet {
+        base: usize.MAX,
+        policy: Policy { mode: ProcessingMode.SecureStatic, limits: ResourceLimits.defaults() },
+        rules: List<usize>.make(),
+        index: CandidateIndex.make(),
+      },
+    )
     return Catalog {
       buffers: move buffers,
       declarations: List<Declaration>.make(),
@@ -182,7 +247,7 @@ impl Catalog {
       urls: List<Url>.make(),
       cache: List<Cached>.make(),
       rules: List<StyleRule>.make(),
-      index: CandidateIndex.make(),
+      sets: move sets,
       active: List<usize>.make(),
       inputBytes: 0,
       storageBytes: 0,
@@ -190,6 +255,30 @@ impl Catalog {
       ruleCount: 0,
       declarationCount: 0,
     }
+  }
+
+  pub effect fn createRuleSet(self: &mut Self, base: usize, policy: Policy) -> RuleSetId
+    ! OutOfMemoryError
+    ? &mut Allocator {
+    let result = RuleSetId { index: self.sets.length() }
+    run self.sets.append(
+      RuleSet {
+        base: base,
+        policy: policy,
+        rules: List<usize>.make(),
+        index: CandidateIndex.make(),
+      },
+    )
+    return result
+  }
+
+  // Fragment-only CSS URLs retain the document that supplied their declaration.
+  pub fn sourceDocument(self: &Self, buffer: usize) -> Option<&Url> {
+    if buffer >= self.sources.length() {
+      return Option<&Url>.None
+    }
+    let rules = self.sources.asSlice()[buffer].ruleSet
+    return self.registeredBase(self.sets.asSlice()[rules.index].base)
   }
 
   pub fn base(self: &Self, buffer: usize) -> Option<&Url> {
@@ -225,7 +314,11 @@ impl Catalog {
     if base >= self.urls.length() {
       fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
     }
-    let buffer = run self.buffer(bytes, Source { url: base, encoding: Encoding.Utf8 }, limits)
+    let buffer = run self.buffer(
+      bytes,
+      Source { url: base, encoding: Encoding.Utf8, ruleSet: RuleSetId { index: 0 } },
+      limits,
+    )
     let source = &self.buffers.asSlice()[buffer]
     let input = Input.Contiguous { buffer: source, range: source.all() }
     return run media_queries.matches(&input, environment, limits)
@@ -270,6 +363,7 @@ impl Catalog {
   // Embedded XML style text is already decoded. Imported sheets use decodeStylesheet.
   pub effect fn addSheet(
     self: &mut Self,
+    rules: RuleSetId,
     bytes: &[u8],
     base: usize,
     environmentEncoding: Encoding,
@@ -279,10 +373,14 @@ impl Catalog {
   ) -> ()
     ! CssError | OutOfMemoryError
     ? &mut Resolver | &mut Allocator {
-    if base >= self.urls.length() {
+    if base >= self.urls.length() || rules.index >= self.sets.length() {
       fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
     }
-    let buffer = run self.buffer(bytes, Source { url: base, encoding: environmentEncoding }, limits)
+    let buffer = run self.buffer(
+      bytes,
+      Source { url: base, encoding: environmentEncoding, ruleSet: rules },
+      limits,
+    )
     run self.active.append(base)
     let bindings = List<NamespaceBinding>.make()
     let range = self.buffers.asSlice()[buffer].all()
@@ -290,19 +388,30 @@ impl Catalog {
     let removed = self.active.pop()
   }
 
-  pub effect fn addInline(self: &mut Self, bytes: &[u8], base: usize, limits: &Limits) -> TokenRange
+  pub effect fn addInline(
+    self: &mut Self,
+    rules: RuleSetId,
+    bytes: &[u8],
+    base: usize,
+    limits: &Limits,
+  ) -> TokenRange
     ! CssError | OutOfMemoryError
     ? &mut Allocator {
-    if base >= self.urls.length() {
+    if base >= self.urls.length() || rules.index >= self.sets.length() {
       fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
     }
-    let buffer = run self.buffer(bytes, Source { url: base, encoding: Encoding.Utf8 }, limits)
+    let buffer = run self.buffer(
+      bytes,
+      Source { url: base, encoding: Encoding.Utf8, ruleSet: rules },
+      limits,
+    )
     let range = self.buffers.asSlice()[buffer].all()
     return run self.declarationsIn(buffer, range, limits)
   }
 
   pub effect fn addPresentation(
     self: &mut Self,
+    rules: RuleSetId,
     bytes: &[u8],
     base: usize,
     property: Property,
@@ -310,11 +419,15 @@ impl Catalog {
   ) -> Option<usize>
     ! CssError | OutOfMemoryError
     ? &mut Allocator {
-    if base >= self.urls.length() {
+    if base >= self.urls.length() || rules.index >= self.sets.length() {
       fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
     }
     run charge(&mut self.declarationCount, 1, limits.maxDeclarations, CssErrorKind.DeclarationLimit)
-    let buffer = run self.buffer(bytes, Source { url: base, encoding: Encoding.Utf8 }, limits)
+    let buffer = run self.buffer(
+      bytes,
+      Source { url: base, encoding: Encoding.Utf8, ruleSet: rules },
+      limits,
+    )
     let parsed = run cascade.compilePresentation(
       &mut self.engine.values,
       self.buffers.asSlice(),
@@ -336,6 +449,7 @@ impl Catalog {
 
   pub effect fn addExternal(
     self: &mut Self,
+    rules: RuleSetId,
     url: Url,
     environmentEncoding: Encoding,
     origin: Origin,
@@ -344,7 +458,7 @@ impl Catalog {
   ) -> ()
     ! CssError | OutOfMemoryError
     ? &mut Resolver | &mut Allocator {
-    run self.loadSheet(move url, environmentEncoding, origin, environment, limits, 0)
+    run self.loadSheet(rules, move url, environmentEncoding, origin, environment, limits, 0)
   }
 
   effect fn declarationsIn(
@@ -424,6 +538,9 @@ impl Catalog {
             importsAllowed = false
             namespacesAllowed = false
             let declarations = run self.declarationsIn(buffer, rule.body, limits)
+            let index = self.rules.length()
+            let set = self.sources.asSlice()[buffer].ruleSet
+            run self.sets.asMutSlice()[set.index].rules.append(index)
             run self.rules.append(
               StyleRule {
                 selectors: move value,
@@ -572,11 +689,20 @@ impl Catalog {
         }
       }
     }
-    run self.loadSheet(move url, parent.encoding, origin, environment, limits, depth)
+    run self.loadSheet(
+      parent.ruleSet,
+      move url,
+      parent.encoding,
+      origin,
+      environment,
+      limits,
+      depth,
+    )
   }
 
   effect fn loadSheet(
     self: &mut Self,
+    rules: RuleSetId,
     url: Url,
     environmentEncoding: Encoding,
     origin: Origin,
@@ -586,6 +712,15 @@ impl Catalog {
   ) -> ()
     ! CssError | OutOfMemoryError
     ? &mut Resolver | &mut Allocator {
+    if rules.index >= self.sets.length() {
+      fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
+    }
+    let policy = self.sets.asSlice()[rules.index].policy
+
+    // Authorization belongs to the consumer, even when raw bytes are cached.
+    if policy.mode.isSecure() && !equal(Url.scheme(&url), b"data") {
+      return
+    }
     if depth >= limits.maxDepth {
       fail CssError { kind: CssErrorKind.NestingLimit, offset: 0 }
     }
@@ -603,17 +738,23 @@ impl Catalog {
     while cached < self.cache.length() {
       if equal(
         Url.withoutFragment(&url),
-        Url.withoutFragment(&self.urls.asSlice()[self.cache.asSlice()[cached].url]),
-      ) {
+        Url.withoutFragment(&self.urls.asSlice()[self.cache.asSlice()[cached].request]),
+      )
+        || equal(
+          Url.withoutFragment(&url),
+          Url.withoutFragment(&self.urls.asSlice()[self.cache.asSlice()[cached].url]),
+        ) {
         break
       }
       cached = cached + 1
     }
     if cached == self.cache.length() {
-      let fetched = run Effect.result(Resolver.fetch(&url, ResourceKind.StyleSheet))
-      let bytes = match move fetched {
-        Result<Bytes, ResourceError | OutOfMemoryError>.Success { value } => move value
-        Result<Bytes, ResourceError | OutOfMemoryError>.Failure { error } => match move error {
+      let fetched = run Effect.result(
+        resources.fetchWithPolicy(&url, ResourceKind.StyleSheet, &policy),
+      )
+      let response = match move fetched {
+        Result<Response, ResourceError | OutOfMemoryError>.Success { value } => move value
+        Result<Response, ResourceError | OutOfMemoryError>.Failure { error } => match move error {
           ResourceError failure => {
             if failure == ResourceError.TooLarge {
               fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
@@ -625,73 +766,74 @@ impl Catalog {
           }
         }
       }
-      if Bytes.length(&bytes) > limits.maxInputBytes - self.inputBytes {
+      if Bytes.length(&response.bytes) > limits.maxInputBytes - self.inputBytes {
         fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
       }
       run charge(
         &mut self.storageBytes,
-        Bytes.length(&bytes),
+        Bytes.length(&response.bytes),
         limits.maxStorageBytes,
         CssErrorKind.StorageLimit,
       )
-      let index = self.urls.length()
-      run self.urls.append(move url)
-      run self.cache.append(Cached { url: index, bytes: move bytes })
-    }
-    let entry = &self.cache.asSlice()[cached]
-    let urlIndex = entry.url
-    let mut protocol = Option<Encoding>.None
-    if equal(Url.scheme(&self.urls.asSlice()[urlIndex]), b"data") {
-      let metadata = run Effect.result(resources.inspectData(&self.urls.asSlice()[urlIndex]))
-      match move metadata {
-        Result<DataMetadata, ResourceError>.Success { value } => {
-          let supported = run Effect.result(value.matchesMediaType(b"text/css"))
-          match &supported {
-            Result<bool, ResourceError>.Success { value: matches } => {
-              if !matches {
-                return
-              }
-            }
-            _ => {
-              return
-            }
+      let inspected = run Effect.result(sheetMetadata(&url, &response))
+      let metadata = match move inspected {
+        Result<SheetMetadata, ResourceError | OutOfMemoryError>.Success { value } => move value
+        Result<SheetMetadata, ResourceError | OutOfMemoryError>.Failure {
+          error
+        } => match move error {
+          ResourceError invalid => {
+            return
           }
-          let charset = run Effect.result(value.decodedCharset())
-          match move charset {
-            Result<Option<Bytes>, ResourceError | OutOfMemoryError>.Success {
-              value: decoded
-            } => match &decoded {
-              Option<Bytes>.Some { value: label } => {
-                protocol = encoding.label(Bytes.asSlice(&label))
-              }
-              _ => {}
-            }
-            Result<Option<Bytes>, ResourceError | OutOfMemoryError>.Failure {
-              error
-            } => match move error {
-              ResourceError invalid => {
-                return
-              }
-              OutOfMemoryError exhausted => {
-                fail move exhausted
-              }
-            }
+          OutOfMemoryError exhausted => {
+            fail move exhausted
           }
-        }
-        Result<DataMetadata, ResourceError>.Failure { error } => {
-          return
         }
       }
+      let request = self.urls.length()
+      run self.urls.append(move url)
+      let base = match move response.finalUrl {
+        Option<Url>.Some { value } => run self.registerBase(move value)
+        _ => request
+      }
+      run self.cache.append(
+        Cached {
+          request: request,
+          url: base,
+          bytes: move response.bytes,
+          protocol: metadata.protocol,
+          supported: metadata.supported,
+        },
+      )
+    }
+    let entry = &self.cache.asSlice()[cached]
+    if Bytes.length(&entry.bytes) > policy.limits.maxResourceBytes {
+      fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
+    }
+    if !entry.supported {
+      return
+    }
+    let urlIndex = entry.url
+
+    // A redirect can close an import cycle even when its request URL did not.
+    active = 0
+    while active < self.active.length() {
+      if equal(
+        Url.withoutFragment(&self.urls.asSlice()[urlIndex]),
+        Url.withoutFragment(&self.urls.asSlice()[self.active.asSlice()[active]]),
+      ) {
+        return
+      }
+      active = active + 1
     }
     let decoded = run encoding.decodeStylesheet(
       Bytes.asSlice(&entry.bytes),
-      protocol,
+      entry.protocol,
       Option<Encoding>.Some { value: environmentEncoding },
       limits.maxInputBytes - self.inputBytes,
     )
     let imported = run self.buffer(
       Bytes.asSlice(&decoded.bytes),
-      Source { url: urlIndex, encoding: decoded.encoding },
+      Source { url: urlIndex, encoding: decoded.encoding, ruleSet: rules },
       limits,
     )
     run self.active.append(urlIndex)
@@ -701,57 +843,71 @@ impl Catalog {
     let removed = self.active.pop()
   }
 
-  effect fn prepareIndex(self: &mut Self) -> ()
+  effect fn prepareIndex(self: &mut Self, rules: RuleSetId) -> ()
     ! OutOfMemoryError
     ? &mut Allocator {
-    if self.index.ready(self.rules.length()) {
+    let set = &mut self.sets.asMutSlice()[rules.index]
+    if set.index.ready(set.rules.length()) {
       return
     }
-    self.index.clear()
+    set.index.clear()
     let mut i: usize = 0
-    while i < self.rules.length() {
-      let rule = &self.rules.asSlice()[i]
-      run self.index.add(&rule.selectors, &self.buffers.asSlice()[rule.buffer])
+    while i < set.rules.length() {
+      let rule = &self.rules.asSlice()[set.rules.asSlice()[i]]
+      run set.index.add(&rule.selectors, &self.buffers.asSlice()[rule.buffer])
       i = i + 1
     }
-    run self.index.finish()
+    run set.index.finish()
   }
 
   pub effect fn matching<T: ElementTree>(
     self: &mut Self,
+    rules: RuleSetId,
     tree: &T,
     node: usize,
     context: &mut MatchContext,
   ) -> List<Candidate>
     ! CssError | OutOfMemoryError
     ? &mut Allocator {
-    run self.prepareIndex()
-    run self.index.collect(tree, node, &mut context.*)
-    let indices = self.index.candidates()
+    if rules.index >= self.sets.length() {
+      fail CssError { kind: CssErrorKind.InputLimit, offset: 0 }
+    }
     let mut result = List<Candidate>.make()
-    let mut i: usize = 0
-    while i < indices.length {
-      let rule = &self.rules.asSlice()[indices[i]]
-      let specificity = run selectors.matchElement(
-        &rule.selectors,
-        &self.buffers.asSlice()[rule.buffer],
-        tree,
-        node,
-        &mut context.*,
-      )
-      match &specificity {
-        Option<Specificity>.Some { value } => {
-          let mut declaration = rule.declarations.start
-          while declaration < rule.declarations.end {
-            let mut priority = Priority.make(rule.origin, declaration + 1)
-            priority.specificity = value
-            run result.append(Candidate { declaration: declaration, priority: priority })
-            declaration = declaration + 1
+    let mut selected: usize = 0
+    while true {
+      let id = RuleSetId { index: selected }
+      run self.prepareIndex(id)
+      let set = &mut self.sets.asMutSlice()[selected]
+      run set.index.collect(tree, node, &mut context.*)
+      let indices = set.index.candidates()
+      let mut i: usize = 0
+      while i < indices.length {
+        let rule = &self.rules.asSlice()[set.rules.asSlice()[indices[i]]]
+        let specificity = run selectors.matchElement(
+          &rule.selectors,
+          &self.buffers.asSlice()[rule.buffer],
+          tree,
+          node,
+          &mut context.*,
+        )
+        match &specificity {
+          Option<Specificity>.Some { value } => {
+            let mut declaration = rule.declarations.start
+            while declaration < rule.declarations.end {
+              let mut priority = Priority.make(rule.origin, declaration + 1)
+              priority.specificity = value
+              run result.append(Candidate { declaration: declaration, priority: priority })
+              declaration = declaration + 1
+            }
           }
+          _ => {}
         }
-        _ => {}
+        i = i + 1
       }
-      i = i + 1
+      if selected == rules.index {
+        break
+      }
+      selected = rules.index
     }
     return move result
   }

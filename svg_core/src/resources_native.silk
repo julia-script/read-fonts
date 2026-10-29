@@ -12,7 +12,7 @@ static if Intrinsic.targetOperatingSystem() == "wasi"
     && Intrinsic.profileText("libc") == "gnu"
     && (Intrinsic.targetArchitecture() == "aarch64"
       || Intrinsic.targetArchitecture() == "x86_64")) {
-  import resources { DataOnly, Limits, Resolver, ResourceKind, ResourceError }
+  import resources { DataOnly, Limits, Resolver, Response, ResourceKind, ResourceError }
   import url { Url, UrlError }
   import silk.collections.bytes { Bytes }
   import silk.collections.slice { Slice }
@@ -51,7 +51,7 @@ static if Intrinsic.targetOperatingSystem() == "wasi"
       return FileSystem { base: move base, files: move files, limits: limits }
     }
 
-    pub effect fn fetch(self: &mut Self, address: &Url, kind: ResourceKind) -> Bytes
+    pub effect fn fetch(self: &mut Self, address: &Url, kind: ResourceKind) -> Response
       ! ResourceError | OutOfMemoryError
       ? &mut Allocator {
       if equal(Url.scheme(address), b"data") {
@@ -97,11 +97,12 @@ static if Intrinsic.targetOperatingSystem() == "wasi"
         b"/"
       }
       let path = run Effect.catch<FileError>(Path.fromBytes(relativeBytes), fileFailure)
-      return run Effect.catch<FileError>(
+      let bytes = run Effect.catch<FileError>(
         readBounded(&path, self.limits.maxResourceBytes)
           |> Effect.provideMut<HostFileSystem>(&mut self.files),
         fileFailure,
       )
+      return Response.fromBytes(move bytes)
     }
   }
 

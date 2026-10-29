@@ -1313,12 +1313,7 @@ pub effect fn compute(store: &mut Store, id: ValueId, context: &ComputeContext) 
       ),
     }
     Value.Transform { value: transform } => Value.Transform {
-      value: run transform_values.compute(
-        &transform,
-        &mut store.numerics,
-        &context.dimensions,
-        &context.colors,
-      ),
+      value: run transform_values.compute(&transform, &mut store.numerics, &context.dimensions),
     }
     _ => {
       return id

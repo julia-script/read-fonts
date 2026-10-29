@@ -38,10 +38,54 @@ impl Limits {
   }
 }
 
+pub enum ProcessingMode {
+  Static,
+  Animated,
+  SecureStatic,
+  SecureAnimated,
+}
+
+impl ProcessingMode {
+  pub fn isSecure(self: Self) -> bool {
+    return self == ProcessingMode.SecureStatic || self == ProcessingMode.SecureAnimated
+  }
+}
+
+pub struct Policy {
+  pub mode: ProcessingMode,
+  pub limits: Limits,
+}
+
+impl Copy for Policy {}
+
+/// Transport metadata is absent when the transport supplies none. MIME types are
+/// parsed essences without parameters; charset labels are decoded parameter values.
+/// finalUrl supplies the response base after redirects; its fragment is not a target.
+/// Data-URL metadata stays in the request URL and is available through inspectData,
+/// avoiding redundant header allocation and decoding.
+pub struct Response {
+  pub bytes: Bytes,
+  pub finalUrl: Option<Url>,
+  pub mediaType: Option<Bytes>,
+  pub charset: Option<Bytes>,
+}
+
+impl Response {
+  pub fn fromBytes(bytes: Bytes) -> Response {
+    return Response {
+      bytes: move bytes,
+      finalUrl: Option<Url>.None,
+      mediaType: Option<Bytes>.None,
+      charset: Option<Bytes>.None,
+    }
+  }
+}
+
 /// Hosts can implement arbitrary schemes by supplying their own mutable provider.
-/// Processing-mode policy, aggregate budgets, caching and cycles belong to the caller.
+/// Callers enforce processing policy before dispatch; transports enforce their own
+/// access controls on every redirect hop. Aggregate budgets and cycles remain caller-owned.
 pub service Resolver {
-  effect fn fetch(url: &Url, kind: ResourceKind) -> Bytes
+  effect fn fetch(url: &Url, kind: ResourceKind) -> Response
     ! ResourceError | OutOfMemoryError
     ? &mut Resolver | &mut Allocator
 }
@@ -56,19 +100,41 @@ impl DataOnly {
     return DataOnly { limits: limits }
   }
 
-  pub effect fn fetch(self: &mut Self, url: &Url, kind: ResourceKind) -> Bytes
+  pub effect fn fetch(self: &mut Self, url: &Url, kind: ResourceKind) -> Response
     ! ResourceError | OutOfMemoryError
     ? &mut Allocator {
     let metadata = run inspectData(url)
-    if metadata.base64 {
-      return run decodeBase64(metadata.payload, self.limits.maxResourceBytes)
+    let bytes = if metadata.base64 {
+      run decodeBase64(metadata.payload, self.limits.maxResourceBytes)
+    } else {
+      run decodePercent(metadata.payload, self.limits.maxResourceBytes)
     }
-    return run decodePercent(metadata.payload, self.limits.maxResourceBytes)
+    return Response.fromBytes(move bytes)
   }
 }
 
 impl Resolver for DataOnly {
   fetch: DataOnly.fetch
+}
+
+/// Fetches a subresource only after mode authorization. Same-document element
+/// references must be resolved in the document arena, without fetching bytes.
+/// Data URLs are always decoded locally, never delegated to arbitrary host code.
+pub effect fn fetchWithPolicy(url: &Url, kind: ResourceKind, policy: &Policy) -> Response
+  ! ResourceError | OutOfMemoryError
+  ? &mut Resolver | &mut Allocator {
+  if equal(Url.scheme(url), b"data") {
+    let mut provider = DataOnly.make(policy.limits)
+    return run provider.fetch(url, kind)
+  }
+  if policy.mode.isSecure() {
+    fail ResourceError.BlockedLocation
+  }
+  let response = run Resolver.fetch(url, kind)
+  if Bytes.length(&response.bytes) > policy.limits.maxResourceBytes {
+    fail ResourceError.TooLarge
+  }
+  return move response
 }
 
 /// Borrowed RFC 2397 metadata. `mediaType`, `charset` and `parameters` preserve

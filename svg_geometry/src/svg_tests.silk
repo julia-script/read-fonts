@@ -1,5 +1,6 @@
 //! SVG grammar and equivalent-path contracts; links refer to specs.lock.json pins.
 import svg
+import svg { Alignment, AspectRatio }
 import geometry { Path, Segment, Point, Rect, Transform }
 import silk.option { Option }
 import silk.num.f64
@@ -182,6 +183,143 @@ test effect fn viewportAlignmentAndInvalidDefaults() -> ()
     _ => false
   }
   run Testing.expect(stretched, "none ignores meetOrSlice")
+}
+
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#PreserveAspectRatioAttribute
+// https://www.w3.org/TR/2011/REC-SVG11-20110816/coords.html#PreserveAspectRatioAttribute
+test effect fn typedAspectRatioParsingAndMapping() -> ()
+  ! AssertionError<'static> {
+  let initial = AspectRatio.make()
+  run Testing.expect(
+    initial.alignment == Alignment.XMidYMid && !initial.slice && !initial.defer,
+    "named default is xMidYMid meet",
+  )
+  let legacy = svg.aspectRatio(b" \tdefer none slice\r\n")
+  match &legacy {
+    Option<AspectRatio>.Some { value } => {
+      run Testing.expect(
+        value.alignment == Alignment.None && value.slice && value.defer,
+        "legacy defer and ignored none mode remain represented",
+      )
+      let mapped = svg.viewportWithAspectRatio(
+        Rect { xMin: 10.0, yMin: 20.0, xMax: 110.0, yMax: 70.0 },
+        200.0,
+        200.0,
+        value,
+      )
+      run Testing.expect(
+        match &mapped {
+          Option<Transform>.Some { value: matrix } => matrix.a == 2.0 && matrix.d == 4.0
+            && matrix.e == -20.0
+            && matrix.f == -80.0
+          _ => false
+        },
+        "typed none mapping does not serialize or parse",
+      )
+    }
+    _ => {
+      run Testing.expect(false, "legacy grammar accepted")
+    }
+  }
+  let meet = svg.aspectRatio(b"none meet")
+  run Testing.expect(
+    match &meet {
+      Option<AspectRatio>.Some { value } => value.alignment == Alignment.None && !value.slice
+        && !value.defer
+      _ => false
+    },
+    "none also accepts meet",
+  )
+  let invalid: [&[u8]; 9] = [
+    b"",
+    b"defer",
+    b"defer defer none",
+    b"xmidYMid",
+    b"none bogus",
+    b"none meet slice",
+    b"xMinYMin,slice",
+    b"xMaxYMax slice extra",
+    b"none\x0Cmeet",
+  ]
+  let box = Rect { xMin: 10.0, yMin: 20.0, xMax: 110.0, yMax: 70.0 }
+  let mut i: usize = 0
+  while i < invalid.length {
+    let parsed = svg.aspectRatio(invalid[i])
+    run Testing.expect(
+      match &parsed {
+        Option<AspectRatio>.None => true
+        _ => false
+      },
+      "strict grammar rejects malformed values",
+    )
+    let mapped = svg.viewport(box, 200.0, 200.0, invalid[i])
+    run Testing.expect(
+      match &mapped {
+        Option<Transform>.Some { value } => value.a == 2.0 && value.d == 2.0 && value.e == -20.0
+          && value.f == 10.0
+        _ => false
+      },
+      "raw mapping defaults invalid entire attributes",
+    )
+    i = i + 1
+  }
+}
+
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#ComputingAViewportsTransform
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/coords.html#PreserveAspectRatioAttribute
+test effect fn typedViewportAllAlignmentsWithoutParsing() -> ()
+  ! AssertionError<'static> {
+  let alignments: [Alignment; 9] = [
+    Alignment.XMinYMin,
+    Alignment.XMidYMin,
+    Alignment.XMaxYMin,
+    Alignment.XMinYMid,
+    Alignment.XMidYMid,
+    Alignment.XMaxYMid,
+    Alignment.XMinYMax,
+    Alignment.XMidYMax,
+    Alignment.XMaxYMax,
+  ]
+  let xs: [f64; 9] = [-20.0, 80.0, 180.0, -20.0, 80.0, 180.0, -20.0, 80.0, 180.0]
+  let ys: [f64; 9] = [-40.0, -40.0, -40.0, 10.0, 10.0, 10.0, 60.0, 60.0, 60.0]
+  let box = Rect { xMin: 10.0, yMin: 20.0, xMax: 110.0, yMax: 70.0 }
+  let mut i: usize = 0
+  while i < alignments.length {
+    let ratio = AspectRatio { alignment: alignments[i], slice: false, defer: false }
+    let wide = svg.viewportWithAspectRatio(box, 400.0, 100.0, ratio)
+    let tall = svg.viewportWithAspectRatio(box, 200.0, 200.0, ratio)
+    run Testing.expect(
+      match &wide {
+        Option<Transform>.Some { value } => value.a == 2.0 && value.d == 2.0 && value.e == xs[i]
+          && value.f == -40.0
+        _ => false
+      },
+      "typed mapping aligns horizontal free space",
+    )
+    run Testing.expect(
+      match &tall {
+        Option<Transform>.Some { value } => value.a == 2.0 && value.d == 2.0 && value.e == -20.0
+          && value.f == ys[i]
+        _ => false
+      },
+      "typed mapping aligns vertical free space",
+    )
+    i = i + 1
+  }
+  let slice = svg.viewportWithAspectRatio(
+    box,
+    200.0,
+    200.0,
+    AspectRatio { alignment: Alignment.XMaxYMin, slice: true, defer: true },
+  )
+  run Testing.expect(
+    match &slice {
+      Option<Transform>.Some { value } => value.a == 4.0 && value.d == 4.0 && value.e == -240.0
+        && value.f == -80.0
+      _ => false
+    },
+    "typed slice crops and defer does not change the mapping",
+  )
 }
 
 // https://www.w3.org/TR/2018/CR-SVG2-20181004/shapes.html#RectElement

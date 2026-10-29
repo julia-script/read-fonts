@@ -19,9 +19,9 @@ The first shape-heavy resvg timing baseline is measured, not a parity claim.
 
 Julia authorized local continuation without merging phase 1. The section-level
 checklist still reserves check marks for merged, fully covered requirements:
-partial implementation of a broad item does not complete it. CSS, references,
-paint servers, images, filters, text, animation, ICC and the full conformance
-sweep remain in scope. Pinned documents and fetched corpora are not coverage.
+partial implementation of a broad item does not complete it. Full conformance,
+paint servers, images, filters, text, animation and ICC remain in scope.
+Pinned documents and fetched corpora are not coverage.
 
 ### CSS authority and current integration
 
@@ -52,6 +52,67 @@ and SVG's unqualified `id`, rather than guessing that any XML attribute named
 `id` has type ID. Font matching, ICC transforms, font-face loading and animation
 remain their later rendering phases; parsing a value does not implement those
 rendering effects.
+
+### Structural rendering and reference policy
+
+Phase 4 separates owned source documents from light/shadow occurrences. Styles
+inherit through occurrence parents; selectors see their own tree scope and a
+featureless shadow host. Source declarations are compiled once, then matched
+and computed per occurrence in a shared value/path arena. External rule sets
+cannot leak into the including document. Normal/important encapsulation
+precedence follows [CSS Cascade 4](https://www.w3.org/TR/css-cascade-4/#cascade-sort);
+tests exercise external and nested shadow scopes.
+
+[SVG 2 use processing](https://www.w3.org/TR/2018/CR-SVG2-20181004/struct.html#UseShadowTree)
+creates shadow trees even for hidden/non-rendering sources. Active ancestry
+detects cycles without rejecting independent instances of the same source.
+`href` wins over `xlink:href` by presence, including an empty or invalid value.
+XML Base governs attribute URLs; redirects establish external document bases.
+HTTP(S) requests and redirects must preserve the including document's origin;
+file/custom-scheme access remains host policy. Secure modes reject external
+requests before host fetch. Templates are secure-static, while cloned content
+uses the including document's mode, as required by
+[referencing modes](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#referencing-modes).
+
+The following interpretation choices are explicit:
+
+- [Switch selection](https://www.w3.org/TR/2018/CR-SVG2-20181004/struct.html#SwitchElement)
+  always uses SVG 2's `allowReorder=yes` semantics. Ordered host-language matches
+  outrank unconditional fallbacks; document order breaks ties. Eligibility uses
+  conditional attributes, never `display`, visibility or renderability.
+  `requiredFeatures` is ignored under the chosen SVG 2 conflict policy.
+- Symbol `refX`/`refY` accept number/length/percentage/math and their axis keywords.
+  The CR/ED table's length-only grammar conflicts with its percentage prose;
+  [SVGWG #64](https://github.com/w3c/svgwg/issues/64) supports viewBox-relative
+  percentages, and [#1137](https://github.com/w3c/svgwg/issues/1137) retains the
+  keywords. Percentages use viewBox dimensions, without adding its minima.
+  An absent reference coordinate is not an explicit zero.
+- Non-scrolling `overflow:auto` is visible, per
+  [the pinned SVG rule](https://www.w3.org/TR/2018/CR-SVG2-20181004/render.html#OverflowAndClipProperties),
+  notwithstanding [SVGWG #329](https://github.com/w3c/svgwg/issues/329).
+  Computed overflow longhands are evaluated independently; viewport clips are
+  physical polygons, not transformed axis-aligned bounds. Legacy `clip` uses
+  [SVG 1.1 user-space rectangles](https://www.w3.org/TR/2011/REC-SVG11-20110816/masking.html#ClipProperty).
+- CSS local-fragment provenance remains attached to the declaration's source
+  document through inheritance; it is distinct from XML Base and stylesheet
+  base URLs. External-use URL freezing follows SVG's source-document rule.
+  [CSSWG #3320](https://github.com/w3c/csswg-drafts/issues/3320) records the
+  tree-scoping interaction. Typed provenance tests cover this distinction;
+  paint-server consumers belong to the next phase.
+- Ordinary IDs set `:target` before styling without pruning sibling content.
+  Selected `view` parameters override the root individually. `svgView` applies
+  viewBox before its independent transform; spatial media percentages use the
+  resolved SVG size. Invalid explicit views fall back atomically to the root.
+  Parameter whitespace is accepted, structural whitespace rejected, following
+  [SVGWG #1170's resolution](https://github.com/w3c/svgwg/issues/1170) of the
+  grammar/prose conflict. Percent decoding precedes SVG view grammar; media
+  dimension delimiters are recognized before decoding.
+
+Unknown SVG elements render as generic containers under the pinned CR.
+Foreign private subtrees do not render; `foreignObject` establishes a containing
+block and clipping, allowing nested SVG through non-SVG wrappers without
+implementing HTML layout. Metadata remains in the source-document arena.
+
 
 ### Conditional Rules 3 general-enclosed reference
 
@@ -100,9 +161,16 @@ which address original input bytes. The renderer defaults to 16,000,000 output
 pixels and caps aggregate output/isolated surfaces at 67,108,864 pixels.
 These are implementation resource limits, not claims that larger SVGs are invalid.
 
+Source expansion additionally defaults to 32 documents, one million occurrences,
+64 reference levels, 128 external requests, 64 MiB of source bytes and 64 MiB of
+retained URL serializations. Composed occurrence depth has a hard 256-edge ceiling
+with root depth zero; hosts can lower it, not bypass it. This bounds rendering
+recursion even when shallow, acyclic source documents compose deeply through `use`.
+Budget exhaustion is a render error, not a missing reference or truncated tree.
+
 ## Baseline integrity
 
-`specs.lock.json` is the machine-readable standards baseline: **152 fetched documents**. Each record contains its original URL (`url`), redirect-resolved URL (`resolved`), and SHA-256 of the original downloaded bytes (`sha256`). No rewriting or text extraction precedes hashing; PDF references remain PDF bytes. The catalog in `../scripts/svg/fetch-specs.py` includes complete documents and individual SVG 1.1, SVG 2 CR/ED and CSS 2.1 chapters.
+`specs.lock.json` is the machine-readable standards baseline: **155 fetched documents**. Each record contains its original URL (`url`), redirect-resolved URL (`resolved`), and SHA-256 of the original downloaded bytes (`sha256`). No rewriting or text extraction precedes hashing; PDF references remain PDF bytes. The catalog in `../scripts/svg/fetch-specs.py` includes complete documents and individual SVG 1.1, SVG 2 CR/ED and CSS 2.1 chapters.
 
 From the workspace root:
 
@@ -128,11 +196,11 @@ Tests cite an exact locked original URL with a real `#anchor`, such as [SVG 2 co
 | SVG 2 | `svg2` (2018 CR), `svg2-ed`, and corresponding `svg2-*` / `svg2-ed-*` chapter pages, including conformance, structure, styling, coordinates, painting, text, embedding, linking, and changes |
 | Filters, masking, blending | `filter-effects-1`, `css-masking-1`, `compositing-1`; Filter Effects 1 includes the legacy background appendix |
 | Transforms | `css-transforms-1`, `css-transforms-2` |
-| Styling | `css-syntax-3`, `css-cascade-4`, `selectors-4`, `css21` and its syntax/error-handling and property chapters, `css-namespaces-3`, `mediaqueries-4`, `css-conditional-3`, `css-variables-1` |
+| Styling | `css-syntax-3`, `css-cascade-4`, `selectors-4`, `css21` and its syntax/error-handling and property chapters, `css-namespaces-3`, `mediaqueries-4`, `css-conditional-3`, `css-variables-1`, `css-shadow-1` |
 | Values and images | `css-values-3`, `css-values-4`, `css-color-4`, `css-images-3` (including EXIF orientation policy) |
 | Text | `css-fonts-4`, `css-text-3`, `css-text-decor-3`, `css-writing-modes-3`, `css-inline-3`, `css-shapes-1`; `unicode-uax9`, `unicode-uax14`, `unicode-uax24`, `unicode-uax29`, `unicode-uax50` |
 | Animation | `svg11-animate`, `smil-animation`, `svg-animations-2`, `css-animations-1` (pinned in preparation; implementation scope still subject to the phase-11 decision) |
-| Integration | `svg-integration`, `svg2-conform` sub-resource modes |
+| Integration | `svg-integration`, `svg2-conform` sub-resource modes, `smil-content` conditional-language ordering, `media-frags` |
 | XML and resources | `xml`, `xml-names`, `xmlbase`, `xlink11`, `rfc2397`, `url`, `rfc1950`, `rfc1951`, `rfc1952` |
 | Image and color formats | `png-3`, `jpeg-t81` (baseline and progressive JPEG), `jpeg-jfif`, `icc-v4` |
 
@@ -168,11 +236,11 @@ The table is a register of cases to test, not a claim of complete rendering supp
 
 | Feature | SVG 1.1 rule | SVG 2 rule / conflict to verify | Applies |
 |---|---|---|---|
-| `requiredFeatures` / `switch` | Evaluate supported feature strings | Attribute removed; revisit selection interaction before implementing additive 1.1 support | SVG 2 on a genuine conflict; phase 4 tests pending |
-| `use` instances | Deep-cloned instance model | Shadow trees and different selector matching | SVG 2; phase 4 tests pending |
+| `requiredFeatures` / `switch` | Evaluate supported feature strings | Attribute removed; SVG 2 mandates language-priority reordering | SVG 2: ignore `requiredFeatures`; tested conditional selection |
+| `use` instances | Deep-cloned instance model | Shadow trees and different selector matching | SVG 2; tested host inheritance, scoped matching and external templates |
 | Markers on shapes | Paths, lines, polylines, polygons | Markers extended to shapes | SVG 2; phase 5 tests pending |
-| `overflow` on `symbol`, `marker`, `pattern` | Check element and clipping rules | Check element rules and UA stylesheet differences | SVG 2 if different; phase 4/5 tests pending |
-| `symbol` geometry | No SVG 2 geometry properties | `x`, `y`, `width`, `height` supported | SVG 2; phase 4 tests pending |
+| `overflow` on `symbol`, `marker`, `pattern` | Check element and clipping rules | SVG 2 element rules and UA stylesheet | Symbol/viewports tested, including non-scrolling auto; marker/pattern integration follows in phase 5 |
+| `symbol` geometry | No SVG 2 geometry properties | `x`, `y`, `width`, `height`, `refX`/`refY` supported | SVG 2; tested used instance dimensions and reference coordinates |
 | `version` | SVG 1.1 version metadata | Ignored in SVG 2 | Retained by XML; ignored by the phase-2 resolver |
 
 ### Browser and resvg differences
@@ -228,10 +296,10 @@ The issue also leaves arbitrary negative-perspective interpretations unresolved;
 this profile consistently uses the inverse-normal rule for those matrices.
 
 The checklist's “question 4” means whether CSS Animations join SMIL (ask in
-phase 11). Profile-switch necessity waits for phase 4, deferred SVG 2 features
-for phase 5, GIF/WebP for phase 7, and ICC depth for phase 12. These decisions
-are not reasons to omit mandatory reference pins. HTML/media engines, GPU
-backends, demos and optional hit testing are not silently added.
+phase 11). Julia confirmed SVG 2 defaults without a `Profile` API for phase 4.
+Deferred SVG 2 features wait for phase 5, GIF/WebP for phase 7, and ICC depth for
+phase 12. These decisions are not reasons to omit mandatory reference pins.
+HTML/media engines, GPU backends, demos and optional hit testing are not silently added.
 
 ## Section-level coverage checklist
 

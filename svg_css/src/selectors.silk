@@ -6,6 +6,8 @@ import element { ElementTree, MatchContext, NO_ELEMENT }
 import silk.collections.list { List }
 import silk.collections.slice { Slice }
 import silk.core.ownership { Copy }
+import silk.core.effect { Effect }
+import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.option { Option }
 import silk.num.usize
@@ -118,6 +120,7 @@ enum AttributeOp {
 }
 
 enum Pseudo {
+  Host,
   Root,
   Empty,
   Scope,
@@ -135,7 +138,9 @@ enum Pseudo {
 enum FunctionKind {
   Is,
   Not,
-  Has
+  Has,
+  Host,
+  HostContext
 }
 
 union Test {
@@ -162,6 +167,7 @@ struct Compound {
   name: Span,
   named: bool,
   explicitType: bool,
+  hostEligible: bool,
   first: usize,
   previous: usize,
   relation: Combinator,
@@ -453,6 +459,7 @@ pub effect fn parse(
     false,
     false,
     false,
+    false,
   )
   if !parsed.valid {
     return Option<SelectorList>.None
@@ -472,6 +479,7 @@ effect fn parseList(
   relative: bool,
   insideHas: bool,
   subjectExempt: bool,
+  compoundOnly: bool,
 ) -> Parsed
   ! CssError | OutOfMemoryError
   ? &mut Allocator {
@@ -494,6 +502,7 @@ effect fn parseList(
         relative,
         insideHas,
         subjectExempt,
+        compoundOnly,
       )
       if !parsed.valid {
         if !forgiving {
@@ -580,6 +589,7 @@ effect fn parseArm(
   relative: bool,
   insideHas: bool,
   subjectExempt: bool,
+  compoundOnly: bool,
 ) -> Parsed
   ! CssError | OutOfMemoryError
   ? &mut Allocator {
@@ -618,6 +628,7 @@ effect fn parseArm(
         name: name.text,
         named: name.named,
         explicitType: name.valid,
+        hostEligible: false,
         first: NONE,
         previous: previous,
         relation: relation,
@@ -746,6 +757,7 @@ effect fn parseArm(
                 limits,
                 depth + count,
                 insideHas,
+                compoundOnly,
               )
               if !functional.valid {
                 return rejected()
@@ -770,11 +782,18 @@ effect fn parseArm(
     if at == begin {
       return rejected()
     }
+    let hostEligible = hostCompoundEligible(&ast.*, compound)
+    let mut compounds = ast.compounds.asMutSlice()
+    compounds[compound].hostEligible = hostEligible
+    drop compounds
     previous = compound
     let next = spaces(buffer, at, range.end)
     if next == range.end {
       at = next
       break
+    }
+    if compoundOnly {
+      return rejected()
     }
     if pseudoElement {
       return rejected()
@@ -803,6 +822,54 @@ effect fn parseArm(
   let index = ast.arms.length()
   run ast.arms.append(Arm { tail: previous, next: NONE, specificity: specificity })
   return Parsed { valid: true, head: index, specificity: specificity }
+}
+
+// Selectors 4 #featureless-elements: eligibility is syntactic, not a match result.
+// Cache it once so nested logical selectors do not rescan the AST on every node.
+fn hostListEligible(ast: &SelectorList, list: usize) -> bool {
+  let mut arm = list
+  while arm != NONE {
+    let entry = &ast.arms.asSlice()[arm]
+    if ast.compounds.asSlice()[entry.tail].hostEligible {
+      return true
+    }
+    arm = entry.next
+  }
+  return false
+}
+
+fn hostCompoundEligible(ast: &SelectorList, index: usize) -> bool {
+  let compound = &ast.compounds.asSlice()[index]
+  if compound.explicitType {
+    return false
+  }
+  let mut other = false
+  let mut simple = compound.first
+  while simple != NONE {
+    let entry = &ast.simples.asSlice()[simple]
+    match &entry.test {
+      Test.State { pseudo } => {
+        if pseudo != Pseudo.Host {
+          return false
+        }
+        other = true
+      }
+      Test.Function { kind, list } => {
+        if kind != FunctionKind.Has {
+          if kind != FunctionKind.Host && kind != FunctionKind.HostContext
+            && !hostListEligible(ast, list) {
+            return false
+          }
+          other = true
+        }
+      }
+      _ => {
+        return false
+      }
+    }
+    simple = entry.next
+  }
+  return other
 }
 
 effect fn parseAttribute(
@@ -894,6 +961,9 @@ effect fn parseAttribute(
 }
 
 fn pseudo(word: &[u8]) -> Option<Pseudo> {
+  if tokens.insensitive(word, b"host") {
+    return Option<Pseudo>.Some { value: Pseudo.Host }
+  }
   if tokens.insensitive(word, b"root") {
     return Option<Pseudo>.Some { value: Pseudo.Root }
   }
@@ -951,6 +1021,7 @@ effect fn parseFunction(
   limits: &Limits,
   depth: usize,
   insideHas: bool,
+  compoundOnly: bool,
 ) -> Parsed
   ! CssError | OutOfMemoryError
   ? &mut Allocator {
@@ -959,6 +1030,43 @@ effect fn parseFunction(
   let zeroSpecificity = tokens.insensitive(word, b"where")
   let negation = tokens.insensitive(word, b"not")
   let has = tokens.insensitive(word, b"has")
+  let host = tokens.insensitive(word, b"host")
+  let hostContext = tokens.insensitive(word, b"host-context")
+  if host || hostContext {
+    let parsed = run parseList(
+      &mut ast.*,
+      buffer,
+      range,
+      bindings,
+      limits,
+      depth,
+      false,
+      false,
+      insideHas,
+      false,
+      true,
+    )
+    if !parsed.valid || parsed.head == NONE || ast.arms.asSlice()[parsed.head].next != NONE {
+      return rejected()
+    }
+    run appendSimple(
+      &mut ast.*,
+      compound,
+      Test.Function {
+        kind: if host {
+          FunctionKind.Host
+        } else {
+          FunctionKind.HostContext
+        },
+        list: parsed.head,
+      },
+    )
+    return Parsed {
+      valid: true,
+      head: NONE,
+      specificity: add(Specificity { ids: 0, classes: 1, types: 0 }, parsed.specificity),
+    }
+  }
   if matches || zeroSpecificity || negation || has {
     if has && insideHas {
       return rejected()
@@ -974,6 +1082,7 @@ effect fn parseFunction(
       has,
       insideHas || has,
       !has,
+      compoundOnly && !has,
     )
     if !parsed.valid {
       return rejected()
@@ -1069,6 +1178,7 @@ effect fn parseFunction(
         false,
         false,
         insideHas,
+        false,
         false,
       )
       if !parsed.valid {
@@ -1377,6 +1487,71 @@ effect fn sameType<T: ElementTree>(tree: &T, a: usize, b: usize, context: &mut M
     ))
 }
 
+// Raw parent links include shadow boundaries. Ordinary traversal sees only the
+// current scope and its featureless host, never the host's parent or siblings.
+fn visible<T: ElementTree>(tree: &T, node: usize, host: usize) -> bool {
+  return node != NO_ELEMENT && (node == host || ElementTree.containingHost(tree, node) == host)
+}
+
+fn scopedParent<T: ElementTree>(tree: &T, node: usize, host: usize) -> usize {
+  if node == host {
+    return NO_ELEMENT
+  }
+  let parent = ElementTree.parent(tree, node)
+  return if visible(tree, parent, host) {
+    parent
+  } else {
+    NO_ELEMENT
+  }
+}
+
+// Providers may link light and shadow children under the same raw parent.
+// Filter those lists by tree scope, charging skipped links as matching work.
+effect fn scopedSibling<T: ElementTree>(
+  tree: &T,
+  node: usize,
+  forward: bool,
+  context: &mut MatchContext,
+) -> usize
+  ! CssError {
+  if node == context.shadowHost {
+    return NO_ELEMENT
+  }
+  let mut sibling = if forward {
+    ElementTree.nextSibling(tree, node)
+  } else {
+    ElementTree.previousSibling(tree, node)
+  }
+  while sibling != NO_ELEMENT {
+    run spend(&mut context.*)
+    if sibling == context.shadowHost {
+      return NO_ELEMENT
+    }
+    if ElementTree.containingHost(tree, sibling) == context.shadowHost {
+      return sibling
+    }
+    sibling = if forward {
+      ElementTree.nextSibling(tree, sibling)
+    } else {
+      ElementTree.previousSibling(tree, sibling)
+    }
+  }
+  return NO_ELEMENT
+}
+
+effect fn scopedChild<T: ElementTree>(tree: &T, node: usize, context: &mut MatchContext) -> usize
+  ! CssError {
+  let child = ElementTree.firstChild(tree, node)
+  if child == NO_ELEMENT || child == context.shadowHost {
+    return NO_ELEMENT
+  }
+  run spend(&mut context.*)
+  if ElementTree.containingHost(tree, child) == context.shadowHost {
+    return child
+  }
+  return run scopedSibling(tree, child, true, &mut context.*)
+}
+
 effect fn matchComplex<T: ElementTree>(
   ast: &SelectorList,
   buffer: &TokenBuffer,
@@ -1390,26 +1565,32 @@ effect fn matchComplex<T: ElementTree>(
   ! CssError {
   run depthLimit(ast, depth)
   run spend(&mut context.*)
-  if node == NO_ELEMENT {
+  if !visible(tree, node, context.shadowHost) {
     return false
   }
   let compound = &ast.compounds.asSlice()[index]
-  if !run namespaceMatches(
-    buffer,
-    compound.namespace,
-    ElementTree.namespaceUri(tree, node),
-    &mut context.*,
-  ) {
-    return false
-  }
-  if compound.named
-    && !run equalValue(
-      buffer.text(compound.name),
-      ElementTree.localName(tree, node),
-      false,
+  if node == context.shadowHost {
+    if !compound.hostEligible {
+      return false
+    }
+  } else {
+    if !run namespaceMatches(
+      buffer,
+      compound.namespace,
+      ElementTree.namespaceUri(tree, node),
       &mut context.*,
     ) {
-    return false
+      return false
+    }
+    if compound.named
+      && !run equalValue(
+        buffer.text(compound.name),
+        ElementTree.localName(tree, node),
+        false,
+        &mut context.*,
+      ) {
+      return false
+    }
   }
   let mut simple = compound.first
   while simple != NONE {
@@ -1428,9 +1609,9 @@ effect fn matchComplex<T: ElementTree>(
   }
   let siblings = compound.relation == Combinator.Adjacent || compound.relation == Combinator.Sibling
   let mut candidate = if siblings {
-    ElementTree.previousSibling(tree, node)
+    run scopedSibling(tree, node, false, &mut context.*)
   } else {
-    ElementTree.parent(tree, node)
+    scopedParent(tree, node, context.shadowHost)
   }
   while candidate != NO_ELEMENT {
     run spend(&mut context.*)
@@ -1450,9 +1631,9 @@ effect fn matchComplex<T: ElementTree>(
       break
     }
     candidate = if siblings {
-      ElementTree.previousSibling(tree, candidate)
+      run scopedSibling(tree, candidate, false, &mut context.*)
     } else {
-      ElementTree.parent(tree, candidate)
+      scopedParent(tree, candidate, context.shadowHost)
     }
   }
   return false
@@ -1471,9 +1652,9 @@ effect fn anchored<T: ElementTree>(
   }
   let siblings = relation == Combinator.Adjacent || relation == Combinator.Sibling
   let mut candidate = if siblings {
-    ElementTree.previousSibling(tree, node)
+    run scopedSibling(tree, node, false, &mut context.*)
   } else {
-    ElementTree.parent(tree, node)
+    scopedParent(tree, node, context.shadowHost)
   }
   while candidate != NO_ELEMENT {
     run spend(&mut context.*)
@@ -1484,9 +1665,9 @@ effect fn anchored<T: ElementTree>(
       return false
     }
     candidate = if siblings {
-      ElementTree.previousSibling(tree, candidate)
+      run scopedSibling(tree, candidate, false, &mut context.*)
     } else {
-      ElementTree.parent(tree, candidate)
+      scopedParent(tree, candidate, context.shadowHost)
     }
   }
   return false
@@ -1514,27 +1695,61 @@ effect fn hasRelative<T: ElementTree>(
         && run matchesAny(ast, buffer, tree, list, candidate, anchor, &mut context.*, depth) {
         return true
       }
-      let child = ElementTree.firstChild(tree, candidate)
+      let child = run scopedChild(tree, candidate, &mut context.*)
       if child != NO_ELEMENT {
         candidate = child
       } else {
-        while candidate != subtree && ElementTree.nextSibling(tree, candidate) == NO_ELEMENT {
+        let mut next = NO_ELEMENT
+        while candidate != subtree {
+          next = run scopedSibling(tree, candidate, true, &mut context.*)
+          if next != NO_ELEMENT {
+            break
+          }
           run spend(&mut context.*)
-          candidate = ElementTree.parent(tree, candidate)
+          candidate = scopedParent(tree, candidate, context.shadowHost)
           if candidate == NO_ELEMENT {
             return false
           }
         }
-        if candidate == subtree {
-          candidate = NO_ELEMENT
-        } else {
-          candidate = ElementTree.nextSibling(tree, candidate)
-        }
+        candidate = next
       }
     }
-    subtree = ElementTree.nextSibling(tree, subtree)
+    subtree = run scopedSibling(tree, subtree, true, &mut context.*)
   }
   return false
+}
+
+// Evaluate each host argument in that element's own tree scope. Only the small
+// context record is local: the budget is returned even when matching raises.
+// The caller's scope/target/host never change, including during error unwinding.
+effect fn matchNormal<T: ElementTree>(
+  ast: &SelectorList,
+  buffer: &TokenBuffer,
+  tree: &T,
+  list: usize,
+  node: usize,
+  context: &mut MatchContext,
+  depth: usize,
+) -> bool
+  ! CssError {
+  let mut normal = MatchContext {
+    scope: context.scope,
+    target: context.target,
+    shadowHost: ElementTree.containingHost(tree, node),
+    remainingSteps: context.remainingSteps,
+  }
+  let result = run Effect.result(
+    matchesAny(ast, buffer, tree, list, node, NONE, &mut normal, depth),
+  )
+  context.remainingSteps = normal.remainingSteps
+  match &result {
+    Result<bool, CssError>.Success { value } => {
+      return value
+    }
+    Result<bool, CssError>.Failure { error } => {
+      fail CssError { kind: error.kind, offset: error.offset }
+    }
+  }
 }
 
 effect fn matchTest<T: ElementTree>(
@@ -1609,6 +1824,23 @@ effect fn matchTest<T: ElementTree>(
       return run matchState(tree, node, state, &mut context.*)
     }
     Test.Function { kind, list } => {
+      if kind == FunctionKind.Host || kind == FunctionKind.HostContext {
+        if context.shadowHost == NO_ELEMENT || node != context.shadowHost {
+          return false
+        }
+        let mut candidate = node
+        while candidate != NO_ELEMENT {
+          run spend(&mut context.*)
+          if run matchNormal(ast, buffer, tree, list, candidate, &mut context.*, depth) {
+            return true
+          }
+          if kind == FunctionKind.Host {
+            return false
+          }
+          candidate = ElementTree.parent(tree, candidate)
+        }
+        return false
+      }
       if kind == FunctionKind.Has {
         return run hasRelative(ast, buffer, tree, list, node, &mut context.*, depth)
       }
@@ -1626,9 +1858,9 @@ effect fn matchTest<T: ElementTree>(
       }
       let mut count: usize = 1
       let mut candidate = if reverse {
-        ElementTree.nextSibling(tree, node)
+        run scopedSibling(tree, node, true, &mut context.*)
       } else {
-        ElementTree.previousSibling(tree, node)
+        run scopedSibling(tree, node, false, &mut context.*)
       }
       while candidate != NO_ELEMENT {
         run spend(&mut context.*)
@@ -1638,9 +1870,9 @@ effect fn matchTest<T: ElementTree>(
           count = count + 1
         }
         candidate = if reverse {
-          ElementTree.nextSibling(tree, candidate)
+          run scopedSibling(tree, candidate, true, &mut context.*)
         } else {
-          ElementTree.previousSibling(tree, candidate)
+          run scopedSibling(tree, candidate, false, &mut context.*)
         }
       }
       let difference = usize.toF64(count) - b
@@ -1828,6 +2060,9 @@ effect fn matchState<T: ElementTree>(
   context: &mut MatchContext,
 ) -> bool
   ! CssError {
+  if state == Pseudo.Host {
+    return context.shadowHost != NO_ELEMENT && node == context.shadowHost
+  }
   if state == Pseudo.Root {
     return ElementTree.isRoot(tree, node)
   }
@@ -1852,23 +2087,23 @@ effect fn matchState<T: ElementTree>(
   let last = state == Pseudo.LastChild || state == Pseudo.OnlyChild || state == Pseudo.LastType
     || state == Pseudo.OnlyType
   if first {
-    let mut candidate = ElementTree.previousSibling(tree, node)
+    let mut candidate = run scopedSibling(tree, node, false, &mut context.*)
     while candidate != NO_ELEMENT {
       run spend(&mut context.*)
       if !typed || run sameType(tree, node, candidate, &mut context.*) {
         return false
       }
-      candidate = ElementTree.previousSibling(tree, candidate)
+      candidate = run scopedSibling(tree, candidate, false, &mut context.*)
     }
   }
   if last {
-    let mut candidate = ElementTree.nextSibling(tree, node)
+    let mut candidate = run scopedSibling(tree, node, true, &mut context.*)
     while candidate != NO_ELEMENT {
       run spend(&mut context.*)
       if !typed || run sameType(tree, node, candidate, &mut context.*) {
         return false
       }
-      candidate = ElementTree.nextSibling(tree, candidate)
+      candidate = run scopedSibling(tree, candidate, true, &mut context.*)
     }
   }
   return true

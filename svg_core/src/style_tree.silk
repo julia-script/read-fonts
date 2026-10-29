@@ -16,9 +16,35 @@ struct Links {
   link: bool,
 }
 
+pub struct Metadata {
+  links: List<Links>,
+}
+
 pub struct Tree<'a> {
   pub document: &'a Document,
-  links: List<Links>,
+  metadata: Metadata,
+}
+
+impl Metadata {
+  pub fn localLanguageAttribute(self: &Self, node: NodeId) -> Option<usize> {
+    if node.index >= self.links.length() {
+      return Option<usize>.None
+    }
+    let entry = &self.links.asSlice()[node.index]
+    return if entry.languageOwner == node.index {
+      Option<usize>.some(entry.languageAttribute)
+    } else {
+      Option<usize>.None
+    }
+  }
+
+  pub fn isEmpty(self: &Self, node: NodeId) -> bool {
+    return node.index < self.links.length() && self.links.asSlice()[node.index].empty
+  }
+
+  pub fn isLink(self: &Self, node: NodeId) -> bool {
+    return node.index < self.links.length() && self.links.asSlice()[node.index].link
+  }
 }
 
 fn index(id: Option<NodeId>) -> usize {
@@ -42,7 +68,7 @@ fn documentWhitespace(text: &[u8]) -> bool {
 
 // XML nodes are appended in document order, with parents before their children.
 // One pass over children and attributes prevents uncharged scans during matching.
-pub effect fn make<'a>(document: &'a Document) -> Tree<'a>
+pub effect fn makeMetadata(document: &Document) -> Metadata
   ! OutOfMemoryError
   ? &mut Allocator {
   let nodes = Document.nodes(document)
@@ -128,10 +154,21 @@ pub effect fn make<'a>(document: &'a Document) -> Tree<'a>
     i = i + 1
   }
   drop entries
-  return Tree { document: document, links: move links }
+  return Metadata { links: move links }
+}
+
+pub effect fn make<'a>(document: &'a Document) -> Tree<'a>
+  ! OutOfMemoryError
+  ? &mut Allocator {
+  let metadata = run makeMetadata(document)
+  return Tree { document: document, metadata: move metadata }
 }
 
 impl<'a> ElementTree for Tree<'a> {
+  fn containingHost(self: &Self, node: usize) -> usize {
+    return NO_ELEMENT
+  }
+
   fn parent(self: &Self, node: usize) -> usize {
     let nodes = Document.nodes(self.document)
     return if node < nodes.length {
@@ -142,7 +179,7 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn firstChild(self: &Self, node: usize) -> usize {
-    let entries = self.links.asSlice()
+    let entries = self.metadata.links.asSlice()
     return if node < entries.length {
       entries[node].first
     } else {
@@ -151,7 +188,7 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn nextSibling(self: &Self, node: usize) -> usize {
-    let entries = self.links.asSlice()
+    let entries = self.metadata.links.asSlice()
     return if node < entries.length {
       entries[node].next
     } else {
@@ -160,7 +197,7 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn previousSibling(self: &Self, node: usize) -> usize {
-    let entries = self.links.asSlice()
+    let entries = self.metadata.links.asSlice()
     return if node < entries.length {
       entries[node].previous
     } else {
@@ -221,7 +258,7 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn language(self: &Self, node: usize) -> &[u8] {
-    let entries = self.links.asSlice()
+    let entries = self.metadata.links.asSlice()
     if node >= entries.length || entries[node].languageOwner == NO_ELEMENT {
       return &[]
     }
@@ -235,12 +272,10 @@ impl<'a> ElementTree for Tree<'a> {
   }
 
   fn isEmpty(self: &Self, node: usize) -> bool {
-    let entries = self.links.asSlice()
-    return node < entries.length && entries[node].empty
+    return self.metadata.isEmpty(NodeId { index: node })
   }
 
   fn isLink(self: &Self, node: usize) -> bool {
-    let entries = self.links.asSlice()
-    return node < entries.length && entries[node].link
+    return self.metadata.isLink(NodeId { index: node })
   }
 }
