@@ -43,19 +43,23 @@ URLS = {
     **{f"css21-{name}": CSS21 + name + ".html" for name in CSS21_CHAPTERS},
     **{name: f"https://www.w3.org/TR/{name}/" for name in (
         "filter-effects-1 css-masking-1 compositing-1 css-transforms-1 "
-        "css-syntax-3 css-cascade-4 selectors-4 css-namespaces-3 mediaqueries-4 "
+        "css-syntax-3 css-cascade-4 selectors-4 css-namespaces-3 mediaqueries-4 mediaqueries-5 "
         "css-conditional-3 css-variables-1 css-values-3 css-values-4 css-color-4 "
-        "css-images-3 css-fonts-4 css-text-3 css-text-decor-3 css-writing-modes-3 "
+        "css-images-3 css-fonts-4 css-text-3 css-text-4 cssom css-text-decor-3 css-writing-modes-3 "
         "css-inline-3 css-shapes-1 css-animations-1 svg-integration xml xml-names "
-        "xmlbase xlink11 png-3"
+        "xmlbase xml-stylesheet xlink11 png-3"
     ).split()},
     "css-transforms-2": "https://drafts.csswg.org/css-transforms-2/",
+    "css-values-4-ed": "https://drafts.csswg.org/css-values-4/",
+    "encoding": "https://encoding.spec.whatwg.org/",
+    "unicode-uts46": "https://www.unicode.org/reports/tr46/",
+    "css-conditional-3-2022": "https://www.w3.org/TR/2022/CR-css-conditional-3-20220113/",
     "smil-animation": "https://www.w3.org/TR/2001/REC-smil-animation-20010904/",
     "svg-animations-2": "https://svgwg.org/specs/animations/",
     **{f"unicode-uax{number}": f"https://www.unicode.org/reports/tr{number}/"
        for number in (9, 14, 24, 29, 50)},
-    **{f"rfc{number}": f"https://www.rfc-editor.org/rfc/rfc{number}"
-       for number in (2397, 1950, 1951, 1952)},
+    **{f"rfc{number}": f"https://www.rfc-editor.org/rfc/rfc{number}.html"
+       for number in (2397, 1950, 1951, 1952, 3492, 5892, 5893)},
     "url": "https://url.spec.whatwg.org/",
     "jpeg-t81": "https://www.w3.org/Graphics/JPEG/itu-t81.pdf",
     "jpeg-jfif": "https://www.w3.org/Graphics/JPEG/jfif3.pdf",

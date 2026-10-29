@@ -67,12 +67,62 @@ compiler diagnostics. There is no working pre-workaround stdlib path, so no
 before/after Ir saving is claimed. The renderer baseline measures the current
 implementation; its full-process counts do not isolate these API gaps.
 
+## LIMITATION-6 — reusable CSS infrastructure
+
+Filed [silk-lang/silk#2577](https://github.com/silk-lang/silk/issues/2577).
+The dev.27 inventory has no CSS tokenizer/parser, selector matching/specificity
+or property-independent cascade API; JSON/TOML scanners are not substitutes.
+`svg_css` owns these general-purpose operations, variables and conditional rules.
+Replace the corresponding modules when released APIs preserve standards-defined
+recovery, source spans, tree adaptation and bounded allocation/work. SVG property
+definitions and computed-value projection remain local.
+[Minimal import probe](../compiler-bugs/016-css-api/README.md).
+
+## LIMITATION-7 — WHATWG URL and IDNA semantics
+
+Filed [silk-lang/silk#2578](https://github.com/silk-lang/silk/issues/2578).
+`silk.uri` is deliberately RFC 3986: it rejects raw non-ASCII and does not apply
+WHATWG normalization/default-port rules. `DomainHost` validates ASCII/Punycode
+but leaves internationalized-name conversion and IDNA mapping/context/bidi checks
+to callers. `src/url*.silk` therefore owns parsing, base resolution, serialization,
+IDNA mapping and Punycode, reusing `ucd` normalization/properties.
+Replace these parts with a released bounded WHATWG URL/UTS #46 API, not an
+RFC3986-only substitution; SVG resource authorization stays local.
+[Real-API semantic probe](../compiler-bugs/017-whatwg-url/README.md).
+
+## LIMITATION-8 — web legacy stylesheet decoding
+
+Filed [silk-lang/silk#2579](https://github.com/silk-lang/silk/issues/2579).
+Strict UTF-8 and Unicode normalization exist, but no WHATWG encoding labels,
+legacy single-/multibyte decoders or replacement-decoding API is present.
+`svg_css/src/encoding*.silk` owns bounded decoders and pinned tables.
+Replace generic codecs/label lookup when released APIs match replacement,
+reconsumption and output-bound semantics; keep CSS protocol/`@charset`/environment
+fallback selection in the stylesheet adapter. This is separate from XML #2563.
+[Minimal import probe](../compiler-bugs/018-legacy-encoding/README.md).
+
+For LIMITATION-6–8, [stdlib gaps](../docs/stdlib-gaps.md#011--reusable-css-syntax-selectors-and-cascade)
+and the linked reproducers record inventory evidence and observed diagnostics.
+Illustrative import failures alone do not establish the missing capabilities.
+Local parsing/matching, URL/IDNA normalization and decoding consume work/storage,
+but no working stdlib A/B path exists. Full-process renderer counts do not measure
+a per-gap instruction delta.
+
+## LIMITATION-9 — empty borrowed Option lifetime diagnostic
+
+Filed [silk-lang/silk#2580](https://github.com/silk-lang/silk/issues/2580);
+[reproducer](../compiler-bugs/015-option-reference-none/README.md).
+An omitted reference lifetime in an empty `Option` argument produces `SEM0099`
+at the stdlib's generic declaration rather than the constructor. The report
+requests a useful diagnostic, not acceptance of an unconstrained lifetime.
+The URL parser writes `Option<&'static Url>.None` for an absent base; `Some`
+keeps the actual borrow. This is type qualification only, with no runtime work.
+
 ## Vector integration limits
 
-The upstream vector roadmap documents approximation limits, including source
-curvature for `arcs` joins. Pinning and testing that library does not establish
-SVG conformance for those behaviors. Resolve required gaps upstream when the
-corresponding SVG phase exercises them; do not implement a second rasterizer here.
+The upstream vector backend owns curve approximation, source-curvature stroking
+and projective geometry. Pinning and testing it does not establish SVG conformance.
+Required backend changes stay upstream; there is no second local rasterizer.
 
 - The executor validates finite path/transform intermediates before vector's
   f32 coverage boundary. Unrepresentable geometry returns `InvalidGeometry`
@@ -84,5 +134,12 @@ corresponding SVG phase exercises them; do not implement a second rasterizer her
   tighter, offset layers require the later clipping/compositing integration.
 - `crispEdges` remains a rendering hint: the pinned vector backend has no AA
   toggle. It is not implemented by thresholding alpha after compositing.
-- Full perspective requires upstream projective geometry and inverse paints.
-  No local rasterizer or silent affine approximation is introduced.
+- Perspective uses checked upstream homogeneous clipping and source-space strokes.
+  Numeric, subdivision and work limits return `InvalidGeometry`; they never
+  trigger an affine approximation or coordinate saturation.
+- An unclipped projective reference box can be unbounded at the eye plane.
+  Such a box cannot be represented by the finite `Rect` API and fails explicitly;
+  replacing it with viewport bounds would change `transform-box` semantics.
+- The approved 3D profile flattens planes and retains each boundary's positive-w
+  domain. It does not retain `preserve-3d` rendering contexts or perform 3D depth
+  sorting; this is a profile choice, not SVG property inapplicability.

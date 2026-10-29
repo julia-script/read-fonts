@@ -6,6 +6,10 @@ import svg_xml.xml { Document, XmlError }
 import svg_xml.xml
 import svg_core.resolve
 import svg_raster.cpu
+pub import environment { Environment }
+import environment
+import native_environment
+import svg_core.resources { Resolver }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
@@ -14,12 +18,20 @@ effect fn invalidXml(error: XmlError) -> Document
   fail RenderError.InvalidXml
 }
 
-/// Parse XML, compute presentation values and resolve geometry, without rasterizing.
-pub effect fn parse(data: &[u8], options: &RenderOptions) -> RenderTree
+/// Parse XML, compute CSS for every element, and resolve retained geometry.
+pub effect fn parse(data: &[u8], options: &RenderOptions, host: &Environment) -> RenderTree
   ! RenderError | OutOfMemoryError
-  ? &mut Allocator {
+  ? &mut Resolver | &mut Allocator {
   let document = run Effect.catch<XmlError>(xml.parse(data), invalidXml)
-  return run resolve.resolve(&document, options)
+  let styles = run environment.styles(&document, host)
+  return run resolve.resolve(
+    move document,
+    move styles,
+    options,
+    &host.cssLimits,
+    host.media.initial.viewportWidth,
+    host.media.initial.viewportHeight,
+  )
 }
 
 /// Render a retained display list; callers can reuse it without reparsing XML.
@@ -29,10 +41,10 @@ pub effect fn renderDisplayList(list: &DisplayList) -> Pixmap
   return run cpu.execute(list)
 }
 
-pub effect fn render(data: &[u8], options: &RenderOptions) -> Pixmap
+pub effect fn render(data: &[u8], options: &RenderOptions, host: &Environment) -> Pixmap
   ! RenderError | OutOfMemoryError
-  ? &mut Allocator {
-  let tree = run parse(data, options)
+  ? &mut Resolver | &mut Allocator {
+  let tree = run parse(data, options, host)
   let list = run record(move tree)
   return run renderDisplayList(&list)
 }

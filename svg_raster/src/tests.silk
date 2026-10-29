@@ -1,12 +1,15 @@
 //! Executor safety contracts; rasterization/presentation integration is tested by svg_render.
 import cpu
 import svg_core.scene { DisplayList, Command, Color, FillRule, RenderError }
-import svg_geometry.geometry { Path, Segment, Point, Rect, Transform }
+import svg_geometry.geometry { Path, Segment, Point, Rect }
+import svg_core.mapping { Mapping, ProjectionClip }
+import vector.projective { HalfPlane }
 import vector.pixmap { Pixmap }
 import silk.collections.list { List }
 import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
+import silk.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 
 fn empty(width: u32, height: u32) -> DisplayList {
@@ -16,6 +19,7 @@ fn empty(width: u32, height: u32) -> DisplayList {
     paths: List<Path>.make(),
     dashes: List<List<f64>>.make(),
     commands: List<Command>.make(),
+    projectionClips: List<ProjectionClip>.make(),
   }
 }
 
@@ -52,7 +56,8 @@ effect fn invalidLists() -> ()
   run badPath.commands.append(
     Command.FillPath {
       path: 0,
-      transform: Transform.identity(),
+      transform: Mapping.identity(),
+      clip: Option<usize>.None,
       bounds: bounds(),
       color: Color.black(),
       rule: FillRule.Nonzero,
@@ -62,6 +67,19 @@ effect fn invalidLists() -> ()
   run Testing.expect(
     run rejected(&badPath, RenderError.InvalidGeometry),
     "missing path rejected before indexing",
+  )
+  let missingClip = run geometryList(Option<usize>.some(0))
+  run Testing.expect(
+    run rejected(&missingClip, RenderError.InvalidGeometry),
+    "missing projection clip rejected before indexing",
+  )
+  let mut cyclicClip = run geometryList(Option<usize>.some(0))
+  run cyclicClip.projectionClips.append(
+    ProjectionClip { parent: Option<usize>.some(0), plane: HalfPlane { x: 1.0, y: 0.0, w: 0.0 } },
+  )
+  run Testing.expect(
+    run rejected(&cyclicClip, RenderError.InvalidGeometry),
+    "projection clip cycle rejected before traversal",
   )
   let mut underflow = empty(2, 2)
   run underflow.commands.append(Command.PopLayer)
@@ -98,26 +116,22 @@ test effect fn validatesExportedExecutorInputs() -> ()
   run invalidLists() |> Effect.provideMut<Allocator>(&mut allocator)
 }
 
-effect fn geometryList(diagonal: bool) -> DisplayList
+effect fn geometryList(clip: Option<usize>) -> DisplayList
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut list = empty(2, 2)
   let mut path = Path.make()
   drop run path.append(Segment.MoveTo { to: Point.new(-1.0e20, -1.0e20) })
-  if diagonal {
-    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, 1.0e20) })
-    drop run path.append(Segment.LineTo { to: Point.new(-1.0e20, 1.0e20) })
-  } else {
-    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, -1.0e20) })
-    drop run path.append(Segment.LineTo { to: Point.new(1.0e20, 1.0e20) })
-    drop run path.append(Segment.LineTo { to: Point.new(-1.0e20, 1.0e20) })
-  }
+  drop run path.append(Segment.LineTo { to: Point.new(1.0e20, -1.0e20) })
+  drop run path.append(Segment.LineTo { to: Point.new(1.0e20, 1.0e20) })
+  drop run path.append(Segment.LineTo { to: Point.new(-1.0e20, 1.0e20) })
   drop run path.append(Segment.Close)
   run list.paths.append(move path)
   run list.commands.append(
     Command.FillPath {
       path: 0,
-      transform: Transform.identity(),
+      transform: Mapping.identity(),
+      clip: clip,
       bounds: bounds(),
       color: Color.black(),
       rule: FillRule.Nonzero,
@@ -127,22 +141,10 @@ effect fn geometryList(diagonal: bool) -> DisplayList
   return move list
 }
 
-test effect fn rejectsUnrepresentableVectorIntermediates() -> ()
-  ! AssertionError<'static> | OutOfMemoryError {
-  let mut allocator = Allocator.systemAllocatorProvider()
-  let list = run geometryList(true) |> Effect.provideMut<Allocator>(&mut allocator)
-  let invalid = run rejected(&list, RenderError.InvalidGeometry)
-    |> Effect.provideMut<Allocator>(&mut allocator)
-  run Testing.expect(
-    invalid,
-    "finite endpoints whose vector clipping product overflows fail controllably",
-  )
-}
-
 test effect fn preservesRepresentableLargeFiniteCoordinates() -> ()
   ! AssertionError<'static> | RenderError | OutOfMemoryError {
   let mut allocator = Allocator.systemAllocatorProvider()
-  let list = run geometryList(false) |> Effect.provideMut<Allocator>(&mut allocator)
+  let list = run geometryList(Option<usize>.None) |> Effect.provideMut<Allocator>(&mut allocator)
   let pixels = run cpu.execute(&list) |> Effect.provideMut<Allocator>(&mut allocator)
   run Testing.expect(
     pixels.pixel(0, 0).a == 255 && pixels.pixel(1, 1).a == 255,

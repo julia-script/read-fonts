@@ -7,3 +7,4 @@ silk-version = "0.1.0-dev.27+323ceb59e7ee"
 svg_render = { path = "../svg_render" }
 svg_image = { path = "../svg_image" }
 svg_geometry = { path = "../svg_geometry" }
+svg_core = { path = "../svg_core" }

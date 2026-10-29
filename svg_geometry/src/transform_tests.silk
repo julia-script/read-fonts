@@ -1,6 +1,7 @@
-//! Numeric transform contracts; citations refer to specs.lock.json snapshots.
+//! Transform contracts; CSS value grammar is tested in svg_css.
 import geometry { Transform }
-import transforms { transform, cssTransform, CssTransformResult }
+import transforms as matrix
+import transforms { Projection, Facing }
 import silk.option { Option }
 import silk.num.f64
 import silk.testing.testing { Testing, AssertionError }
@@ -15,7 +16,7 @@ fn same(a: Transform, b: Transform) -> bool {
 }
 
 fn svgIs(data: &[u8], expected: Transform) -> bool {
-  let result = transform(data)
+  let result = matrix.transform(data)
   return match &result {
     Option<Transform>.Some { value } => same(value, expected)
     Option<Transform>.None => false
@@ -23,33 +24,25 @@ fn svgIs(data: &[u8], expected: Transform) -> bool {
 }
 
 fn svgInvalid(data: &[u8]) -> bool {
-  let result = transform(data)
+  let result = matrix.transform(data)
   return match &result {
     Option<Transform>.None => true
     _ => false
   }
 }
 
-fn cssIs(data: &[u8], expected: Transform) -> bool {
-  let result = cssTransform(data)
+fn affineIs(value: &matrix.Matrix, expected: Transform) -> bool {
+  let result = matrix.flattened(value)
   return match &result {
-    CssTransformResult.Affine { value } => same(value, expected)
+    Projection.Affine { value: affine } => same(affine, expected)
     _ => false
   }
 }
 
-fn cssInvalid(data: &[u8]) -> bool {
-  let result = cssTransform(data)
+fn perspectiveRequired(value: &matrix.Matrix) -> bool {
+  let result = matrix.flattened(value)
   return match &result {
-    CssTransformResult.Invalid => true
-    _ => false
-  }
-}
-
-fn perspective(data: &[u8]) -> bool {
-  let result = cssTransform(data)
-  return match &result {
-    CssTransformResult.PerspectiveNeeded => true
+    Projection.PerspectiveNeeded => true
     _ => false
   }
 }
@@ -68,23 +61,17 @@ test effect fn svgTransformGrammar() -> ()
   )
   run Testing.expect(
     svgIs(b"translate(.5.25)", Transform.translation(0.5, 0.25)),
-    "adjacent decimal tokens",
+    "adjacent decimals",
   )
-  run Testing.expect(svgIs(b"scale(2.)", Transform.scale(2.0, 2.0)), "SVG trailing decimal point")
   run Testing.expect(
-    svgInvalid(b"translate(1),") && svgInvalid(b"scale(1,,2)"),
-    "reject dangling and repeated comma",
+    svgInvalid(b"scale(2.)"),
+    "Transforms1 number-token excludes a trailing decimal point",
   )
-  run Testing.expect(svgInvalid(b"scale(1)translate(2)"), "SVG functions require comma-wsp")
-  run Testing.expect(
-    svgInvalid(b"translate(1px)") && svgInvalid(b"rotate(1deg)"),
-    "SVG attribute uses numbers only",
-  )
+  run Testing.expect(svgInvalid(b"translate(1),") && svgInvalid(b"scale(1,,2)"), "invalid commas")
+  run Testing.expect(svgInvalid(b"scale(1)translate(2)"), "functions require comma-wsp")
+  run Testing.expect(svgInvalid(b"translate(1px)") && svgInvalid(b"rotate(1deg)"), "numbers only")
   run Testing.expect(svgInvalid(b"rotate(1 2)") && svgInvalid(b"Translate(1)"), "arity and case")
-  run Testing.expect(
-    svgInvalid(b"none") && svgInvalid(b"rotateX(20)"),
-    "CSS-only forms are not SVG grammar",
-  )
+  run Testing.expect(svgInvalid(b"none") && svgInvalid(b"rotateX(20)"), "CSS-only forms rejected")
 }
 
 // https://www.w3.org/TR/css-transforms-1/#svg-transform-functions
@@ -100,168 +87,182 @@ test effect fn svgRotationSkewAndOrder() -> ()
   )
   run Testing.expect(
     svgIs(b"scale(2) translate(3,4)", Transform.new(2.0, 0.0, 0.0, 2.0, 6.0, 8.0)),
-    "transform list composition order",
+    "transform list order",
   )
 }
 
 // https://www.w3.org/TR/css-transforms-1/#two-d-transform-functions
-test effect fn cssTwoDimensionalForms() -> ()
+test effect fn matrixComponentsAndOrder() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(cssIs(b" NONE ", Transform.identity()), "CSS none is case insensitive")
+  let translated = matrix.translation(2.0, 3.0, 0.0)
+  let scaled = matrix.scale(2.0, 3.0, 1.0)
+  let combined = matrix.multiply(&translated, &scaled)
   run Testing.expect(
-    cssIs(b"translate(2px, 3px) scale(2,3)", Transform.new(2.0, 0.0, 0.0, 3.0, 2.0, 3.0)),
-    "CSS lengths and composition",
+    affineIs(&combined, Transform.new(2.0, 0.0, 0.0, 3.0, 2.0, 3.0)),
+    "postmultiply",
   )
+  let skewed = matrix.skew(f64.PI / 4.0, f64.PI / 4.0)
   run Testing.expect(
-    cssIs(
-      b"translateX(4px) translateY(5px) scaleX(2) scaleY(3)",
-      Transform.new(2.0, 0.0, 0.0, 3.0, 4.0, 5.0),
-    ),
-    "axis functions",
-  )
-  run Testing.expect(
-    cssIs(b"matrix(1,2,3,4,5,6)", Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)),
-    "CSS matrix",
-  )
-  run Testing.expect(
-    cssIs(b"skew(45deg,45deg)", Transform.new(1.0, 1.0, 1.0, 1.0, 0.0, 0.0)),
-    "skew is not skewX times skewY",
-  )
-  run Testing.expect(cssIs(b"translate(0) rotate(0)", Transform.identity()), "unitless zero")
-  run Testing.expect(
-    cssInvalid(b"") && cssInvalid(b"translate(2)"),
-    "CSS empty and unitless nonzero length invalid",
-  )
-  run Testing.expect(
-    cssInvalid(b"scale(2 3)") && cssInvalid(b"rotate (20deg)"),
-    "CSS commas and function token",
-  )
-  run Testing.expect(cssInvalid(b"rotate(20)") && cssInvalid(b"scale(2px)"), "dimension checking")
-  run Testing.expect(
-    cssInvalid(b"scale(2.)") && cssInvalid(b"translate(2%)"),
-    "numeric mode does not resolve percentages",
+    affineIs(&skewed, Transform.new(1.0, 1.0, 1.0, 1.0, 0.0, 0.0)),
+    "two-axis skew is not sequential skewX and skewY",
   )
 }
 
-// https://www.w3.org/TR/css-values-3/#angles
-test effect fn cssAngleUnits() -> ()
+// https://github.com/w3c/csswg-drafts/issues/917
+// The archived issue supplies this perspective matrix as an m33 counterexample.
+test effect fn backfaceUsesTransformedNormalRatherThanWindingOrM33() -> ()
   ! AssertionError<'static> {
-  let quarter = Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)
-  run Testing.expect(cssIs(b"rotate(90deg)", quarter), "degrees")
-  run Testing.expect(cssIs(b"rotate(1.5707963267948966rad)", quarter), "radians")
-  run Testing.expect(cssIs(b"rotate(100grad)", quarter), "gradians")
-  run Testing.expect(cssIs(b"ROTATE(.25TURN)", quarter), "turns and case-insensitive units")
+  let mirrored = matrix.scale(-1.0, 1.0, 1.0)
+  let turned = matrix.rotation(0.0, 1.0, 0.0, f64.PI)
+  run Testing.expect(matrix.facing(&mirrored) == Facing.Front, "in-plane reflection retains front")
+  run Testing.expect(matrix.facing(&turned) == Facing.Back, "half-turn exposes back")
+  let perspective = matrix.fromColumnMajor(
+    &[
+      1.0574,
+      1.2310,
+      -0.4924,
+      0.0025,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      2.4037,
+      0.4341,
+      -0.1736,
+      0.0009,
+      88.5277,
+      53.7981,
+      98.4808,
+      0.5076,
+    ],
+  )
+  run Testing.expect(
+    matrix.facing(&perspective) == Facing.Front,
+    "perspective changes which face is visible",
+  )
+}
+
+// https://www.w3.org/TR/css-transforms-1/#transform-function-lists
+test effect fn singularDepthIsNotRescuedByFlattening() -> ()
+  ! AssertionError<'static> {
+  let collapsed = matrix.scale(1.0, 1.0, 0.0)
+  run Testing.expect(
+    matrix.facing(&collapsed) == Facing.Singular,
+    "scaleZ(0) suppresses the whole element",
+  )
+  let inverted = matrix.scale(1.0, 1.0, -1.0)
+  run Testing.expect(
+    matrix.facing(&inverted) == Facing.Back,
+    "normal inversion is retained before projection",
+  )
+  let tiny = matrix.scale(1.0e-250, 1.0e-250, 1.0e-250)
+  run Testing.expect(
+    matrix.facing(&tiny) == Facing.Front,
+    "small invertible scales do not underflow a determinant product",
+  )
 }
 
 // https://drafts.csswg.org/css-transforms-2/#three-d-transform-functions
-test effect fn cssThreeDimensionalFunctions() -> ()
+test effect fn threeDimensionalProjection() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(cssIs(b"rotateX(60deg)", Transform.scale(1.0, 0.5)), "rotateX drops output z")
-  run Testing.expect(cssIs(b"rotateY(60deg)", Transform.scale(0.5, 1.0)), "rotateY drops output z")
+  let x = matrix.rotation(1.0, 0.0, 0.0, f64.PI / 3.0)
+  let y = matrix.rotation(0.0, 1.0, 0.0, f64.PI / 3.0)
+  run Testing.expect(affineIs(&x, Transform.scale(1.0, 0.5)), "rotateX projects output z")
+  run Testing.expect(affineIs(&y, Transform.scale(0.5, 1.0)), "rotateY projects output z")
+  let columns = [1.0, 2.0, 0.0, 0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 5.0, 6.0, 7.0, 1.0]
+  let value = matrix.fromColumnMajor(&columns)
   run Testing.expect(
-    cssIs(b"rotateZ(90deg)", Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)),
-    "rotateZ",
-  )
-  run Testing.expect(
-    cssIs(
-      b"translate3d(2px,3px,4px) translateZ(9px) scale3d(2,3,4) scaleZ(2)",
-      Transform.new(2.0, 0.0, 0.0, 3.0, 2.0, 3.0),
-    ),
-    "3D translations and scales",
-  )
-  run Testing.expect(
-    cssIs(
-      b"matrix3d(1,2,0,0,3,4,0,0,0,0,1,0,5,6,7,1)",
-      Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
-    ),
-    "column-major CSS matrix3d",
-  )
-  run Testing.expect(
-    cssInvalid(b"translate3d(1px,2px)") && cssInvalid(b"rotate3d(1,0,0,1px)"),
-    "3D grammar rejects wrong arity and units",
+    affineIs(&value, Transform.new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)),
+    "column-major matrix3d maps to row-major storage",
   )
 }
 
 // https://drafts.csswg.org/css-transforms-2/#mathematical-description
-test effect fn cssComposesBeforeFlattening() -> ()
+test effect fn composesBeforeFlattening() -> ()
   ! AssertionError<'static> {
+  let forward = matrix.rotation(0.0, 1.0, 0.0, f64.PI / 3.0)
+  let backward = matrix.rotation(0.0, 1.0, 0.0, -f64.PI / 3.0)
+  let roundtrip = matrix.multiply(&forward, &backward)
+  run Testing.expect(affineIs(&roundtrip, Transform.identity()), "do not flatten components")
+  let quarter = matrix.rotation(0.0, 1.0, 0.0, f64.PI / 2.0)
+  let depth = matrix.translation(0.0, 0.0, 10.0)
+  let rotateThenTranslate = matrix.multiply(&quarter, &depth)
+  let translateThenRotate = matrix.multiply(&depth, &quarter)
   run Testing.expect(
-    cssIs(b"rotateY(60deg) rotateY(-60deg)", Transform.identity()),
-    "rotation roundtrip must not flatten components",
+    affineIs(&rotateThenTranslate, Transform.new(0.0, 0.0, 0.0, 1.0, 10.0, 0.0)),
+    "z translation becomes x translation before projection",
   )
   run Testing.expect(
-    cssIs(b"rotateY(90deg) translateZ(10px)", Transform.new(0.0, 0.0, 0.0, 1.0, 10.0, 0.0)),
-    "z translation becomes x translation while the x axis projects to zero",
-  )
-  run Testing.expect(
-    cssIs(b"translateZ(10px) rotateY(90deg)", Transform.scale(0.0, 1.0)),
-    "order remains observable in 3D",
+    affineIs(&translateThenRotate, Transform.scale(0.0, 1.0)),
+    "3D order observable",
   )
 }
 
 // https://drafts.csswg.org/css-transforms-2/#funcdef-rotate3d
-test effect fn cssRotationAxisNormalization() -> ()
+test effect fn rotationAxisNormalization() -> ()
   ! AssertionError<'static> {
   let quarter = Transform.new(0.0, 1.0, -1.0, 0.0, 0.0, 0.0)
-  run Testing.expect(cssIs(b"rotate3d(0,0,2,90deg)", quarter), "axis is normalized")
+  let axes = [2.0, 1e308, 1e-300]
+  let mut i: usize = 0
+  while i < axes.length {
+    let value = matrix.rotation(0.0, 0.0, axes[i], f64.PI / 2.0)
+    run Testing.expect(affineIs(&value, quarter), "normalize without overflow or underflow")
+    i = i + 1
+  }
+  let zero = matrix.rotation(0.0, 0.0, 0.0, f64.PI / 2.0)
+  run Testing.expect(affineIs(&zero, Transform.identity()), "zero axis does not rotate")
+  let diagonal = matrix.rotation(1.0, 1.0, 1.0, f64.PI * 2.0 / 3.0)
   run Testing.expect(
-    cssIs(b"rotate3d(0,0,1e308,90deg)", quarter),
-    "axis normalization avoids overflow",
-  )
-  run Testing.expect(
-    cssIs(b"rotate3d(0,0,1e-300,90deg)", quarter),
-    "axis normalization avoids underflow",
-  )
-  run Testing.expect(
-    cssIs(b"rotate3d(0,0,0,90deg)", Transform.identity()),
-    "zero axis does not rotate",
-  )
-  run Testing.expect(
-    cssIs(b"rotate3d(1,1,1,120deg)", Transform.new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0)),
+    affineIs(&diagonal, Transform.new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0)),
     "arbitrary axis rotation",
   )
 }
 
 // https://drafts.csswg.org/css-transforms-2/#funcdef-perspective
-test effect fn cssPerspectiveIsDistinctFromInvalid() -> ()
+test effect fn perspectiveRemainsProjective() -> ()
   ! AssertionError<'static> {
+  let normal = matrix.perspective(100.0)
+  let small = matrix.perspective(0.0)
   run Testing.expect(
-    perspective(b"perspective(100px) rotateY(20deg)"),
-    "true perspective needs projective renderer",
-  )
-  run Testing.expect(perspective(b"perspective(0)"), "subpixel perspective clamps to one pixel")
-  run Testing.expect(
-    cssIs(b"perspective(none)", Transform.identity()),
-    "none perspective is identity",
-  )
-  run Testing.expect(
-    cssInvalid(b"perspective(-1px)") && cssInvalid(b"perspective(1deg)"),
-    "invalid perspective arguments",
+    match &normal {
+      Option<matrix.Matrix>.Some { value } => perspectiveRequired(&value)
+      _ => false
+    },
+    "perspective requires projective backend",
   )
   run Testing.expect(
-    cssInvalid(b"perspective(100px) garbage"),
-    "invalid tail takes precedence over perspective",
+    match &small {
+      Option<matrix.Matrix>.Some { value } => matrix.coefficients(&value)[14] == -1.0
+      _ => false
+    },
+    "subpixel perspective uses one pixel",
   )
+  let negative = matrix.perspective(-1.0)
   run Testing.expect(
-    perspective(b"matrix3d(1,0,0,0,0,1,0,0,0,0,1,-.01,0,0,0,1)"),
-    "matrix perspective explicitly reported",
+    match &negative {
+      Option<matrix.Matrix>.None => true
+      _ => false
+    },
+    "negative distance invalid",
   )
+  let columns = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -0.01, 0.0, 0.0, 0.0, 1.0]
+  let projective = matrix.fromColumnMajor(&columns)
+  run Testing.expect(perspectiveRequired(&projective), "matrix perspective must not be discarded")
 }
 
 // https://drafts.csswg.org/css-transforms-2/#mathematical-description
-test effect fn transformFinitePolicy() -> ()
+test effect fn finiteComposition() -> ()
   ! AssertionError<'static> {
-  run Testing.expect(
-    svgInvalid(b"scale(1e309)") && cssInvalid(b"scale(NaN)"),
-    "nonfinite tokens rejected",
-  )
+  run Testing.expect(svgInvalid(b"scale(1e309)"), "nonfinite attribute numbers rejected")
   run Testing.expect(svgInvalid(b"scale(1e308) scale(1e308)"), "composition overflow rejected")
+  let large = matrix.translation(0.0, 0.0, 1e308)
+  let doubled = matrix.multiply(&large, &large)
+  let projected = matrix.flattened(&doubled)
   run Testing.expect(
-    cssInvalid(b"translateZ(1e308px) translateZ(1e308px)"),
+    match &projected {
+      Projection.Invalid => true
+      _ => false
+    },
     "even discarded z must stay finite",
-  )
-  run Testing.expect(
-    cssIs(b"rotate(1e308turn)", Transform.identity()),
-    "reduce finite angles before radians conversion",
   )
 }

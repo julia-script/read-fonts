@@ -6,21 +6,26 @@ references. See [authority, scope and coverage](SPECIFICATIONS.md).
 
 ## Current status
 
-The phase-2 implementation parses XML and renders presentation-attribute SVG:
-outermost `svg`, `g`, paths and basic shapes, solid fills/strokes, transforms,
-`viewBox`/`preserveAspectRatio`, inherited paint, visibility and isolated opacity.
-It produces premultiplied RGBA8 through the pinned CPU `vector` backend and writes
-PNG through `svg_cli`. The retained render tree and display list are public.
+The renderer computes CSS before resolving outermost `svg`, `g`, paths and basic
+shapes: selectors, cascade/custom properties, presentation attributes, inline and
+external stylesheets, media/supports conditions, typed geometry and transforms.
+Solid fills/strokes, `viewBox`/`preserveAspectRatio`, inherited paint, visibility
+and isolated opacity produce premultiplied RGBA8 through the shared CPU `vector`
+backend. `svg_cli` writes PNG; the XML/computed-style tree and display list are public.
 
-Local verification: 69 SVG native tests, 33 upstream vector tests, 47 Python
-tooling tests, 15 own rendering cases and six malformed-input cases pass.
-The curated resvg set has six exact RGBA passes and six explicitly recorded
-circle-edge pixel non-passes. Two own round-stroke comparisons have narrowly
-documented antialias allowances. These results do **not** establish full viewer
-conformance. The full W3C/resvg/WPT sweep and performance parity remain open.
+Integration checks exercise CSS precedence, reference geometry, projective
+transforms, nested positive-w clipping, backface visibility and resource limits.
+The actual CLI's CSS fixture matches its literal reference. A 256×64 projective
+CLI smoke also matches an independent affine/polygon control with zero differing
+pixels, including parent perspective and nested flattening boundaries. The CLI's
+512×512 stylesheet workload (2,048 rules and rectangles) matches an independent
+pixel control exactly; its benchmark checksum also agrees with resvg.
+The earlier phase-2 corpus and performance results below are historical, not
+proof that the current full viewer or every external reference case passes.
 
-CSS, references, paint servers, clipping/masking, image decoding, filters, text,
-animation and ICC remain required subsequent phases, not exclusions from scope.
+References, paint servers, clipping/masking, image decoding, filters, text,
+animation and ICC remain required work, not exclusions from scope. Parsing their
+CSS properties does not implement their rendering.
 
 ## Packages
 
@@ -30,9 +35,9 @@ All are root workspace packages with the `svg_` prefix:
 | --- | --- |
 | `svg_geometry` | f64 geometry, SVG path/points parsing, arcs, shape construction and transforms |
 | `svg_xml` | Namespace-aware nonvalidating XML, UTF-8/UTF-16, bounded DTD/entity processing |
-| `svg_css` | CSS syntax/cascade boundary; implementation pending |
+| `svg_css` | Tokenization, selectors, cascade/custom properties, typed computed values, conditions and stylesheet decoding |
 | `svg_image` | Checked premultiplied RGBA storage and PNG encoding; decoding pending |
-| `svg_core` | Presentation values and geometry resolution; specification and limitation records |
+| `svg_core` | Document styling, exact source geometry and reference-box resolution; specification and limitation records |
 | `svg_render` | Render tree to backend-neutral retained display list and public rendering entry point |
 | `svg_raster` | Thin CPU executor over `vector`, not a second rasterizer |
 | `svg_filters` | Filter evaluation boundary; implementation pending |
@@ -83,7 +88,7 @@ skips pinned-reference checks and the external corpus, not native/tooling tests
 or the actual own/malformed rendering runs. Formatting uses one manifest per
 package; a directory argument is outside its own `src/` selection in dev.27.
 
-The macOS arm64 offline gate completed in 28.03 seconds with warm caches.
+The phase-2 macOS arm64 offline gate completed in 28.03 seconds with warm caches.
 The Linux arm64 offline SVG gate and `scripts/generate --check` also pass in an
 isolated Ubuntu workspace, with the same own/curated rendering outcomes.
 GitHub Actions has not supplied a cold-run result: the phase-1 jobs were refused
@@ -93,7 +98,7 @@ not a substitute for that CI budget verification.
 ## Specifications and suites
 
 ```sh
-python3 scripts/svg/fetch-specs.py             # verify/fetch all 141 locked documents
+python3 scripts/svg/fetch-specs.py             # verify/fetch all 152 locked documents
 python3 scripts/svg/fetch-specs.py --offline   # verify all cached original bytes
 python3 scripts/svg/fetch-suites              # only 12 curated SVG/PNG pairs
 python3 scripts/svg/reftests --validate       # schema, cache integrity and coverage; renders nothing
@@ -159,15 +164,44 @@ Import `svg_render.lib`:
 
 | Entry point | Ownership and result |
 |---|---|
-| `parse(data, &options)` | XML bytes → owned `RenderTree`, without rasterizing |
+| `parse(data, &options, &environment)` | XML bytes → owned `RenderTree` including document/computed styles, without rasterizing |
 | `record(move tree)` | Moves geometry into a backend-neutral `DisplayList` |
 | `renderDisplayList(&list)` | Reusable retained input → owned `vector.pixmap.Pixmap` |
-| `render(data, &options)` | Combined path → premultiplied sRGB RGBA8 pixmap |
+| `render(data, &options, &environment)` | Combined path → premultiplied sRGB RGBA8 pixmap |
 
-These are allocator effects with typed `RenderError`/`OutOfMemoryError`.
+All entry points require an allocator; `parse` and `render` also require the
+`svg_core.resources.Resolver` effect. Errors are typed `RenderError` or
+`OutOfMemoryError`. `Environment` supplies the base URL, embedding viewport,
+measured font metrics, system colors, concrete system-font values and CSS limits.
+`NativeHost` measures a selected installed serif at 16 CSS px; all six system-font
+keywords alias that face. The headless palette is explicit light sRGB, not the
+operating system's appearance. Linux CI installs `fonts-dejavu-core`.
+
+The CLI permits `data:` stylesheets and files confined to the input directory;
+it does not fetch network resources. Its 300×150 embedding viewport is independent
+of output-resolution overrides. Portable hosts can provide measured font bytes
+through `NativeHost.fromFontBytes`, or configure `Environment` directly.
+URL normalization byte/scalar/work exhaustion remains a resource error:
+`UrlError.InputLimit` propagates through stylesheet loading to `RenderError.TooLarge`.
+Both processing instructions and `@import` stop the render rather than treating
+exhaustion as an ignorable malformed URL; allocation failure remains distinct.
+
+`Catalog.matching` mutably borrows its catalog to build and reuse a conservative
+ID/class/local-name selector index. Complete matching still determines specificity;
+unkeyed arms and fingerprint collisions remain candidates, never false negatives.
+Adding stylesheet rules invalidates the index. Candidate discovery and matching
+share a 64,000,000-step document budget; exhaustion remains `CssError.MatchLimit`
+(`RenderError.TooLarge` at the rendering boundary), not a selector nonmatch.
+
+`RenderTree.document` retains XML metadata and `RenderTree.styles` retains
+computed values and stylesheet source bases. CSS path handles resolve in
+`RenderTree.paths` after resolution; the CSS store's path arena is moved there
+without copying. `record` consumes this tree and retains only drawing data.
+`DisplayList.projectionClips` contains plain homogeneous halfplane chains for
+nested flattening. Parents must precede their children; execution validates this
+ordering and command indices before traversing the chains.
 `svg_image.png.encodePixels(width, height, pixels)` borrows premultiplied pixels;
-no intermediate owned image copy is required. Use `svg_xml.xml` directly for
-the retained XML arena, metadata and detailed XML error offsets.
+no intermediate owned image copy is required.
 
 `RenderOptions.make()` uses intrinsic/default object sizing, zoom 1 and a
 16M-pixel output budget. A viewBox supplies an aspect ratio, not intrinsic pixel
@@ -187,10 +221,12 @@ are `None`. A transformed rectangle bounds all four corners, not the exact curve
 `Path` owns stdlib `List` storage. Borrow its segments; append rejects nonfinite
 segments or a missing initial move without changing the path. Close restores the
 subpath start. Import `svg_geometry.svg` for SVG path/points parsing and shape/
-viewBox construction, `svg_geometry.arcs` for allocation-free adaptive arc
-iteration, and `svg_geometry.transforms` for the distinct SVG/CSS grammars.
-Arc conversion uses a 0.25-device-pixel tolerance; exceeding its subdivision
-limit is an error, not a silently truncated path.
+viewBox construction, `svg_geometry.arcs` for exact center-parameter normalization
+and optional allocation-free cubic iteration, and `svg_geometry.transforms` for
+the distinct SVG/CSS grammars. The backend receives exact ellipse primitives,
+preserving source tangents and curvature. Coverage has a 0.25-device-pixel budget;
+stroke-reference bounds use a tighter 1e-7 target-coordinate budget. Numeric or
+subdivision limits fail explicitly rather than returning under-resolved geometry.
 
 ## Limitations and performance
 

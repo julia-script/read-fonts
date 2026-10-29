@@ -3,7 +3,7 @@ name = "svg_core"
 version = "0.1.0"
 silk-version = "0.1.0-dev.27+323ceb59e7ee"
 kind = "library"
-exports = ["scene", "resolve", "presentation"]
+exports = ["scene", "mapping", "resolve", "url", "resources", "resources_native", "style_tree", "stylesheets", "document_styles", "font_metrics", "vector_path"]
 
 [dependencies]
 svg_geometry = { path = "../svg_geometry" }
@@ -14,3 +14,5 @@ font_types = { path = "../font_types" }
 read_fonts = { path = "../read_fonts" }
 harfrust = { path = "../harfrust" }
 ucd = { path = "../ucd" }
+# LIMITATION-1: git dependencies unavailable (silk-lang/silk#2558); pin the submodule.
+vector = { path = "../vendor/silk-gpu/vector" }

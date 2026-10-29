@@ -27,6 +27,8 @@ jobs:
           path: ~/.silk
           key: svg-silk-${{ runner.os }}-${{ hashFiles('svg_core/silk.toml') }}
       - uses: ./.github/actions/setup-silk
+      - name: Install native SVG serif font
+        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -39,6 +41,16 @@ jobs:
             svg_core/.cache/specs
             svg_tests/.cache/suites
           key: svg-references-${{ hashFiles('svg_core/specs.lock.json', 'svg_tests/suites.lock.json') }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            svg_css/.cache/encodings
+            svg_core/.cache/idna
+          key: svg-generated-inputs-${{ hashFiles('svg_css/encodings.lock.json', 'svg_core/idna.lock.json') }}
+      - name: Hydrate pinned SVG generation inputs
+        run: |
+          scripts/svg/generate-encodings --fetch
+          scripts/svg/generate-idna --fetch
       - run: scripts/svg/check
       - name: Upload SVG reference diagnostics
         if: always()

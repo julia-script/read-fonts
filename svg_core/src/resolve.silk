@@ -1,9 +1,25 @@
-//! Resolve document geometry and presentation values into an owned, backend-neutral tree.
-import scene { RenderOptions, RenderError, RenderTree, ResolvedNode, Style }
-import presentation { attr, equal, trim, length, compute }
+//! Resolve typed computed CSS and exact reference geometry into retained nodes.
+import scene { RenderOptions, RenderError, RenderTree, ResolvedNode, Style, Paint }
+import document_styles { StyledDocument }
+import used_geometry
+import used_style { DashCache }
+import used_style
+import used_transforms
+import reference_bounds { Cache as ReferenceBoundsCache }
+import mapping { Mapping, ProjectionClip }
+import vector.projective { HalfPlane }
+import vector.geometry_error { GeometryError }
 import svg_xml.xml { Document, NodeId, NodeKind }
-import svg_geometry.geometry { Point, Rect, Path, Segment, Transform }
+import svg_css.computed { Engine, StyleId }
+import svg_css.properties { Property }
+import svg_css.tokens { Limits, CssError, equal }
+import svg_css.transform_values { ReferenceBox }
+import svg_geometry.geometry { Rect, Path, Transform }
+import svg_geometry.transforms { Matrix, Facing }
+import svg_geometry.transforms
 import svg_geometry.svg
+import silk.core.effect { Effect }
+import silk.core.ownership { Copy }
 import silk.collections.list { List }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.option { Option }
@@ -19,12 +35,11 @@ struct Viewport {
   scale: Transform
 }
 
-fn intrinsic(data: &[u8]) -> Option<f64> {
-  let value = trim(data)
-  if value.length == 0 || value[value.length - 1] == 37 {
-    return Option<f64>.None
+fn attr<'a>(document: &'a Document, id: NodeId, name: &[u8]) -> &'a [u8] {
+  return match &Document.attribute(document, id, b"", name) {
+    Option<&[u8]>.Some { value } => value
+    _ => b""
   }
-  return length(value, 0.0, 16.0)
 }
 
 fn positive(value: Option<f64>) -> Option<f64> {
@@ -35,13 +50,6 @@ fn positive(value: Option<f64>) -> Option<f64> {
       Option<f64>.None
     }
     _ => Option<f64>.None
-  }
-}
-
-fn fallback(value: Option<f64>, otherwise: f64) -> f64 {
-  return match &value {
-    Option<f64>.Some { value: found } => found
-    _ => otherwise
   }
 }
 
@@ -70,23 +78,25 @@ fn rootRatio(width: Option<f64>, height: Option<f64>, box: Option<Rect>) -> Opti
   return Option<f64>.None
 }
 
-// CSS Images default object sizing, with a 300x150 host default object size.
-// CLI width/height select output pixels; they do not rewrite the document's viewport.
+// CSS default object sizing. Host dimensions supply the embedding viewport;
+// output pixel overrides do not rewrite that document coordinate system.
 effect fn sizing(
-  document: &Document,
-  root: NodeId,
+  engine: &Engine,
+  root: StyleId,
   box: Option<Rect>,
   options: &RenderOptions,
+  initialWidth: f64,
+  initialHeight: f64,
 ) -> Viewport
   ! RenderError {
   if !f64.isFinite(options.zoom) || options.zoom <= 0.0 {
     fail RenderError.InvalidSize
   }
-  let width = positive(intrinsic(attr(document, root, b"width")))
-  let height = positive(intrinsic(attr(document, root, b"height")))
+  let width = positive(engine.number(root, Property.Width, initialWidth))
+  let height = positive(engine.number(root, Property.Height, initialHeight))
   let ratio = rootRatio(width, height, box)
-  let mut w: f64 = 300.0
-  let mut h: f64 = 150.0
+  let mut w = initialWidth
+  let mut h = initialHeight
   match &width {
     Option<f64>.Some { value } => {
       w = value
@@ -118,7 +128,7 @@ effect fn sizing(
         _ => {
           match &ratio {
             Option<f64>.Some { value } => {
-              if value >= 2.0 {
+              if value >= initialWidth / initialHeight {
                 h = w / value
               } else {
                 w = h * value
@@ -177,189 +187,175 @@ effect fn sizing(
   return Viewport { width: w, height: h, pixelsWidth: pw, pixelsHeight: ph, scale: scale }
 }
 
-fn coordinate(
-  document: &Document,
-  id: NodeId,
-  name: &[u8],
-  base: f64,
-  fontSize: f64,
-  otherwise: f64,
-) -> f64 {
-  return fallback(length(attr(document, id, name), base, fontSize), otherwise)
+struct Plan {
+  styleId: StyleId,
+  style: Style,
+  path: Option<usize>,
+  paintable: bool,
+  container: bool,
+  local: Mapping,
+  transformed: bool,
+  perspective: bool,
+  hiddenBackface: bool,
+  suppressed: bool,
+  pending: Option<usize>,
 }
 
-fn diagonal(width: f64, height: f64) -> f64 {
-  let largest = if width > height {
-    width
-  } else {
-    height
+impl Copy for Plan {}
+
+effect fn rectangle(x: f64, y: f64, width: f64, height: f64) -> Rect
+  ! RenderError {
+  return match &Rect.new(x, y, width, height) {
+    Option<Rect>.Some { value } => value
+    _ => {
+      fail RenderError.InvalidGeometry
+    }
   }
-  if largest == 0.0 {
-    return 0.0
-  }
-  let x = width / largest
-  let y = height / largest
-  return largest * f64.sqrt((x * x + y * y) / 2.0)
 }
 
-effect fn shape(
+fn united(left: Option<Rect>, right: Option<Rect>) -> Option<Rect> {
+  return match &left {
+    Option<Rect>.Some { value: a } => match &right {
+      Option<Rect>.Some { value: b } => a.united(b)
+      _ => left
+    }
+    _ => right
+  }
+}
+
+effect fn prepare(
   document: &Document,
-  id: NodeId,
-  name: &[u8],
-  width: f64,
-  height: f64,
-  style: &Style,
-) -> Path
-  ! OutOfMemoryError
+  styles: &mut StyledDocument,
+  paths: &mut List<Path>,
+  dashes: &mut List<List<f64>>,
+  viewport: Rect,
+  limits: &Limits,
+) -> List<Option<Plan>>
+  ! CssError | RenderError | OutOfMemoryError
   ? &mut Allocator {
-  if equal(name, b"path") {
-    return run svg.parsePath(attr(document, id, b"d"))
-  }
-  if equal(name, b"polyline") || equal(name, b"polygon") {
-    return run svg.points(attr(document, id, b"points"), equal(name, b"polygon"))
-  }
-  let fontSize = style.fontSize
-  if equal(name, b"rect") {
-    let x = coordinate(document, id, b"x", width, fontSize, 0.0)
-    let y = coordinate(document, id, b"y", height, fontSize, 0.0)
-    let w = coordinate(document, id, b"width", width, fontSize, 0.0)
-    let h = coordinate(document, id, b"height", height, fontSize, 0.0)
-    let rx = positive(length(attr(document, id, b"rx"), width, fontSize))
-    let ry = positive(length(attr(document, id, b"ry"), height, fontSize))
-    return run svg.rectangle(
-      x,
-      y,
-      w,
-      h,
-      fallback(rx, fallback(ry, 0.0)),
-      fallback(ry, fallback(rx, 0.0)),
-    )
-  }
-  if equal(name, b"circle") || equal(name, b"ellipse") {
-    let cx = coordinate(document, id, b"cx", width, fontSize, 0.0)
-    let cy = coordinate(document, id, b"cy", height, fontSize, 0.0)
-    let circle = equal(name, b"circle")
-    let rx = if circle {
-      coordinate(document, id, b"r", diagonal(width, height), fontSize, 0.0)
-    } else {
-      coordinate(document, id, b"rx", width, fontSize, 0.0)
-    }
-    let ry = if circle {
-      rx
-    } else {
-      coordinate(document, id, b"ry", height, fontSize, 0.0)
-    }
-    return run svg.ellipse(cx, cy, rx, ry)
-  }
-  let mut path = Path.make()
-  if equal(name, b"line") {
-    let x1 = coordinate(document, id, b"x1", width, fontSize, 0.0)
-    let y1 = coordinate(document, id, b"y1", height, fontSize, 0.0)
-    let x2 = coordinate(document, id, b"x2", width, fontSize, 0.0)
-    let y2 = coordinate(document, id, b"y2", height, fontSize, 0.0)
-    let moved = run path.append(Segment.MoveTo { to: Point.new(x1, y1) })
-    let lined = run path.append(Segment.LineTo { to: Point.new(x2, y2) })
-  }
-  return move path
-}
-
-// XML enforces a depth ceiling of 256, bounding this traversal's call stack.
-effect fn element(
-  document: &Document,
-  id: NodeId,
-  parentStyle: Style,
-  parentTransform: Transform,
-  width: f64,
-  height: f64,
-  root: bool,
-  box: Option<Rect>,
-  bounds: Rect,
-  tree: &mut RenderTree,
-) -> ()
-  ! RenderError | OutOfMemoryError
-  ? &mut Allocator {
-  let node = Document.nodes(document)[id.index]
-  if node.kind != NodeKind.Element
-    || !equal(Document.namespaceUri(document, id), b"http://www.w3.org/2000/svg") {
-    return
-  }
-  let name = Document.localName(document, id)
-  let container = root || equal(name, b"g") || equal(name, b"a")
-  let drawable = equal(name, b"path") || equal(name, b"rect") || equal(name, b"circle")
-    || equal(name, b"ellipse")
-    || equal(name, b"line")
-    || equal(name, b"polyline")
-    || equal(name, b"polygon")
-  if !container && !drawable {
-    return
-  }
-  let userWidth = if root {
-    match &box {
-      Option<Rect>.Some { value } => value.width()
-      _ => width
-    }
-  } else {
-    width
-  }
-  let userHeight = if root {
-    match &box {
-      Option<Rect>.Some { value } => value.height()
-      _ => height
-    }
-  } else {
-    height
-  }
-  let style = run compute(document, id, parentStyle, userWidth, userHeight, &mut tree.dashes)
-  if !style.displayed || style.opacity == 0.0 {
-    return
-  }
-  let local = match &svg.transform(attr(document, id, b"transform")) {
-    Option<Transform>.Some { value } => value
-    _ => Transform.identity()
-  }
-  let mut transform = Transform.multiply(parentTransform, local)
-  if root {
-    match &box {
-      Option<Rect>.Some { value } => {
-        let mapped = svg.viewport(value, width, height, attr(document, id, b"preserveAspectRatio"))
-        match &mapped {
-          Option<Transform>.Some { value: mappedTransform } => {
-            transform = Transform.multiply(transform, mappedTransform)
+  let nodes = Document.nodes(document)
+  let root = Document.root(document)
+  let mut plans = run List<Option<Plan>>.makeWithCapacity(nodes.length)
+  let mut dashCache = DashCache.make()
+  let mut i: usize = 0
+  while i < nodes.length {
+    let id = NodeId { index: i }
+    let mut entry = Option<Plan>.None
+    let parentRendered = i == root.index
+      || match &nodes[i].parent {
+        Option<NodeId>.Some { value } => if value.index < plans.length() {
+          match &plans.asSlice()[value.index] {
+            Option<Plan>.Some { value: parent } => parent.container
+            _ => false
           }
+        } else {
+          false
+        }
+        _ => false
+      }
+    if parentRendered && nodes[i].kind == NodeKind.Element
+      && equal(Document.namespaceUri(document, id), b"http://www.w3.org/2000/svg") {
+      let name = Document.localName(document, id)
+      let container = i == root.index || equal(name, b"g") || equal(name, b"a")
+      let drawable = equal(name, b"path") || equal(name, b"rect") || equal(name, b"circle")
+        || equal(name, b"ellipse")
+        || equal(name, b"line")
+        || equal(name, b"polyline")
+        || equal(name, b"polygon")
+      if container || drawable {
+        let styleId = match &styles.nodeStyle(id) {
+          Option<StyleId>.Some { value } => value
           _ => {
-            return
+            fail RenderError.InvalidStyleContext
+          }
+        }
+        let style = run used_style.project(
+          &styles.catalog.engine,
+          styleId,
+          viewport.width(),
+          viewport.height(),
+          &mut dashCache,
+          &mut dashes.*,
+        )
+        if style.displayed {
+          let geometry = run used_geometry.shape(
+            document,
+            id,
+            &mut styles.catalog.engine,
+            styleId,
+            viewport.width(),
+            viewport.height(),
+            &mut paths.*,
+            limits,
+          )
+          entry = Option<Plan>.Some {
+            value: Plan {
+              styleId: styleId,
+              style: style,
+              path: geometry.path,
+              paintable: geometry.paintable,
+              container: container,
+              local: Mapping.identity(),
+              transformed: used_transforms.transformed(&styles.catalog.engine, styleId),
+              perspective: used_transforms.hasPerspective(&styles.catalog.engine, styleId),
+              hiddenBackface: used_transforms.hiddenBackface(&styles.catalog.engine, styleId),
+              suppressed: false,
+              pending: Option<usize>.None,
+            }
           }
         }
       }
-      _ => {}
+    }
+    run plans.append(entry)
+    i = i + 1
+  }
+  return move plans
+}
+
+// Empty is not a rectangle at the origin. See the unresolved SVGWG clarification:
+// https://github.com/w3c/svgwg/issues/422
+// Positioned degenerate shapes remain finite boxes, unlike absent geometry.
+effect fn gather(
+  document: &Document,
+  id: NodeId,
+  plans: &[Option<Plan>],
+  paths: &[Path],
+  target: &Mapping,
+  includeLocal: bool,
+  stroke: bool,
+  cache: &mut ReferenceBoundsCache,
+) -> Option<Rect>
+  ! RenderError | GeometryError | OutOfMemoryError
+  ? &mut Allocator {
+  let plan = match &plans[id.index] {
+    Option<Plan>.Some { value } => value
+    _ => {
+      return Option<Rect>.None
     }
   }
-  if !Transform.isFinite(transform) {
-    fail RenderError.InvalidGeometry
+  let matrix = if includeLocal {
+    run target.compose(&plan.local)
+  } else {
+    target.*
   }
-
-  // A singular CTM has no painted area. Skip it before arc tolerance inversion.
-  match &Transform.inverse(transform) {
-    Option<Transform>.None => {
-      return
+  let mut result = Option<Rect>.None
+  match &plan.path {
+    Option<usize>.Some { value: index } => {
+      result = run cache.fillBounds(paths, index, &matrix, 0.0000001)
+      let hasStroke = match &plan.style.stroke {
+        Paint.None => false
+        _ => true
+      }
+      if stroke && plan.paintable && hasStroke && plan.style.strokeWidth > 0.0 {
+        // Reference geometry uses a much tighter tolerance than pixel coverage;
+        // inability to meet it is an explicit numeric error, never a hull fallback.
+        let stroked = run cache.strokeBounds(paths, index, &plan.style, &matrix, 0.0000001)
+        result = united(result, stroked)
+      }
     }
     _ => {}
   }
-  let layer = style.opacity != 1.0
-  if layer {
-    run tree.nodes.append(ResolvedNode.BeginGroup { opacity: style.opacity, bounds: bounds })
-  }
-  if drawable && style.visible {
-    let path = run shape(document, id, name, userWidth, userHeight, &style)
-    if !path.isEmpty() {
-      let index = tree.paths.length()
-      run tree.paths.append(move path)
-      run tree.nodes.append(
-        ResolvedNode.Shape { path: index, transform: transform, bounds: bounds, style: style },
-      )
-    }
-  }
-  if container {
+  if plan.container {
     let mut child = Document.firstChild(document, id)
     while true {
       let next = match &child {
@@ -368,66 +364,394 @@ effect fn element(
           break
         }
       }
-      run element(
+      result = united(
+        result,
+        run gather(document, next, plans, paths, &matrix, true, stroke, &mut cache.*),
+      )
+      child = Document.nextSibling(document, next)
+    }
+  }
+  return result
+}
+
+effect fn mapped(plan: &mut Plan, matrix: &Matrix, deferFacing: bool) -> ()
+  ! RenderError | GeometryError {
+  plan.local = run Mapping.fromMatrix(matrix)
+  if deferFacing {
+    return
+  }
+  let facing = transforms.facing(matrix)
+  if facing == Facing.Invalid {
+    fail RenderError.InvalidGeometry
+  }
+  plan.suppressed = facing == Facing.Singular || facing == Facing.EdgeOn
+    || (plan.hiddenBackface && facing == Facing.Back)
+  match &plan.local {
+    Mapping.Projective { value } => {
+      if value.wx == 0.0 && value.wy == 0.0 && value.ww <= 0.0 {
+        plan.suppressed = true
+      }
+    }
+    _ => {}
+  }
+}
+
+// Child transforms must be known before a container's fill/stroke reference box.
+// The XML depth ceiling bounds recursion. AABB-of-AABB mapping is never used:
+// curved descendants are measured in the requested ancestor coordinate space.
+effect fn place(
+  document: &Document,
+  id: NodeId,
+  engine: &Engine,
+  viewport: Rect,
+  rootMap: Transform,
+  retain: bool,
+  plans: &mut List<Option<Plan>>,
+  pending: &mut List<Matrix>,
+  paths: &[Path],
+  cache: &mut ReferenceBoundsCache,
+) -> ()
+  ! RenderError | GeometryError | OutOfMemoryError
+  ? &mut Allocator {
+  let mut plan = match &plans.asSlice()[id.index] {
+    Option<Plan>.Some { value } => value
+    _ => {
+      return
+    }
+  }
+  if plan.container {
+    let mut child = Document.firstChild(document, id)
+    while true {
+      let next = match &child {
+        Option<NodeId>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      run place(
         document,
         next,
-        style,
-        transform,
-        userWidth,
-        userHeight,
+        engine,
+        viewport,
+        rootMap,
+        plan.perspective,
+        &mut plans.*,
+        &mut pending.*,
+        paths,
+        &mut cache.*,
+      )
+      child = Document.nextSibling(document, next)
+    }
+  }
+  let mut reference = viewport
+  if plan.transformed || plan.perspective {
+    let kind = match &used_transforms.referenceBox(engine, plan.styleId) {
+      Option<ReferenceBox>.Some { value } => value
+      _ => {
+        fail RenderError.InvalidGeometry
+      }
+    }
+    if kind != ReferenceBox.View {
+      let stroke = kind == ReferenceBox.Border || kind == ReferenceBox.Stroke
+      reference = match &(run gather(
+        document,
+        id,
+        plans.asSlice(),
+        paths,
+        &Mapping.identity(),
         false,
-        Option<Rect>.None,
-        bounds,
-        &mut tree.*,
+        stroke,
+        &mut cache.*,
+      )) {
+        Option<Rect>.Some { value } => value
+        _ => run rectangle(0.0, 0.0, 0.0, 0.0)
+      }
+    }
+  }
+
+  // The parent's perspective is composed with each child's FULL matrix before
+  // that child's plane is flattened. Only these children need retained matrices.
+  if plan.container && plan.perspective {
+    let projection = match &used_transforms.perspective(
+      engine,
+      plan.styleId,
+      viewport,
+      reference,
+      reference,
+    ) {
+      Option<Matrix>.Some { value } => value
+      _ => {
+        fail RenderError.InvalidGeometry
+      }
+    }
+    let mut child = Document.firstChild(document, id)
+    while true {
+      let next = match &child {
+        Option<NodeId>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      match &plans.asSlice()[next.index] {
+        Option<Plan>.Some { value } => {
+          let mut placed = value
+          let index = match &placed.pending {
+            Option<usize>.Some { value: pendingIndex } => pendingIndex
+            _ => {
+              fail RenderError.InvalidGeometry
+            }
+          }
+          let matrix = transforms.multiply(&projection, &pending.asSlice()[index])
+          run mapped(&mut placed, &matrix, false)
+          placed.pending = Option<usize>.None
+          let mut entries = plans.asMutSlice()
+          entries[next.index] = Option<Plan>.Some { value: placed }
+        }
+        _ => {}
+      }
+      child = Document.nextSibling(document, next)
+    }
+  }
+  let mut matrix = if plan.transformed {
+    match &used_transforms.element(engine, plan.styleId, viewport, reference, reference) {
+      Option<Matrix>.Some { value } => value
+      _ => {
+        fail RenderError.InvalidGeometry
+      }
+    }
+  } else {
+    transforms.identity()
+  }
+  if id.index == Document.root(document).index {
+    matrix = transforms.multiply(&matrix, &transforms.fromAffine(rootMap))
+  }
+  run mapped(&mut plan, &matrix, retain)
+  if retain {
+    plan.pending = Option<usize>.some(pending.length())
+    run pending.append(matrix)
+  }
+  let mut entries = plans.asMutSlice()
+  entries[id.index] = Option<Plan>.Some { value: plan }
+}
+
+effect fn paint(
+  document: &Document,
+  id: NodeId,
+  plans: &[Option<Plan>],
+  parent: &Mapping,
+  clip: Option<usize>,
+  outputBounds: Rect,
+  nodes: &mut List<ResolvedNode>,
+  clips: &mut List<ProjectionClip>,
+) -> ()
+  ! RenderError | GeometryError | OutOfMemoryError
+  ? &mut Allocator {
+  let plan = match &plans[id.index] {
+    Option<Plan>.Some { value } => value
+    _ => {
+      return
+    }
+  }
+  if plan.style.opacity == 0.0 || plan.suppressed {
+    return
+  }
+  let matrix = run parent.compose(&plan.local)
+  let layer = plan.style.opacity != 1.0
+  if layer {
+    run nodes.append(ResolvedNode.BeginGroup { opacity: plan.style.opacity, bounds: outputBounds })
+  }
+  if plan.paintable && plan.style.visible {
+    match &plan.path {
+      Option<usize>.Some { value } => {
+        run nodes.append(
+          ResolvedNode.Shape {
+            path: value,
+            transform: matrix,
+            clip: clip,
+            bounds: outputBounds,
+            style: plan.style,
+          },
+        )
+      }
+      _ => {}
+    }
+  }
+  if plan.container {
+    let mut child = Document.firstChild(document, id)
+    let mut childClip = clip
+    let mut preparedClip = false
+    while true {
+      let next = match &child {
+        Option<NodeId>.Some { value } => value
+        _ => {
+          break
+        }
+      }
+      let projected = match &plans[next.index] {
+        Option<Plan>.Some { value } => !value.suppressed && value.style.opacity != 0.0
+          && match &value.local {
+            Mapping.Projective { value: projection } => true
+            _ => false
+          }
+        _ => false
+      }
+      if projected && !preparedClip {
+        match &(run matrix.flatteningClip()) {
+          Option<HalfPlane>.Some { value } => {
+            childClip = Option<usize>.some(clips.length())
+            run clips.append(ProjectionClip { parent: clip, plane: value })
+          }
+          _ => {}
+        }
+        preparedClip = true
+      }
+      run paint(
+        document,
+        next,
+        plans,
+        &matrix,
+        if projected {
+          childClip
+        } else {
+          clip
+        },
+        outputBounds,
+        &mut nodes.*,
+        &mut clips.*,
       )
       child = Document.nextSibling(document, next)
     }
   }
   if layer {
-    run tree.nodes.append(ResolvedNode.EndGroup)
+    run nodes.append(ResolvedNode.EndGroup)
   }
 }
 
-pub effect fn resolve(document: &Document, options: &RenderOptions) -> RenderTree
-  ! RenderError | OutOfMemoryError
+effect fn resolveStyled(
+  document: Document,
+  inputStyles: StyledDocument,
+  options: &RenderOptions,
+  limits: &Limits,
+  initialWidth: f64,
+  initialHeight: f64,
+) -> RenderTree
+  ! CssError | RenderError | GeometryError | OutOfMemoryError
   ? &mut Allocator {
-  let root = Document.root(document)
-  if !equal(Document.localName(document, root), b"svg")
-    || !equal(Document.namespaceUri(document, root), b"http://www.w3.org/2000/svg") {
+  let root = Document.root(&document)
+  if !equal(Document.localName(&document, root), b"svg")
+    || !equal(Document.namespaceUri(&document, root), b"http://www.w3.org/2000/svg") {
     fail RenderError.InvalidRoot
   }
-  let box = svg.viewBox(attr(document, root, b"viewBox"))
-  let viewport = run sizing(document, root, box, options)
-  let bounds = match &Rect.new(
+  let mut styles = move inputStyles
+  let rootStyle = match &styles.nodeStyle(root) {
+    Option<StyleId>.Some { value } => value
+    _ => {
+      fail RenderError.InvalidStyleContext
+    }
+  }
+  let box = svg.viewBox(attr(&document, root, b"viewBox"))
+  let viewport = run sizing(
+    &styles.catalog.engine,
+    rootStyle,
+    box,
+    options,
+    initialWidth,
+    initialHeight,
+  )
+  let outputBounds = run rectangle(
     0.0,
     0.0,
     u32.toF64(viewport.pixelsWidth),
     u32.toF64(viewport.pixelsHeight),
-  ) {
+  )
+  let userViewport = match &box {
     Option<Rect>.Some { value } => value
-    _ => {
-      fail RenderError.InvalidSize
-    }
+    _ => run rectangle(0.0, 0.0, viewport.width, viewport.height)
   }
-  let mut tree = RenderTree {
+  let mut paths = move styles.catalog.engine.values.paths
+  styles.catalog.engine.values.paths = List<Path>.make()
+  let mut dashes = List<List<f64>>.make()
+  run dashes.append(List<f64>.make())
+  let mut plans = run prepare(&document, &mut styles, &mut paths, &mut dashes, userViewport, limits)
+  let mut nodes = List<ResolvedNode>.make()
+  let mut projectionClips = List<ProjectionClip>.make()
+  let rootMap = match &box {
+    Option<Rect>.Some { value } => svg.viewport(
+      value,
+      viewport.width,
+      viewport.height,
+      attr(&document, root, b"preserveAspectRatio"),
+    )
+    _ => Option<Transform>.Some { value: Transform.identity() }
+  }
+  match &rootMap {
+    Option<Transform>.Some { value } => {
+      let mut cache = ReferenceBoundsCache.make()
+      let mut pending = List<Matrix>.make()
+      run place(
+        &document,
+        root,
+        &styles.catalog.engine,
+        userViewport,
+        value,
+        false,
+        &mut plans,
+        &mut pending,
+        paths.asSlice(),
+        &mut cache,
+      )
+      run paint(
+        &document,
+        root,
+        plans.asSlice(),
+        &Mapping.Affine { value: viewport.scale },
+        Option<usize>.None,
+        outputBounds,
+        &mut nodes,
+        &mut projectionClips,
+      )
+    }
+    _ => {}
+  }
+  return RenderTree {
     width: viewport.pixelsWidth,
     height: viewport.pixelsHeight,
-    paths: List<Path>.make(),
-    dashes: List<List<f64>>.make(),
-    nodes: List<ResolvedNode>.make(),
+    document: move document,
+    styles: move styles,
+    paths: move paths,
+    dashes: move dashes,
+    nodes: move nodes,
+    projectionClips: move projectionClips,
   }
-  run tree.dashes.append(List<f64>.make())
-  run element(
-    document,
-    root,
-    Style.initial(),
-    viewport.scale,
-    viewport.width,
-    viewport.height,
-    true,
-    box,
-    bounds,
-    &mut tree,
+}
+
+effect fn cssLimit(error: CssError) -> RenderTree
+  ! RenderError {
+  drop error
+  fail RenderError.TooLarge
+}
+
+effect fn geometryLimit(error: GeometryError) -> RenderTree
+  ! RenderError {
+  drop error
+  fail RenderError.InvalidGeometry
+}
+
+pub effect fn resolve(
+  document: Document,
+  styles: StyledDocument,
+  options: &RenderOptions,
+  limits: &Limits,
+  initialWidth: f64,
+  initialHeight: f64,
+) -> RenderTree
+  ! RenderError | OutOfMemoryError
+  ? &mut Allocator {
+  return run Effect.catch<GeometryError>(
+    Effect.catch<CssError>(
+      resolveStyled(move document, move styles, options, limits, initialWidth, initialHeight),
+      cssLimit,
+    ),
+    geometryLimit,
   )
-  return move tree
 }

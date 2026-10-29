@@ -1,1 +1,10 @@
-import presentation_tests
+import url_tests
+import url_idna_tests
+import resources_tests
+import resources_native_tests
+import style_tree_tests
+import stylesheets_tests
+import used_transforms_tests
+import document_styles_tests
+import font_metrics_tests
+import vector_path_tests

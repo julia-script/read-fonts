@@ -86,3 +86,108 @@ pub fn radians(degrees: f64) -> f64 {
   }
   return value * (PI / 180.0)
 }
+
+// Range-reduced portable elementary functions for CSS Color 4 transfer curves.
+// LIMITATION-2: https://github.com/silk-lang/silk/issues/2539.
+pub fn log(value: f64) -> f64 {
+  if value == 0.0 {
+    return -f64.INFINITY
+  }
+  if value < 0.0 || value != value {
+    return f64.fromBits(9221120237041090560)
+  }
+  if value == f64.INFINITY {
+    return value
+  }
+  let mut scaled = value
+  let mut exponent = 0.0
+  while scaled >= 1.4142135623730951 {
+    scaled = scaled * 0.5
+    exponent = exponent + 1.0
+  }
+  while scaled < 0.7071067811865476 {
+    scaled = scaled * 2.0
+    exponent = exponent - 1.0
+  }
+  let z = (scaled - 1.0) / (scaled + 1.0)
+  let square = z * z
+  let mut term = z
+  let mut sum = z
+  let mut denominator = 3.0
+  let mut i: usize = 0
+  while i < 12 {
+    term = term * square
+    sum = sum + term / denominator
+    denominator = denominator + 2.0
+    i = i + 1
+  }
+  return 2.0 * sum + exponent * 0.69314718055994530942
+}
+
+pub fn exp(value: f64) -> f64 {
+  if value != value {
+    return value
+  }
+  if value > 709.782712893384 {
+    return f64.INFINITY
+  }
+  if value < -745.1332191019411 {
+    return 0.0
+  }
+  let mut reduced = value
+  let mut exponent: i32 = 0
+  while reduced > 0.34657359027997265 {
+    reduced = reduced - 0.69314718055994530942
+    exponent = exponent + 1
+  }
+  while reduced < -0.34657359027997265 {
+    reduced = reduced + 0.69314718055994530942
+    exponent = exponent - 1
+  }
+  let mut sum = 1.0
+  let mut term = 1.0
+  let mut denominator = 1.0
+  let mut i: usize = 0
+  while i < 16 {
+    term = term * reduced / denominator
+    sum = sum + term
+    denominator = denominator + 1.0
+    i = i + 1
+  }
+  while exponent > 0 {
+    sum = sum * 2.0
+    exponent = exponent - 1
+  }
+  while exponent < 0 {
+    sum = sum * 0.5
+    exponent = exponent + 1
+  }
+  return sum
+}
+
+/// Real power for nonnegative bases; reflected color curves apply their sign externally.
+pub fn pow(base: f64, exponent: f64) -> f64 {
+  if exponent == 0.0 || base == 1.0 {
+    return 1.0
+  }
+  if base == 0.0 {
+    return if exponent > 0.0 {
+      0.0
+    } else {
+      f64.INFINITY
+    }
+  }
+  return exp(log(base) * exponent)
+}
+
+pub fn cbrt(value: f64) -> f64 {
+  if value == 0.0 || !f64.isFinite(value) {
+    return value
+  }
+  let magnitude = pow(f64.abs(value), 1.0 / 3.0)
+  return if value < 0.0 {
+    -magnitude
+  } else {
+    magnitude
+  }
+}

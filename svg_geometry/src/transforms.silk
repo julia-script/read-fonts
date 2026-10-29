@@ -1,28 +1,215 @@
-//! SVG attribute syntax and numeric CSS transforms. CSS composes in 4D before
-//! projecting to z=0; percentages and context-dependent lengths are not resolved.
+//! SVG transform-attribute grammar and full 4x4 transform composition.
+//! CSS syntax belongs to svg_css; flatten only after composing every operation.
 import geometry { Transform }
 import numeric
 import silk.option { Option }
 import silk.num.f64
 import silk.collections.slice { Slice }
+import silk.core.ownership { Copy }
 
-pub union CssTransformResult {
+pub union Projection {
   Affine { pub value: Transform, },
   PerspectiveNeeded,
   Invalid,
 }
 
-struct Matrix {
+pub struct Matrix {
   values: [f64; 16],
 }
 
-fn identity() -> Matrix {
+impl Copy for Matrix {}
+
+pub enum Facing {
+  Front,
+  Back,
+  EdgeOn,
+  Singular,
+  Invalid
+}
+
+// Only the determinant's sign is needed. Row scaling and pivoting keep
+// elimination intermediates bounded without multiplying four large pivots.
+fn determinantSign(source: &[f64; 16], size: usize) -> Option<f64> {
+  let mut values = [0.0; 16]
+  let mut row: usize = 0
+  while row < size {
+    let mut scale = 0.0
+    let mut col: usize = 0
+    while col < size {
+      scale = f64.max(scale, f64.abs(source[row * 4 + col]))
+      col = col + 1
+    }
+    if scale == 0.0 {
+      return Option<f64>.some(0.0)
+    }
+    col = 0
+    while col < size {
+      let before = source[row * 4 + col]
+      let after = before / scale
+      if before != 0.0 && after == 0.0 {
+        return Option<f64>.None
+      }
+      values[row * 4 + col] = after
+      col = col + 1
+    }
+    row = row + 1
+  }
+  let mut sign = 1.0
+  let mut k: usize = 0
+  while k < size {
+    let mut pivot = k
+    row = k + 1
+    while row < size {
+      if f64.abs(values[row * 4 + k]) > f64.abs(values[pivot * 4 + k]) {
+        pivot = row
+      }
+      row = row + 1
+    }
+    if values[pivot * 4 + k] == 0.0 {
+      return Option<f64>.some(0.0)
+    }
+    if pivot != k {
+      let mut col = k
+      while col < size {
+        let saved = values[k * 4 + col]
+        values[k * 4 + col] = values[pivot * 4 + col]
+        values[pivot * 4 + col] = saved
+        col = col + 1
+      }
+      sign = -sign
+    }
+    let diagonal = values[k * 4 + k]
+    if diagonal < 0.0 {
+      sign = -sign
+    }
+    row = k + 1
+    while row < size {
+      let numerator = values[row * 4 + k]
+      let factor = numerator / diagonal
+      if numerator != 0.0 && factor == 0.0 {
+        return Option<f64>.None
+      }
+      let mut col = k + 1
+      while col < size {
+        let entry = values[k * 4 + col]
+        let product = factor * entry
+        if factor != 0.0 && entry != 0.0 && product == 0.0 {
+          return Option<f64>.None
+        }
+        values[row * 4 + col] = values[row * 4 + col] - product
+        col = col + 1
+      }
+      row = row + 1
+    }
+    k = k + 1
+  }
+  return Option<f64>.some(sign)
+}
+
+// Use inverse-transpose normal orientation, not m33 or projected winding:
+// scaleX(-1) mirrors content without turning the plane's back toward the viewer.
+// CSSWG issue 917 records the perspective counterexample to the draft's m33 rule.
+pub fn facing(matrix: &Matrix) -> Facing {
+  if !finite(matrix) {
+    return Facing.Invalid
+  }
+  let v = &matrix.values
+  if v[2] == 0.0 && v[6] == 0.0 && v[8] == 0.0 && v[9] == 0.0 && v[12] == 0.0 && v[13] == 0.0
+    && v[14] == 0.0
+    && v[15] == 1.0 {
+    if v[10] == 0.0 {
+      return Facing.Singular
+    }
+    if v[1] == 0.0 && v[4] == 0.0 {
+      if v[0] == 0.0 || v[5] == 0.0 {
+        return Facing.Singular
+      }
+    } else {
+      let minor = [
+        v[0],
+        v[1],
+        0.0,
+        0.0,
+        v[4],
+        v[5],
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+      ]
+      match &determinantSign(&minor, 2) {
+        Option<f64>.Some { value } => {
+          if value == 0.0 {
+            return Facing.Singular
+          }
+        }
+        _ => {
+          return Facing.Invalid
+        }
+      }
+    }
+    return if v[10] < 0.0 {
+      Facing.Back
+    } else {
+      Facing.Front
+    }
+  }
+  let sign = match &determinantSign(v, 4) {
+    Option<f64>.Some { value } => value
+    _ => {
+      return Facing.Invalid
+    }
+  }
+  if sign == 0.0 {
+    return Facing.Singular
+  }
+  let minor = [
+    v[0],
+    v[1],
+    v[3],
+    0.0,
+    v[4],
+    v[5],
+    v[7],
+    0.0,
+    v[12],
+    v[13],
+    v[15],
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+  ]
+  return match &determinantSign(&minor, 3) {
+    Option<f64>.Some { value } => if value == 0.0 {
+      Facing.EdgeOn
+    } else if value != sign {
+      Facing.Back
+    } else {
+      Facing.Front
+    }
+    _ => Facing.Invalid
+  }
+}
+
+pub fn identity() -> Matrix {
   return Matrix {
     values: [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
   }
 }
 
-fn finite(matrix: &Matrix) -> bool {
+pub fn coefficients(matrix: &Matrix) -> &[f64] {
+  return &matrix.values
+}
+
+pub fn finite(matrix: &Matrix) -> bool {
   let mut i: usize = 0
   while i < 16 {
     if !f64.isFinite(matrix.values[i]) {
@@ -33,7 +220,40 @@ fn finite(matrix: &Matrix) -> bool {
   return true
 }
 
-fn multiply(left: &Matrix, right: &Matrix) -> Matrix {
+pub fn fromAffine(value: Transform) -> Matrix {
+  return Matrix {
+    values: [
+      value.a,
+      value.c,
+      0.0,
+      value.e,
+      value.b,
+      value.d,
+      0.0,
+      value.f,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+    ],
+  }
+}
+
+pub fn fromColumnMajor(values: &[f64; 16]) -> Matrix {
+  let mut result = identity()
+  let mut i: usize = 0
+  while i < 16 {
+    result.values[(i % 4) * 4 + i / 4] = values[i]
+    i = i + 1
+  }
+  return move result
+}
+
+pub fn multiply(left: &Matrix, right: &Matrix) -> Matrix {
   let mut result = Matrix { values: [0.0; 16] }
   let mut row: usize = 0
   while row < 4 {
@@ -53,14 +273,17 @@ fn multiply(left: &Matrix, right: &Matrix) -> Matrix {
   return move result
 }
 
-fn flattened(matrix: &Matrix) -> CssTransformResult {
-  // Keep projective matrices distinguishable even if their restriction to a
-  // particular z=0 plane happens to look affine. The backend needs w clipping.
+pub fn flattened(matrix: &Matrix) -> Projection {
+  if !finite(matrix) {
+    return Projection.Invalid
+  }
+
+  // A projective matrix needs w clipping even if one z=0 plane appears affine.
   if matrix.values[12] != 0.0 || matrix.values[13] != 0.0 || matrix.values[14] != 0.0
     || matrix.values[15] != 1.0 {
-    return CssTransformResult.PerspectiveNeeded
+    return Projection.PerspectiveNeeded
   }
-  return CssTransformResult.Affine {
+  return Projection.Affine {
     value: Transform.new(
       matrix.values[0],
       matrix.values[4],
@@ -72,24 +295,80 @@ fn flattened(matrix: &Matrix) -> CssTransformResult {
   }
 }
 
-fn lower(byte: u8) -> u8 {
-  if byte >= 65 && byte <= 90 {
-    return byte + 32
-  }
-  return byte
+pub fn translation(x: f64, y: f64, z: f64) -> Matrix {
+  let mut result = identity()
+  result.values[3] = x
+  result.values[7] = y
+  result.values[11] = z
+  return move result
 }
 
-fn equal(left: &[u8], right: &[u8], insensitive: bool) -> bool {
+pub fn scale(x: f64, y: f64, z: f64) -> Matrix {
+  let mut result = identity()
+  result.values[0] = x
+  result.values[5] = y
+  result.values[10] = z
+  return move result
+}
+
+pub fn rotation(x: f64, y: f64, z: f64, radians: f64) -> Matrix {
+  let mut result = identity()
+  let largest = f64.max(f64.abs(x), f64.max(f64.abs(y), f64.abs(z)))
+  if largest == 0.0 {
+    return move result
+  }
+
+  // Normalize after scaling, avoiding overflow and underflow of finite axes.
+  let sx = x / largest
+  let sy = y / largest
+  let sz = z / largest
+  let norm = f64.sqrt(sx * sx + sy * sy + sz * sz)
+  let nx = sx / norm
+  let ny = sy / norm
+  let nz = sz / norm
+  let c = f64.cos(radians)
+  let s = f64.sin(radians)
+  let t = 1.0 - c
+  result.values[0] = c + nx * nx * t
+  result.values[1] = nx * ny * t - nz * s
+  result.values[2] = nx * nz * t + ny * s
+  result.values[4] = ny * nx * t + nz * s
+  result.values[5] = c + ny * ny * t
+  result.values[6] = ny * nz * t - nx * s
+  result.values[8] = nz * nx * t - ny * s
+  result.values[9] = nz * ny * t + nx * s
+  result.values[10] = c + nz * nz * t
+  return move result
+}
+
+fn tangent(radians: f64) -> f64 {
+  // LIMITATION-2: dev.27 lacks f64.tan; silk-lang/silk#2539.
+  return f64.sin(radians) / f64.cos(radians)
+}
+
+pub fn skew(xRadians: f64, yRadians: f64) -> Matrix {
+  let mut result = identity()
+  result.values[1] = tangent(xRadians)
+  result.values[4] = tangent(yRadians)
+  return move result
+}
+
+pub fn perspective(distance: f64) -> Option<Matrix> {
+  if !f64.isFinite(distance) || distance < 0.0 {
+    return Option<Matrix>.None
+  }
+  let mut result = identity()
+  result.values[14] = -1.0 / f64.max(1.0, distance)
+  return Option<Matrix>.Some { value: move result }
+}
+
+fn equal(left: &[u8], right: &[u8]) -> bool {
   if left.length != right.length {
     return false
   }
   let mut i: usize = 0
   while i < left.length {
-    if insensitive {
-      if lower(left[i]) != lower(right[i]) {
-        return false
-      }
-    } else if left[i] != right[i] {
+    if left[i] != right[i] {
       return false
     }
     i = i + 1
@@ -102,21 +381,19 @@ fn digit(byte: u8) -> bool {
 }
 
 fn letter(byte: u8) -> bool {
-  let folded = lower(byte)
-  return folded >= 97 && folded <= 122
+  return (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122)
 }
 
 struct Cursor<'a> {
   data: &'a [u8],
   position: usize,
-  css: bool,
 }
 
 impl<'a> Cursor<'a> {
   fn space(self: &mut Self) -> () {
     while self.position < self.data.length {
       let byte = self.data[self.position]
-      if byte != 32 && byte != 9 && byte != 10 && byte != 13 && !(self.css && byte == 12) {
+      if byte != 32 && byte != 9 && byte != 10 && byte != 13 {
         break
       }
       self.position = self.position + 1
@@ -148,7 +425,9 @@ impl<'a> Cursor<'a> {
       while self.position < self.data.length && digit(self.data[self.position]) {
         self.position = self.position + 1
       }
-      if self.position == fraction && (self.css || !hasInteger) {
+
+      // Transforms1 uses CSS number-token, unlike the SVG path-number grammar.
+      if self.position == fraction {
         return Option<f64>.None
       }
     } else if !hasInteger {
@@ -156,19 +435,16 @@ impl<'a> Cursor<'a> {
     }
     if self.position < self.data.length
       && (self.data[self.position] == 101 || self.data[self.position] == 69) {
-      // In CSS, e begins a unit unless it starts a complete exponent.
-      let exponent = self.position
-      let mut end = exponent + 1
-      if end < self.data.length && (self.data[end] == 43 || self.data[end] == 45) {
-        end = end + 1
+      self.position = self.position + 1
+      if self.position < self.data.length
+        && (self.data[self.position] == 43 || self.data[self.position] == 45) {
+        self.position = self.position + 1
       }
-      if end < self.data.length && digit(self.data[end]) {
-        end = end + 1
-        while end < self.data.length && digit(self.data[end]) {
-          end = end + 1
-        }
-        self.position = end
-      } else if !self.css {
+      let exponent = self.position
+      while self.position < self.data.length && digit(self.data[self.position]) {
+        self.position = self.position + 1
+      }
+      if self.position == exponent {
         return Option<f64>.None
       }
     }
@@ -177,361 +453,148 @@ impl<'a> Cursor<'a> {
 }
 
 struct Arguments {
-  values: [f64; 16],
-  kinds: [u8; 16],
+  values: [f64; 6],
   count: usize,
 }
 
-// Kinds: 0 number, 1 px length, 2 angle already converted to radians.
 fn arguments(cursor: &mut Cursor, args: &mut Arguments) -> bool {
   Cursor.space(&mut cursor.*)
-  if Cursor.take(&mut cursor.*, 41) {
-    return false
-  }
-  while args.count < 16 {
+  while args.count < 6 {
     let parsed = Cursor.scalar(&mut cursor.*)
-    let mut value = match &parsed {
+    args.values[args.count] = match &parsed {
       Option<f64>.Some { value } => value
       Option<f64>.None => {
         return false
       }
     }
-    let start = cursor.position
-    while cursor.position < cursor.data.length && letter(cursor.data[cursor.position]) {
-      cursor.position = cursor.position + 1
-    }
-    let unit = Slice.view<u8>(cursor.data, start, cursor.position - start)
-    let mut kind: u8 = 0
-    if unit.length != 0 {
-      if !cursor.css {
-        return false
-      }
-      if equal(unit, b"px", true) {
-        kind = 1
-      } else {
-        kind = 2
-        if equal(unit, b"deg", true) {
-          value = f64.remainder(value, 360.0) * (f64.PI / 180.0)
-        } else if equal(unit, b"grad", true) {
-          value = f64.remainder(value, 400.0) * (f64.PI / 200.0)
-        } else if equal(unit, b"turn", true) {
-          value = f64.remainder(value, 1.0) * (2.0 * f64.PI)
-        } else if !equal(unit, b"rad", true) {
-          return false
-        }
-      }
-    }
-    args.values[args.count] = value
-    args.kinds[args.count] = kind
     args.count = args.count + 1
     Cursor.space(&mut cursor.*)
     if Cursor.take(&mut cursor.*, 41) {
       return true
     }
-    let comma = Cursor.take(&mut cursor.*, 44)
-    if cursor.css && !comma {
-      return false
-    }
+    drop Cursor.take(&mut cursor.*, 44)
     Cursor.space(&mut cursor.*)
-    // SVG's comma-wsp is optional between numeric arguments. The scanner
-    // consumes maximal tokens, so a sign or a second dot starts the next one.
+    // Optional comma-wsp: signs and decimal points can delimit adjacent numbers.
   }
   return false
 }
 
-fn allKinds(args: &Arguments, kind: u8, css: bool) -> bool {
-  let mut i: usize = 0
-  while i < args.count {
-    if !validKind(args, i, kind, css) {
-      return false
-    }
-    i = i + 1
-  }
-  return true
-}
-
-fn validKind(args: &Arguments, index: usize, kind: u8, css: bool) -> bool {
-  if !css {
-    return args.kinds[index] == 0
-  }
-  return args.kinds[index] == kind
-    || (kind != 0 && args.kinds[index] == 0 && args.values[index] == 0.0)
-}
-
-fn angle(args: &Arguments, index: usize, css: bool) -> f64 {
-  if css {
-    return args.values[index]
-  }
-  return f64.remainder(args.values[index], 360.0) * (f64.PI / 180.0)
-}
-
-fn rotation(x: f64, y: f64, z: f64, radians: f64) -> Matrix {
-  let mut result = identity()
-  let largest = f64.max(f64.abs(x), f64.max(f64.abs(y), f64.abs(z)))
-  if largest == 0.0 {
-    return move result
-  }
-
-  // Scale before the norm to avoid overflowing or underflowing finite axes.
-  let sx = x / largest
-  let sy = y / largest
-  let sz = z / largest
-  let norm = f64.sqrt(sx * sx + sy * sy + sz * sz)
-  let nx = sx / norm
-  let ny = sy / norm
-  let nz = sz / norm
-  let c = f64.cos(radians)
-  let s = f64.sin(radians)
-  let t = 1.0 - c
-  result.values[0] = c + nx * nx * t
-  result.values[1] = nx * ny * t - nz * s
-  result.values[2] = nx * nz * t + ny * s
-  result.values[4] = ny * nx * t + nz * s
-  result.values[5] = c + ny * ny * t
-  result.values[6] = ny * nz * t - nx * s
-  result.values[8] = nz * nx * t - ny * s
-  result.values[9] = nz * ny * t + nx * s
-  result.values[10] = c + nz * nz * t
-  return move result
-}
-
-fn tangent(radians: f64) -> f64 {
-  // LIMITATION-math2539: https://github.com/silk-lang/silk/issues/2539
-  // dev.27 lacks f64.tan; use pure stdlib sin/cos, no host libc dependency.
-  return f64.sin(radians) / f64.cos(radians)
-}
-
-fn component(name: &[u8], args: &Arguments, css: bool, result: &mut Matrix) -> bool {
+fn component(name: &[u8], args: &Arguments) -> Option<Matrix> {
   let count = args.count
-  if equal(name, b"matrix", css) {
-    if count != 6 || !allKinds(args, 0, css) {
-      return false
+  if equal(name, b"matrix") && count == 6 {
+    return Option<Matrix>.Some {
+      value: fromAffine(
+        Transform.new(
+          args.values[0],
+          args.values[1],
+          args.values[2],
+          args.values[3],
+          args.values[4],
+          args.values[5],
+        ),
+      ),
     }
-    result.values[0] = args.values[0]
-    result.values[4] = args.values[1]
-    result.values[1] = args.values[2]
-    result.values[5] = args.values[3]
-    result.values[3] = args.values[4]
-    result.values[7] = args.values[5]
-  } else if css && equal(name, b"matrix3d", true) {
-    if count != 16 || !allKinds(args, 0, css) {
-      return false
+  }
+  if equal(name, b"translate") && (count == 1 || count == 2) {
+    return Option<Matrix>.Some {
+      value: translation(
+        args.values[0],
+        if count == 2 {
+          args.values[1]
+        } else {
+          0.0
+        },
+        0.0,
+      ),
     }
-    let mut i: usize = 0
-    while i < 16 {
-      result.values[(i % 4) * 4 + i / 4] = args.values[i]
-      i = i + 1
+  }
+  if equal(name, b"scale") && (count == 1 || count == 2) {
+    return Option<Matrix>.Some {
+      value: scale(
+        args.values[0],
+        if count == 2 {
+          args.values[1]
+        } else {
+          args.values[0]
+        },
+        1.0,
+      ),
     }
-  } else if equal(name, b"translate", css) || (css && equal(name, b"translate3d", true)) {
-    let three = equal(name, b"translate3d", true)
-    if (three && count != 3) || (!three && count != 1 && count != 2) || !allKinds(args, 1, css) {
-      return false
-    }
-    result.values[3] = args.values[0]
-    if count >= 2 {
-      result.values[7] = args.values[1]
-    }
-    if three {
-      result.values[11] = args.values[2]
-    }
-  } else if css
-    && (equal(name, b"translateX", true) || equal(name, b"translateY", true)
-      || equal(name, b"translateZ", true)) {
-    if count != 1 || !allKinds(args, 1, css) {
-      return false
-    }
-    let index: usize = if equal(name, b"translateX", true) {
-      3
-    } else if equal(name, b"translateY", true) {
-      7
-    } else {
-      11
-    }
-    result.values[index] = args.values[0]
-  } else if equal(name, b"scale", css) || (css && equal(name, b"scale3d", true)) {
-    let three = equal(name, b"scale3d", true)
-    if (three && count != 3) || (!three && count != 1 && count != 2) || !allKinds(args, 0, css) {
-      return false
-    }
-    result.values[0] = args.values[0]
-    result.values[5] = if count >= 2 {
-      args.values[1]
-    } else {
-      args.values[0]
-    }
-    if three {
-      result.values[10] = args.values[2]
-    }
-  } else if css
-    && (equal(name, b"scaleX", true) || equal(name, b"scaleY", true)
-      || equal(name, b"scaleZ", true)) {
-    if count != 1 || !allKinds(args, 0, css) {
-      return false
-    }
-    let index: usize = if equal(name, b"scaleX", true) {
-      0
-    } else if equal(name, b"scaleY", true) {
-      5
-    } else {
-      10
-    }
-    result.values[index] = args.values[0]
-  } else if equal(name, b"rotate", css) {
-    if (css && count != 1) || (!css && count != 1 && count != 3) || !validKind(args, 0, 2, css) {
-      return false
-    }
-    result.* = rotation(0.0, 0.0, 1.0, angle(args, 0, css))
+  }
+  if equal(name, b"rotate") && (count == 1 || count == 3) {
+    let radians = f64.remainder(args.values[0], 360.0) * (f64.PI / 180.0)
+    let mut result = rotation(0.0, 0.0, 1.0, radians)
     if count == 3 {
       let x = args.values[1]
       let y = args.values[2]
       result.values[3] = x - result.values[0] * x - result.values[1] * y
       result.values[7] = y - result.values[4] * x - result.values[5] * y
     }
-  } else if css
-    && (equal(name, b"rotateX", true) || equal(name, b"rotateY", true)
-      || equal(name, b"rotateZ", true)) {
-    if count != 1 || !allKinds(args, 2, css) {
-      return false
-    }
-    let x = if equal(name, b"rotateX", true) {
-      1.0
-    } else {
-      0.0
-    }
-    let y = if equal(name, b"rotateY", true) {
-      1.0
-    } else {
-      0.0
-    }
-    let z = if equal(name, b"rotateZ", true) {
-      1.0
-    } else {
-      0.0
-    }
-    result.* = rotation(x, y, z, angle(args, 0, css))
-  } else if css && equal(name, b"rotate3d", true) {
-    if count != 4 || !validKind(args, 0, 0, css) || !validKind(args, 1, 0, css)
-      || !validKind(args, 2, 0, css)
-      || !validKind(args, 3, 2, css) {
-      return false
-    }
-    result.* = rotation(args.values[0], args.values[1], args.values[2], angle(args, 3, css))
-  } else if equal(name, b"skewX", css) || equal(name, b"skewY", css)
-    || (css && equal(name, b"skew", true)) {
-    let both = equal(name, b"skew", true)
-    if (both && count != 1 && count != 2) || (!both && count != 1) || !allKinds(args, 2, css) {
-      return false
-    }
-    if both || equal(name, b"skewX", css) {
-      result.values[1] = tangent(angle(args, 0, css))
-    }
-    if equal(name, b"skewY", css) {
-      result.values[4] = tangent(angle(args, 0, css))
-    }
-    if both && count == 2 {
-      result.values[4] = tangent(angle(args, 1, css))
-    }
-  } else if css && equal(name, b"perspective", true) {
-    if count != 1 || !allKinds(args, 1, css) || args.values[0] < 0.0 {
-      return false
-    }
-    result.values[14] = -1.0 / f64.max(1.0, args.values[0])
-  } else {
-    return false
+    return Option<Matrix>.Some { value: move result }
   }
-  return finite(&result.*)
+  if count == 1 && (equal(name, b"skewX") || equal(name, b"skewY")) {
+    let radians = f64.remainder(args.values[0], 360.0) * (f64.PI / 180.0)
+    return Option<Matrix>.Some {
+      value: if equal(name, b"skewX") {
+        skew(radians, 0.0)
+      } else {
+        skew(0.0, radians)
+      },
+    }
+  }
+  return Option<Matrix>.None
 }
 
-fn parse(data: &[u8], css: bool) -> CssTransformResult {
-  let mut cursor = Cursor { data: data, position: 0, css: css }
+pub fn transform(data: &[u8]) -> Option<Transform> {
+  let mut cursor = Cursor { data: data, position: 0 }
   Cursor.space(&mut cursor)
-  let start = cursor.position
-  let mut end = data.length
-  while end > start {
-    let byte = data[end - 1]
-    if byte != 32 && byte != 9 && byte != 10 && byte != 13 && !(css && byte == 12) {
-      break
-    }
-    end = end - 1
-  }
-  if css && equal(Slice.view<u8>(data, start, end - start), b"none", true) {
-    return CssTransformResult.Affine { value: Transform.identity() }
-  }
-  if css && start == data.length {
-    return CssTransformResult.Invalid
-  }
   let mut total = identity()
   while cursor.position < data.length {
     let nameStart = cursor.position
-    while cursor.position < data.length
-      && (letter(data[cursor.position]) || digit(data[cursor.position])) {
+    while cursor.position < data.length && letter(data[cursor.position]) {
       cursor.position = cursor.position + 1
     }
     if cursor.position == nameStart {
-      return CssTransformResult.Invalid
+      return Option<Transform>.None
     }
     let name = Slice.view<u8>(data, nameStart, cursor.position - nameStart)
-    if !css {
-      Cursor.space(&mut cursor)
-    }
-    if !Cursor.take(&mut cursor, 40) {
-      return CssTransformResult.Invalid
-    }
     Cursor.space(&mut cursor)
-    let mut next = identity()
-    let mut perspectiveNone = false
-    if css && equal(name, b"perspective", true) {
-      let wordStart = cursor.position
-      while cursor.position < data.length && letter(data[cursor.position]) {
-        cursor.position = cursor.position + 1
+    if !Cursor.take(&mut cursor, 40) {
+      return Option<Transform>.None
+    }
+    let mut args = Arguments { values: [0.0; 6], count: 0 }
+    if !arguments(&mut cursor, &mut args) {
+      return Option<Transform>.None
+    }
+    let parsed = component(name, &args)
+    match &parsed {
+      Option<Matrix>.Some { value } => {
+        total = multiply(&total, &value)
       }
-      if equal(Slice.view<u8>(data, wordStart, cursor.position - wordStart), b"none", true) {
-        Cursor.space(&mut cursor)
-        if !Cursor.take(&mut cursor, 41) {
-          return CssTransformResult.Invalid
-        }
-        perspectiveNone = true
-      } else {
-        cursor.position = wordStart
+      Option<Matrix>.None => {
+        return Option<Transform>.None
       }
     }
-    if !perspectiveNone {
-      let mut args = Arguments { values: [0.0; 16], kinds: [0; 16], count: 0 }
-      if !arguments(&mut cursor, &mut args) || !component(name, &args, css, &mut next) {
-        return CssTransformResult.Invalid
-      }
-    }
-    total = multiply(&total, &next)
     if !finite(&total) {
-      return CssTransformResult.Invalid
+      return Option<Transform>.None
     }
     let separator = cursor.position
     Cursor.space(&mut cursor)
     if cursor.position == data.length {
       break
     }
-    if !css {
-      let comma = Cursor.take(&mut cursor, 44)
-      if !comma && cursor.position == separator {
-        return CssTransformResult.Invalid
-      }
-      Cursor.space(&mut cursor)
-      if cursor.position == data.length {
-        return CssTransformResult.Invalid
-      }
+    let comma = Cursor.take(&mut cursor, 44)
+    if !comma && cursor.position == separator {
+      return Option<Transform>.None
+    }
+    Cursor.space(&mut cursor)
+    if cursor.position == data.length {
+      return Option<Transform>.None
     }
   }
-  return flattened(&total)
-}
-
-pub fn transform(data: &[u8]) -> Option<Transform> {
-  let result = parse(data, false)
-  return match &result {
-    CssTransformResult.Affine { value } => Option<Transform>.Some { value: value }
+  let projection = flattened(&total)
+  return match &projection {
+    Projection.Affine { value } => Option<Transform>.Some { value: value }
     _ => Option<Transform>.None
   }
-}
-
-pub fn cssTransform(data: &[u8]) -> CssTransformResult {
-  return parse(data, true)
 }

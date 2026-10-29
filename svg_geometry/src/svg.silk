@@ -15,10 +15,6 @@ pub fn transform(data: &[u8]) -> Option<Transform> {
   return transforms.transform(data)
 }
 
-pub fn cssTransform(data: &[u8]) -> transforms.CssTransformResult {
-  return transforms.cssTransform(data)
-}
-
 pub fn viewBox(data: &[u8]) -> Option<Rect> {
   return shapes.viewBox(data)
 }
@@ -81,7 +77,15 @@ fn reflected(current: Point, control: Point) -> Point {
   return Point.new(current.x + (current.x - control.x), current.y + (current.y - control.y))
 }
 
-pub effect fn parsePath(data: &[u8]) -> Path
+pub struct ParsedPath {
+  pub path: Path,
+  // False on any malformed command or tuple, even if it ends exactly at EOF.
+  pub complete: bool,
+  // Byte position reached by the parser, including an incomplete final tuple.
+  pub offset: usize,
+}
+
+pub effect fn parsePath(data: &[u8]) -> ParsedPath
   ! OutOfMemoryError
   ? &mut Allocator {
   let mut path = Path.make()
@@ -92,9 +96,11 @@ pub effect fn parsePath(data: &[u8]) -> Path
   let mut start = current
   let mut control = current
   let mut closed = false
+  let mut complete = false
   while true {
     Cursor.space(&mut cursor)
     if cursor.at == data.length {
+      complete = true
       break
     }
     let byte = data[cursor.at]
@@ -241,7 +247,7 @@ pub effect fn parsePath(data: &[u8]) -> Path
       }
     }
   }
-  return move path
+  return ParsedPath { path: move path, complete: complete, offset: cursor.at }
 }
 
 pub effect fn points(data: &[u8], close: bool) -> Path

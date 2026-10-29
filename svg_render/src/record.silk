@@ -33,7 +33,7 @@ effect fn recordCommands(nodes: &[ResolvedNode]) -> List<Command>
       ResolvedNode.EndGroup => {
         run commands.append(Command.PopLayer)
       }
-      ResolvedNode.Shape { path, transform, bounds, style } => {
+      ResolvedNode.Shape { path, transform, clip, bounds, style } => {
         let fill = paintColor(&style.fill, style.color, style.fillOpacity)
         match &fill {
           Option<Color>.Some { value } => {
@@ -41,6 +41,7 @@ effect fn recordCommands(nodes: &[ResolvedNode]) -> List<Command>
               Command.FillPath {
                 path: path,
                 transform: transform,
+                clip: clip,
                 bounds: bounds,
                 color: value,
                 rule: style.fillRule,
@@ -58,6 +59,7 @@ effect fn recordCommands(nodes: &[ResolvedNode]) -> List<Command>
                 Command.StrokePath {
                   path: path,
                   transform: transform,
+                  clip: clip,
                   bounds: bounds,
                   color: value,
                   crispEdges: style.crispEdges,
@@ -92,5 +94,6 @@ pub effect fn record(tree: RenderTree) -> DisplayList
     paths: move tree.paths,
     dashes: move tree.dashes,
     commands: move commands,
+    projectionClips: move tree.projectionClips,
   }
 }

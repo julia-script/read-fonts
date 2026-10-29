@@ -1,5 +1,6 @@
 import geometry { Point, Size, Arc, Segment }
-import arcs { ArcIter }
+import arcs { ArcIter, NormalizedArc }
+import arcs
 import math
 import silk.option { Option }
 import silk.num.f64
@@ -253,4 +254,51 @@ test effect fn tinyRadiiCorrectAcrossFullNumericRange() -> ()
     total > 0 && total <= 4096 && !ArcIter.isLimited(&iter),
     "radii correction avoids an overflowing 1e600 ratio",
   )
+}
+
+// https://www.w3.org/TR/2018/CR-SVG2-20181004/implnote.html#ArcConversionEndpointToCenter
+// Stroke joins need the original ellipse derivatives, not cubic approximations.
+test effect fn normalizedEllipsePreservesCurvatureAndCorrectedRadii() -> ()
+  ! AssertionError<'static> {
+  let result = arcs.normalize(Point.new(4.0, 0.0), arc(4.0, 2.0, 0.0, false, true, 0.0, 2.0))
+  match &result {
+    NormalizedArc.Ellipse { center, axisX, axisY, sweep, end } => {
+      run Testing.expect(
+        near(center.x, 0.0) && near(center.y, 0.0) && near(sweep, math.PI * 0.5),
+        "ellipse center and signed angular domain",
+      )
+      let cross = axisX.x * axisY.y - axisX.y * axisY.x
+      let startSpeed = math.hypot(axisY.x, axisY.y)
+      let endSpeed = math.hypot(axisX.x, axisX.y)
+      run Testing.expect(
+        near(cross / (startSpeed * startSpeed * startSpeed), 1.0)
+          && near(cross / (endSpeed * endSpeed * endSpeed), 0.125),
+        "endpoint curvatures are those of the original ellipse",
+      )
+      run Testing.expect(
+        end.x == 0.0 && end.y == 2.0,
+        "normalization retains exact source endpoint",
+      )
+    }
+    _ => {
+      run Testing.expect(false, "finite nondegenerate endpoint arc normalizes to an ellipse")
+    }
+  }
+  let corrected = arcs.normalize(Point.new(-10.0, 0.0), arc(1.0, 1.0, 0.0, false, true, 10.0, 0.0))
+  match &corrected {
+    NormalizedArc.Ellipse { center, axisX, axisY, sweep, end } => {
+      run Testing.expect(
+        near(center.x, 0.0) && near(center.y, 0.0) && near(math.hypot(axisX.x, axisX.y), 10.0)
+          && near(math.hypot(axisY.x, axisY.y), 10.0),
+        "too-small endpoint radii normalize to the required diameter",
+      )
+      run Testing.expect(
+        near(sweep, math.PI) && axisY.y < 0.0,
+        "corrected half circle preserves sweep direction",
+      )
+    }
+    _ => {
+      run Testing.expect(false, "radius correction stays an exact ellipse")
+    }
+  }
 }

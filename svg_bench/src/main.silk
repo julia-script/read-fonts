@@ -3,6 +3,11 @@
 //! result is rendered after timing so recording and geometry cannot become dead work.
 import svg_render.lib { RenderOptions, RenderError, DisplayList }
 import svg_render.lib as renderer
+import svg_render.environment { Environment }
+import svg_render.native_environment { NativeHost, NativeHostError }
+import svg_core.url { Url, UrlError }
+import svg_core.resources { Resolver, Limits as ResourceLimits, ResourceError }
+import svg_core.resources_native { FileSystem as NativeFileSystem }
 import silk.collections.bytes { Bytes }
 import silk.collections.list { List }
 import silk.text.string { String, InvalidUtf8 }
@@ -51,12 +56,13 @@ effect fn iteration(
   data: &[u8],
   retained: &DisplayList,
   options: &RenderOptions,
+  environment: &Environment,
 ) -> Measurement
   ! RenderError | OutOfMemoryError
-  ? &mut Allocator | &mut MonotonicClock {
+  ? &mut Allocator | &mut MonotonicClock | &mut Resolver {
   let start = run MonotonicClock.now()
   if mode == "parse" {
-    let tree = run renderer.parse(data, options)
+    let tree = run renderer.parse(data, options, environment)
     let list = run renderer.record(move tree)
     let end = run MonotonicClock.now()
 
@@ -74,7 +80,7 @@ effect fn iteration(
   let image = if mode == "render" {
     run renderer.renderDisplayList(retained)
   } else {
-    run renderer.render(data, options)
+    run renderer.render(data, options, environment)
   }
   let end = run MonotonicClock.now()
   return Measurement {
@@ -86,7 +92,14 @@ effect fn iteration(
 }
 
 effect fn process() -> i32
-  ! HostInputError | FileError | OutOfMemoryError | WriterError | RenderError
+  ! HostInputError
+    | FileError
+    | OutOfMemoryError
+    | WriterError
+    | RenderError
+    | NativeHostError
+    | UrlError
+    | ResourceError
   ? &mut HostInput | &mut Allocator | &mut MonotonicClock {
   let mut args = List<String>.make()
   let count = run HostInput.argumentCount()
@@ -136,9 +149,21 @@ effect fn process() -> i32
   let input = run FileSystem.readFile(&path) |> Effect.provideMut<FileSystem>(&mut files)
   let data = Bytes.asSlice(&input)
   let options = RenderOptions.make()
+  let address = run Url.fromFilePath(Path.rawBytes(&path))
+  let parent = run Path.parent(&path)
+  let directory = match &parent {
+    Option<Path>.Some { value } => Path.rawBytes(&value)
+    _ => {
+      return 2
+    }
+  }
+  let mut resolver = run NativeFileSystem.make(directory, ResourceLimits.defaults())
+  let host = run NativeHost.make(300.0, 150.0)
+  let environment = host.environment(&address)
 
   // Setup is outside all samples; render reuses this exact immutable display list.
-  let tree = run renderer.parse(data, &options)
+  let tree = run renderer.parse(data, &options, &environment)
+    |> Effect.provideMut<Resolver>(&mut resolver)
   let retained = run renderer.record(move tree)
   let mut frame: u32 = 0
   let mut elapsed: i64 = 0
@@ -147,7 +172,8 @@ effect fn process() -> i32
   let mut width: u32 = 0
   let mut height: u32 = 0
   while frame < warmup + iterations {
-    let measured = run iteration(mode, data, &retained, &options)
+    let measured = run iteration(mode, data, &retained, &options, &environment)
+      |> Effect.provideMut<Resolver>(&mut resolver)
     consumed = u64.wrappingAdd(consumed, measured.checksum)
     if frame >= warmup {
       elapsed = elapsed + measured.elapsed

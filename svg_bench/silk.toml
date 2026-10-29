@@ -5,3 +5,4 @@ silk-version = "0.1.0-dev.27+323ceb59e7ee"
 
 [dependencies]
 svg_render = { path = "../svg_render" }
+svg_core = { path = "../svg_core" }
