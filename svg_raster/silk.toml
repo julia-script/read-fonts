@@ -1,0 +1,13 @@
+[package]
+name = "svg_raster"
+version = "0.1.0"
+silk-version = "0.1.0-dev.29+94cf9559bf47"
+kind = "library"
+exports = []
+
+[dependencies]
+svg_geometry = { path = "../svg_geometry" }
+svg_image = { path = "../svg_image" }
+svg_filters = { path = "../svg_filters" }
+# LIMITATION-1: git dependencies unavailable (silk-lang/silk#2558); pin the submodule.
+vector = { path = "../vendor/silk-gpu/vector" }

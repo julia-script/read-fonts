@@ -24,6 +24,7 @@ shaping, OpenType and AAT layout, and the `hr_shape` CLI.
 - `scripts/`: code generation, the test corpus harness, and the Rust baseline dumper.
 - `upstream/`, `test-data/harfrust/`: read-only submodules with the pinned
   fontations source and the font corpus (566 fonts).
+- `svg_*/`: [SVG implementation packages and conformance tooling](svg_core/README.md).
 
 ## Set up
 

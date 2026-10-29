@@ -1,0 +1,6 @@
+//! Package boundary registered for the SVG implementation; no public API yet.
+import svg_geometry.geometry
+import font_types.lib as font_types
+import read_fonts.lib as read_fonts
+import harfrust.lib as harfrust
+import ucd.lib as ucd
