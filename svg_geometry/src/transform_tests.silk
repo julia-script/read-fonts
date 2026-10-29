@@ -2,7 +2,7 @@
 import geometry { Transform }
 import transforms as matrix
 import transforms { Projection, Facing }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.testing.testing { Testing, AssertionError }
 

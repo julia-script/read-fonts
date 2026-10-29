@@ -6,7 +6,7 @@
 //! An empty fragment explicitly clears the base fragment; fragment arguments are never decoded here.
 import silk.collections.bytes { Bytes }
 import silk.core.result { Result }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.u8
 import silk.num.f64
 import svg_geometry.svg

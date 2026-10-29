@@ -7,7 +7,7 @@ import model.glyph { GlyphSourceOrder }
 import model.optional { Maybe }
 import font_types.lib { F48Dot16, F26Dot6, Fixed, GlyphId, BoundingBox }
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.num.i32
 import silk.num.i64

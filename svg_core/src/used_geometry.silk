@@ -15,7 +15,7 @@ import svg_geometry.svg
 import svg_geometry.math
 import silk.collections.list { List }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 
 fn attribute<'a>(document: &'a Document, id: NodeId, name: &[u8]) -> &'a [u8] {

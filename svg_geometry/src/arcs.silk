@@ -4,7 +4,7 @@
 //! A renderer divides its device tolerance by an upper bound on CTM scale.
 import geometry { Point, Arc, Segment, Rect, Transform }
 import math
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.num.u32
 

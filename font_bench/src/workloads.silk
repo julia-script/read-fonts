@@ -12,7 +12,7 @@ import read_fonts.model.error { Error }
 import read_fonts.model.glyph.outline { PathSink }
 import read_fonts.lib { FontData }
 import font_types.lib { GlyphId, F2Dot14 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.num.u16
 import silk.num.u32

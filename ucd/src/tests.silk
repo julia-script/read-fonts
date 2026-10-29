@@ -17,7 +17,7 @@ import lib {
   IndicConjunctBreak,
   VerticalOrientation,
 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 
 test effect fn categoriesAndScripts() -> ()

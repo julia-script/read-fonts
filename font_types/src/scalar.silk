@@ -1,7 +1,7 @@
 // Copyright 2026 the fontations-silk Authors. Licensed under Apache-2.0 or MIT.
 //! Bounds-checked big-endian scalar codecs; decoding never reinterprets native memory.
 import cast
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
 import silk.num.u8
 import silk.num.u16

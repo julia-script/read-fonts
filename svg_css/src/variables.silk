@@ -8,7 +8,7 @@ import input { Input, TokenRef }
 import declaration_values
 import silk.collections.list { List }
 import silk.core.ownership { Copy }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub struct ScopeId {

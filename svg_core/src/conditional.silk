@@ -3,7 +3,7 @@
 import svg_xml.xml { Document, NodeId, NodeKind }
 import svg_css.tokens { equal }
 import silk.collections.slice { Slice }
-import silk.option { Option }
+import silk.core.option { Option }
 
 /// Borrowed host preferences, ordered from most to least preferred, and exact
 /// supported extension URI bytes. Empty slices mean no languages/extensions;

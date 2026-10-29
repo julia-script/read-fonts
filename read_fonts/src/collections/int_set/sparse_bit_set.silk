@@ -7,12 +7,12 @@ import collections.int_set.output_bit_stream { OutputBitStream }
 import collections.int_set.bitpage { trailingZeros }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.collections.slice { Slice }
 import silk.core.ownership { Copy }
-import silk.equal { Equal }
-import silk.format { Display, Formatter }
+import silk.core.equal { Equal }
+import silk.text.format { Display, Formatter }
 import silk.io.writer { Writer, WriterError }
 import silk.num.u8
 import silk.num.u32

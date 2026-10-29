@@ -32,7 +32,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import encoding_types { Encoding }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.u8
 import silk.num.u32
 import silk.num.usize

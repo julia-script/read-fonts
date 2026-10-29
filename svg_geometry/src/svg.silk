@@ -5,7 +5,7 @@ import numeric
 import transforms
 import shapes
 pub import shapes { Alignment, AspectRatio }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 
 pub fn number(data: &[u8]) -> Option<f64> {

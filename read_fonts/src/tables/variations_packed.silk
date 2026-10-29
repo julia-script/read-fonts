@@ -464,7 +464,7 @@ impl<'a> PackedDeltaFetcher<'a> {
   }
 }
 
-import silk.ops { Add, Multiply }
+import silk.core.ops { Add, Multiply }
 
 fn fetchScaled<'a, T: Copy + Add<T, T> + Multiply<T, T>>(
   fetcher: &mut PackedDeltaFetcher<'a>,

@@ -174,7 +174,7 @@ def render(lock: dict, sources: dict[str, bytes]) -> bytes:
     out += f"// Source and license: {lock['license']['source']}\n"
     out += "// Incorporated data is licensed under BSD-3-Clause:\n"
     out += "\n".join("// " + line for line in bsd.splitlines()) + "\n\n"
-    out += "import encoding_types { Encoding }\nimport silk.option { Option }\nimport silk.num.u8\nimport silk.num.u32\nimport silk.num.usize\n\n"
+    out += "import encoding_types { Encoding }\nimport silk.core.option { Option }\nimport silk.num.u8\nimport silk.num.u32\nimport silk.num.usize\n\n"
     out += '''// Callers establish the packed-record bounds before multiplying offsets.
 fn be24(data: &[u8], at: usize) -> u32 {
   return u8.toU32(data[at]) * 65536 + u8.toU32(data[at + 1]) * 256 + u8.toU32(data[at + 2])

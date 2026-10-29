@@ -11,7 +11,7 @@ import tables.vorg { Vorg }
 import font_types.lib { GlyphId, Tag }
 import generated_variation_fixtures as Fixtures
 import test_font_builder as Builder
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.testing.testing { Testing, AssertionError }
 import silk.collections.slice { Slice }

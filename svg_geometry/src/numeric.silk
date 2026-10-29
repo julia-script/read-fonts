@@ -1,11 +1,11 @@
 //! SVG decimal lexing. Cursor increments are guarded by the input length.
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.num.u8
 import silk.collections.slice { Slice }
 import silk.text.string { String, InvalidUtf8 }
 import silk.core.result { Result }
-import silk.format { Format, ParseError }
+import silk.text.format { Format, ParseError }
 
 pub fn whitespace(byte: u8) -> bool {
   return byte == 32 || byte == 9 || byte == 10 || byte == 13

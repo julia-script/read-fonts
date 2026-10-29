@@ -2,11 +2,11 @@
 // All 36 upstream U32Set tests, with explicit allocation and cursor operations.
 import collections.int_set.bitset { U32Set, U32SetIter, U32SetRangeIter, U32SetBuilder }
 import collections.int_set.bitpage { U32Range }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.effect { Effect }
-import silk.order { Ordering }
+import silk.core.order { Ordering }
 import silk.collections.hash { Hash }
 import silk.collections.hash_set { HashSet }
 import silk.num.u32

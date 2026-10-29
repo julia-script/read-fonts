@@ -31,8 +31,8 @@ import silk.core.effect { Effect }
 import silk.core.ownership { Copy }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.option { Option }
-import silk.order { Order, Ordering }
+import silk.core.option { Option }
+import silk.core.order { Order, Ordering }
 import silk.num.u8
 import silk.num.usize
 

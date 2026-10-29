@@ -2,7 +2,7 @@
 import properties { Property }
 import input { Input }
 import value_cursor { Cursor }
-import silk.option { Option }
+import silk.core.option { Option }
 
 pub enum Keyword {
   None,

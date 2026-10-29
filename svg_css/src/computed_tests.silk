@@ -22,7 +22,7 @@ import tokens { TokenBuffer, Limits, CssError }
 import tokens
 import variables
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.effect { Effect }
 import silk.num.usize
 import silk.mem.allocator { Allocator, OutOfMemoryError }

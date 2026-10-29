@@ -7,11 +7,11 @@ import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.collections.bytes { Bytes }
 import silk.core.effect { Effect }
 import silk.system.filesystem { Path, FileSystem, FileError }
-import silk.format { Format }
+import silk.text.format { Format }
 import silk.system.host_input { HostInputError }
 import silk.collections.list { List }
 import silk.platform.native.host_input { NativeHostInput }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.system.filesystem_native { OsFileSystem }
 import silk.io.writer_native { StderrWriter }
 import silk.testing.testing { Testing, AssertionError }

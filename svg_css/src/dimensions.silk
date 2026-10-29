@@ -4,7 +4,7 @@ import input { Input, TokenView }
 import tokens { Kind, insensitive }
 import value_cursor { Cursor }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
 import silk.core.ownership { Copy }
 import silk.num.f64

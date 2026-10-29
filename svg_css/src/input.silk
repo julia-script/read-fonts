@@ -1,6 +1,6 @@
 //! A contiguous declaration or a var()-expanded sequence of references, without token copies.
 import tokens { Token, TokenBuffer, TokenRange, Span }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.ownership { Copy }
 
 pub struct TokenRef {

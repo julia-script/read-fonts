@@ -2,7 +2,7 @@
 import svg
 import svg { Alignment, AspectRatio }
 import geometry { Path, Segment, Point, Rect, Transform }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

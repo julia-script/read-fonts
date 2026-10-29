@@ -14,7 +14,7 @@ import harfrust.lib {
   serialize
 }
 import silk.concurrency.sync { Mutex, MutexGuard }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.list { List }
 import silk.text.string { String }
 import silk.core.result { Result }

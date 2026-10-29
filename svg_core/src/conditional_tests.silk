@@ -4,7 +4,7 @@ import svg_xml.xml { Document, NodeId, XmlError, parse }
 import svg_css.tokens { equal }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.testing.testing { Testing, AssertionError }
 
 fn preferences<'a>(languages: &'a [&'a [u8]], extensions: &'a [&'a [u8]]) -> Config<'a> {

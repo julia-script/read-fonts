@@ -83,7 +83,7 @@
       "clang": "clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)\nTarget: aarch64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /home/juliaortiz.guest/svg-tools/llvm-22.1.8/bin",
       "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
       "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-unknown-linux-gnu\nrelease: 1.96.0\nLLVM version: 22.1.2",
-      "silk": "silk v0.1.0-dev.27+323ceb59e7ee",
+      "silk": "silk v0.1.0-dev.29+94cf9559bf47",
       "valgrind": "valgrind-3.22.0"
     }
   },

@@ -1,9 +1,9 @@
 //! Generic points, bounding boxes, and affine matrices.
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import silk.core.ownership { Copy }
-import silk.equal { Equal }
-import silk.order { Order }
-import silk.ops { Add, Subtract, Multiply, Divide, Negate }
+import silk.core.equal { Equal }
+import silk.core.order { Order }
+import silk.core.ops { Add, Subtract, Multiply, Divide, Negate }
 import fixed { Fixed }
 
 pub tuple Coordinates<T>(T, T)

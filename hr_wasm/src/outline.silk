@@ -19,7 +19,7 @@ import read_fonts.tables.hmtx { GlyphMetricRecords }
 import read_fonts.ps.cff.font { CffFontRef, Subfont }
 import font_types.lib { F2Dot14, GlyphId, Point }
 import silk.collections.list { List }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.result { Result }
 import silk.core.effect { Effect }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

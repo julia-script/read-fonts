@@ -8,7 +8,7 @@ import properties { Property }
 import input { Input, TokenView }
 import value_cursor { Cursor }
 import tokens { Kind, Span, insensitive, equal }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.collections.list { List }
 import silk.collections.bytes { Bytes }
 import silk.collections.slice { Slice }

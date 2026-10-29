@@ -108,6 +108,16 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: ./.github/actions/setup-silk
+      - uses: actions/cache@v4
+        with:
+          path: |
+            svg_css/.cache/encodings
+            svg_core/.cache/idna
+          key: svg-generated-inputs-${{ hashFiles('svg_css/encodings.lock.json', 'svg_core/idna.lock.json') }}
+      - name: Hydrate pinned SVG generation inputs
+        run: |
+          scripts/svg/generate-encodings --fetch
+          scripts/svg/generate-idna --fetch
       - name: Generated and formatted files are committed
         run: scripts/generate --check
       - name: Codegen tool

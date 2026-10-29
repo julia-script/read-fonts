@@ -4,7 +4,7 @@ import view_fragment
 import svg_css.values { Store, Value, ValueId }
 import svg_css.tokens { Limits, CssError, CssErrorKind }
 import svg_css.transform_values { TransformValue, Operation }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.core.effect { Effect }
 import silk.core.result { Result }
 import silk.mem.allocator { Allocator, OutOfMemoryError }

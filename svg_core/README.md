@@ -67,7 +67,7 @@ submodule in a reviewed change; never copy its implementation into `svg_raster`.
 
 ## Setup and checks
 
-Use the workspace's pinned Silk **0.1.0-dev.27+323ceb59e7ee**, Python 3.11+, and
+Use the workspace's pinned Silk **0.1.0-dev.29+94cf9559bf47**, Python 3.11+, and
 Clang 22 or newer. The [workspace setup](../README.md#set-up) installs the Linux
 CI toolchain. `SILK_CLANG` must be an absolute path; on macOS an LLVM 22 Homebrew
 installation can supply `/opt/homebrew/opt/llvm@22/bin/clang`.

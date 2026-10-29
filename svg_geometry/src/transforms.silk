@@ -2,7 +2,7 @@
 //! CSS syntax belongs to svg_css; flatten only after composing every operation.
 import geometry { Transform }
 import numeric
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.num.f64
 import silk.collections.slice { Slice }
 import silk.core.ownership { Copy }

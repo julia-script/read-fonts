@@ -1,7 +1,7 @@
 // Copyright 2022 the Fontations Authors. Licensed under Apache-2.0 or MIT.
 import lib { FontData }
 import tables.name { MacRomanMapping, CharIter, Encoding, languageIdToBcp47 }
-import silk.option { Option }
+import silk.core.option { Option }
 import silk.text.char
 import silk.num.usize
 import silk.num.u8
